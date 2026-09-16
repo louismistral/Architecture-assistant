@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Programme des locaux Saxon</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/base.css">
+<link rel="stylesheet" href="styles/header.css">
+<link rel="stylesheet" href="styles/controls.css">
+<link rel="stylesheet" href="styles/program.css">
+<link rel="stylesheet" href="styles/schema.css">
+<link rel="stylesheet" href="styles/plan.css">
+<link rel="stylesheet" href="styles/volumes.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Concours de projet · Nouveau centre scolaire · Saxon (VS)</div>
+    <h1>Programme des locaux</h1>
+    <p class="subtitle">Toutes les surfaces chiffrées au chapitre 2.10 du règlement-programme, dessinées à l'échelle et colorées par famille d'usage. Chaque bloc est une surface réelle&nbsp;: sa taille à l'écran est proportionnelle à ses mètres carrés. Les blocs en trait tireté sont des surfaces estimées, que le règlement ne chiffre pas.</p>
+    <div class="hero">
+      <div class="hero-fig mono" id="heroProg"></div>
+      <p class="hero-note">chiffrés au règlement<b id="heroEst"></b></p>
+    </div>
+    <div class="varstrip" id="varStrip"></div>
+    <div class="legend">
+      <div class="legend-track" id="legTrack"></div>
+      <div class="legend-key" id="legKey"></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Regroupement des panneaux">
+      <button id="grpChap" type="button" aria-pressed="true">Chapitres du programme</button>
+      <button id="grpFam" type="button" aria-pressed="false">Familles d'usage</button>
+      <button id="grpSch" type="button" aria-pressed="false">Schéma fonctionnel</button>
+      <button id="grpPlan" type="button" aria-pressed="false">Plan interactif</button>
+      <button id="grpVol" type="button" aria-pressed="false">Volumes</button>
+    </div>
+    <div class="seg" id="modeSeg" role="group" aria-label="Mode de représentation">
+      <button id="modeAgg" type="button" aria-pressed="true">Par poste</button>
+      <button id="modeUnit" type="button" aria-pressed="false">Pièce par pièce</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="scalebar">
+      <svg id="scalebar" height="16" role="img" aria-label="Barre d'échelle de 20 mètres"></svg>
+      <span class="cap mono" id="scaleCap">20 m</span>
+    </div>
+  </div>
+
+  <main id="panels"></main>
+
+  <section class="totals">
+    <div class="eyebrow" style="margin-bottom:10px" id="totTitle">Récapitulatif par chapitre</div>
+    <table>
+      <thead><tr><th id="thFirst">Ensemble</th><th class="n">Pièces</th><th class="n">Surface</th><th class="n">Part</th></tr></thead>
+      <tbody id="totalsBody"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <b>Surfaces à préciser.</b> Huit postes ne sont pas chiffrés par le règlement — il les compte en nombre de pièces, ou les renvoie « selon projet ». Ils portent une valeur provisoire, modifiable dans l'onglet Plan, sur ces bases&nbsp;: vestiaires de classe 0,5 m² par élève soit 10 m² pour 20 élèves ; WC 2 m² par cabine, soit la cabine standard de 1 × 2 m sans la zone lavabos ; halls posés par défaut à 120, 150 et 30 m², sans fondement dans le règlement. Ces valeurs sont à vérifier contre les directives cantonales. Elles apparaissent partout en trait tireté, sont listées en tête de page tant qu'elles n'ont pas été fixées, et restent comptées séparément du programme.<br>
+    <b>Lecture des couleurs.</b> Tous les vestiaires et sanitaires sont comptés avec l'eau, y compris les vestiaires de classe ; tout le stockage et les dépôts vont au technique ; la salle de pause de l'UAPE va aux locaux du personnel. Chaque hall prend la couleur de ce qu'il dessert — hall d'école en rose, foyer de la salle polyvalente en vert, hall UAPE en jaune — et non celle de l'administration.<br>
+    <b>Source.</b> <i>1.19.a Concours école Saxon — règlement-programme, juillet 2026</i>, chapitre 2.10 « Programme des locaux ». Les postes « selon projet » (halls, foyer), les WC comptés en nombre et les places de stationnement ne sont pas chiffrés au programme&nbsp;: ils sont listés sous les schémas. La surface de plancher réelle du projet sera sensiblement supérieure au total ci-dessus.
+  </footer>
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

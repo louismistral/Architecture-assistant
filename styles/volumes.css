@@ -1,0 +1,32 @@
+.vol-wrap{overflow:hidden;cursor:grab;border:1px solid var(--rule);border-radius:4px;background:var(--panel);
+  touch-action:none;position:relative}
+.vol-wrap svg{display:block;width:100%;height:auto}
+g.vol{cursor:move}
+.vh{cursor:nwse-resize}
+g.vol text{pointer-events:none}
+g.vol:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+g.vol.sel text{font-weight:600}
+.vol-key{display:flex;flex-wrap:wrap;gap:6px 20px;margin:12px 0 0;font-size:12px;color:var(--ink-2)}
+.vol-key span{display:inline-flex;align-items:center;gap:7px}
+.vol-key i{width:20px;height:3px;flex:none}
+.circbar{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--rule);
+  border-radius:3px;background:var(--panel);padding:4px 12px 4px 0}
+.circbar input[type=range]{width:154px;accent-color:var(--f-eau);cursor:pointer;margin:0}
+.circbar b{font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:500;
+  color:var(--ink-2);white-space:nowrap;min-width:104px}
+/* --- tableau de bord et notes, repris par l'onglet Volumes --- */
+.arch-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));
+  gap:0 22px;margin-top:20px}
+.arch-metrics div{padding:9px 0;border-top:1px solid var(--rule-soft)}
+.arch-metrics dt{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:600;font-variation-settings:"wdth" 88;margin-bottom:3px}
+.arch-metrics dd{margin:0;font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:500;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.arch-metrics dd small{display:block;font-family:"Archivo",sans-serif;font-size:11px;font-weight:400;
+  letter-spacing:0;color:var(--ink-3);margin-top:3px;line-height:1.35}
+.arch-metrics .ok dd{color:var(--f-spo)}
+.arch-metrics .ko dd{color:#d03b3b}
+.arch-note{margin-top:16px;padding-top:13px;border-top:1px dashed var(--rule);
+  font-size:12px;color:var(--ink-3);line-height:1.65;max-width:78ch}
+.arch-note b{color:var(--ink-2);font-weight:500}
+

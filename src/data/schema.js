@@ -1,0 +1,55 @@
+/* ---------- schéma fonctionnel : positions composées à la main, à l'échelle ---------- */
+export var SCH_W = 134, SCH_H = 84;
+export var SNODE = [
+  {id:"classes",   n:"Salles de classe",  f:"cla", x:0,   y:0,    w:36,    h:36,    a:1296, sub:"18 × 72 m²"},
+  {id:"vest_cl",   n:"Vestiaires de classe", f:"eau", x:38, y:0,  w:18,    h:10,    dash:1, sub:"180 m² estimés"},
+  {id:"wc_el",     n:"WC élèves",         f:"eau", x:38,  y:12,  w:12,    h:6,     dash:1, sub:"72 m² estimés"},
+  {id:"acm",       n:"Salle ACM",         f:"cla", x:0,   y:40,   w:12,    h:12,    a:144},
+  {id:"depot_acm", n:"Dépôt ACM",         f:"tec", x:14.5,y:41.7, w:8.49,  h:8.49,  a:72},
+  {id:"maitres",   n:"Salle des maîtres", f:"adm", x:0,   y:56,   w:8.49,  h:8.49,  a:72},
+  {id:"repro",     n:"Reproduction",      f:"adm", x:13,  y:59,   w:3,     h:3,     a:9,   lp:"above"},
+  {id:"bureau",    n:"Bureau direction",  f:"adm", x:22,  y:57.2, w:6,     h:6,     a:36,  lp:"below"},
+  {id:"reunion",   n:"Salle de réunion",  f:"adm", x:32,  y:56,   w:8.49,  h:8.49,  a:72},
+  {id:"pause",     n:"Salle de pause",    f:"adm", x:44,  y:48,   w:4.47,  h:4.47,  a:20,  lp:"above"},
+  {id:"foyer",     n:"Hall / foyer",      f:null,  x:44,  y:34,   w:14,    h:7,     dash:1, sub:"selon projet"},
+  {id:"cuisine",   n:"Cuisine",           f:"eau", x:62,  y:32,   w:7.07,  h:7.07,  a:50},
+  {id:"economat",  n:"Économat",          f:"tec", x:71,  y:22,   w:2.45,  h:2.45,  a:6,   lp:"below"},
+  {id:"vest_el",   n:"Vestiaires élèves", f:"eau", x:62,  y:8,    w:11.83, h:11.83, a:140},
+  {id:"vest_pr",   n:"Vestiaires profs",  f:"eau", x:62,  y:22,   w:5.48,  h:5.48,  a:30,  lp:"below"},
+  {id:"sport",     n:"Salle de sport double", f:"spo", x:76, y:8, w:32,    h:28,    a:896, sub:"28 × 32 m", split:1},
+  {id:"scene",     n:"Scène",             f:"spo", x:76,  y:37,   w:10.95, h:10.95, a:120},
+  {id:"engins",    n:"Local engins",      f:"tec", x:110, y:8,    w:13.42, h:13.42, a:180},
+  {id:"rangement", n:"Rangement tables et chaises", f:"tec", x:95, y:38, w:12.65, h:12.65, a:160},
+  {id:"abri",      n:"Abri PC",           f:"tec", x:100, y:54,   w:27.39, h:27.39, a:750},
+  {id:"refectoire",n:"Réfectoire",        f:"eau", x:50,  y:56,   w:8.49,  h:8.49,  a:72},
+  {id:"activite",  n:"Salles d'activité UAPE", f:"uap", x:62, y:54, w:12,   h:12,    a:144},
+  {id:"hall_uape", n:"Hall UAPE",         f:null,  x:62,  y:68,   w:13,    h:6,     dash:1, sub:"selon projet"},
+  {id:"bur_uape",  n:"Bureau UAPE",       f:"adm", x:76,  y:69,   w:4.24,  h:4.24,  a:18,  lp:"right"}
+];
+export var SLINK = [
+  {a:"acm",       b:"depot_acm",  q:"lien avec dépôt matériel"},
+  {a:"classes",   b:"vest_cl",    q:"à proximité de chaque classe"},
+  {a:"classes",   b:"wc_el",      q:"1 par classe, soit 18 répartis"},
+  {a:"bureau",    b:"reunion",    q:"proche de la salle de réunion"},
+  {a:"bureau",    b:"repro",      q:"proche des bureaux"},
+  {a:"maitres",   b:"repro",      q:"… et de la salle des maîtres"},
+  {a:"sport",     b:"engins",     q:"en lien avec la salle de sport"},
+  {a:"sport",     b:"scene",      q:"attenante à la salle de sport"},
+  {a:"sport",     b:"rangement",  q:"local de rangement pour les tables et chaises"},
+  {a:"vest_el",   b:"vest_pr",    q:"à proximité des vestiaires élèves"},
+  {a:"cuisine",   b:"foyer",      q:"en lien avec le foyer / entrée"},
+  {a:"cuisine",   b:"economat",   q:"en lien avec la cuisine"},
+  {a:"cuisine",   b:"refectoire", q:"doit pouvoir servir de cuisine … pour l'UAPE"},
+  {a:"activite",  b:"refectoire", q:"en relation directe avec les salles d'activité"},
+  {a:"hall_uape", b:"activite",   q:"accès direct aux locaux de l'UAPE"},
+  {a:"hall_uape", b:"bur_uape",   q:"en lien avec le hall, lumière naturelle"},
+  {a:"foyer",     b:"refectoire", opt:1, q:"peut être combiné avec le réfectoire de l'UAPE"},
+  {a:"pause",     b:"maitres",    opt:1, q:"peut être mutualisée avec la salle des maîtres"},
+  {a:"abri",      b:"engins",     opt:1, q:"possibilité de convertir les locaux engins … en abri"}
+];
+export var FREE = ["Salle de classe de réserve (216 m²)","Salle de dédoublement (144 m²)","Salles d'appui / soutien (144 m²)",
+  "Local pédago-thérapeutique (36 m²)","Salle détente / allaitement (36 m²)","WC PMR (3 m²)",
+  "Local de rangement UAPE (18 m²)","Local de nettoyage (10 m²)","Toilette individuelle (3 m²)",
+  "Local technique (120 m²)","Conciergerie (72 m²)","Local chauffage CAD (400 m²)",
+  "Piscine (500 m²)","Cour d'école (500 m²)"];
+

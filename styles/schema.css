@@ -1,0 +1,12 @@
+/* --- schéma fonctionnel --- */
+.schema-wrap{overflow-x:auto;padding-bottom:6px}
+.schema-wrap svg{display:block;min-width:840px;width:100%;height:auto}
+.linkkey{display:flex;flex-wrap:wrap;gap:6px 24px;margin:2px 0 18px;font-size:12px;color:var(--ink-2)}
+.linkkey span{display:inline-flex;align-items:center;gap:8px}
+.linkkey svg{display:block;flex:none}
+.links{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:0 30px}
+.links li{display:grid;grid-template-columns:13px 1fr;gap:0 10px;padding:7px 0;border-top:1px solid var(--rule-soft);font-size:13px}
+.links li .ic{padding-top:7px}
+.links li b{font-weight:500}
+.links li q{display:block;font-size:11.5px;color:var(--ink-3);font-style:italic;quotes:"«\00a0" "\00a0»"}
+
