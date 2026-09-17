@@ -84,11 +84,19 @@ export function drawLinks(){
   });
   if(linkCount){
     while(linkCount.firstChild) linkCount.removeChild(linkCount.firstChild);
-    linkCount.appendChild(document.createTextNode(okN + " / " + (PLINK.length - pend) + " adjacences satisfaites"
+    /* Le dénominateur était `PLINK.length - pend` : chaque pièce laissée au bac
+       retirait son lien du total. Avec vingt pièces au bac, l'indicateur
+       affichait donc « 14 / 14 adjacences satisfaites » — une fraction pleine et
+       le mot « satisfaites » — au moment précis où le projet n'était pas posé,
+       tout en se colorant en rouge, puisque la COULEUR, elle, comparait bien à
+       `PLINK.length`. C'était le texte qui mentait. */
+    var done = okN === PLINK.length && !pend && !cut;
+    linkCount.appendChild(document.createTextNode(
+      okN + " / " + PLINK.length + " adjacences" + (done ? " satisfaites" : "")
       + (pend ? "  ·  " + pend + " en attente au bac" : "")
-      + (cut ? "  ·  " + cut + " coupée" + (cut > 1 ? "s" : "") + " par un niveau" : "")
-      + (strayCount ? "  ·  " + strayCount + " pièce" + (strayCount > 1 ? "s" : "") + " hors chapitre" : "")));
-    linkCount.style.color = okN === PLINK.length ? "var(--ok)" : "var(--danger)";
+      + (cut ? "  ·  " + cut + " coupée" + (cut > 1 ? "s" : "") + " par un niveau" : "")));
+    linkCount.style.color = done ? "var(--ok)" : "var(--ink-2)";
+    linkCount.classList.toggle("is-done", done);
   }
 }
 

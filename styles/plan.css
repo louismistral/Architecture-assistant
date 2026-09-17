@@ -10,13 +10,21 @@
 .tbtn.lock[aria-pressed="true"]{background:var(--focus-fill);border-color:var(--focus-fill);color:var(--on-fill)}
 .tbtn.lock.off{background:var(--panel);color:var(--ink-3);border-style:dashed}
 .zoomseg button{min-width:var(--ctl-h)}
-.savechip{font-size:var(--t-2xs);color:var(--ink-3);font-family:var(--mono);white-space:normal}
+.savechip{font-size:var(--t-2xs);color:var(--ink-3);font-family:var(--mono);white-space:normal;max-width:34ch}
+.savechip.is-bad{color:var(--danger)}
 .savechip b{font-weight:400;color:var(--ok)}
 
-.plan-body{display:flex;gap:16px;align-items:stretch}
-.roomlist{flex:0 0 206px;max-height:clamp(420px,68vh,740px);overflow:auto;
-  border:1px solid var(--rule);border-radius:4px;background:var(--panel);padding:4px 0}
-.roomlist h4{margin:10px 11px 3px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+/* Trois colonnes : la coupe des niveaux, le canevas, le panneau.
+   Le canevas se dimensionne sur la hauteur disponible et non plus sur un
+   `clamp(420px,68vh,740px)` qui ignorait tout ce qui le précédait. */
+.plan-body{
+  display:grid;gap:var(--s-3);align-items:stretch;
+  grid-template-columns:168px minmax(0,1fr) 280px;
+  height:clamp(460px,calc(100vh - 240px),900px);
+}
+.roomlist{overflow:auto;padding:var(--s-1) 0}
+.roomlist h4{margin:var(--s-2) var(--s-3) var(--s-1);font-size:var(--t-3xs);
+  letter-spacing:var(--track-caps);text-transform:uppercase;
   color:var(--ink-3);font-weight:600;font-variation-settings:"wdth" 88}
 .roomlist button{display:grid;grid-template-columns:8px 1fr auto;gap:0 8px;align-items:baseline;
   width:100%;text-align:left;font-size:var(--t-xs);padding:var(--s-1) var(--s-3);min-height:var(--tap-min)}
@@ -25,8 +33,8 @@
 .roomlist button i{width:8px;height:8px;border-radius:2px;position:relative;top:1px}
 .roomlist button em{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:10.5px;opacity:.75}
 
-.viewport{position:relative;flex:1 1 auto;min-width:0;height:clamp(420px,68vh,740px);
-  border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--panel);
+.viewport{position:relative;min-width:0;height:100%;
+  border:1px solid var(--rule);border-radius:var(--r-md);overflow:hidden;background:var(--panel);
   touch-action:none;cursor:grab;contain:paint}
 .viewport.panning{cursor:grabbing}
 .world{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
@@ -39,8 +47,15 @@
 .room .h{z-index:2}
 .room .rn{color:var(--ink);font-weight:500}
 .room .ra{color:var(--ink-2);font-family:"IBM Plex Mono",monospace;font-size:.88em}
+/* Au petit format, c'est le NOM qui survit et la surface qui s'efface : la règle
+   faisait l'inverse, et le plan devenait un champ de rectangles anonymes portant
+   un nombre. */
 .room.tiny .rn,.room.tiny .ra{display:none}
-.room.sm .rn{display:none}
+.room.sm .ra{display:none}
+.room.sm .rn{
+  font-size:calc(9.5px / var(--z,1));line-height:1.05;
+  max-height:100%;overflow:hidden;
+}
 .room.sel{border-width:calc(2px / var(--z,1));z-index:5}
 .room .h{position:absolute;display:none;width:var(--hs);height:var(--hs);
   background:var(--paper);border:calc(1.5px / var(--z,1)) solid var(--ink);border-radius:50%}
@@ -54,10 +69,11 @@
 .room .h.w{top:50%;margin-top:calc(var(--hs)/-2);left:calc(var(--hs)/-2);cursor:ew-resize}
 .room .h.e{top:50%;margin-top:calc(var(--hs)/-2);right:calc(var(--hs)/-2);cursor:ew-resize}
 
-.props{position:absolute;top:10px;right:10px;width:228px;background:var(--panel);
-  border:1px solid var(--rule);border-radius:4px;padding:13px 14px 14px;
-  box-shadow:0 6px 22px rgba(0,0,0,.09)}
-.props[hidden]{display:none}
+/* Le panneau de propriétés flottait en `position:absolute` au-dessus du canevas :
+   il recouvrait le quart droit du plan qu'il décrit et gelait le glissement dans
+   son emprise. Il est maintenant une colonne à part entière. */
+.props{padding:var(--s-3)}
+.props__empty{margin:0;font-size:var(--t-xs);color:var(--ink-3);line-height:var(--lh-snug)}
 .props .pn{font-size:13.5px;font-weight:600;line-height:1.25;display:flex;gap:7px;align-items:baseline}
 .props .pn i{width:9px;height:9px;border-radius:2px;flex:none;position:relative;top:1px}
 .props .pc{font-size:11px;color:var(--ink-3);margin:2px 0 11px}
@@ -107,17 +123,116 @@
   border-top:1px solid var(--rule);padding-top:9px}
 .props .ratios{display:flex;flex-wrap:wrap;gap:var(--s-1);margin-top:var(--s-3)}
 .props .ratios button{background:var(--paper);font-family:var(--mono);font-size:var(--t-2xs)}
-.floorbar{margin:0 0 var(--s-3);flex-wrap:wrap}
-.floorbar button{padding:var(--s-2) var(--s-4);text-align:left;line-height:var(--lh-tight);
-  flex-direction:column;align-items:flex-start;justify-content:center}
-.floorbar button b{display:block;font-size:12.5px;font-weight:600}
-.floorbar button em{display:block;font-style:normal;font-family:"IBM Plex Mono",monospace;
-  font-size:10.5px;opacity:.72;margin-top:1px}
-.floorbar button:hover{background:var(--rule-soft);color:var(--ink)}
-.floorbar button[aria-current="true"]{background:var(--ink);color:var(--paper)}
-.floorbar .flact{margin-left:auto;display:flex;border-left:1px solid var(--rule)}
-.floorbar .flact button{display:flex;align-items:center;font-size:12px;color:var(--ink-3)}
-.floorbar .flact button:disabled{opacity:.35;cursor:default;background:none;color:var(--ink-3)}
+/* --- LA COUPE ------------------------------------------------------------
+   Une pile de niveaux était dessinée comme une rangée horizontale : sous-sol à
+   gauche, étage à droite — alors que la vue d'ensemble et l'infobulle
+   annonçaient l'inverse, soit deux modèles mentaux contradictoires à quarante
+   pixels d'écart. Elle s'empile désormais comme une coupe, et les bandes ont
+   toutes la même largeur : l'ancien libellé concaténait quatre mesures, ce qui
+   donnait des boutons de 530 px et de 130 px côte à côte dont la largeur
+   changeait à chaque geste — on n'apprenait jamais où cliquer. */
+.coupe{display:flex;flex-direction:column;gap:var(--s-2);min-width:0;overflow:auto}
+.coupe>h4{margin:0}
+.coupe__stack{display:flex;flex-direction:column;gap:2px}
+.coupe__lvl{
+  appearance:none;display:grid;gap:2px;width:100%;text-align:left;
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-md);
+  padding:var(--s-2);cursor:pointer;font:inherit;color:var(--ink-2);
+}
+.coupe__lvl:hover{border-color:var(--rule-strong);color:var(--ink)}
+.coupe__lvl[aria-current="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.coupe__name{font-size:var(--t-xs);font-weight:600;line-height:var(--lh-tight)}
+.coupe__fig{font-family:var(--mono);font-size:var(--t-3xs);opacity:.8}
+.coupe__gauge{display:block;height:3px;background:var(--rule-soft);border-radius:var(--r-full);overflow:hidden}
+.coupe__lvl[aria-current="true"] .coupe__gauge{background:rgba(255,255,255,.22)}
+.coupe__gauge i{display:block;height:100%;background:currentColor;opacity:.55}
+.coupe__gauge i.is-over{background:var(--danger);opacity:1}
+.coupe__chips{display:flex;flex-wrap:wrap;gap:2px}
+/* Le sol : c'est lui qui fait lire la pile comme une coupe et non comme une liste. */
+.coupe__ground{height:2px;background:var(--ink-4)}
+.coupe__edit{margin-top:0}
+.coupe__edit>summary{font-size:var(--t-2xs)}
+.coupe__act{
+  display:grid;gap:1px;width:100%;text-align:left;justify-items:start;
+  min-height:0;height:auto;padding:var(--s-2);margin-bottom:var(--s-1);white-space:normal;
+}
+.coupe__why{font-size:var(--t-3xs);color:var(--ink-3);font-weight:400;line-height:var(--lh-snug)}
+
+/* Pastille d'état : un verdict n'est jamais porté par la seule couleur. */
+.chip{
+  display:inline-block;font-style:normal;font-size:var(--t-3xs);font-weight:600;
+  letter-spacing:.04em;padding:1px var(--s-1);border-radius:var(--r-sm);color:var(--on-fill);
+}
+.chip--danger{background:var(--danger-fill)}
+.chip--warn{background:var(--warn-fill)}
+
+/* --- panneau latéral à onglets ------------------------------------------
+   Absorbe les quatre blocs qui étaient éparpillés au-dessus, dedans et en
+   dessous du canevas — dont le contrôle réglementaire, qui était sous le plan
+   donc jamais visible pendant qu'on édite. */
+.plan-aside{
+  display:flex;flex-direction:column;min-width:0;
+  border:1px solid var(--rule);border-radius:var(--r-md);background:var(--panel);overflow:hidden;
+}
+.plan-aside__tabs{border:0;border-bottom:1px solid var(--rule);border-radius:0;flex:none}
+.plan-aside__tabs .btn{flex:1 1 0;min-width:0;font-size:var(--t-2xs);padding-inline:var(--s-1)}
+.plan-aside__pane{flex:1 1 auto;overflow:auto;min-height:0}
+
+/* --- rail de commandes --------------------------------------------------- */
+.plan-rail{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2);margin:var(--s-3) 0}
+.plan-rail .spacer{flex:1 1 var(--s-4)}
+
+/* --- menu ---------------------------------------------------------------- */
+.menu{position:relative}
+.menu__caret{width:0;height:0;border-top:4px solid currentColor;border-inline:4px solid transparent;opacity:.7}
+.menu__pop{
+  position:absolute;top:calc(100% + var(--s-1));left:0;z-index:30;
+  min-width:288px;max-width:min(92vw,360px);
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-lg);
+  box-shadow:var(--sh-2);padding:var(--s-1);
+}
+.menu__pop.is-right{left:auto;right:0}
+.menu__item{
+  appearance:none;display:grid;gap:1px;width:100%;text-align:left;
+  background:none;border:0;border-radius:var(--r-md);
+  padding:var(--s-2);font:inherit;font-size:var(--t-xs);color:var(--ink);cursor:pointer;
+}
+.menu__item:hover:not(:disabled){background:var(--rule-soft)}
+.menu__item:disabled{cursor:default}
+.menu__item:disabled .menu__label{color:var(--ink-3)}
+.menu__label{font-weight:500}
+.menu__item[aria-checked="true"] .menu__label::after{content:" \2713";color:var(--ok)}
+.menu__hint{font-size:var(--t-3xs);color:var(--ink-3);line-height:var(--lh-snug);font-weight:400}
+.menu__item.is-danger .menu__label{color:var(--danger)}
+.menu__sep{border:0;border-top:1px solid var(--rule-soft);margin:var(--s-1) 0}
+.menu__head{margin:var(--s-2) var(--s-2) var(--s-1)}
+
+/* --- aide ---------------------------------------------------------------- */
+.plan-help{margin-top:var(--s-4);border-top:1px solid var(--rule)}
+.help__grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:var(--s-4) var(--s-6);padding-block:var(--s-2) var(--s-4);
+}
+.help__sec h4{margin:0 0 var(--s-2)}
+.help__dl{margin:0;display:grid;gap:var(--s-2)}
+.help__dl dt{font-size:var(--t-xs);font-weight:600;color:var(--ink)}
+.help__dl dd{margin:0;font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-snug);max-width:60ch}
+.help__keys{width:100%;border-collapse:collapse;font-size:var(--t-xs)}
+.help__keys th,.help__keys td{
+  text-align:left;padding:var(--s-1) var(--s-2) var(--s-1) 0;
+  border-bottom:1px solid var(--rule-soft);font-weight:400;vertical-align:top;
+}
+.help__keys th{white-space:nowrap;color:var(--ink);width:1%}
+.help__keys td{color:var(--ink-2)}
+.plan-help kbd{
+  font-family:var(--mono);font-size:var(--t-3xs);border:1px solid var(--rule);
+  border-radius:var(--r-sm);padding:1px var(--s-1);color:var(--ink-2);background:var(--paper);
+}
+
+/* --- titre d'outil ------------------------------------------------------- */
+.tool-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-1) var(--s-3)}
+.tool-head h1{font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106;margin:0}
+.tool-sub{margin:0;font-size:var(--t-xs);color:var(--ink-2)}
 .room.ghost{opacity:.26;pointer-events:none;z-index:0;background:transparent;
   border-style:dashed;border-color:var(--ink-3)}
 .room.ghost::before,.room.ghost::after{display:none}
@@ -132,13 +247,11 @@
 .plate.tray{background:var(--panel);border-style:solid;border-color:var(--ink-3)}
 .plate.tray b{color:var(--ink-2)}
 .room.tray{opacity:.9}
-.floorbar .flact button.manbtn{color:var(--ink-2);font-weight:600}
 .room.nivE{outline:calc(2.2px / var(--z,1)) solid var(--danger);outline-offset:calc(-1px / var(--z,1));z-index:4}
 .room.nivW{outline:calc(2px / var(--z,1)) dashed var(--warn);outline-offset:calc(-1px / var(--z,1));z-index:3}
 .room.ghost.nivE,.room.ghost.nivW{outline:0}
 .roomlist button.pbE i{box-shadow:0 0 0 1.5px var(--danger)}
 .roomlist button.pbW i{box-shadow:0 0 0 1.5px var(--warn)}
-.floorbar button.ovbtn b{letter-spacing:.01em}
 .roomlist button.oth{opacity:.45}
 .roomlist button u{text-decoration:none;font-family:"IBM Plex Mono",monospace;font-size:9.5px;
   opacity:.8;padding-left:5px}
@@ -193,10 +306,41 @@
 .readout{position:absolute;z-index:9;pointer-events:none;background:var(--ink);color:var(--paper);
   font-family:"IBM Plex Mono",monospace;font-size:11px;padding:4px 7px;border-radius:3px;white-space:nowrap}
 .readout[hidden]{display:none}
-@media (max-width:780px){
-  .plan-body{flex-direction:column}
-  .roomlist{flex:none;max-height:190px;width:100%}
-  .props{position:static;width:auto;margin-top:12px;box-shadow:none}
+/* Sous 900 px les trois colonnes se replient en une. Le canevas garde une
+   hauteur utile mais cesse de manger tout l'écran : `touch-action:none` sur un
+   canevas plein écran capturait tous les gestes, et la page ne pouvait plus
+   défiler une fois le doigt posé dessus. */
+@media (max-width:900px){
+  .plan-body{grid-template-columns:minmax(0,1fr);height:auto}
+  .coupe{flex-direction:row;align-items:stretch;overflow-x:auto;gap:var(--s-2)}
+  .coupe>h4{display:none}
+  .coupe__stack{flex-direction:row;flex:1 1 auto}
+  .coupe__lvl{min-width:132px}
+  .coupe__ground{display:none}
+  .coupe__edit{flex:none;align-self:center}
+  .viewport{height:min(62vh,520px)}
+  .plan-aside{max-height:none}
+  .plan-aside__pane{max-height:420px}
 }
 
 
+
+/* --- liste des pièces : recherche et familles repliables ----------------- */
+.roomlist__search{position:sticky;top:0;z-index:2;background:var(--panel);padding:var(--s-2)}
+.roomlist__search input{
+  width:100%;font:inherit;font-size:var(--t-xs);padding:var(--s-1) var(--s-2);
+  border:1px solid var(--rule);border-radius:var(--r-md);
+  background:var(--paper);color:var(--ink);min-height:var(--tap-min);
+}
+.roomlist__fam>summary{
+  display:flex;align-items:center;gap:var(--s-2);cursor:pointer;list-style:none;
+  padding:var(--s-2) var(--s-3);font-size:var(--t-3xs);font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);
+  font-variation-settings:"wdth" 88;min-height:var(--tap-min);
+}
+.roomlist__fam>summary::-webkit-details-marker{display:none}
+.roomlist__fam>summary:hover{color:var(--ink)}
+.roomlist__fam>summary i{width:8px;height:8px;border-radius:var(--r-sm);flex:none}
+.roomlist__famname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.roomlist__fam>summary em{font-style:normal;font-family:var(--mono);font-size:var(--t-3xs);opacity:.85}
+.roomlist__none{margin:var(--s-3);font-size:var(--t-xs);color:var(--ink-3)}

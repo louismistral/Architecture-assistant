@@ -4,18 +4,126 @@ import { FMAP } from "../core/model.js";
 import { view } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { groupOf, itemOf, markSiblings, setPosteArea, syncOn, syncSiblings, toggleSync } from "./areas.js";
-import { shuffleFloors } from "./distribute.js";
-import { FLOORS, OV, TRAY, TRAYR, buildFloorBar, checkManualDone, curFl, drawNiv, drawPlates, flLvRange, flRange, flShort, floorAt, layoutPlates, lvName, markProblems, mountFloorBar, mountNiv, mountPlateLayer, ovOff, packTray, pullPartners, refloor, setCurFloor, setFloor, setFloorOf, trayRooms, wpos } from "./levels.js";
+import { shuffleFloors, spreadFloors } from "./distribute.js";
+import { FLOORS, OV, TRAY, TRAYR, buildFloorBar, checkManualDone, curFl, drawNiv, drawPlates, flLvRange, flRange, flShort, floorAt, layoutPlates, lvName, markProblems, mountFloorBar, mountNiv, mountPlateLayer, ovOff, packTray, pullPartners, refloor, setCurFloor, setFloor, setFloorOf, setOverview, toTray, trayRooms, wpos } from "./levels.js";
 import { PART, TOUCH, drawLinks, mountLinkCount, mountLinkLayer, setStray, toggleLinks } from "./links.js";
 import { drawPlans, mountPlans } from "./plans.js";
+import { menu } from "../views/menu.js";
 import { PLINK, RMAP, ROOMS, defaultLayout } from "./rooms.js";
 import { saveSoon } from "./store.js";
 
 export var layout = defaultLayout(), sel = null, undoStack = [], btnRot = null, btnUndo = null;
 export var tx = 0, ty = 0, z = 1, planNode = null, vp, world, propsEl, listEl, readout, saveChip;
 export var elOf = {};
+export var asidePanes = null;
+
+/* Bascule de volet du panneau latéral. Sélectionner une pièce amène
+   automatiquement « Propriétés » : le panneau ne flotte plus au-dessus du plan,
+   il faut donc qu'il se montre de lui-même quand il a quelque chose à dire. */
+export function showPane(id){
+  if(!asidePanes) return;
+  asidePanes.forEach(function(pane){
+    var on = pane.id === id;
+    pane.node.hidden = !on;
+    pane.btn.setAttribute("aria-selected", String(on));
+    pane.btn.tabIndex = on ? 0 : -1;
+  });
+}
 
 export function clone(o){ var c = {}; for(var k in o) c[k] = { x:o[k].x, y:o[k].y, w:o[k].w, h:o[k].h }; return c; }
+
+/* ---------- aide du plan ----------
+   Remplace deux pavés de 6'159 signes qui encadraient le canevas : 373 mots
+   entre le titre et le premier bouton, 704 mots en dessous, le second répétant
+   largement le premier. Rien n'est perdu — ce sont les règles du concours et du
+   plan, la vraie matière de l'outil — mais elles deviennent consultables :
+   quatre sections nommées et une table de raccourcis, au lieu d'un bloc de
+   prose séparé par des points médians. */
+function helpBlock(title, rows){
+  var sec = el("section","help__sec");
+  sec.appendChild(el("h4","label", title));
+  var dl = el("dl","help__dl");
+  rows.forEach(function(r){
+    dl.appendChild(el("dt", null, r[0]));
+    dl.appendChild(el("dd", null, r[1]));
+  });
+  sec.appendChild(dl);
+  return sec;
+}
+
+function planHelp(){
+  var d = el("details","disclose plan-help");
+  d.appendChild(el("summary", null, "Comment ce plan fonctionne — règles, gestes et raccourcis"));
+  var grid = el("div","help__grid");
+
+  grid.appendChild(helpBlock("Poser les pièces", [
+    ["Surface constante",
+     "En tirant une poignée tu changes les proportions d’une pièce, jamais sa surface : largeur et hauteur restent des multiples de 0,5 m, et seules les paires qui donnent exactement les m² du programme sont proposées."],
+    ["Dimensions imposées",
+     "La salle de sport double et le bassin de la piscine ont des dimensions fixées par le règlement : ils ne sont pas déformables."],
+    ["Cloisons 10 cm",
+     "Toutes les pièces sont séparées par exactement 10 cm, l’épaisseur d’une cloison. Tant que l’aide est active, une pièce déplacée ne peut se poser qu’accolée à une autre, à cette distance, en partageant au moins 50 cm de mur, et alignée sur elle — bords à fleur ou axes confondus. Aucune autre position n’est atteignable ; désactive-la pour placer librement."],
+    ["Postes solidaires",
+     "Les postes en plusieurs exemplaires restent identiques : redimensionner une salle de classe redimensionne les dix-huit."],
+    ["Adjacences",
+     "Les traits rouges sont les proximités demandées par le programme — dont le vestiaire posé devant l’entrée de chacune des dix-huit classes. Ils pâlissent dès que les deux pièces se touchent, et affichent sinon la distance qui reste à rattraper."]
+  ]));
+
+  grid.appendChild(helpBlock("Les niveaux", [
+    ["Une feuille par niveau",
+     "Chaque pièce porte un niveau et la coupe n’en montre qu’un à la fois ; celui du dessous reste visible en pointillé pour caler les superpositions."],
+    ["Tous les niveaux empilés",
+     "Les niveaux deviennent des planches en lignes, le plus haut en tête et le rez en bas, comme les plans d’un dossier. Les lignes partagent leur axe est-ouest : une pièce lue à la même abscisse d’une ligne à l’autre est bien celle qui se superpose, et la faire changer d’étage revient à la glisser d’une ligne à l’autre. La contrainte de 10 cm et les alignements continuent de ne comparer que des pièces d’un même étage."],
+    ["Ce que le règlement refuse",
+     "Une pièce posée à un niveau interdit est cerclée de rouge (conflit) ou d’ocre (à vérifier), et une adjacence dont les deux pièces ne sont plus au même étage est tracée en rouge tireté, avec l’étiquette « lien coupé »."],
+    ["Sous-sol et nappe phréatique",
+     "Seuls les locaux techniques, de stockage et de nettoyage y sont admis, plus l’abri PC que le règlement y autorise expressément ; toute autre pièce descendue là est signalée, faute de lumière naturelle. Un sous-sol occupé rappelle la nappe relevée à 462,25 m : la marge sous le terrain naturel va de 1,0 m à l’ouest à 4,5 m à l’est, donc une excavation n’est tenable qu’au tiers est du périmètre."],
+    ["Sanitaires",
+     "Tout niveau occupé doit avoir ses WC. « Répartir » et « Proposer un projet » distribuent les WC garçons et filles et les vestiaires de classe au prorata des classes portées par chaque étage, avec au moins un WC de chaque genre par niveau. Un niveau resté sans WC est signalé dans la coupe et dans l’onglet Contrôle. Un niveau purement technique n’appelle pas de sanitaires."]
+  ]));
+
+  grid.appendChild(helpBlock("Reposer tout", [
+    ["Proposer un projet",
+     "Propose un projet entier : la répartition sur les étages est tirée au sort, chapitre par chapitre, dans le respect des règles de niveau et de l’emprise ; puis chaque niveau est agencé, les pièces groupées par chapitre, toutes les adjacences satisfaites, chaque pièce séparée de sa voisine par une cloison de 10 cm. Relance autant que tu veux : Maj+clic garde la répartition des étages en place, Ctrl+Z revient en arrière."],
+    ["Ranger",
+     "Remet tout en bandes ordonnées, par chapitre du règlement ou par famille d’usage, en gardant les grappes d’adjacence soudées. Attention : cela remet aussi toutes les proportions au plus carré."],
+    ["Répartir sur les niveaux",
+     "Distribue tout le programme : ce que le règlement cloue au terrain reste au rez, le reste remplit les niveaux dans l’ordre des chapitres jusqu’à équilibrer les surfaces."],
+    ["Vider le plan",
+     "Verse tout le programme dans le bac « À placer ». Les pièces s’y reposent ensuite une à une, et une pièce sortie du bac entraîne avec elle toutes celles que le programme lui lie et qui sont encore au bac : poser la salle de sport amène sa scène, son rangement et l’abri PC ; poser le réfectoire amène la cuisine, l’économat et les salles d’activité ; poser une classe amène son vestiaire. Les pièces déjà posées ailleurs ne bougent pas, et une pièce au bac n’entre dans aucun bilan : ses adjacences sont dites en attente plutôt que coupées."],
+    ["Plans mémorisés",
+     "Tout agencement posé à la main est gardé de lui-même dès que la dernière pièce quitte le bac, sous la date et la composition des niveaux. « Mémoriser » en garde un à tout moment ; « Rappeler » le repose tel quel — niveaux, cotes, positions et emprise compris — après n’importe quelle proposition."]
+  ]));
+
+  /* Sept raccourcis clavier et cinq gestes n'existaient que noyés dans le pavé
+     de 4'057 signes sous le canevas. Une table les rend consultables. */
+  var sec = el("section","help__sec");
+  sec.appendChild(el("h4","label","Gestes et raccourcis"));
+  var t = el("table","help__keys");
+  var tb = el("tbody");
+  [["glisser une pièce", "la déplacer"],
+   ["glisser une poignée", "changer ses proportions, à surface constante"],
+   ["glisser le fond", "se déplacer dans le plan"],
+   ["molette", "zoomer"],
+   ["<kbd>R</kbd>", "pivoter la pièce sélectionnée"],
+   ["<kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd>", "déplacer de 10 cm — avec <kbd>Maj</kbd>, de 1 m"],
+   ["<kbd>⇞</kbd> <kbd>⇟</kbd>", "monter ou descendre la pièce d’un niveau"],
+   ["<kbd>Ctrl</kbd>+<kbd>Z</kbd>", "annuler"],
+   ["<kbd>Échap</kbd>", "désélectionner"]
+  ].forEach(function(r){
+    var tr = el("tr");
+    var th = el("th"); th.scope = "row"; th.innerHTML = r[0];
+    var td = el("td"); td.innerHTML = r[1];
+    tr.appendChild(th); tr.appendChild(td);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  sec.appendChild(t);
+  grid.appendChild(sec);
+
+  d.appendChild(grid);
+  return d;
+}
 
 /* Le panneau du plan est construit une fois puis réutilisé. */
 export function planPanel(){
@@ -25,86 +133,168 @@ export function planPanel(){
 
 function buildPlan(){
   var p = el("section","panel plan-full");
-  var head = el("div","panel-head");
-  head.appendChild(el("i","panel-rule"));
-  head.appendChild(el("h2", null, "Plan — implantation libre"));
+
+  /* --- titre ---------------------------------------------------------------
+     « Plan — implantation libre » contredisait le bouton « Contrainte 10 cm »,
+     actif par défaut trente lignes plus bas. L'onglet et le titre portent
+     désormais le même mot. */
+  var head = el("div","tool-head");
+  head.appendChild(el("h1", null, "Plan"));
+  head.appendChild(el("p","tool-sub", "Les " + ROOMS.length + " pièces du programme, à l’échelle."));
   var posed = ROOMS.reduce(function(t, r){ return t + r.a; }, 0);
   var posEst = ROOMS.reduce(function(t, r){ return t + (r.est ? r.a : 0); }, 0);
-  head.appendChild(el("span","tot mono", ROOMS.length + " pièces"));
-  head.appendChild(el("span","pct mono", fmt(posed) + " m² d\u2019emprise, dont " + fmt(posEst) + " estimés"));
+  head.appendChild(el("span","pct mono",
+    fmt(posed) + " m² d’emprise, dont " + fmt(posEst) + " à préciser"));
   p.appendChild(head);
-  p.appendChild(el("p","panel-sub",
-    "Toutes les pièces du programme, une par une, sur un même fond quadrillé au mètre. En tirant une poignée tu changes les proportions d'une pièce mais jamais sa surface : largeur et hauteur restent toujours des multiples de 0,5 m, et la page ne propose que les paires qui donnent exactement les m² du programme. La salle de sport double et le bassin de la piscine ont des dimensions imposées par le règlement — ils ne sont pas déformables. Toutes les pièces sont séparées par exactement 10 cm, l'épaisseur d'une cloison. Tant que le bouton « Contrainte 10 cm » est actif, une pièce déplacée ne peut se poser qu'accolée à une autre, à cette distance exacte, en partageant au moins 50 cm de mur, et toujours alignée sur elle — bords à fleur ou axes confondus, avec cette pièce ou avec n'importe quelle autre du plan. Aucune autre position n'est atteignable ; un clic sur ce bouton lève la contrainte. Les deux boutons « Ranger » remettent tout en bandes ordonnées, par chapitre du règlement ou par famille d'usage. Les postes en plusieurs exemplaires sont solidaires : redimensionner une classe redimensionne les dix-huit. Les traits rouges sont les adjacences demandées par le programme — dont le vestiaire posé devant l'entrée de chacune des dix-huit classes : ils pâlissent dès que les deux pièces se touchent, et affichent sinon la distance qui reste à rattraper. Le plan est empilable : chaque pièce porte un niveau, la barre d'étages n'en montre qu'un à la fois — celui du dessous reste visible en pointillé pour caler les superpositions — et « Vue d'ensemble » les empile en lignes, le niveau le plus haut en tête et le rez-de-chaussée en bas, comme les plans d'un dossier : les lignes partagent leur axe est-ouest, donc une pièce lue à la même abscisse d'une ligne à l'autre est bien celle qui se superpose, et la faire passer d'un étage à l'autre revient à la glisser d'une ligne à l'autre. Ce que le règlement refuse à l'étage où une pièce est posée est cerclé sur la pièce même, et une adjacence dont les deux pièces ne sont plus au même niveau est tracée en rouge d'une ligne à l'autre."));
 
-  var tb = el("div","plan-tools");
-  var zs = el("div","zoomseg");
-  var bMinus = el("button", null, "−"); bMinus.type = "button"; bMinus.title = "Dézoomer";
-  var bFit = el("button", null, "Ajuster"); bFit.type = "button";
-  var bPlus = el("button", null, "+"); bPlus.type = "button"; bPlus.title = "Zoomer";
+  /* --- rail de commandes --------------------------------------------------
+     Onze contrôles d'intentions incompatibles étaient alignés au même poids,
+     et le plus proéminent — seul fond encre plein de la barre — déclenchait un
+     tirage au sort qui jetait l'implantation en cours. Il reste ici ce qu'on
+     touche à chaque minute ; le reste est rangé par intention dans deux menus. */
+  var tb = el("div","plan-rail");
+
+  var zs = el("div","btn-group");
+  var bMinus = el("button","btn btn--icon", "−"); bMinus.type = "button"; bMinus.title = "Dézoomer";
+  var bFit   = el("button","btn", "Tout voir");        bFit.type = "button";
+  var bPlus  = el("button","btn btn--icon", "+");      bPlus.type = "button"; bPlus.title = "Zoomer";
   zs.appendChild(bMinus); zs.appendChild(bFit); zs.appendChild(bPlus);
   tb.appendChild(zs);
-  var bSnap = el("button","tbtn lock","● Contrainte 10 cm"); bSnap.type = "button"; bSnap.setAttribute("aria-pressed","true");
-  bSnap.title = "Une pièce déplacée ne peut se poser qu\u2019à 10 cm d\u2019une voisine — désactiver pour placer librement";
-  var bRot  = el("button","tbtn","Pivoter 90°"); bRot.type = "button"; bRot.disabled = true;
-  var bUndo = el("button","tbtn","Annuler");     bUndo.type = "button"; bUndo.disabled = true;
+
+  var bUndo = el("button","btn","Annuler"); bUndo.type = "button"; bUndo.disabled = true;
+  bUndo.title = "Annuler la dernière action (Ctrl+Z)";
+  tb.appendChild(bUndo);
+
+  /* Ces quatre-là ne sont plus dans la barre mais doivent rester des éléments
+     réels : wire() leur attache les gestes, et deux d'entre eux changent d'état. */
+  var bSnap = el("button","tbtn lock","Cloisons 10 cm"); bSnap.type = "button";
+  bSnap.setAttribute("aria-pressed","true");
+  var bRot   = el("button","tbtn","Pivoter 90°"); bRot.type = "button"; bRot.disabled = true;
+  var bReset = el("button","tbtn","Repartir de l’agencement initial"); bReset.type = "button";
+  var bLink  = el("button","tbtn","Afficher les adjacences"); bLink.type = "button";
+  bLink.setAttribute("aria-pressed","true");
+  var bSync  = el("button","tbtn","Postes solidaires"); bSync.type = "button";
+  bSync.setAttribute("aria-pressed","true");
   btnRot = bRot; btnUndo = bUndo;
-  var bChapA = el("button", null, "Chapitres"); bChapA.type = "button";
-  var bFamA  = el("button", null, "Familles");  bFamA.type = "button";
-  var rangeSeg = el("div","zoomseg rangeseg");
-  rangeSeg.appendChild(el("span","segcap","Ranger"));
-  rangeSeg.appendChild(bChapA); rangeSeg.appendChild(bFamA);
-  var bReset = el("button","tbtn","Réinitialiser"); bReset.type = "button"; bReset.hidden = true;
-  var bLink = el("button","tbtn","Adjacences"); bLink.type = "button"; bLink.setAttribute("aria-pressed","true");
-  var bSync = el("button","tbtn","Postes liés"); bSync.type = "button"; bSync.setAttribute("aria-pressed","true");
-  bSync.title = "Une pièce redimensionnée entraîne toutes celles du même poste";
-  var bShuf = el("button","tbtn shuffle","⤫ Shuffle"); bShuf.type = "button";
-  bShuf.title = "Propose un projet complet : répartition des niveaux tirée au sort dans le respect du règlement, chapitres groupés, toutes les adjacences satisfaites — Maj+clic pour garder la répartition actuelle des étages";
-  tb.appendChild(bShuf); tb.appendChild(rangeSeg);
-  tb.appendChild(bSnap); tb.appendChild(bSync); tb.appendChild(bRot); tb.appendChild(bLink);
-  tb.appendChild(bUndo); tb.appendChild(bReset);
-  tb.appendChild(mountLinkCount());
+
+  /* AGENCER — tout ce qui repose les pièces, donc tout ce qui peut écraser le
+     travail en cours. Chaque entrée dit sa conséquence : « Manuel » vidait
+     113 pièces dans un bac sans que son libellé l'annonce, et « Ranger »
+     réécrit les proportions calées à la main. */
+  tb.appendChild(menu("Agencer", function(){ return [
+    { label:"Proposer un projet",
+      hint:"repose tout : niveaux tirés au sort, chapitres groupés, adjacences satisfaites. Maj+clic garde tes étages",
+      on:function(e){ shuffleLayout(e.shiftKey); } },
+    { sep:true },
+    { label:"Ranger par chapitre", hint:"remet les proportions au plus carré",
+      on:function(){ arrange("ch"); } },
+    { label:"Ranger par famille", hint:"remet les proportions au plus carré",
+      on:function(){ arrange("f"); } },
+    { label:"Répartir sur les niveaux", hint:"réagence tout",
+      on:function(){ spreadFloors(); } },
+    { sep:true },
+    { label:"Vider le plan", danger:true,
+      hint:"les " + ROOMS.length + " pièces retournent dans « À placer ». Ctrl+Z les ramène",
+      on:function(){ toTray(); } },
+    { label:"Repartir de l’agencement initial", danger:true,
+      hint:"annule toutes tes positions", on:function(){ bReset.click(); } }
+  ]; }, { title:"Reposer les pièces" }));
+
+  /* AFFICHAGE — ce qui ne touche pas au projet, seulement à ce qu'on en voit,
+     plus les deux aides au placement. Les libellés sont FIXES : deux boutons
+     changeaient de texte au clic, et « Contrainte levée » pouvait se lire
+     « elle est levée » comme « lever la contrainte ». */
+  tb.appendChild(menu("Affichage", function(){ return [
+    { label:"Tous les niveaux empilés", pressed:OV,
+      hint:"le plus haut en tête, le rez en bas ; glisser une pièce d’une planche à l’autre la change de niveau",
+      on:function(){ setOverview(!OV); } },
+    { sep:true },
+    { label:"Afficher les adjacences", pressed:bLink.getAttribute("aria-pressed") === "true",
+      hint:"les liens que le règlement demande", on:function(){ bLink.click(); } },
+    { sep:true },
+    { head:"Aide au placement" },
+    { label:"Cloisons 10 cm", pressed:snapOn,
+      hint:"une pièce déplacée ne se pose qu’accolée à une autre, à 10 cm et alignée sur elle",
+      on:function(){ bSnap.click(); } },
+    { label:"Postes solidaires", pressed:syncOn,
+      hint:"redimensionner une classe redimensionne les dix-huit",
+      on:function(){ bSync.click(); } }
+  ]; }, { title:"Ce qui est montré" }));
+
   tb.appendChild(el("span","spacer"));
+  tb.appendChild(mountLinkCount());
   saveChip = el("span","savechip","");
   tb.appendChild(saveChip);
+
   bLink.addEventListener("click", function(){
     bLink.setAttribute("aria-pressed", String(toggleLinks()));
   });
-  bShuf.addEventListener("click", function(e){ shuffleLayout(e.shiftKey); });
-  bChapA.addEventListener("click", function(){ arrange("ch"); });
-  bFamA.addEventListener("click", function(){ arrange("f"); });
   bSync.addEventListener("click", function(){
     var on = toggleSync();
-    bSync.setAttribute("aria-pressed", String(on));
-    bSync.textContent = on ? "Postes liés" : "Pièces libres";
+    bSync.setAttribute("aria-pressed", String(on));   /* le libellé ne bouge plus */
     markSiblings();
     if(sel) drawProps();
   });
   p.appendChild(tb);
 
-  p.appendChild(mountFloorBar());
-
+  /* --- trois colonnes : la coupe, le canevas, le panneau ------------------- */
   var body = el("div","plan-body");
-  listEl = el("aside","roomlist");
-  body.appendChild(listEl);
+
+  body.appendChild(mountFloorBar());
+
   vp = el("div","viewport");
   world = el("div","world");
   world.appendChild(mountPlateLayer());
   world.appendChild(mountLinkLayer());
   vp.appendChild(world);
-  propsEl = el("div","props"); propsEl.hidden = true;
-  vp.appendChild(propsEl);
   readout = el("div","readout"); readout.hidden = true;
   vp.appendChild(readout);
   body.appendChild(vp);
+
+  /* Le panneau latéral absorbe les quatre blocs qui étaient éparpillés au-dessus,
+     dedans et en dessous du canevas. Les propriétés flottaient AU-DESSUS du plan,
+     recouvrant le quart droit de ce qu'elles décrivent ; le contrôle réglementaire
+     était sous le canevas, donc jamais visible pendant qu'on édite. */
+  var aside = el("aside","plan-aside");
+  listEl  = el("div","roomlist");
+  propsEl = el("div","props");
+  var nivHost   = mountNiv();
+  var plansHost = mountPlans();
+
+  var PANES = [
+    { id:"pieces", label:"Pièces",     node:listEl },
+    { id:"props",  label:"Propriétés", node:propsEl },
+    { id:"niv",    label:"Contrôle",   node:nivHost },
+    { id:"plans",  label:"Plans",      node:plansHost }
+  ];
+  var tabsEl = el("div","btn-group plan-aside__tabs");
+  tabsEl.setAttribute("role","tablist");
+  tabsEl.setAttribute("aria-label","Panneau du plan");
+  PANES.forEach(function(pane, i){
+    var b = el("button","btn", pane.label);
+    b.type = "button";
+    b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", String(i === 0));
+    b.tabIndex = i === 0 ? 0 : -1;
+    pane.btn = b;
+    pane.node.classList.add("plan-aside__pane");
+    pane.node.hidden = i !== 0;
+    b.addEventListener("click", function(){ showPane(pane.id); });
+    tabsEl.appendChild(b);
+  });
+  asidePanes = PANES;
+  aside.appendChild(tabsEl);
+  PANES.forEach(function(pane){ aside.appendChild(pane.node); });
+  body.appendChild(aside);
+
   p.appendChild(body);
 
-  p.appendChild(mountNiv());
-  p.appendChild(mountPlans());
-
-  var hint = el("div","plan-hint");
-  hint.innerHTML = "<b>Contrainte 10 cm</b> : tant qu'elle est active, une pièce déplacée ne peut se poser qu'accolée à une autre, à cette distance exacte et alignée sur elle — un clic la lève. <b>Ranger</b> remet tout en bandes ordonnées, par chapitre du règlement ou par famille d'usage, en gardant les grappes d'adjacence soudées. · <b>Shuffle</b> propose un projet entier : la répartition sur les étages est elle aussi tirée au sort — chapitre par chapitre, dans le respect des règles de niveau et du plateau — puis chaque niveau est agencé, les pièces groupées par chapitre du règlement, toutes les adjacences satisfaites, chaque pièce séparée de sa voisine par une cloison de 10 cm et les proportions tirées au sort ; relance autant que tu veux, <kbd>Maj</kbd>+clic garde la répartition des étages en place, <kbd>Ctrl</kbd>+<kbd>Z</kbd> revient en arrière. · Glisser une pièce pour la déplacer · poignées pour changer ses proportions à surface constante · molette ou pincement pour zoomer · glisser le fond pour se déplacer · " +
-    "<kbd>R</kbd> pivoter · <kbd>←↑↓→</kbd> déplacer de 10 cm (<kbd>Maj</kbd> = 1 m) · <kbd>⇞</kbd> <kbd>⇟</kbd> monter ou descendre la pièce d'un niveau · <kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler · <kbd>Échap</kbd> désélectionner. · <b>Sous-sol</b> : « + sous-sol » creuse un niveau sous le rez. Seuls les locaux techniques, de stockage et de nettoyage y sont admis, plus l'abri PC que le règlement y autorise expressément ; toute autre pièce descendue là est signalée en conflit, faute de lumière naturelle. Un sous-sol occupé rappelle la nappe phréatique relevée à 462,25 m : la marge sous le terrain naturel va de 1,0 m à l'ouest à 4,5 m à l'est, donc une excavation n'est tenable qu'au tiers est du périmètre. Un niveau purement technique n'appelle pas de sanitaires. · <b>Plans mémorisés</b> : tout agencement posé à la main est gardé de lui-même dès que la dernière pièce quitte le bac, sous la date et la composition des niveaux ; « Mémoriser » en garde un à tout moment, « Rappeler » le repose tel quel — niveaux, cotes, positions et plateau compris — après n'importe quel Shuffle. · <b>Manuel</b> vide tout le programme dans le bac « À placer », à gauche des lignes : les pièces s'y reposent ensuite une à une, et <b>une pièce sortie du bac entraîne avec elle toutes celles que le programme lui lie</b> et qui sont encore au bac — poser la salle de sport amène sa scène, son rangement et l'abri PC ; poser le réfectoire amène la cuisine, l'économat et les salles d'activité ; poser une classe amène son vestiaire. Les pièces déjà posées ailleurs ne bougent pas, et une pièce au bac n'entre dans aucun bilan : ses adjacences sont dites en attente plutôt que coupées. Le bouton <b>Bac</b> du panneau y renvoie une pièce. · <b>Vue d'ensemble</b> : les niveaux empilés en lignes, le plus haut en tête et le rez en bas — glisser une pièce d'une ligne à l'autre la change de niveau, sans rien perdre de la contrainte de 10 cm ni des alignements, qui continuent de ne comparer que les pièces d'un même étage. Les pièces posées à un niveau que le règlement refuse sont cerclées de rouge (conflit) ou d'ocre (à vérifier), et une adjacence dont les deux pièces ne sont plus au même étage est tracée en rouge tireté d'une ligne à l'autre, avec l'étiquette « lien coupé ». · <b>Étages</b> : chaque niveau a sa propre feuille — <b>Shuffle</b> et <b>Ranger</b> agencent chaque niveau pour lui-même, et une adjacence dont les deux pièces ne sont plus au même étage est comptée comme coupée. <b>Répartir</b> distribue tout le programme : ce que le règlement cloue au terrain reste au rez, le reste remplit les niveaux dans l'ordre des chapitres jusqu'à équilibrer les surfaces. · <b>Sanitaires</b> : tout niveau occupé doit avoir ses WC — <b>Répartir</b> comme <b>Shuffle</b> répartissent les WC garçons et filles et les vestiaires de classe au prorata des classes portées par chaque étage, avec au moins un WC de chaque genre par niveau, et un niveau resté sans WC est signalé en rouge dans la barre d'étages et dans le contrôle.";
-  p.appendChild(hint);
+  /* --- comment ça marche --------------------------------------------------
+     Deux pavés de 6'159 signes encadraient le canevas — 373 mots entre le titre
+     et le premier bouton, 704 mots en dessous, le second répétant le premier.
+     Tout est conservé, mais structuré et replié : les règles du plan sont la
+     vraie intelligence de cet outil, elles méritaient mieux qu'un bloc de prose. */
+  p.appendChild(planHelp());
 
   ROOMS.forEach(function(r){
     var d = el("div","room");
@@ -140,19 +330,62 @@ function buildPlan(){
   return p;
 }
 
+export var listQuery = "";
+
+/* La liste était un registre plat de 113 boutons dans 206 px, sans recherche,
+   sans repli, dont dix-huit portaient le même nom. On ne pouvait pas y trouver
+   une pièce : on la parcourait. Elle gagne un champ de recherche et des familles
+   repliables, et garde exactement le même comportement au clic. */
 export function buildList(){
   if(!listEl) return;
   while(listEl.firstChild) listEl.removeChild(listEl.firstChild);
+
+  var search = el("div","roomlist__search");
+  var lab = el("label","vh","Chercher une pièce");
+  lab.htmlFor = "roomSearch";
+  var inp = document.createElement("input");
+  inp.type = "search"; inp.id = "roomSearch"; inp.placeholder = "Chercher une pièce…";
+  inp.value = listQuery;
+  inp.addEventListener("input", function(){
+    listQuery = inp.value;
+    buildList();
+    var f = document.getElementById("roomSearch");
+    if(f){ f.focus(); f.setSelectionRange(f.value.length, f.value.length); }
+  });
+  search.appendChild(lab); search.appendChild(inp);
+  listEl.appendChild(search);
+
+  var q = listQuery.trim().toLowerCase();
+  var shown = 0;
+
   FAM.forEach(function(fm){
     var rs = ROOMS.filter(function(r){ return r.f === fm.id; });
+    if(q) rs = rs.filter(function(r){
+      return (r.n + " " + r.ch + " " + fm.name).toLowerCase().indexOf(q) >= 0;
+    });
     if(!rs.length) return;
-    var here = rs.filter(function(r){ return r.fl === curFl; }).length;
-    listEl.appendChild(el("h4", null, fm.name + " · " + (OV ? String(rs.length) : here + "/" + rs.length)));
+    shown += rs.length;
+    var all = ROOMS.filter(function(r){ return r.f === fm.id; });
+    var here = all.filter(function(r){ return r.fl === curFl; }).length;
+
+    var det = el("details","roomlist__fam");
+    /* Une recherche ouvre les familles qui répondent ; sinon seule celle du
+       niveau courant s'ouvre, pour que la liste tienne dans un écran. */
+    det.open = !!q || here > 0;
+    var sum = el("summary");
+    var sw = el("i"); sw.style.background = "var(" + fm.c + ")";
+    if(fm.id === "tec") sw.classList.add("is-hatched");
+    sum.appendChild(sw);
+    sum.appendChild(el("span","roomlist__famname", fm.name));
+    sum.appendChild(el("em", null, OV || q ? String(rs.length) : here + "/" + all.length));
+    det.appendChild(sum);
+
     rs.forEach(function(r){
       var b = el("button"); b.type = "button"; b.dataset.id = r.id;
       if(!OV && r.fl !== curFl) b.classList.add("oth");
       b.setAttribute("aria-current", String(r.id === sel));
       var i = el("i"); i.style.background = "var(" + FMAP[r.f].c + ")";
+      if(r.f === "tec") i.classList.add("is-hatched");
       b.appendChild(i);
       var nm = el("span", null, r.n);
       if(OV || r.fl !== curFl) nm.appendChild(el("u", null, flShort(r.fl)));
@@ -162,9 +395,15 @@ export function buildList(){
         if(!OV && RMAP[r.id].fl !== curFl){ setCurFloor(RMAP[r.id].fl); refloor(); fit(); }
         select(r.id); centerOn(r.id);
       });
-      listEl.appendChild(b);
+      det.appendChild(b);
     });
+    listEl.appendChild(det);
   });
+
+  if(q && !shown){
+    listEl.appendChild(el("p","roomlist__none",
+      "Aucune pièce ne correspond à « " + listQuery.trim() + " »."));
+  }
 }
 
 export var snapOn = true;
@@ -382,12 +621,22 @@ export function select(id){
   Array.prototype.forEach.call(listEl.querySelectorAll("button"), function(b){
     b.setAttribute("aria-current", String(b.dataset.id === id));
   });
-  if(!id){ propsEl.hidden = true; if(btnRot) btnRot.disabled = true; markSiblings(); drawLinks(); return; }
+  if(!id){
+    /* On ne masque plus le volet : son onglet resterait sélectionné au-dessus
+       d'un panneau vide. Il dit ce qu'il attend. */
+    while(propsEl.firstChild) propsEl.removeChild(propsEl.firstChild);
+    propsEl.appendChild(el("p","props__empty",
+      "Aucune pièce sélectionnée. Clique une pièce du plan pour voir et modifier ses cotes."));
+    if(btnRot) btnRot.disabled = true;
+    markSiblings(); drawLinks();
+    return;
+  }
   elOf[id].classList.add("sel");
   markSiblings();
   drawLinks();
   if(btnRot) btnRot.disabled = false;
   drawProps();
+  showPane("props");
 }
 export function drawProps(){
   if(!sel) return;
@@ -799,8 +1048,11 @@ export function wire(bMinus, bFit, bPlus, bSnap, bRot, bUndo, bReset){
   bFit.addEventListener("click", fit);
   bSnap.addEventListener("click", function(){
     snapOn = !snapOn;
+    /* Le libellé reste FIXE et l'état est porté par aria-pressed. Il basculait
+       entre « Contrainte 10 cm » et « Contrainte levée », deux textes dont on ne
+       pouvait pas savoir s'ils décrivaient l'état courant ou l'action à venir :
+       les deux lectures étaient plausibles, on testait, et le plan bougeait. */
     bSnap.setAttribute("aria-pressed", String(snapOn));
-    bSnap.textContent = snapOn ? "● Contrainte 10 cm" : "○ Contrainte levée";
     bSnap.classList.toggle("off", !snapOn);
   });
   bRot.addEventListener("click", rotate);

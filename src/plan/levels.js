@@ -128,7 +128,7 @@ export function floorAt(wx, wy){
   test(TRAYR, TRAY);
   return best;
 }
-export function mountFloorBar(){ floorEl = el("div","floorbar"); return floorEl; }
+export function mountFloorBar(){ floorEl = el("div","coupe"); return floorEl; }
 export function mountNiv(){ nivEl = el("div","niv"); return nivEl; }
 export function mountPlateLayer(){
   plateLayer = el("div","platelayer");
@@ -394,62 +394,108 @@ export function delBasement(){
 export function buildFloorBar(){
   if(!floorEl) return;
   while(floorEl.firstChild) floorEl.removeChild(floorEl.firstChild);
-  var ob = el("button","ovbtn"); ob.type = "button";
-  ob.setAttribute("aria-current", String(OV));
-  ob.appendChild(el("b", null, "Vue d’ensemble"));
-  ob.appendChild(el("em", null, FLOORS.length + " niveau" + (FLOORS.length > 1 ? "x empilés, rez en bas" : "")));
-  ob.title = "Tous les niveaux empilés en lignes, le plus haut en tête et le rez en bas — glisser une pièce d’une ligne à l’autre la change de niveau";
-  ob.addEventListener("click", function(){ setOverview(!OV); });
-  floorEl.appendChild(ob);
-  FLOORS.forEach(function(F, i){
-    var b = el("button"); b.type = "button";
-    b.setAttribute("aria-current", String(!OV && i === curFl));
-    b.appendChild(el("b", null, F.n));
-    var n = flCount(i), a = Math.round(flArea(i)), bu = Math.round(flBuilt(i));
-    var pctp = PLATE > 0 ? Math.round(bu / PLATE * 100) : 0;
-    var em = el("em", null, n
-      ? fmt(a) + " m² · " + n + " pièce" + (n > 1 ? "s" : "")
-        + "  ·  " + fmt(bu) + " m² bâtis, circulation comprise"
-        + (PLATE > 0 ? "  ·  " + pctp + " % du plateau" : "")
-      : "niveau vide");
-    if(n && PLATE > 0 && bu > PLATE + 1) em.style.color = "var(--danger)";
-    b.appendChild(em);
-    if(n && flWC(i).use && !flWC(i).wc){
-      var nowc = el("em", null, "sans WC");
-      nowc.style.color = "var(--danger)";
-      b.appendChild(nowc);
+
+  /* LA COUPE. Une pile de niveaux était représentée par une rangée horizontale :
+     le sous-sol à gauche, l'étage à droite — alors que `layoutPlates()` et
+     l'infobulle annonçaient l'inverse, soit deux modèles mentaux contradictoires
+     à quarante pixels d'écart. On parcourt donc FLOORS à l'envers et on empile :
+     dernier étage en haut, rez en bas, sous-sols dessous. C'est la convention de
+     coupe, la seule qu'un architecte lise sans traduire.
+
+     Chaque bande porte le nom et UNE mesure. L'ancien libellé concaténait
+     « 6'845 m² · 113 pièces · 6'640 m² bâtis, circulation comprise · 165 % du
+     plateau » — soixante-quatorze signes — contre « niveau vide » pour le
+     voisin, d'où des boutons de 530 px et de 130 px côte à côte dont la largeur
+     changeait à chaque geste : on n'apprenait jamais où cliquer. Le détail
+     chiffré complet vit dans l'onglet Contrôle. */
+  floorEl.appendChild(el("h4","label","Niveaux"));
+
+  var list = el("div","coupe__stack");
+  for(var i = FLOORS.length - 1; i >= 0; i--){
+    (function(i){
+      var F = FLOORS[i];
+      var b = el("button","coupe__lvl");
+      b.type = "button";
+      b.setAttribute("aria-current", String(!OV && i === curFl));
+
+      var n = flCount(i), bu = Math.round(flBuilt(i));
+      var pct = PLATE > 0 ? Math.round(bu / PLATE * 100) : 0;
+      var over = n && PLATE > 0 && bu > PLATE + 1;
+      var noWC = n && flWC(i).use && !flWC(i).wc;
+
+      b.appendChild(el("b","coupe__name", F.n));
+      /* Une seule mesure : l'occupation du plateau, celle qui décide. */
+      b.appendChild(el("span","coupe__fig mono",
+        n ? pct + " % du plateau" : "vide — « Répartir » pour le remplir"));
+
+      /* Une jauge donne la mesure en forme, pas seulement en chiffre. */
+      var g = el("span","coupe__gauge");
+      var f = el("i");
+      f.style.width = Math.min(100, pct) + "%";
+      if(over) f.classList.add("is-over");
+      g.appendChild(f);
+      b.appendChild(g);
+
+      /* Les verdicts ne sont jamais portés par la seule couleur. */
+      if(over || noWC){
+        var ch = el("span","coupe__chips");
+        if(over) ch.appendChild(el("i","chip chip--danger","emprise dépassée"));
+        if(noWC) ch.appendChild(el("i","chip chip--warn","sans WC"));
+        b.appendChild(ch);
+      }
+
+      b.addEventListener("click", function(){
+        if(OV){ OV = false; curFl = i; refloor(); fit(); return; }
+        setFloor(i);
+      });
+      list.appendChild(b);
+    })(i);
+  }
+  floorEl.appendChild(list);
+
+  /* Le sol, pour que la pile se lise comme une coupe et non comme une liste. */
+  floorEl.appendChild(el("div","coupe__ground"));
+
+  /* ÉDITER LA PILE. Ces six commandes étaient dans le même rang de boutons que
+     la navigation entre niveaux : deux intentions différentes, un seul rang. */
+  var det = el("details","disclose coupe__edit");
+  det.appendChild(el("summary", null, "Modifier la pile"));
+
+  function act(label, hint, fn, disabled, why){
+    var b = el("button","btn coupe__act");
+    b.type = "button";
+    b.appendChild(el("span", null, label));
+    if(disabled){
+      b.disabled = true;
+      /* La raison d'une commande indisponible passe du `title` — invisible au
+         clavier, au doigt et sur mobile — à une ligne lisible. */
+      if(why) b.appendChild(el("span","coupe__why", why));
+    } else if(hint){
+      b.appendChild(el("span","coupe__why", hint));
     }
-    b.addEventListener("click", function(){
-      if(OV){ OV = false; curFl = i; refloor(); fit(); return; }
-      setFloor(i);
-    });
-    floorEl.appendChild(b);
-  });
-  var act = el("div","flact");
-  var bMan = el("button","manbtn", "Manuel"); bMan.type = "button";
-  bMan.title = "Vide tout le programme dans le bac « À placer », à gauche — les pièces se reposent ensuite à la main, une pièce liée entraînant avec elle celles qui lui sont attachées";
-  bMan.addEventListener("click", toTray);
-  var bSp = el("button", null, "Répartir"); bSp.type = "button";
-  bSp.title = "Distribue toutes les pièces sur les niveaux selon les règles du programme, puis range chaque niveau par chapitre";
-  bSp.addEventListener("click", spreadFloors);
-  var bDel = el("button", null, "− étage"); bDel.type = "button";
-  bDel.title = "Supprimer le niveau le plus haut — il doit être vide";
-  bDel.disabled = FLOORS.length < 2 || lvlOf(FLOORS.length - 1) <= 0 || flCount(FLOORS.length - 1) > 0;
-  bDel.addEventListener("click", delFloor);
-  var bAdd = el("button", null, "+ étage"); bAdd.type = "button";
-  bAdd.title = "Ajouter un niveau au-dessus";
-  bAdd.addEventListener("click", addFloor);
-  var bSubM = el("button", null, "− sous-sol"); bSubM.type = "button";
-  bSubM.title = "Supprimer le sous-sol le plus bas — il doit être vide";
-  bSubM.disabled = FLOORS.length < 2 || lvlOf(0) >= 0 || flCount(0) > 0;
-  bSubM.addEventListener("click", delBasement);
-  var bSubP = el("button", null, "+ sous-sol"); bSubP.type = "button";
-  bSubP.title = "Creuser un niveau sous le rez — réservé aux locaux techniques, de stockage et de nettoyage, et à l’abri PC";
-  bSubP.addEventListener("click", addBasement);
-  act.appendChild(bMan); act.appendChild(bSp);
-  act.appendChild(bSubM); act.appendChild(bSubP);
-  act.appendChild(bDel); act.appendChild(bAdd);
-  floorEl.appendChild(act);
+    if(fn) b.addEventListener("click", fn);
+    return b;
+  }
+
+  var topEmpty = flCount(FLOORS.length - 1) === 0;
+  var canDelTop = FLOORS.length >= 2 && lvlOf(FLOORS.length - 1) > 0 && topEmpty;
+  var botEmpty = flCount(0) === 0;
+  var canDelBot = FLOORS.length >= 2 && lvlOf(0) < 0 && botEmpty;
+
+  det.appendChild(act("Ajouter un étage", null, addFloor, false));
+  det.appendChild(act("Retirer l\u2019étage", null, delFloor, !canDelTop,
+    FLOORS.length < 2 || lvlOf(FLOORS.length - 1) <= 0
+      ? "il ne reste que le rez-de-chaussée"
+      : FLOORS[FLOORS.length-1].n + " porte " + flCount(FLOORS.length-1)
+        + " pièce" + (flCount(FLOORS.length-1) > 1 ? "s" : "") + " — vide-le d\u2019abord"));
+  det.appendChild(act("Creuser un sous-sol",
+    "réservé au technique, au stockage, au nettoyage et à l\u2019abri PC",
+    addBasement, false));
+  det.appendChild(act("Combler le sous-sol", null, delBasement, !canDelBot,
+    lvlOf(0) >= 0 ? "aucun sous-sol creusé"
+      : FLOORS[0].n + " porte " + flCount(0) + " pièce" + (flCount(0) > 1 ? "s" : "")
+        + " — vide-le d\u2019abord"));
+  floorEl.appendChild(det);
 }
 export function drawNiv(){
   if(!nivEl) return;

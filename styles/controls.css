@@ -12,7 +12,7 @@
    ========================================================================= */
 
 .btn,
-.seg button,.tbtn,.zoomseg button,.floorbar button,
+.seg button,.tbtn,.zoomseg button,
 .props .ratios button,.props .pfl button,.plans h4 button{
   appearance:none;
   display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);
@@ -48,27 +48,27 @@
    et comme la valeur était `hidden` et non `auto`, aucun geste ne pouvait le
    ramener. Un onglet sur cinq n'existait pas sur téléphone, à cause d'un coin
    arrondi fabriqué en rognant le conteneur. */
-.btn-group,.seg,.zoomseg,.circbar,.floorbar{
+.btn-group,.seg,.zoomseg,.circbar{
   display:flex;align-items:stretch;
   background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-md);
   overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
 }
 .btn-group::-webkit-scrollbar,.seg::-webkit-scrollbar,.zoomseg::-webkit-scrollbar{display:none}
-.btn-group>*,.seg button,.zoomseg button,.floorbar button{flex:0 0 auto}
+.btn-group>*,.seg button,.zoomseg button{flex:0 0 auto}
 
 /* Les boutons d'un groupe partagent un cadre : ils perdent le leur et ne gardent
    qu'un filet de séparation. Les coins sont arrondis par les enfants d'extrémité
    plutôt que par un rognage du parent. */
-.btn-group .btn,.seg button,.zoomseg button,.floorbar button{
+.btn-group .btn,.seg button,.zoomseg button{
   border:0;border-radius:0;background:transparent;
 }
-.btn-group .btn+.btn,.seg button+button,.zoomseg button+button,.floorbar button+button{
+.btn-group .btn+.btn,.seg button+button,.zoomseg button+button{
   border-left:1px solid var(--rule);
 }
-.btn-group>:first-child,.seg button:first-child,.zoomseg button:first-child,.floorbar button:first-child{
+.btn-group>:first-child,.seg button:first-child,.zoomseg button:first-child{
   border-start-start-radius:var(--r-md);border-end-start-radius:var(--r-md);
 }
-.btn-group>:last-child,.seg button:last-child,.zoomseg button:last-child,.floorbar button:last-child{
+.btn-group>:last-child,.seg button:last-child,.zoomseg button:last-child{
   border-start-end-radius:var(--r-md);border-end-end-radius:var(--r-md);
 }
 
@@ -81,14 +81,13 @@
 .btn[aria-current="true"],.btn[aria-pressed="true"],
 .btn-group .btn[aria-current="true"],.btn-group .btn[aria-pressed="true"],
 .seg button[aria-pressed="true"],.tbtn[aria-pressed="true"],
-.floorbar button[aria-current="true"],.roomlist button[aria-current="true"],
+.roomlist button[aria-current="true"],
 .props .pfl button[aria-current="true"]{
   background:var(--ink);color:var(--paper);border-color:var(--ink);
 }
 /* `opacity:.55` et pas .3/.35/.4 : à .35 un bouton désactivé tombait à 1,4:1
    et on ne pouvait plus lire ni son nom ni la raison de sa désactivation. */
-.btn:disabled,.tbtn:disabled,.props .pfl button:disabled,
-.floorbar .flact button:disabled{opacity:.55;cursor:default}
+.btn:disabled,.tbtn:disabled,.props .pfl button:disabled{opacity:.55;cursor:default}
 .btn:disabled:hover,.tbtn:disabled:hover{color:var(--ink-2);border-color:var(--rule)}
 
 /* Étiquette d'un groupe. La règle était écrite `.rangeseg .segcap`, or deux des

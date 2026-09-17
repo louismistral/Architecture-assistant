@@ -12,26 +12,36 @@ import { renderTotals } from "../views/render.js";
 
 /* ---- persistance ---- */
 export var CLIENT = Math.random().toString(36).slice(2), dbRef = null, saveT = null, LSKEY = "saxon-plan-v1";
-export function chip(txt, ok){
+export /* Le seul message d'échec de toute l'app était « non enregistré » : deux mots,
+   sans cause ni remède, dans le même gris que « sauvegarde locale ». */
+function failChip(){
   if(!saveChip) return;
   while(saveChip.firstChild) saveChip.removeChild(saveChip.firstChild);
+  saveChip.appendChild(document.createTextNode(
+    "Enregistrement impossible — mémorise ton agencement dans « Plans » avant de fermer"));
+  saveChip.classList.add("is-bad");
+}
+function chip(txt, ok){
+  if(!saveChip) return;
+  while(saveChip.firstChild) saveChip.removeChild(saveChip.firstChild);
+  saveChip.classList.remove("is-bad");
   if(ok){ saveChip.appendChild(el("b", null, "● ")); }
   saveChip.appendChild(document.createTextNode(txt));
 }
 export function saveSoon(){
   clearTimeout(saveT);
-  chip("enregistrement…", false);
+  chip("Enregistrement…", false);
   saveT = setTimeout(function(){
     var lv = {}; ROOMS.forEach(function(r){ lv[r.id] = r.fl; });
     var payload = { rooms: layout, areas: userAreas, levels: lv, nlev: FLOORS.length,
       lvls: FLOORS.map(function(F){ return F.lvl; }), plans: SAVED,
       plate: PLATE, client: CLIENT, updatedAt: Date.now() };
     if(dbRef){
-      dbRef.set(payload).then(function(){ chip("agencement enregistré", true); })
-        .catch(function(){ chip("non enregistré", false); });
+      dbRef.set(payload).then(function(){ chip("Enregistré · partagé avec l\u2019atelier", true); })
+        .catch(function(){ failChip(); });
     } else {
-      try { localStorage.setItem(LSKEY, JSON.stringify(payload)); chip("enregistré sur cet appareil", true); }
-      catch(_){ chip("non enregistré", false); }
+      try { localStorage.setItem(LSKEY, JSON.stringify(payload)); chip("Enregistré sur cet appareil", true); }
+      catch(_){ failChip(); }
     }
   }, 700);
 }
@@ -73,7 +83,7 @@ export function applyStored(rooms){
   return n > 0;
 }
 export function initStore(){
-  chip("sauvegarde locale", false);
+  chip("Enregistré sur cet appareil", true);
   try {
     var raw = localStorage.getItem(LSKEY);
     if(raw){ var o = JSON.parse(raw); applyAreas(o.areas); applyPlans(o.plans); applyLevels(o.nlev, o.levels, o.plate, o.lvls); applyStored(o.rooms); }
