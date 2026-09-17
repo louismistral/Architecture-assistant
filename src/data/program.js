@@ -16,10 +16,10 @@ export var CHAP = [
       {n:"Dépôt matériel ACM", nb:2, u:36, f:"tec", note:"2 × 36 ou 1 × 72 m²"},
       {n:"WC PMR", nb:1, u:3, f:"eau", note:"également WC professeur + non-genré"},
       {n:"Vestiaires de classe", nb:18, u:10, f:"eau", est:1,
-       note:"estimé : 0,5 m²/élève × 20 élèves — bancs, crochets, râteliers, casiers ; intégrable au couloir"},
-      {n:"WC garçons", nb:9, u:2, f:"eau", est:1, note:"estimé : 2 m² par WC — cabine standard 1 × 2 m ; zone lavabos non comprise"},
-      {n:"WC filles", nb:9, u:2, f:"eau", est:1, note:"estimé : 2 m² par WC — cabine standard 1 × 2 m ; zone lavabos non comprise"},
-      {n:"Hall d'entrée", nb:1, u:120, f:"cla", est:1, note:"« selon projet » — valeur provisoire à fixer"}
+       note:"à préciser : 0,5 m²/élève × 20 élèves — bancs, crochets, râteliers, casiers ; intégrable au couloir"},
+      {n:"WC garçons", nb:9, u:2, f:"eau", est:1, note:"à préciser : 2 m² par WC — cabine standard 1 × 2 m ; zone lavabos non comprise"},
+      {n:"WC filles", nb:9, u:2, f:"eau", est:1, note:"à préciser : 2 m² par WC — cabine standard 1 × 2 m ; zone lavabos non comprise"},
+      {n:"Hall d'entrée", nb:1, u:120, f:"cla", est:1, note:"le règlement écrit « selon projet » — à préciser"}
     ],
     off:[] },
 
@@ -36,9 +36,9 @@ export var CHAP = [
       {n:"Cuisine", nb:1, u:50, f:"eau", note:"sert aussi l'UAPE et les manifestations ; en lien avec le foyer"},
       {n:"Toilette individuelle", nb:1, u:3, f:"eau", note:"WC adapté PMR"},
       {n:"Toilettes publiques", nb:6, u:2, f:"eau", est:1,
-       note:"estimé : 2 m² par WC — cabine standard 1 × 2 m, usage public lors des manifestations"},
+       note:"à préciser : 2 m² par WC — cabine standard 1 × 2 m, usage public lors des manifestations"},
       {n:"Hall d'entrée / foyer", nb:1, u:150, f:"spo", est:1,
-       note:"« selon projet » — combinable avec le réfectoire de l'UAPE ; valeur provisoire à fixer"}
+       note:"le règlement écrit « selon projet » — combinable avec le réfectoire de l'UAPE ; à préciser"}
     ],
     off:[] },
 
@@ -52,9 +52,9 @@ export var CHAP = [
       {n:"Local de rangement", nb:1, u:18, f:"tec"},
       {n:"Économat", nb:1, u:6, f:"tec", note:"en lien avec la cuisine"},
       {n:"Toilettes UAPE", nb:4, u:2, f:"eau", est:1,
-       note:"estimé : 2 m² par WC — cabine standard 1 × 2 m ; 1 adulte, 3 enfants"},
+       note:"à préciser : 2 m² par WC — cabine standard 1 × 2 m ; 1 adulte, 3 enfants"},
       {n:"Hall UAPE", nb:1, u:30, f:"uap", est:1,
-       note:"« selon projet » — accès direct aux locaux de l'UAPE ; valeur provisoire à fixer"}
+       note:"le règlement écrit « selon projet » — accès direct aux locaux de l'UAPE ; à préciser"}
     ],
     off:["Cuisine — mutualisée avec celle de la salle polyvalente"] },
 

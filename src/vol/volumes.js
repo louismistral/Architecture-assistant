@@ -1,4 +1,4 @@
-import { dim, el, fmt } from "../core/format.js";
+import { dec, dim, el, fmt } from "../core/format.js";
 import { nearestDims, pack } from "../core/geometry.js";
 import { FMAP } from "../core/model.js";
 import { s } from "../core/svg.js";
@@ -744,8 +744,8 @@ export function volMetrics(cap){
       var Cs = vcorners(sous[0]);
       var sx = (Cs[0][0]+Cs[2][0])/2, sy = (Cs[0][1]+Cs[2][1])/2;
       var zs = terrain(sx, sy), mg = zs - NAPPE;
-      met("Marge sur la nappe", mg.toFixed(2) + " m",
-          "sous le " + sous[0].n.toLowerCase() + ", terrain à " + zs.toFixed(2) + " m. "
+      met("Marge sur la nappe", dec(mg) + " m",
+          "sous le " + sous[0].n.toLowerCase() + ", terrain à " + dec(zs) + " m. "
           + (mg >= SOUSSOL ? "Excavation possible." : "Excavation exclue — il faut 3,00 m. Pousse le volume vers l'est."),
           mg >= SOUSSOL ? "ok" : "ko");
     }
@@ -772,8 +772,8 @@ export function volMetrics(cap){
   var abri = VOLS[4], C = vcorners(abri);
   var acx = (C[0][0]+C[2][0])/2, acy = (C[0][1]+C[2][1])/2;
   var zt = terrain(acx, acy), marge = zt - NAPPE;
-  met("Marge sur la nappe", marge.toFixed(2) + " m",
-      "sous l'abri PC, terrain à " + zt.toFixed(2) + " m. " + (marge >= SOUSSOL
+  met("Marge sur la nappe", dec(marge) + " m",
+      "sous l'abri PC, terrain à " + dec(zt) + " m. " + (marge >= SOUSSOL
         ? "Sous-sol possible : 3,00 m suffisent pour 2,40 m libres."
         : "Sous-sol exclu — il faut 3,00 m. Pousse l'abri vers l'est."),
       marge >= SOUSSOL ? "ok" : "ko");

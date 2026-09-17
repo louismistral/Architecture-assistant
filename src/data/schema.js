@@ -2,8 +2,8 @@
 export var SCH_W = 134, SCH_H = 84;
 export var SNODE = [
   {id:"classes",   n:"Salles de classe",  f:"cla", x:0,   y:0,    w:36,    h:36,    a:1296, sub:"18 × 72 m²"},
-  {id:"vest_cl",   n:"Vestiaires de classe", f:"eau", x:38, y:0,  w:18,    h:10,    dash:1, sub:"180 m² estimés"},
-  {id:"wc_el",     n:"WC élèves",         f:"eau", x:38,  y:12,  w:12,    h:6,     dash:1, sub:"72 m² estimés"},
+  {id:"vest_cl",   n:"Vestiaires de classe", f:"eau", x:38, y:0,  w:18,    h:10,    dash:1, sub:"180 m² à préciser"},
+  {id:"wc_el",     n:"WC élèves",         f:"eau", x:38,  y:12,  w:12,    h:6,     dash:1, sub:"72 m² à préciser"},
   {id:"acm",       n:"Salle ACM",         f:"cla", x:0,   y:40,   w:12,    h:12,    a:144},
   {id:"depot_acm", n:"Dépôt ACM",         f:"tec", x:14.5,y:41.7, w:8.49,  h:8.49,  a:72},
   {id:"maitres",   n:"Salle des maîtres", f:"adm", x:0,   y:56,   w:8.49,  h:8.49,  a:72},
@@ -11,7 +11,7 @@ export var SNODE = [
   {id:"bureau",    n:"Bureau direction",  f:"adm", x:22,  y:57.2, w:6,     h:6,     a:36,  lp:"below"},
   {id:"reunion",   n:"Salle de réunion",  f:"adm", x:32,  y:56,   w:8.49,  h:8.49,  a:72},
   {id:"pause",     n:"Salle de pause",    f:"adm", x:44,  y:48,   w:4.47,  h:4.47,  a:20,  lp:"above"},
-  {id:"foyer",     n:"Hall / foyer",      f:null,  x:44,  y:34,   w:14,    h:7,     dash:1, sub:"selon projet"},
+  {id:"foyer",     n:"Hall / foyer",      f:null,  x:44,  y:34,   w:14,    h:7,     dash:1, sub:"à préciser"},
   {id:"cuisine",   n:"Cuisine",           f:"eau", x:62,  y:32,   w:7.07,  h:7.07,  a:50},
   {id:"economat",  n:"Économat",          f:"tec", x:71,  y:22,   w:2.45,  h:2.45,  a:6,   lp:"below"},
   {id:"vest_el",   n:"Vestiaires élèves", f:"eau", x:62,  y:8,    w:11.83, h:11.83, a:140},
@@ -23,7 +23,7 @@ export var SNODE = [
   {id:"abri",      n:"Abri PC",           f:"tec", x:100, y:54,   w:27.39, h:27.39, a:750},
   {id:"refectoire",n:"Réfectoire",        f:"eau", x:50,  y:56,   w:8.49,  h:8.49,  a:72},
   {id:"activite",  n:"Salles d'activité UAPE", f:"uap", x:62, y:54, w:12,   h:12,    a:144},
-  {id:"hall_uape", n:"Hall UAPE",         f:null,  x:62,  y:68,   w:13,    h:6,     dash:1, sub:"selon projet"},
+  {id:"hall_uape", n:"Hall UAPE",         f:null,  x:62,  y:68,   w:13,    h:6,     dash:1, sub:"à préciser"},
   {id:"bur_uape",  n:"Bureau UAPE",       f:"adm", x:76,  y:69,   w:4.24,  h:4.24,  a:18,  lp:"right"}
 ];
 export var SLINK = [

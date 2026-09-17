@@ -82,8 +82,8 @@ export function drawSchema(host){
       grp.appendChild(t2);
     }
 
-    grp.setAttribute("data-tip", nd.n + "|" + (nd.a ? fmt(nd.a) + " m²" : "surface selon projet")
-      + "|" + (nd.f ? FMAP[nd.f].name : "Circulation, non chiffrée au programme"));
+    grp.setAttribute("data-tip", nd.n + "|" + (nd.a ? fmt(nd.a) + " m²" : "surface à préciser")
+      + "|" + (nd.f ? FMAP[nd.f].name : "Circulation — hors bilan"));
     grp.setAttribute("aria-label", nd.n + (nd.a ? ", " + fmt(nd.a) + " mètres carrés" : ""));
     svg.appendChild(grp);
   });

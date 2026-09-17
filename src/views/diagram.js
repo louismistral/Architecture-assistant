@@ -1,4 +1,4 @@
-import { el, fmt } from "../core/format.js";
+import { dim, el, fmt } from "../core/format.js";
 import { blocks, pack } from "../core/geometry.js";
 import { FMAP } from "../core/model.js";
 import { s, wrapText } from "../core/svg.js";
@@ -111,11 +111,11 @@ export function drawDiagram(host, items, W, fs, fsSm){
       grp.appendChild(il);
     }
 
-    var dims = b.w.toFixed(1).replace(/\.0$/,"") + " × " + b.h.toFixed(1).replace(/\.0$/,"") + " m";
+    var dims = dim(b.w) + " × " + dim(b.h) + " m";
     var line2 = (view.mode === "agg"
       ? (b.cnt > 1 ? b.cnt + " × " + fmt(b.ref.u) + " m² = " + fmt(b.area) + " m²" : fmt(b.area) + " m²")
       : fmt(b.area) + " m² (1 pièce sur " + b.ref.nb + ")") + " · " + dims;
-    grp.setAttribute("data-tip", b.label + (b.ref.est ? "  (estimé)" : "") + "|" + line2 + "|"
+    grp.setAttribute("data-tip", b.label + (b.ref.est ? "  (à préciser)" : "") + "|" + line2 + "|"
       + FMAP[b.ref.f].name + (b.ref.note ? " · " + b.ref.note : ""));
     grp.setAttribute("aria-label", b.label + ", " + fmt(b.area) + " mètres carrés, " + FMAP[b.ref.f].name);
     svg.appendChild(grp);

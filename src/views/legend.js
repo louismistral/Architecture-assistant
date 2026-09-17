@@ -27,7 +27,7 @@ export function renderBar(){
   e.dataset.pending = String(pending > 0);
   e.title = pending
     ? "Voir les postes que le règlement ne chiffre pas"
-    : "Les huit postes non chiffrés au règlement ont reçu ta valeur";
+    : "Les huit postes ont reçu ta valeur";
 }
 
 /* ---------- section d'introduction de l'onglet Programme ---------- */

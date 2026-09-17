@@ -664,7 +664,7 @@ export function drawProps(){
       it0.nb > 1 ? "× " + it0.nb + " pièces = " + fmt(r.a * it0.nb) + " m²" : "poste d'une seule pièce"));
     box.appendChild(el("span","pvarw", it0.set
       ? "Valeur fixée par toi."
-      : "Valeur provisoire — le règlement ne chiffre pas ce poste."));
+      : "À préciser — le règlement ne chiffre pas ce poste."));
     function commit(){
       var v = Math.round(parseFloat(inp.value) * 10) / 10;
       if(!(v > 0) || v > 2000){ inp.value = r.a; return; }
@@ -677,7 +677,7 @@ export function drawProps(){
   }
   propsEl.appendChild(el("div","plock", r.fix
     ? "surface ET dimensions imposées par le programme"
-    : (r.est ? "surface à préciser — non chiffrée au règlement"
+    : (r.est ? "surface à préciser"
              : "surface verrouillée par le programme")));
 
   if(r.fix){
