@@ -3,7 +3,7 @@
 .panel--plain{border-bottom:0}
 .panel-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-1) var(--s-3);margin-bottom:var(--s-1)}
 .panel-rule{width:22px;height:3px;border-radius:var(--r-sm);align-self:center;background:var(--ink-4)}
-.panel-head h1,.panel-head h2{
+.panel-head h1,.panel-head h2,.panel-head h3{
   font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106;
   letter-spacing:-.01em;margin:0;
 }
@@ -47,7 +47,7 @@ g.blk{cursor:default}
 
 /* --- récapitulatif --- */
 .totals{margin-top:var(--s-6)}
-.totals h2{margin:0 0 var(--s-2)}
+.totals h3{margin:0 0 var(--s-2)}
 .totals table{width:100%;border-collapse:collapse;font-size:var(--t-sm)}
 .totals th,.totals td{padding:var(--s-2) 0;text-align:left;border-bottom:1px solid var(--rule-soft);font-weight:400}
 .totals td.n,.totals th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
@@ -65,3 +65,56 @@ g.blk{cursor:default}
 .totals .sw{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm);margin-right:var(--s-2)}
 
 @media (max-width:560px){.schedule{grid-template-columns:1fr}}
+
+/* --- rang de section ------------------------------------------------------
+   L'onglet Programme se lit en trois temps — contraintes, surfaces, adjacences.
+   Le numéro dit l'ordre ; sans lui, trois titres de même rang se lisent comme
+   trois sujets sans lien, et la chronologie du concours disparaît. */
+.secthead{
+  display:flex;align-items:baseline;gap:var(--s-3);
+  margin-top:var(--s-7);padding-top:var(--s-3);border-top:2px solid var(--ink);
+}
+.secthead__n{
+  font-size:var(--t-num-sm);font-weight:500;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+.secthead h2{
+  margin:0;font-size:var(--t-lg);font-weight:600;
+  font-variation-settings:"wdth" 106;letter-spacing:-.01em;
+}
+.secthead p{margin:2px 0 0;font-size:var(--t-sm);color:var(--ink-2);max-width:68ch}
+
+/* --- contraintes du concours --------------------------------------------- */
+.cons__grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));
+  gap:var(--s-5);margin-top:var(--s-4);
+}
+.cons h3{margin:0 0 var(--s-2)}
+.cons__dl{
+  margin:0;display:grid;grid-template-columns:minmax(8ch,auto) minmax(0,1fr);
+  gap:0 var(--s-3);font-size:var(--t-xs);
+}
+.cons__dl dt{
+  color:var(--ink-2);padding:var(--s-2) 0;
+  border-top:1px solid var(--rule-soft);align-self:start;
+}
+.cons__dl dd{
+  margin:0;padding:var(--s-2) 0;text-align:right;color:var(--ink);
+  border-top:1px solid var(--rule-soft);font-variant-numeric:tabular-nums;
+}
+/* La raison d'un chiffre vit sous le chiffre, jamais dans un `title` : un
+   attribut de survol n'existe ni au doigt, ni au clavier, ni sur mobile. */
+.cons__why{
+  display:block;font-family:var(--sans);font-size:var(--t-3xs);
+  color:var(--ink-3);line-height:var(--lh-snug);max-width:38ch;margin-left:auto;
+}
+.cons__tx{font-family:var(--sans)}
+.cons__note{margin:var(--s-2) 0 0;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.cons__qual{margin:0;padding-left:var(--s-4);font-size:var(--t-xs);color:var(--ink-2)}
+.cons__qual li{margin-bottom:var(--s-1)}
+
+/* Le sous-texte d'une ligne de récapitulatif : la circulation doit dire sur
+   quoi elle porte, sinon on la croit calculée sur le total du programme. */
+.totals__s{display:block;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+
+@media (max-width:560px){.cons__grid{grid-template-columns:1fr}}

@@ -10,6 +10,7 @@
    pouvoir essayer, à condition d'être averti.
    ========================================================================= */
 import { fmt } from "../core/format.js";
+import { CIRC } from "../core/model.js";
 import { nearestDims, validDims } from "../core/geometry.js";
 import { CHAP } from "../data/program.js";
 import { ENTRE, RULES, hNiv } from "../data/rules.js";
@@ -30,7 +31,12 @@ export var PARTIS = [
 
 /* ---- les réglages ------------------------------------------------------- */
 /* État mutable du générateur : lu partout, écrit par `massSet` seul. */
-export var MASS = { parti:"barres", niv:2, nb:2, prof:18, circ:0.15, phase2:true, enterre:true };
+/* `circ` n'est PLUS un réglage du générateur. La part de circulation se décide
+   dans l'onglet Programme, parmi les surfaces à préciser, et de là seulement :
+   elle vivait ici à 15 % en SUPPLÉMENT de la surface utile pendant qu'elle
+   valait 18 % de la surface BÂTIE dans l'outil voisin — même mot, deux
+   arithmétiques, 200 m² d'écart. */
+export var MASS = { parti:"barres", niv:2, nb:2, prof:18, phase2:true, enterre:true };
 export function massSet(k, v){ MASS[k] = v; }
 
 /* ---- le programme, tel qu'il est ---------------------------------------- */
@@ -46,16 +52,21 @@ function itemTot(chapId, re){
   });
   return t;
 }
-/* Besoins de plancher, en m². La circulation s'ajoute aux programmes de
-   locaux ; elle ne s'ajoute pas à un local unique déjà dimensionné (salle de
-   sport, abri, piscine, CAD), qui est sa propre surface. */
+/* Besoins de plancher, en m². La circulation porte sur les programmes de
+   locaux ; elle ne porte pas sur un local unique déjà dimensionné (salle de
+   sport, abri, piscine, CAD), qui est sa propre surface.
+
+   La part est lue dans `core/model.js` — jamais redéfinie ici — et suit la
+   convention unique du projet : PART DE LA SURFACE BÂTIE, donc bâti = utile
+   divisé par un moins la part. */
 export function massProg(circ){
+  var c = (typeof circ === "number" && circ >= 0 && circ < 1) ? circ : CIRC;
   var hall = itemTot("sport", /^Salle de sport double$/);
   var scene = itemTot("sport", /^Scène$/);
   var abri = itemTot("tech", /^Abri PC$/);
-  var k = 1 + circ;
+  var k = 1 / (1 - c);
   var P = {
-    circ: circ,
+    circ: c,
     hall: hall, scene: scene,
     sportAnx: (chapTot("sport") - hall) * k,          /* scène, vestiaires, foyer, engins, cuisine */
     ecole: chapTot("ecole") * k,
@@ -302,7 +313,7 @@ function spotAt(v, placed, sep){
    h, x, y, lv`, plus ce dont la 3D a besoin — hauteur de niveau, niveau du
    plancher bas, phase, surface portée. */
 export function massGen(){
-  var o = MASS, P = massProg(o.circ);
+  var o = MASS, P = massProg();
   var L = poser(composer(o, P));
   L.forEach(function(c){
     var pl = c.w * c.h * Math.max(1, c.lv);
@@ -314,7 +325,7 @@ export function massGen(){
     c.plancher = c.sol ? 0 : pl;
   });
   return { vols:L, prog:P, opt:{ parti:o.parti, niv:o.niv, nb:o.nb, prof:o.prof,
-           circ:o.circ, phase2:o.phase2, enterre:o.enterre } };
+           circ:P.circ, phase2:o.phase2, enterre:o.enterre } };
 }
 export function partiOf(id){
   for(var i = 0; i < PARTIS.length; i++) if(PARTIS[i].id === id) return PARTIS[i];

@@ -7,13 +7,11 @@
    et d'un pixel de padding — la preuve étant `.rangeseg button{font-size:12.5px}`,
    une sous-classe qui n'existait que pour annuler le 13px hérité de la copie.
 
-   Les anciens sélecteurs sont conservés comme alias du composant : cette feuille
-   unifie le rendu sans toucher au DOM. Les vues renommeront leurs classes ensuite.
+   Les alias vers ces anciens sélecteurs ont disparu en même temps que les vues
+   qui les posaient (Plan, Site). Il ne reste que le composant.
    ========================================================================= */
 
-.btn,
-.seg button,.tbtn,.zoomseg button,
-.props .ratios button,.props .pfl button,.plans h4 button{
+.btn{
   appearance:none;
   display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);
   min-height:var(--ctl-h);padding:var(--ctl-pad);
@@ -23,22 +21,18 @@
   cursor:pointer;white-space:nowrap;
   transition:color var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease);
 }
-.btn:hover,
-.seg button:hover,.tbtn:hover,.zoomseg button:hover,
-.props .ratios button:hover,.props .pfl button:hover:not(:disabled),.plans h4 button:hover{
-  color:var(--ink);border-color:var(--rule-strong);
-}
+.btn:hover{color:var(--ink);border-color:var(--rule-strong)}
 
 /* Une seule action dominante par vue. */
 .btn--primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .btn--primary:hover{color:var(--paper);opacity:.88}
 
 /* Pour les listes longues : le cadre disparaît, le bouton reste un bouton. */
-.btn--quiet,.roomlist button,.plans li button,.props .pfla{
+.btn--quiet{
   appearance:none;background:none;border:1px solid transparent;
   font:inherit;color:var(--ink-2);cursor:pointer;border-radius:var(--r-sm);
 }
-.btn--quiet:hover,.roomlist button:hover{background:var(--rule-soft);color:var(--ink)}
+.btn--quiet:hover{background:var(--rule-soft);color:var(--ink)}
 
 .btn--icon{min-width:var(--ctl-h);padding-inline:var(--s-2)}
 
@@ -48,29 +42,21 @@
    et comme la valeur était `hidden` et non `auto`, aucun geste ne pouvait le
    ramener. Un onglet sur cinq n'existait pas sur téléphone, à cause d'un coin
    arrondi fabriqué en rognant le conteneur. */
-.btn-group,.seg,.zoomseg,.circbar{
+.btn-group{
   display:flex;align-items:stretch;
   background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-md);
   overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
 }
-.btn-group::-webkit-scrollbar,.seg::-webkit-scrollbar,.zoomseg::-webkit-scrollbar{display:none}
-.btn-group>*,.seg button,.zoomseg button{flex:0 0 auto}
+.btn-group::-webkit-scrollbar{display:none}
+.btn-group>*{flex:0 0 auto}
 
 /* Les boutons d'un groupe partagent un cadre : ils perdent le leur et ne gardent
    qu'un filet de séparation. Les coins sont arrondis par les enfants d'extrémité
    plutôt que par un rognage du parent. */
-.btn-group .btn,.seg button,.zoomseg button{
-  border:0;border-radius:0;background:transparent;
-}
-.btn-group .btn+.btn,.seg button+button,.zoomseg button+button{
-  border-left:1px solid var(--rule);
-}
-.btn-group>:first-child,.seg button:first-child,.zoomseg button:first-child{
-  border-start-start-radius:var(--r-md);border-end-start-radius:var(--r-md);
-}
-.btn-group>:last-child,.seg button:last-child,.zoomseg button:last-child{
-  border-start-end-radius:var(--r-md);border-end-end-radius:var(--r-md);
-}
+.btn-group .btn{border:0;border-radius:0;background:transparent}
+.btn-group .btn+.btn{border-left:1px solid var(--rule)}
+.btn-group>:first-child{border-start-start-radius:var(--r-md);border-end-start-radius:var(--r-md)}
+.btn-group>:last-child{border-start-end-radius:var(--r-md);border-end-end-radius:var(--r-md)}
 
 /* --- états, portés par ARIA et par rien d'autre -------------------------
    Déclarés EN DERNIER, à dessein : `.btn-group .btn{background:transparent}`
@@ -78,29 +64,18 @@
    c'est l'ordre du fichier qui tranche. Placés plus haut, les états actifs
    perdaient leur fond et il ne restait qu'un texte couleur --paper sur fond
    transparent : le bouton sélectionné devenait invisible. */
-/* `aria-selected` est l'attribut du patron d'onglets, et les deux nouvelles
-   barres d'onglets — celle du chrome et celle du panneau du plan — n'expriment
-   leur état que par lui. Il n'était stylé nulle part : aucun onglet ne
-   paraissait actif. */
 .btn[aria-current="true"],.btn[aria-pressed="true"],.btn[aria-selected="true"],
 .btn-group .btn[aria-current="true"],.btn-group .btn[aria-pressed="true"],
-.btn-group .btn[aria-selected="true"],
-.seg button[aria-pressed="true"],.tbtn[aria-pressed="true"],
-.roomlist button[aria-current="true"],
-.props .pfl button[aria-current="true"]{
+.btn-group .btn[aria-selected="true"]{
   background:var(--ink);color:var(--paper);border-color:var(--ink);
 }
 /* `opacity:.55` et pas .3/.35/.4 : à .35 un bouton désactivé tombait à 1,4:1
    et on ne pouvait plus lire ni son nom ni la raison de sa désactivation. */
-.btn:disabled,.tbtn:disabled,.props .pfl button:disabled{opacity:.55;cursor:default}
-.btn:disabled:hover,.tbtn:disabled:hover{color:var(--ink-2);border-color:var(--rule)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn:disabled:hover{color:var(--ink-2);border-color:var(--rule)}
 
-/* Étiquette d'un groupe. La règle était écrite `.rangeseg .segcap`, or deux des
-   trois usages ne descendent pas de `.rangeseg` : « Circulation » et « Niveaux »
-   héritaient du corps de page, soit 16 px, et devenaient les plus gros éléments
-   d'une barre où tout le reste fait 12 px. Déscoper corrige les deux d'un coup.
-   Sans capitales : « RANGER Chapitres Familles » se lisait comme trois boutons
-   dont le premier crie. */
+/* Étiquette d'un groupe. Sans capitales : « RANGER Chapitres Familles » se
+   lisait comme trois boutons dont le premier crie. */
 .segcap,.btn-group__label{
   display:inline-flex;align-items:center;
   font-size:var(--t-2xs);font-weight:500;color:var(--ink-3);
@@ -115,3 +90,24 @@
 .scalebar{display:flex;align-items:center;gap:var(--s-2)}
 .scalebar svg{display:block}
 .scalebar .cap{font-size:var(--t-2xs);color:var(--ink-3)}
+
+/* --- pastilles de verdict -----------------------------------------------
+   Elles portent un aplat plein, donc une seule valeur sert les deux thèmes.
+   Jamais une couleur de famille d'usage : un token de famille détourné en
+   token d'état fait mentir la légende. */
+.chip{
+  display:inline-block;font-style:normal;
+  font-size:var(--t-3xs);font-weight:600;letter-spacing:.04em;
+  color:var(--on-fill);border-radius:var(--r-sm);
+  padding:1px var(--s-1);white-space:nowrap;
+}
+.chip--danger{background:var(--danger-fill)}
+.chip--warn{background:var(--warn-fill)}
+.chip--ok{background:var(--ok-fill)}
+
+/* --- témoin d'enregistrement --------------------------------------------
+   Le seul message d'échec de l'app était « non enregistré » : deux mots, sans
+   cause ni remède, dans le même gris que « sauvegarde locale ». */
+.savechip{font-size:var(--t-2xs);color:var(--ink-3);white-space:nowrap}
+.savechip b{color:var(--ok);font-weight:400}
+.savechip.is-bad{color:var(--danger);white-space:normal}

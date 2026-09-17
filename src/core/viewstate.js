@@ -1,9 +1,18 @@
 /* État de la vue — source unique de vérité.
 
-   Quatre destinations, là où il y en avait cinq. « Chapitres du programme » et
-   « Familles d'usage » produisaient le même objet `groups` et traversaient le
-   même code : ce n'était jamais une destination, c'est un critère de tri. Il
-   devient `view.group`, un réglage de l'onglet Programme.
+   DEUX destinations, là où il y en avait quatre. Les onglets ne sont pas un
+   sommaire : ils sont la CHRONOLOGIE du concours. Chacun se sert de ce que le
+   précédent a décidé.
+
+       Programme  →  Programme mixer  →  (Massing)  →  (Typologie)
+       contraintes    répartition du     volumétrie     plans et coupes
+       et surfaces    programme sur
+                      les niveaux
+
+   L'ancien ordre faisait l'inverse : on dessinait le Plan d'un niveau avant
+   d'avoir choisi le Site, donc la typologie décidait du volume. Les deux
+   dernières étapes sont à reconstruire ; le code 3D reste en place pour cela
+   (`src/core/gl.js`, `src/vol/`).
 
    `view.tab`   quelle vue est à l'écran        → pilote body[data-view]
    `view.group` regroupement dans Programme     → chapitres ou familles
@@ -11,10 +20,8 @@
 */
 
 export var TABS = [
-  { id:"programme",  label:"Programme",  kind:"doc"  },
-  { id:"adjacences", label:"Adjacences", kind:"doc"  },
-  { id:"plan",       label:"Plan",       kind:"tool" },
-  { id:"site",       label:"Site",       kind:"tool" }
+  { id:"programme", label:"Programme",       kind:"doc"  },
+  { id:"mixer",     label:"Programme mixer", kind:"tool" }
 ];
 
 export var view = {
@@ -30,8 +37,8 @@ export function tabOf(id){
 export function isTool(id){ return tabOf(id || view.tab).kind === "tool"; }
 
 /* --- orientation ---------------------------------------------------------
-   L'agencement du plan était persisté, mais pas l'endroit où l'on se trouve :
-   on rechargeait après une heure de composition et on retombait sur la page de
+   L'agencement était persisté, mais pas l'endroit où l'on se trouve : on
+   rechargeait après une heure de composition et on retombait sur la page de
    couverture. Le fragment d'URL rend la vue partageable et survit au
    rechargement, sans stockage. */
 export function readHash(){

@@ -14,12 +14,16 @@ export function showTip(target, x, y){
   tip.style.left = Math.min(Math.max(x, 90), window.innerWidth - 90) + "px";
   tip.style.top = Math.max(y - 12, 60) + "px";
 }
+/* Les deux porteurs d'infobulle : les blocs SVG des diagrammes du programme et
+   les blocs du mixer, qui sont des div. Même contrat — `data-tip` en trois
+   parties séparées par une barre verticale. */
+var SEL = "g.blk,.mixblk";
 document.addEventListener("pointermove", function(e){
-  var g = e.target.closest ? e.target.closest("g.blk") : null;
+  var g = e.target.closest ? e.target.closest(SEL) : null;
   if(g) showTip(g, e.clientX, e.clientY); else tip.style.opacity = "0";
 });
 document.addEventListener("focusin", function(e){
-  var g = e.target.closest ? e.target.closest("g.blk") : null;
+  var g = e.target.closest ? e.target.closest(SEL) : null;
   if(g){ var r = g.getBoundingClientRect(); showTip(g, r.left + r.width/2, r.top); }
   else tip.style.opacity = "0";
 });
