@@ -58,3 +58,45 @@ g.vol.sel text{font-weight:600}
    on ne voyait jamais le verdict en même temps que le plan qu'il juge. */
 .vol-wrap{max-height:clamp(380px,58vh,680px)}
 .vol-wrap svg{max-height:clamp(380px,58vh,680px);object-fit:contain}
+
+/* ---------- vue 3D ----------
+   La toile WebGL a sa propre taille en pixels : elle ne se laisse pas
+   redimensionner par `width:100%` comme le SVG, d'où ce bloc à part. Le
+   libellé des volumes est du HTML posé dessus, pour garder la typographie et
+   les tokens du projet dans les deux thèmes. */
+.vol3d{display:block;touch-action:none}
+.vol3d__labels{position:absolute;inset:0;pointer-events:none}
+.vol3d__lab{position:absolute;transform:translate(-50%,-100%);text-align:center;
+  padding:2px var(--s-2);border-radius:var(--r-sm);background:var(--panel-veil);
+  white-space:nowrap}
+.vol3d__lab b{display:block;font-size:var(--t-xs);font-weight:600;color:var(--ink);line-height:var(--lh-tight)}
+.vol3d__lab span{display:block;font-family:var(--mono);font-size:var(--t-3xs);color:var(--ink-3)}
+.vol3d__lab.is-sel{outline:2px solid var(--focus);outline-offset:1px}
+.vol3d__fail{margin:0;padding:var(--s-5);font-size:var(--t-sm);color:var(--ink-2)}
+.vol-cam{margin:var(--s-2) 0 0;font-family:var(--mono);font-size:var(--t-2xs);color:var(--ink-3)}
+
+/* ---------- réglages du parti ---------- */
+.vol-gen{display:grid;gap:var(--s-2)}
+.vol-gen__d{margin:0;max-width:74ch;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+
+/* Un segment sélectionné ne se voyait nulle part : `aria-current` était posé
+   par le code mais aucune règle ne le dessinait. Trois segments en dépendent
+   désormais — le parti, les niveaux, le nombre de corps. */
+.zoomseg button[aria-current="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.zoomseg button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---------- écarts aux règles ---------- */
+.vol-chk{margin-top:var(--s-4);padding-top:var(--s-3);border-top:2px solid var(--rule-soft)}
+.vol-chk__head{display:flex;align-items:center;gap:var(--s-2);margin:0 0 var(--s-2);
+  font-size:var(--t-3xs);letter-spacing:var(--track-caps);text-transform:uppercase;
+  font-weight:600;color:var(--ink-3)}
+.vol-chk p{margin:0;font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-loose);max-width:74ch}
+.vol-chk__list{margin:0;padding:0;list-style:none;display:grid;gap:var(--s-2)}
+.vol-chk__list li{padding:var(--s-2) 0 var(--s-2) var(--s-3);border-left:3px solid var(--rule)}
+.vol-chk__list li.is-e{border-left-color:var(--danger)}
+.vol-chk__list li.is-w{border-left-color:var(--warn)}
+.vol-chk__list b{display:block;font-size:var(--t-xs);font-weight:400;color:var(--ink-2);
+  line-height:var(--lh-snug);max-width:74ch}
+.vol-chk__list small{display:block;margin-top:2px;font-family:var(--mono);font-size:var(--t-3xs);color:var(--ink-4)}
+.vol3d__hidden{position:absolute;left:var(--s-3);bottom:var(--s-2);font-family:var(--mono);
+  font-size:var(--t-3xs);color:var(--ink-3)}

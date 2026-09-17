@@ -1,5 +1,6 @@
 import { fmt } from "../core/format.js";
 import { CHAP } from "../data/program.js";
+import { RULES } from "../data/rules.js";
 import { FLOORS, PLATE, TRAY, flBuilt, flCount, flNet, lvlOf, trayArea, trayRooms } from "./levels.js";
 import { ROOMS } from "./rooms.js";
 
@@ -114,10 +115,11 @@ export function checkNiv(){
       + fmt(PLATE) + " m² — il manque " + fmt(Math.round(b - PLATE)) + " m²",
       sev: "e", ref: "2.4", ex: "", n: 0 });
   });
-  /* art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage */
+  /* art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage. Le seuil
+     est écrit une seule fois, dans src/data/rules.js. */
   FLOORS.forEach(function(f, i){
     var a = flNet(i);
-    if(a > 900) out.push({ msg: "Surface d'étage de " + fmt(Math.round(a)) + " m² au " + f.n.toLowerCase()
+    if(a > RULES.feu.cageSeuil) out.push({ msg: "Surface d'étage de " + fmt(Math.round(a)) + " m² au " + f.n.toLowerCase()
       + " : deux cages d'escalier compartimentées exigées", sev: "w", ref: "2.6", ex: "", n: 0 });
   });
   return out;

@@ -55,13 +55,16 @@ src/
     families.js       familles d'usage (id, couleur, libellé)        ← source unique
     program.js        programme des locaux, chapitre 2.10             ← source unique
     schema.js         nœuds et liens des adjacences
-    site.js           périmètre du concours, terrain, nappe phréatique
+    site.js           périmètre du concours, terrain, nappe phréatique — relevé seul
+    rules.js          contraintes du concours : distances, hauteurs libres, feu,
+                      nappe, stationnement, second temps           ← source unique
   core/
     viewstate.js      view.tab / view.group / view.mode + routage par hash
     model.js          totaux dérivés du programme (ITEMS, familles, recompute)
     format.js         fmt / dec / el / slug / arrondis
     svg.js            fabrique d'éléments SVG
     geometry.js       surfaces → blocs, empilage, proportions admissibles
+    gl.js             WebGL minimal : matrices, programme, tampons, caméra orbitale
   views/
     render.js         aiguillage par onglet, barre de vue, récapitulatif, sources
     legend.js         chrome (total, compteur) + intro de Programme (chiffre-clé,
@@ -79,7 +82,12 @@ src/
     distribute.js     répartition du programme sur les étages
     areas.js          surfaces à préciser saisies par l'utilisateur, postes liés
     editor.js         canevas, sélection, propriétés, rangement, pointeur, annulation
-  vol/volumes.js      site : implantation, lien au plan, plan et axonométrie
+  vol/                site : proposer une volumétrie, puis la contrôler
+    place.js          terrain, périmètre, recul, distance entre boîtes, recherche de place
+    massing.js        générateur : programme + règles + parti → volumes
+    checks.js         contrôle d'une volumétrie → avertissements
+    scene3d.js        la vue 3D : terrain, relevé, bâti existant, volumes du projet
+    volumes.js        la vue Site : plan de situation, 3D, réglages, tableau de bord
   main.js             thème, onglets, routage, premier rendu
 Design-1.2.0-v38/     le plugin « Design » d'Anthropic, déposé ici pour servir de grille
                       d'audit (design-system, design-critique, ux-copy, a11y)
@@ -120,6 +128,14 @@ levée » que « lever la contrainte ».
 comptés sont « hors bilan ». Ces deux statuts portaient le même nom, alors que les premiers
 sont dans le total et les seconds dans aucun : l'écart se chiffrait en centaines de m².
 
+**Les surfaces du programme sont fixes.** On change les proportions d'une pièce ou d'un
+volume — à surface exacte, `validDims` — jamais ses m². Le générateur de volumétrie
+déduit ses volumes du programme ; il ne les réécrit pas.
+
+**Une proposition hors règles est autorisée, jamais silencieuse.** `src/vol/checks.js`
+la dit : rouge pour une règle écrite au règlement ou à l'AEAI, ambre pour une règle de
+projet ou une marge qui se discute. Rien n'est empêché.
+
 **Une action qui détruit le travail en cours le dit.** Dans son libellé ou dans la ligne de
 conséquence de son entrée de menu.
 
@@ -129,6 +145,9 @@ conséquence de son entrée de menu.
 
 - **Le programme** (surfaces, nombres, familles, notes) : `src/data/program.js` seul. Tous
   les totaux, diagrammes, listes, pièces du plan et volumes en découlent.
+- **Les contraintes du concours** (distances, hauteurs libres, protection incendie, nappe,
+  stationnement) : `src/data/rules.js` seul. Le générateur de volumétrie, le contrôle et
+  les textes de l'onglet Site en découlent. `src/data/site.js` ne porte que du relevé.
 - **Les familles et leurs couleurs** : `src/data/families.js` pour les libellés,
   `styles/tokens.css` pour les valeurs. Les deux fichiers sont liés par l'id de famille.
 - **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`), un bouton dans

@@ -20,6 +20,7 @@
   /* --- surfaces et encres ------------------------------------------------ */
   --paper:#EDEEE9;          /* fond de page */
   --panel:#F8F8F5;          /* fond des panneaux, contrôles, canevas */
+  --panel-veil:rgba(248,248,245,.82);  /* voile des libellés posés sur la toile 3D */
   --ink:#16191A;            /* texte principal — 15.2:1 */
   --ink-2:#565B59;          /* texte secondaire — 5.9:1 */
   --ink-3:#636B66;          /* texte atténué — 4.7:1. Était #8A908C, à 2.79:1 : le token
@@ -145,6 +146,7 @@
     color-scheme: dark;
     --paper:#0F1110;
     --panel:#181B1A;
+    --panel-veil:rgba(24,27,26,.82);
     --ink:#EFF1ED;
     --ink-2:#A6ACA7;
     --ink-3:#8B928D;          /* était #7A817C, à 4.34:1 sur --panel */
@@ -182,6 +184,7 @@
   color-scheme: dark;
   --paper:#0F1110;
   --panel:#181B1A;
+  --panel-veil:rgba(24,27,26,.82);
   --ink:#EFF1ED;
   --ink-2:#A6ACA7;
   --ink-3:#8B928D;

@@ -4,23 +4,34 @@ import { FMAP } from "../core/model.js";
 import { s } from "../core/svg.js";
 import { view } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
-import { ENTRE, NAPPE, PER, PERAIRE, RETRAIT, SITE, SOUSSOL, VANG } from "../data/site.js";
-import { layout, ty } from "../plan/editor.js";
+import { ENTRE, RULES, SOUSSOL } from "../data/rules.js";
+import { NAPPE, PER, PERAIRE, SITE, VANG } from "../data/site.js";
+import { layout } from "../plan/editor.js";
 import { FLOORS, HORS, TRAY, lvlOf } from "../plan/levels.js";
 import { PART } from "../plan/links.js";
 import { ROOMS } from "../plan/rooms.js";
+import { massCheck, massVerdict } from "./checks.js";
+import { MASS, PARTIS, massGen, massSet, partiOf } from "./massing.js";
+import { terrain, vcorners, vmid, volFits, volGap, volPlaceLinked } from "./place.js";
+import { camLabel, scene3dDraw, scene3dFit, scene3dMount, scene3dPan, scene3dPick,
+         scene3dTurn, scene3dZoom, setSceneSel } from "./scene3d.js";
 
-export var VOLS = [
-  { n:"Salle de sport double", sub:"896 m² · h. 7 m", w:32, h:28, f:"spo", x:24, y:21, lv:1 },
-  { n:"Barre A — classes", sub:"R+1 · 1'728 m²", w:48, h:18, f:"cla", x:82, y:80, lv:2 },
-  { n:"Barre B — classes", sub:"R+1 · 1'728 m²", w:48, h:18, f:"cla", x:73, y:50, lv:2 },
-  { n:"Barre C — accueil, UAPE", sub:"R+1 · 1'296 m²", w:36, h:18, f:"uap", x:68, y:18, lv:2 },
-  { n:"Abri PC + locaux engins", sub:"930 m² · h. 2,40 m", w:30, h:25, f:"tec", x:132, y:29, lv:1 }
-];
-
-export var HOME = VOLS.map(function(v){ return { x:v.x, y:v.y, w:v.w, h:v.h }; });
-export var volNode = null, volMet = null, volEnterre = false;
-var volLvPaint = null, volLvWhy = null;
+/* ---- d'où viennent les volumes ----
+   Cinq volumes étaient écrits à la main ici, avec leurs surfaces : « Barre A —
+   classes, R+1, 1'728 m² ». Le programme y était redit une deuxième fois, et
+   rien ne le tenait à jour. Les volumes viennent maintenant du générateur
+   (`massing.js`), qui les déduit du programme et des règles ; la main reste
+   entière pour les déplacer, les tourner et les redimensionner. */
+export var VOLS = massGen().vols;
+export var volGen = massGen();
+export function volRegen(){
+  volGen = massGen();
+  VOLS = volGen.vols;
+  volSel = -1;
+  setSceneSel(-1);
+}
+export var volNode = null, volMet = null, volChk = null, volCam = null, volEnterre = !MASS.enterre;
+var volLvPaint = null, volLvWhy = null, volGenPaint = null;
 
 /* ---- lien avec le plan interactif : un volume par niveau, le schéma posé dedans ----
    Le volume n'est pas un dessin de plus : c'est l'étage lui-même, ramené sur le site. Sa
@@ -108,46 +119,6 @@ export function volPlanLevels(){
   out.sort(function(a, b){ return a.lvl - b.lvl; });
   return out;
 }
-/* Chaque niveau cherche la place la plus proche du centre du périmètre où il tient
-   entièrement, à distance des limites, sans recouvrir un niveau déjà posé. */
-export function volFindSpot(v, placed, sep){
-  var xs = PER.map(function(p){ return p[0]; }), ys = PER.map(function(p){ return p[1]; });
-  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
-  var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-  var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  var ca = Math.cos(VANG), sa = Math.sin(VANG);
-  var best = null, bd = 1e9, gx, gy, i;
-  for(gy = y0; gy <= y1; gy += 3) for(gx = x0; gx <= x1; gx += 3){
-    var d = (gx - cx) * (gx - cx) + (gy - cy) * (gy - cy);
-    if(d >= bd) continue;
-    var ox = gx - (v.w / 2 * ca - v.h / 2 * sa);
-    var oy = gy - (v.w / 2 * sa + v.h / 2 * ca);
-    if(!volFits(v, ox, oy)) continue;
-    var ok = true;
-    for(i = 0; i < placed.length; i++) if(volGap(v, ox, oy, placed[i]) < sep){ ok = false; break; }
-    if(!ok) continue;
-    bd = d; best = { x: Math.round(ox * 2) / 2, y: Math.round(oy * 2) / 2 };
-  }
-  return best;
-}
-/* Les niveaux d'un bâtiment se superposent : ils reçoivent tous le même centre, celui que
-   le plus grand d'entre eux trouve dans le périmètre. Chacun se déplace ensuite librement. */
-export function volPlaceLinked(list){
-  if(!list.length) return list;
-  var xs = PER.map(function(p){ return p[0]; }), ys = PER.map(function(p){ return p[1]; });
-  var cx = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2;
-  var cy = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
-  var ca = Math.cos(VANG), sa = Math.sin(VANG);
-  var big = list[0];
-  list.forEach(function(v){ if(v.w * v.h > big.w * big.h) big = v; });
-  var sp = volFindSpot(big, [], 0);
-  if(sp){ cx = sp.x + (big.w / 2 * ca - big.h / 2 * sa); cy = sp.y + (big.w / 2 * sa + big.h / 2 * ca); }
-  list.forEach(function(v){
-    v.x = Math.round((cx - (v.w / 2 * ca - v.h / 2 * sa)) * 2) / 2;
-    v.y = Math.round((cy - (v.w / 2 * sa + v.h / 2 * ca)) * 2) / 2;
-  });
-  return list;
-}
 /* le niveau dont on voit le plan : celui qu'on a choisi, sinon le plus grand */
 export function volShown(){
   var k = -1, a = -1;
@@ -192,56 +163,10 @@ export function volSetLink(on, place){
     volSel = -1;
   }
   if(volLinkBtn) volLinkBtn.setAttribute("aria-pressed", String(volLink));
+  if(volGenPaint) volGenPaint();
   volFit();
 }
 
-export function terrain(x, y){ return SITE.z[0] + SITE.z[1] * x + SITE.z[2] * y; }
-export function inPer(x, y){
-  var c = false, n = PER.length;
-  for(var i = 0; i < n; i++){
-    var a = PER[i], b = PER[(i + 1) % n];
-    if((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1] + 1e-12) + a[0]) c = !c;
-  }
-  return c;
-}
-export function dSeg(px0, py0, a, b){
-  var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
-  var t = L2 === 0 ? 0 : Math.max(0, Math.min(1, ((px0 - a[0]) * dx + (py0 - a[1]) * dy) / L2));
-  return Math.hypot(px0 - (a[0] + t * dx), py0 - (a[1] + t * dy));
-}
-export function clearPer(x, y){
-  var m = 1e9;
-  for(var i = 0; i < PER.length; i++) m = Math.min(m, dSeg(x, y, PER[i], PER[(i + 1) % PER.length]));
-  return m;
-}
-export function vcorners(v, x, y){
-  var ca = Math.cos(VANG), sa = Math.sin(VANG);
-  x = (x === undefined) ? v.x : x; y = (y === undefined) ? v.y : y;
-  return [[0,0],[v.w,0],[v.w,v.h],[0,v.h]].map(function(u){
-    return [x + u[0] * ca - u[1] * sa, y + u[0] * sa + u[1] * ca];
-  });
-}
-export function volFits(v, x, y){
-  var ca = Math.cos(VANG), sa = Math.sin(VANG);
-  var N = Math.max(2, Math.round(v.w / 4)), M = Math.max(2, Math.round(v.h / 4));
-  for(var i = 0; i <= N; i++) for(var j = 0; j <= M; j++){
-    if(i !== 0 && i !== N && j !== 0 && j !== M) continue;
-    var u = v.w * i / N, t = v.h * j / M;
-    var px0 = x + u * ca - t * sa, py0 = y + u * sa + t * ca;
-    if(!inPer(px0, py0) || clearPer(px0, py0) < RETRAIT) return false;
-  }
-  return true;
-}
-export function volGap(v, x, y, o){
-  var ca = Math.cos(VANG), sa = Math.sin(VANG);
-  function loc(p){ var dx = p[0] - x, dy = p[1] - y; return [dx * ca + dy * sa, -dx * sa + dy * ca]; }
-  var A = vcorners(v, x, y).map(loc), B = vcorners(o).map(loc);
-  function ext(P, k){ return [Math.min(P[0][k],P[1][k],P[2][k],P[3][k]), Math.max(P[0][k],P[1][k],P[2][k],P[3][k])]; }
-  var au = ext(A,0), av = ext(A,1), bu = ext(B,0), bv = ext(B,1);
-  var du = Math.max(0, Math.max(au[0] - bu[1], bu[0] - au[1]));
-  var dv = Math.max(0, Math.max(av[0] - bv[1], bv[0] - av[1]));
-  return Math.max(du, dv);
-}
 export function volOK(k, x, y){
   var v = VOLS[k];
   if(!volFits(v, x, y)){
@@ -284,7 +209,13 @@ export function volCapacity(){
   var pool = ROOMS.filter(function(r){
     return r.ci < 4 && r.a < 700 && r.n.indexOf("Salle de sport") < 0;
   }).slice().sort(function(a, b){ return (a.ci - b.ci) || (b.a - a.a); });
-  var bars = [1, 2, 3], out = {}, idx = 0;
+  /* Les corps qui reçoivent des salles : l'école, ses barres ou ses pavillons,
+     et l'UAPE. Ils étaient désignés par leur index — 1, 2, 3 — ce qui ne tenait
+     que tant que les volumes étaient écrits à la main. */
+  var out = {}, idx = 0, bars = [];
+  VOLS.forEach(function(v, i){
+    if(!v.sol && v.ph !== 2 && v.nz >= 0 && /^(ecole|uape)/.test(v.key || "")) bars.push(i);
+  });
   bars.forEach(function(k2){
     var v = VOLS[k2], cap = v.w * v.h * v.lv * 0.82, acc = 0, list = [];
     while(idx < pool.length && acc + pool[idx].a <= cap){ acc += pool[idx].a; list.push(pool[idx]); idx++; }
@@ -322,6 +253,115 @@ export function volCircLabel(){
   } else t += "  ·  volumes libres";
   volCircOut.textContent = t;
 }
+/* ---- réglages du parti ----
+   Le programme est fixe ; ces quatre réglages sont tout ce qu'on peut vraiment
+   décider à ce stade : la figure, le nombre de corps, le nombre de niveaux et
+   la profondeur du bâti. Chacun refait la proposition et refait le contrôle. */
+function segment(caption, list, get, set){
+  var g = el("div","zoomseg");
+  if(caption) g.appendChild(el("span","segcap", caption));
+  var btns = [];
+  list.forEach(function(o){
+    var b = el("button", null, o.n); b.type = "button";
+    if(o.d) b.title = o.d;
+    b.addEventListener("click", function(){
+      if(b.disabled) return;
+      set(o.v);
+      volRegen();
+      volFit(); if(volMode === "3d") scene3dFit(VOLS);
+      drawVol(); if(volLvPaint) volLvPaint(); if(volGenPaint) volGenPaint();
+    });
+    btns.push({ b:b, v:o.v });
+    g.appendChild(b);
+  });
+  g._paint = function(dis){
+    btns.forEach(function(o){
+      o.b.setAttribute("aria-current", String(!dis && get() === o.v));
+      o.b.disabled = !!dis;
+    });
+  };
+  return g;
+}
+function genControls(){
+  var box = el("div","vol-gen");
+  var sParti = segment(null, PARTIS.map(function(P){ return { n:P.n, v:P.id, d:P.d }; }),
+    function(){ return MASS.parti; }, function(v){ massSet("parti", v); });
+  var sNiv = segment("Niveaux", [1,2,3,4].map(function(n){
+      return { n:String(n), v:n, d:n + " niveau" + (n > 1 ? "x" : "") + " hors sol" }; }),
+    function(){ return MASS.niv; }, function(v){ massSet("niv", v); });
+  var sNb = segment("Corps", [1,2,3,4].map(function(n){
+      return { n:String(n), v:n, d:n + " corps de bâtiment scolaire" }; }),
+    function(){ return MASS.nb; }, function(v){ massSet("nb", v); });
+
+  var pr = el("div","circbar");
+  pr.appendChild(el("span","segcap","Profondeur"));
+  var pin = document.createElement("input");
+  pin.type = "range"; pin.min = "12"; pin.max = "30"; pin.step = "1";
+  pin.value = String(MASS.prof);
+  pin.setAttribute("aria-label", "Profondeur du bâti scolaire, en mètres");
+  var pout = el("b", null, "");
+  pin.addEventListener("input", function(){
+    massSet("prof", parseInt(pin.value, 10));
+    volRegen(); volFit();
+    if(volMode === "3d") scene3dFit(VOLS);
+    drawVol(); if(volGenPaint) volGenPaint();
+  });
+  pr.appendChild(pin); pr.appendChild(pout);
+
+  var desc = el("p","vol-gen__d");
+  box.appendChild(sParti);
+  var row = el("div","vol-grp__row");
+  row.appendChild(sNiv); row.appendChild(sNb); row.appendChild(pr);
+  box.appendChild(row);
+  box.appendChild(desc);
+
+  volGenPaint = function(){
+    /* Le nombre de corps ne veut rien dire pour un parti qui n'en a qu'un, ou
+       dont la figure fixe le nombre d'ailes : le réglage est éteint, pas caché. */
+    var libre = MASS.parti === "barres" || MASS.parti === "pavillons";
+    sParti._paint(volLink); sNiv._paint(volLink); sNb._paint(volLink || !libre);
+    pin.disabled = volLink;
+    pout.textContent = MASS.prof + " m"
+      + (MASS.prof <= 16 ? "  ·  simple orientation" : MASS.prof >= 22 ? "  ·  cœur sans lumière" : "  ·  couloir central");
+    desc.textContent = volLink
+      ? "Les volumes viennent du plan interactif : le parti ne s\u2019applique pas."
+      : partiOf(MASS.parti).d;
+  };
+  volGenPaint();
+  return box;
+}
+
+/* ---- ce que la proposition respecte, et ce qu'elle ne respecte pas ----
+   Une proposition hors règles est autorisée : elle est dite, pas empêchée. Le
+   rouge nomme une règle écrite au règlement ou à l'AEAI, l'ambre une règle de
+   projet ou une marge qui se discute. */
+export function paintChecks(){
+  if(!volChk) return;
+  while(volChk.firstChild) volChk.removeChild(volChk.firstChild);
+  var G = volLink ? { vols: VOLS, prog: volGen.prog } : volGen;
+  var list = massCheck({ vols: VOLS, prog: G.prog }), V = massVerdict(list);
+  var h = el("h2","vol-chk__head");
+  h.appendChild(el("i", "chip chip--" + (V.sev === "e" ? "danger" : V.sev === "w" ? "warn" : "ok"),
+    V.sev === "ok" ? "conforme" : V.e ? V.e + " écart" + (V.e > 1 ? "s" : "") : V.w + " réserve" + (V.w > 1 ? "s" : "")));
+  h.appendChild(document.createTextNode("Règles et contraintes du concours"));
+  volChk.appendChild(h);
+  if(!list.length){
+    volChk.appendChild(el("p", null, "Tout ce qui se vérifie sur une volumétrie est respecté : "
+      + "périmètre et recul, distances entre bâtiments, cages et longueurs de fuite, hauteurs "
+      + "libres imposées, couverture de la nappe, surfaces du programme."));
+    return;
+  }
+  var ul = el("ul","vol-chk__list");
+  list.slice().sort(function(a, b){ return (a.sev === "e" ? 0 : 1) - (b.sev === "e" ? 0 : 1); })
+    .forEach(function(k){
+      var li = el("li", k.sev === "e" ? "is-e" : "is-w");
+      li.appendChild(el("b", null, k.msg));
+      if(k.ref) li.appendChild(el("small", null, "art. " + k.ref));
+      ul.appendChild(li);
+    });
+  volChk.appendChild(ul);
+}
+
 /* Panneau de l'onglet Volumes : construit une fois, puis réutilisé. */
 function siteNote(title, build){
   var d = el("details","disclose");
@@ -361,9 +401,12 @@ function siteNotes(){
   }));
 
   box.appendChild(siteNote("Gestes et raccourcis", function(p){
-    p.innerHTML = "Glisser un volume pour le déplacer · poignées pour le redimensionner · molette "
-      + "pour zoomer · <kbd>R</kbd> pour pivoter · <kbd>Échap</kbd> pour désélectionner. "
-      + "« Niveaux » agit sur le volume sélectionné.";
+    p.innerHTML = "<b>Plan</b> — glisser un volume pour le déplacer · poignées pour le "
+      + "redimensionner à surface constante · molette pour zoomer · <kbd>R</kbd> pour pivoter · "
+      + "<kbd>Échap</kbd> pour désélectionner.<br><b>3D</b> — glisser pour tourner autour du "
+      + "projet · <kbd>Maj</kbd> + glisser pour déplacer la vue · molette pour s\u2019approcher · "
+      + "cliquer un volume pour le désigner · flèches pour tourner au clavier. "
+      + "« Niveaux » agit sur le volume sélectionné dans les deux vues.";
   }));
   return box;
 }
@@ -378,7 +421,10 @@ export function volPanel(){
   var psub = el("p","tool-sub");
   /* Le chapeau faisait 118 mots et expliquait trois commandes avant qu'on les
      ait vues : ces explications sont devenues leurs propres `title`. */
-  psub.textContent = "Le programme posé dans le périmètre réel du concours. Les volumes ne peuvent ni sortir du périmètre, ni s\u2019approcher à moins de 5 m des limites.";
+  psub.textContent = "Une proposition de volumétrie déduite du programme et des règles, posée dans "
+    + "le périmètre réel du concours, en plan et en 3D. Les surfaces du programme sont fixes ; le "
+    + "parti, les niveaux et la profondeur se règlent. Une proposition hors règles reste possible : "
+    + "elle est signalée, pas empêchée.";
   volNode.appendChild(psub);
   var vw = el("div","vol-wrap");
   volHost = vw;
@@ -394,10 +440,12 @@ export function volPanel(){
   });
   var vt = el("div","plan-tools");
   var bHome = el("button","tbtn shuffle","Implantation calculée"); bHome.type = "button";
+  bHome.title = "Repose les volumes dans le périmètre à partir du parti et des réglages";
   bHome.addEventListener("click", function(){
     if(volLink){ volSync(true); volFit(); drawVol(); return; }
-    VOLS.forEach(function(v, i){ v.x = HOME[i].x; v.y = HOME[i].y; v.w = HOME[i].w; v.h = HOME[i].h; });
-    volFit(); drawVol();
+    volRegen();
+    volFit(); if(volMode === "3d") scene3dFit(VOLS);
+    drawVol(); if(volLvPaint) volLvPaint(); if(volGenPaint) volGenPaint();
   });
   volLinkBtn = el("button","tbtn lock","Depuis le plan interactif");
   volLinkBtn.type = "button";
@@ -427,23 +475,26 @@ export function volPanel(){
   cb.appendChild(volCircOut);
   var ms = el("div","zoomseg");
   var mPlan = el("button", null, "Plan"); mPlan.type = "button";
-  var mAxo  = el("button", null, "Axonométrie"); mAxo.type = "button";
+  var mAxo  = el("button", null, "3D"); mAxo.type = "button";
+  mAxo.title = "Vue en perspective : glisser pour tourner, molette pour s\u2019approcher";
   ms.appendChild(mPlan); ms.appendChild(mAxo);
   /* Aucun des deux ne portait d'état : on ne savait jamais dans quelle vue on
      était. Même remarque pour « Niveaux 1-4 » plus bas. */
   function paintMode(){
     mPlan.setAttribute("aria-current", String(volMode === "plan"));
-    mAxo.setAttribute("aria-current", String(volMode === "axo"));
+    mAxo.setAttribute("aria-current", String(volMode === "3d"));
   }
   mPlan.addEventListener("click", function(){ volMode = "plan"; volFit(); drawVol(); paintMode(); });
-  mAxo.addEventListener("click", function(){ volMode = "axo"; VZ = 1; VTX = 0; VTY = 0; drawVol(); paintMode(); });
+  mAxo.addEventListener("click", function(){
+    volMode = "3d"; scene3dFit(VOLS); drawVol(); paintMode();
+  });
   paintMode();
   var ns = el("div","zoomseg");
   ns.appendChild(el("span","segcap","Niveaux"));
   var lvBtns = [];
   volLvPaint = function(){
     var v = (volSel >= 0 && VOLS[volSel]) ? VOLS[volSel] : null;
-    var actif = v && volSel !== 0 && !v.link;
+    var actif = v && !v.fix && !v.sol && !v.link;
     lvBtns.forEach(function(o){
       o.b.setAttribute("aria-current", String(!!actif && v.lv === o.nv));
       o.b.disabled = !actif;
@@ -452,7 +503,8 @@ export function volPanel(){
       volLvWhy.textContent = actif ? ""
         : (volSel < 0 ? "sélectionne un volume"
           : v && v.link ? "volume repris du plan interactif"
-          : "volume non modifiable");
+          : v && v.sol ? "la cour n\u2019a pas de niveaux"
+          : "surface imposée par le programme");
     }
   };
   [1,2,3,4].forEach(function(nv){
@@ -460,7 +512,7 @@ export function volPanel(){
     bb2.title = nv + " niveau" + (nv > 1 ? "x" : "");
     lvBtns.push({ b:bb2, nv:nv });
     bb2.addEventListener("click", function(){
-      if(volSel < 0 || volSel === 0 || VOLS[volSel].link) return;
+      if(volSel < 0 || VOLS[volSel].fix || VOLS[volSel].sol || VOLS[volSel].link) return;
       VOLS[volSel].lv = nv;
       VOLS[volSel].sub = nv > 1 ? "R+" + (nv - 1) + " · " + fmt(VOLS[volSel].w * VOLS[volSel].h * nv) + " m²"
                                 : fmt(VOLS[volSel].w * VOLS[volSel].h) + " m²";
@@ -473,10 +525,15 @@ export function volPanel(){
   ns.appendChild(volLvWhy);
   var be = el("button","tbtn","Abri enterré"); be.type = "button";
   be.setAttribute("aria-pressed","false");
+  be.setAttribute("aria-pressed", String(MASS.enterre));
   be.addEventListener("click", function(){
-    volEnterre = !volEnterre;
-    be.setAttribute("aria-pressed", String(volEnterre));
-    drawVol();
+    /* L'abri PC descend ou reste au rez : c'est un réglage du parti, pas un
+       effet de vue. Il était purement graphique et ne touchait que
+       l'axonométrie — le contrôle de la nappe ne le voyait pas. */
+    massSet("enterre", !MASS.enterre);
+    be.setAttribute("aria-pressed", String(MASS.enterre));
+    if(!volLink) volRegen();
+    drawVol(); if(volLvPaint) volLvPaint();
   });
   var zs = el("div","zoomseg");
   var zM = el("button", null, "−"); zM.type = "button";
@@ -486,9 +543,18 @@ export function volPanel(){
   /* Ces trois boutons appelaient drawVolumes(), qui dessine le PLAN : zoomer
      depuis l'axonométrie y faisait retomber silencieusement. drawVol() respecte
      le mode courant. */
-  zM.addEventListener("click", function(){ VZ = Math.max(0.6, VZ / 1.4); drawVol(); });
-  zP.addEventListener("click", function(){ VZ = Math.min(9, VZ * 1.4); drawVol(); });
-  zF.addEventListener("click", function(){ volFit(); drawVol(); });
+  zM.addEventListener("click", function(){
+    if(volMode === "3d") scene3dZoom(1.3); else VZ = Math.max(0.6, VZ / 1.4);
+    drawVol();
+  });
+  zP.addEventListener("click", function(){
+    if(volMode === "3d") scene3dZoom(1 / 1.3); else VZ = Math.min(9, VZ * 1.4);
+    drawVol();
+  });
+  zF.addEventListener("click", function(){
+    if(volMode === "3d") scene3dFit(VOLS); else volFit();
+    drawVol();
+  });
   /* Cette phrase de 128 signes était posée dans un composant en
      `white-space:nowrap` : ~780 px insécables qui débordaient du cadre à 390 px
      et ajoutaient un défilement horizontal à toute la page. Elle rejoint l'aide. */
@@ -503,6 +569,8 @@ export function volPanel(){
     vt.appendChild(g);
     return row;
   }
+  var gGen = grp("Le parti proposé");
+  gGen.appendChild(genControls());
   var gSrc = grp("D\u2019où vient le volume");
   gSrc.appendChild(volLinkBtn); gSrc.appendChild(cb); gSrc.appendChild(bHome);
   var gVue = grp("Ce qu\u2019on voit");
@@ -512,9 +580,13 @@ export function volPanel(){
 
   volNode.appendChild(vt);
   volNode.appendChild(vw);
+  volCam = el("p","vol-cam");
+  volNode.appendChild(volCam);
   volLvPaint();
   volMet = el("dl","arch-metrics");
   volNode.appendChild(vk);
+  volChk = el("section","vol-chk");
+  volNode.appendChild(volChk);
   volNode.appendChild(volMet);
   /* Trois paragraphes de ~1'150 signes en 12 px et en gris atténué. Le contenu
      est du relevé de géomètre : il compte. Il devient consultable. */
@@ -523,8 +595,11 @@ export function volPanel(){
 }
 
 export function drawVol(){
-  if(volMode === "axo") drawAxo(); else drawVolumes();
+  if(volMode === "3d") draw3d(); else drawVolumes();
   volCircLabel();
+  paintChecks();
+  if(volCam) volCam.textContent = volMode === "3d" ? camLabel()
+    : "plan de situation · nord en haut · le terrain monte de 1,94 % vers l\u2019est";
 }
 export function drawVolumes(){
   volFrame();
@@ -601,13 +676,13 @@ export function drawVolumes(){
             g.appendChild(ta);
           }
         });
-      } else if(k === 0){                 /* salle de sport : aire de jeu et refend */
+      } else if(v.key === "sport"){       /* salle de sport : aire de jeu et refend */
         var pad = 2;
         g.appendChild(s("path", { d: vpath([T(pad,pad),T(v.w-pad,pad),T(v.w-pad,v.h-pad),T(pad,v.h-pad)], 1),
           fill: "none", stroke: col, "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" }));
         g.appendChild(s("path", { d: vpath([T(v.w/2,0),T(v.w/2,v.h)]), fill: "none", stroke: col,
           "stroke-width": 1.4, "stroke-dasharray": "6 4", "vector-effect": "non-scaling-stroke" }));
-      } else if(k === 4 && !volLink){    /* abri PC : trame de secteurs */
+      } else if(v.key === "abri" && !volLink){   /* abri PC : trame de secteurs */
         for(var q = 1; q < 3; q++)
           g.appendChild(s("path", { d: vpath([T(v.w*q/3,0),T(v.w*q/3,v.h)]), fill: "none",
             stroke: col, "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
@@ -656,7 +731,7 @@ export function drawVolumes(){
         + v.nb + " pièces" + (k === shown ? "" : " — clique pour voir son plan");
       root.appendChild(ls);
     }
-    if(!v.link && (!detail || k === 0 || k === 4)){
+    if(!v.link && (!detail || v.key === "sport" || v.key === "abri")){
       var t1 = s("text", { x: q[0], y: q[1] - 4, "text-anchor": "middle", "font-size": 11.5,
         "font-weight": 600, fill: "var(--ink)" });
       t1.textContent = v.n.split(" — ")[0];
@@ -667,7 +742,7 @@ export function drawVolumes(){
       g.appendChild(t2);
     }
     /* poignées de redimensionnement */
-    if(k === volSel && k !== 0 && !v.link){
+    if(k === volSel && !v.fix && !v.sol && !v.link){
       [["e",1,.5],["w",0,.5],["n",.5,1],["s",.5,0],["ne",1,1],["nw",0,1],["se",1,0],["sw",0,0]]
         .forEach(function(hd){
           var pt = [v.x + v.w*hd[1]*ca - v.h*hd[2]*sa, v.y + v.w*hd[1]*sa + v.h*hd[2]*ca];
@@ -773,148 +848,32 @@ export function volMetrics(cap){
   met("Terrain libre", fmt(Math.round(PERAIRE - emp)) + " m²",
       "cour, 70 places de parc, 50 vélos, dépose des bus et 900 m² du 2ᵉ temps",
       (PERAIRE - emp) > 3250 ? "ok" : "ko");
-  var abri = VOLS[4], C = vcorners(abri);
-  var acx = (C[0][0]+C[2][0])/2, acy = (C[0][1]+C[2][1])/2;
-  var zt = terrain(acx, acy), marge = zt - NAPPE;
-  met("Marge sur la nappe", dec(marge) + " m",
-      "sous l'abri PC, terrain à " + dec(zt) + " m. " + (marge >= SOUSSOL
-        ? "Sous-sol possible : 3,00 m suffisent pour 2,40 m libres."
-        : "Sous-sol exclu — il faut 3,00 m. Pousse l'abri vers l'est."),
-      marge >= SOUSSOL ? "ok" : "ko");
+  var abri = VOLS.filter(function(v){ return v.key === "abri"; })[0];
+  if(abri && abri.nz < 0){
+    var am = vmid(abri), zt = terrain(am[0], am[1]), marge = zt - NAPPE;
+    met("Marge sur la nappe", dec(marge) + " m",
+        "sous l'abri PC, terrain à " + dec(zt) + " m. " + (marge >= SOUSSOL
+          ? "Excavation possible : " + dec(SOUSSOL) + " m suffisent pour "
+            + dec(RULES.haut.libre.abri) + " m libres."
+          : "Excavation exclue — il faut " + dec(SOUSSOL) + " m. Pousse l'abri vers l'est."),
+        marge >= SOUSSOL ? "ok" : "ko");
+  }
 }
 
 
-/* ================= AXONOMÉTRIE =================
-   Projection militaire : le plan reste vrai, tourné de 32°, les hauteurs montent
-   verticalement. Chaque niveau est une boîte distincte, les dalles se lisent donc
-   entre les étages. Les volumes reposent sur le terrain naturel, qui monte de
-   1,94 % vers l'est — l'axonométrie montre ce dénivelé. */
-export var AXO_T = 0.5585, AXO_K = 1.0;    /* 32° et hauteurs à l'échelle */
+/* ================= VUE 3D =================
+   L'axonométrie militaire projetait un plan vrai tourné de 32°, sans point de
+   vue, sans occlusion et sans possibilité d'en changer : on ne pouvait pas
+   tourner autour du projet. Elle est remplacée par une vraie caméra en
+   perspective (`vol/scene3d.js`), qu'on oriente à la souris. Le mode « Plan »
+   reste ce qu'il était : c'est lui qui sert à implanter. */
 export var volMode = "plan";
-export function axoP(x, y, z){
-  var c = Math.cos(AXO_T), s2 = Math.sin(AXO_T);
-  return [x * c - y * s2, -(x * s2 + y * c) - z * AXO_K];
-}
-export function axoDepth(x, y){ return x * Math.sin(AXO_T) + y * Math.cos(AXO_T); }
+export function setVolMode(m){ volMode = m; }
 
-export function drawAxo(){
-  var host = volHost;
-  while(host.firstChild) host.removeChild(host.firstChild);
-  var ca = Math.cos(VANG), sa = Math.sin(VANG);
-  var items = [];
-
-  function box(base, z0, z1, col, opTop, label, sub){
-    var d = 0;
-    base.forEach(function(p){ d += axoDepth(p[0], p[1]); });
-    items.push({ d: d / base.length + z0 * 0.01, kind: "box",
-      base: base, z0: z0, z1: z1, col: col, op: opTop, label: label, sub: sub });
-  }
-  function flat(P, col, sw, close, dash){
-    var d = 0;
-    P.forEach(function(p){ d += axoDepth(p[0], p[1]); });
-    items.push({ d: d / P.length - 1e5, kind: "flat", P: P, col: col, sw: sw, close: close, dash: dash });
-  }
-
-  /* sol : périmètre, routes, parcelles, posés sur le terrain */
-  flat(PER, "var(--site-perimetre)", 2.4, 1);
-  (SITE.rou || []).forEach(function(P){ flat(P, "var(--ink-3)", 1.4, 0); });
-  (SITE.par || []).forEach(function(P){ flat(P, "var(--rule)", 0.8, 0); });
-  (SITE.foo || []).forEach(function(P){ flat(P, "var(--site-emprise)", 0.9, 0); });
-  /* bâti existant, extrudé forfaitairement à 7 m */
-  (SITE.bat || []).forEach(function(P){
-    if(P.length < 3) return;
-    box(P, 0, 7, "var(--ink-3)", 0.5, null, null);
-  });
-  (SITE.enq || []).forEach(function(P){ flat(P, "var(--f-adm)", 1.4, 1, "5 4"); });
-
-  /* volumes du projet, niveau par niveau */
-  var cap = volLink ? null : volCapacity();
-  VOLS.forEach(function(v, k){
-    var C = vcorners(v);
-    var cx = (C[0][0] + C[2][0]) / 2, cy = (C[0][1] + C[2][1]) / 2;
-    var zt = terrain(cx, cy) - 463.3;            /* hauteur relative au point bas du site */
-    var col = "var(" + FMAP[v.f].c + ")";
-    var hl = v.link ? 3.5 : (k === 0) ? 9 : (k === 4) ? 3 : 3.5;
-    var nz = v.link ? v.lvl : ((k === 4 && volEnterre) ? -1 : 0);
-    for(var i = 0; i < v.lv; i++){
-      var z0 = zt + (i + nz) * hl, z1 = z0 + hl;
-      box(C, z0, z1, col, 0.34 - i * 0.05,
-          i === v.lv - 1 ? v.n.split(" — ")[0] : null,
-          i === v.lv - 1 ? (dim(v.w) + " × " + dim(v.h) + " m · " + v.lv + (v.lv > 1 ? " niveaux" : " niveau")) : null);
-    }
-  });
-
-  /* cadrage */
-  var pts = [];
-  items.forEach(function(it){
-    var P = it.kind === "box" ? it.base : it.P;
-    P.forEach(function(p){
-      pts.push(axoP(p[0], p[1], it.kind === "box" ? it.z1 : 0));
-      pts.push(axoP(p[0], p[1], it.kind === "box" ? it.z0 : 0));
-    });
-  });
-  var xs = pts.map(function(p){ return p[0]; }), ys = pts.map(function(p){ return p[1]; });
-  var mnx = Math.min.apply(null, xs), mxx = Math.max.apply(null, xs);
-  var mny = Math.min.apply(null, ys), mxy = Math.max.apply(null, ys);
-  var W = Math.max(host.clientWidth || 880, 700);
-  var sc = (W - 40) / (mxx - mnx) * VZ;
-  var H = (mxy - mny) * sc + 60;
-  function P2(x, y, z){
-    var q = axoP(x, y, z);
-    return [(q[0] - mnx) * sc + 20 + VTX, (q[1] - mny) * sc + 30 + VTY];
-  }
-  var svg = s("svg", { viewBox: "0 0 " + W.toFixed(0) + " " + Math.max(H, 380).toFixed(0),
-    width: "100%", height: Math.max(H, 380).toFixed(0), role: "img",
-    "aria-label": "Axonométrie du centre scolaire, étage par étage, sur le terrain du concours" });
-
-  items.sort(function(a, b){ return b.d - a.d; });
-  items.forEach(function(it){
-    if(it.kind === "flat"){
-      var d = "M " + it.P.map(function(p){ var q = P2(p[0], p[1], 0); return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L ") + (it.close ? " Z" : "");
-      var e = s("path", { d: d, fill: "none", stroke: it.col, "stroke-width": it.sw, "vector-effect": "non-scaling-stroke" });
-      if(it.dash) e.setAttribute("stroke-dasharray", it.dash);
-      svg.appendChild(e);
-      return;
-    }
-    var B = it.base, n = B.length, faces = [];
-    for(var i = 0; i < n; i++){
-      var a = B[i], b = B[(i + 1) % n];
-      faces.push({ d: (axoDepth(a[0], a[1]) + axoDepth(b[0], b[1])) / 2,
-        pts: [[a[0],a[1],it.z0],[b[0],b[1],it.z0],[b[0],b[1],it.z1],[a[0],a[1],it.z1]] });
-    }
-    faces.sort(function(p, q){ return q.d - p.d; });
-    faces.forEach(function(fc, idx){
-      var d = "M " + fc.pts.map(function(p){ var q = P2(p[0], p[1], p[2]); return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L ") + " Z";
-      svg.appendChild(s("path", { d: d, fill: it.col,
-        "fill-opacity": (idx < 2 ? it.op * 0.55 : it.op * 0.85).toFixed(3),
-        stroke: it.col, "stroke-width": 1, "vector-effect": "non-scaling-stroke" }));
-    });
-    var top = "M " + B.map(function(p){ var q = P2(p[0], p[1], it.z1); return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" L ") + " Z";
-    svg.appendChild(s("path", { d: top, fill: it.col, "fill-opacity": it.op,
-      stroke: it.col, "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" }));
-    if(it.label){
-      var cx2 = 0, cy2 = 0;
-      B.forEach(function(p){ cx2 += p[0]; cy2 += p[1]; });
-      var q2 = P2(cx2 / B.length, cy2 / B.length, it.z1);
-      var t1 = s("text", { x: q2[0], y: q2[1] - 3, "text-anchor": "middle", "font-size": 11.5,
-        "font-weight": 600, fill: "var(--ink)" });
-      t1.textContent = it.label;
-      svg.appendChild(t1);
-      if(it.sub){
-        var t2 = s("text", { x: q2[0], y: q2[1] + 10, "text-anchor": "middle", "font-size": 9.5,
-          fill: "var(--ink-2)", "font-family": "'IBM Plex Mono', monospace" });
-        t2.textContent = it.sub;
-        svg.appendChild(t2);
-      }
-    }
-  });
-  var lg = s("text", { x: 16, y: Math.max(H, 380) - 14, "font-size": 10.5, fill: "var(--ink-3)",
-    "font-family": "'IBM Plex Mono', monospace" });
-  lg.textContent = "axonométrie militaire · plan vrai tourné de 32° · hauteurs d'étage 3,50 m, salle de sport 9 m"
-    + (volEnterre ? " · abri PC enterré" : "");
-  svg.appendChild(lg);
-  host.appendChild(svg);
-  volMetrics(cap);
+export function draw3d(){
+  if(!scene3dMount(volHost)) return;
+  scene3dDraw(VOLS, { sel: volSel });
+  volMetrics(volLink ? null : volCapacity());
 }
 
 export function wireVol(){
@@ -924,7 +883,15 @@ export function wireVol(){
     return [e.clientX - r.left, e.clientY - r.top];
   }
   volHost.addEventListener("pointerdown", function(e){
-    if(e.button !== 0 || volMode === "axo") return;
+    if(volMode === "3d"){
+      if(e.button !== 0) return;
+      var P0 = pt(e);
+      drag = { mode: e.shiftKey ? "pan3" : "turn", p0: P0, moved: 0 };
+      volHost.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+    if(e.button !== 0) return;
     var hd = e.target.closest ? e.target.closest(".vh") : null;
     var g = e.target.closest ? e.target.closest("g.vol") : null;
     var P = pt(e), Wm = vinv(P[0], P[1]);
@@ -948,6 +915,15 @@ export function wireVol(){
   volHost.addEventListener("pointermove", function(e){
     if(!drag) return;
     var P = pt(e);
+    if(drag.mode === "turn" || drag.mode === "pan3"){
+      var ddx = P[0] - drag.p0[0], ddy = P[1] - drag.p0[1];
+      drag.moved += Math.abs(ddx) + Math.abs(ddy);
+      if(drag.mode === "turn") scene3dTurn(-ddx * 0.008, ddy * 0.006);
+      else scene3dPan(ddx * 1.6, -ddy * 1.6);
+      drag.p0 = P;
+      drawVol();
+      return;
+    }
     if(drag.mode === "pan"){
       VTX = drag.tx + (P[0] - drag.p0[0]); VTY = drag.ty + (P[1] - drag.p0[1]);
       drawVol(); return;
@@ -966,7 +942,7 @@ export function wireVol(){
       return;
     }
     /* redimensionnement */
-    if(drag.k === 0 || VOLS[drag.k].link) return;  /* dimensions imposées ou calculées */
+    if(VOLS[drag.k].fix || VOLS[drag.k].link) return;   /* surface imposée ou calculée */
     var d = drag.dir, nw = V0.w, nh = V0.h, ou = 0, ov = 0;
     if(d.indexOf("e") >= 0) nw = V0.w + du;
     if(d.indexOf("w") >= 0){ nw = V0.w - du; ou = du; }
@@ -974,8 +950,11 @@ export function wireVol(){
     if(d.indexOf("s") >= 0){ nh = V0.h - dv; ov = dv; }
     nw = Math.max(12, Math.min(90, Math.round(nw * 2) / 2));
     nh = Math.max(10, Math.min(40, Math.round(nh * 2) / 2));
-    if(drag.k === 4){                             /* abri PC : surface constante */
-      var A = 930, dd = nearestDims(A, nw);
+    /* Un volume qui porte une surface de programme garde sa surface : on change
+       ses proportions, jamais ses m². C'est la règle du concours, et elle vaut
+       pour tous les volumes issus du générateur, pas pour le seul abri. */
+    if(VOLS[drag.k].prog > 0 && !VOLS[drag.k].sol){
+      var dd = nearestDims(VOLS[drag.k].prog / Math.max(1, VOLS[drag.k].lv), nw);
       nw = dd.w; nh = dd.h;
     }
     ou = (d.indexOf("w") >= 0) ? V0.w - nw : 0;
@@ -989,6 +968,13 @@ export function wireVol(){
   });
   function stop(e){
     if(!drag) return;
+    /* Un clic net en 3D désigne un volume ; un glissé a tourné la caméra. */
+    if((drag.mode === "turn" || drag.mode === "pan3") && drag.moved < 6){
+      var P = pt(e), k = scene3dPick(P[0], P[1], VOLS);
+      volSel = k; setSceneSel(k);
+      if(volLvPaint) volLvPaint();
+      drawVol();
+    }
     drag = null;
     try { volHost.releasePointerCapture(e.pointerId); } catch(_){}
   }
@@ -996,8 +982,8 @@ export function wireVol(){
   volHost.addEventListener("pointercancel", stop);
   volHost.addEventListener("wheel", function(e){
     e.preventDefault();
-    if(volMode === "axo"){
-      VZ = Math.max(0.5, Math.min(4, VZ * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    if(volMode === "3d"){
+      scene3dZoom(e.deltaY < 0 ? 1 / 1.12 : 1.12);
       drawVol(); return;
     }
     var P = pt(e), before = vinv(P[0], P[1]);
@@ -1011,14 +997,22 @@ export function wireVol(){
     if(view.tab !== "site") return;
     var t = e.target;
     if(t && (t.tagName === "INPUT" || t.tagName === "SELECT")) return;
-    if(e.key === "Escape"){ volSel = -1; if(volLvPaint) volLvPaint(); drawVol(); return; }
+    if(e.key === "Escape"){ volSel = -1; setSceneSel(-1); if(volLvPaint) volLvPaint(); drawVol(); return; }
+    if(volMode === "3d"){
+      var q = e.key === "ArrowLeft" ? [0.14, 0] : e.key === "ArrowRight" ? [-0.14, 0]
+            : e.key === "ArrowUp" ? [0, 0.1] : e.key === "ArrowDown" ? [0, -0.1] : null;
+      if(q){ e.preventDefault(); scene3dTurn(q[0], q[1]); drawVol(); }
+      else if(e.key === "+" || e.key === "=" ){ scene3dZoom(1 / 1.15); drawVol(); }
+      else if(e.key === "-"){ scene3dZoom(1.15); drawVol(); }
+      return;
+    }
     if(volSel < 0) return;
     var v = VOLS[volSel], st = e.shiftKey ? 5 : 0.5, nx = v.x, ny = v.y;
     if(e.key === "ArrowLeft") nx -= st;
     else if(e.key === "ArrowRight") nx += st;
     else if(e.key === "ArrowUp") ny += st;
     else if(e.key === "ArrowDown") ny -= st;
-    else if(e.key.toLowerCase() === "r" && volSel !== 0 && !VOLS[volSel].link){
+    else if(e.key.toLowerCase() === "r" && !VOLS[volSel].sol && !VOLS[volSel].link){
       var w = v.w; v.w = v.h; v.h = w;
       if(!volOK(volSel, v.x, v.y)){ v.h = v.w; v.w = w; }
       e.preventDefault(); drawVol(); return;
