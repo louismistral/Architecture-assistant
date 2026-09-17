@@ -1,0 +1,1542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Programme mix diagram for the Saxon primary and lower secondary school competition.">
+<title>Saxon Programme Mix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root {
+  --paper:     #E8EAEE;
+  --surface:   #F5F6F8;
+  --surface-2: #DDE1E7;
+  --sunk:      #D3D8DF;
+  --ink:       #15181D;
+  --ink-2:     #5C636E;
+  --ink-3:     #878E99;
+  --rule:      #C4CAD3;
+  --rule-soft: #D7DCE3;
+  --accent:    #2B4E7E;
+
+  /* categorical — validated all-pairs, light (CVD ΔE 13.0, normal 19.6) */
+  --c-teach:   #2a78d6;
+  --c-sport:   #eda100;
+  --c-admin:   #008300;
+  --c-shared:  #e87ba4;
+  --tint:      0.20;
+
+  /* status — reserved, never used for a category */
+  --err:       #c0392f;
+  --err-bg:    #f7dedb;
+  --warn:      #a9600f;
+  --warn-bg:   #f9e7d2;
+  --ok:        #2f6b40;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:     #101317;
+    --surface:   #191D23;
+    --surface-2: #232830;
+    --sunk:      #0A0D10;
+    --ink:       #E4E8ED;
+    --ink-2:     #9AA2AE;
+    --ink-3:     #6E7784;
+    --rule:      #2C333D;
+    --rule-soft: #232931;
+    --accent:    #86AEE2;
+
+    /* dark steps, validated as a set (CVD ΔE 6.9 warn band — legal with the
+       direct labels, 2px gaps and grouped regions this treemap always has) */
+    --c-teach:   #3987e5;
+    --c-sport:   #c98500;
+    --c-admin:   #008300;
+    --c-shared:  #d55181;
+    --tint:      0.30;
+
+    --err:       #e66767;
+    --err-bg:    #3a1f1e;
+    --warn:      #d99a4e;
+    --warn-bg:   #38291580;
+    --ok:        #7FB48E;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper:     #101317;
+  --surface:   #191D23;
+  --surface-2: #232830;
+  --sunk:      #0A0D10;
+  --ink:       #E4E8ED;
+  --ink-2:     #9AA2AE;
+  --ink-3:     #6E7784;
+  --rule:      #2C333D;
+  --rule-soft: #232931;
+  --accent:    #86AEE2;
+
+  --c-teach:   #3987e5;
+  --c-sport:   #c98500;
+  --c-admin:   #008300;
+  --c-shared:  #d55181;
+  --tint:      0.30;
+
+  --err:       #e66767;
+  --err-bg:    #3a1f1e;
+  --warn:      #d99a4e;
+  --warn-bg:   #38291580;
+  --ok:        #7FB48E;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+.serif { font-family: "Source Serif 4", Georgia, serif; }
+.mono, .num {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- masthead ---------------- */
+
+header.top {
+  padding: 1.5rem clamp(1rem, 3vw, 2rem) 1.1rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+h1 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  margin: 0 0 0.25rem;
+}
+.sub {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+.totals { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+.tot { display: flex; flex-direction: column; gap: 0.1rem; }
+.tot .lab {
+  font-size: 0.6rem; font-weight: 600; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.tot .val {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+.tot .val.bad  { color: var(--err); }
+.tot .val.good { color: var(--ok); }
+
+/* ---------------- layout ---------------- */
+
+.app {
+  display: grid;
+  max-width: 1260px;
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 0;
+  align-items: start;
+  min-height: calc(100vh - 90px);
+}
+@media (max-width: 1000px) { .app { grid-template-columns: 1fr; } }
+
+.stack-pane {
+  padding: 1.3rem clamp(1rem, 3vw, 2rem) 3rem;
+  min-width: 0;
+}
+aside {
+  border-left: 1px solid var(--rule);
+  background: var(--surface);
+  padding: 1.3rem 1.15rem 3rem;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+@media (max-width: 1000px) {
+  aside { border-left: none; border-top: 1px solid var(--rule); position: static; max-height: none; }
+}
+
+.pane-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; margin-bottom: 0.85rem; max-width: 820px;
+}
+.section-label {
+  font-size: 0.62rem; font-weight: 600; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0;
+}
+
+/* ---------------- floors ---------------- */
+
+.floors { display: flex; flex-direction: column; gap: 0.7rem; max-width: 820px; }
+
+.floor {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  transition: border-color .12s, background .12s;
+}
+.floor.over { border-color: var(--accent); background: var(--surface-2); }
+.floor.flag-error { border-color: var(--err); }
+
+.floor-bar {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--rule-soft);
+  flex-wrap: wrap;
+}
+.floor-name { font-weight: 600; font-size: 0.87rem; min-width: 5.5rem; }
+.floor-meta {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem; color: var(--ink-2);
+  display: flex; gap: 0.85rem; flex-wrap: wrap;
+}
+.floor-meta .over-by { color: var(--err); font-weight: 500; }
+.floor-meta .free { color: var(--ok); }
+.floor-bar .spacer { flex: 1; }
+
+.plate-input {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  width: 5.2rem; font-size: 0.75rem;
+  padding: 0.2rem 0.35rem;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 2px;
+}
+.plate-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.canvas {
+  position: relative;
+  margin: 0.55rem;
+  background: var(--sunk);
+  border-radius: 1px;
+  min-height: 30px;
+}
+.cap-line {
+  position: absolute; left: 0; right: 0;
+  border-top: 1px dashed var(--err);
+  pointer-events: none; z-index: 3;
+}
+.cap-line span {
+  position: absolute; right: 2px; top: 2px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem; color: var(--err);
+  background: var(--surface); padding: 0 3px; border-radius: 1px;
+}
+.overflow-zone {
+  position: absolute; left: 0; right: 0;
+  background: var(--err-bg);
+  pointer-events: none; z-index: 0;
+}
+.slack {
+  position: absolute; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem; color: var(--ink-3);
+  pointer-events: none; z-index: 1;
+}
+.empty-hint {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.74rem; color: var(--ink-3); pointer-events: none;
+}
+
+/* ---------------- blocks ---------------- */
+
+.block {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 1px;
+  cursor: grab;
+  z-index: 2;
+  padding: 3px 4px;
+  line-height: 1.15;
+  touch-action: none;
+  border: 1px solid transparent;
+  transition: filter .1s;
+}
+.block::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.block:hover { filter: brightness(1.06); }
+.block:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.block.sel { border-color: var(--accent); }
+.block.flag { border-color: var(--err); border-style: dashed; }
+.block .bn {
+  font-size: 10.5px; font-weight: 500; color: var(--ink);
+  display: block; margin-left: 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.block .ba {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 9.5px; color: var(--ink-2);
+  display: block; margin-left: 5px;
+}
+.block.tiny { padding: 0; }
+.block.tiny .bn, .block.tiny .ba { display: none; }
+
+.b-teach  { background: color-mix(in srgb, var(--c-teach)  calc(var(--tint)*100%), var(--surface)); }
+.b-sport  { background: color-mix(in srgb, var(--c-sport)  calc(var(--tint)*100%), var(--surface)); }
+.b-admin  { background: color-mix(in srgb, var(--c-admin)  calc(var(--tint)*100%), var(--surface)); }
+.b-shared { background: color-mix(in srgb, var(--c-shared) calc(var(--tint)*100%), var(--surface)); }
+.b-teach::before  { background: var(--c-teach); }
+.b-sport::before  { background: var(--c-sport); }
+.b-admin::before  { background: var(--c-admin); }
+.b-shared::before { background: var(--c-shared); }
+
+#ghost {
+  position: fixed; z-index: 999; pointer-events: none;
+  opacity: 0.9; border-radius: 2px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.28);
+  padding: 4px 7px; font-size: 11px; font-weight: 500;
+  border: 1px solid var(--accent); color: var(--ink);
+}
+
+/* ---------------- tray ---------------- */
+
+.cat-group { margin-bottom: 0.9rem; }
+.cat-head {
+  display: flex; align-items: center; gap: 0.45rem;
+  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--ink-2);
+  padding-bottom: 0.3rem; margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.cat-head i { width: 9px; height: 9px; border-radius: 1px; flex: none; }
+.cat-head .n {
+  margin-left: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400; letter-spacing: 0; color: var(--ink-3);
+}
+.i-teach  { background: var(--c-teach); }
+.i-sport  { background: var(--c-sport); }
+.i-admin  { background: var(--c-admin); }
+.i-shared { background: var(--c-shared); }
+
+.chips { display: flex; flex-direction: column; gap: 3px; }
+.chip {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 2px; cursor: grab;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
+  touch-action: none;
+  position: relative;
+}
+.chip::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.chip:hover { filter: brightness(1.05); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.chip .cn { flex: 1; margin-left: 5px; }
+.chip .cq {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.71rem; color: var(--ink-2); white-space: nowrap;
+}
+.tray-empty { font-size: 0.78rem; color: var(--ink-3); padding: 0.5rem 0; }
+
+/* ---------------- issues ---------------- */
+
+.issues { display: flex; flex-direction: column; gap: 4px; }
+.issue {
+  display: grid; grid-template-columns: auto minmax(0,1fr);
+  gap: 0.5rem; align-items: start;
+  padding: 0.45rem 0.55rem;
+  border-radius: 2px; font-size: 0.775rem; line-height: 1.4;
+  border-left: 3px solid;
+  cursor: default;
+}
+.issue.error   { background: var(--err-bg);  border-left-color: var(--err);  }
+.issue.warning { background: var(--warn-bg); border-left-color: var(--warn); }
+.issue .ic { font-weight: 700; font-size: 0.72rem; line-height: 1.45; }
+.issue.error .ic   { color: var(--err); }
+.issue.warning .ic { color: var(--warn); }
+.issue b { display: block; font-weight: 600; font-size: 0.75rem; }
+.issue span.why { color: var(--ink-2); }
+.issue code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem; color: var(--ink-3);
+}
+.all-clear {
+  font-size: 0.79rem; color: var(--ok);
+  padding: 0.5rem 0.6rem; border-left: 3px solid var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+
+/* ---------------- controls ---------------- */
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.2rem;
+}
+button {
+  font-family: Archivo, sans-serif;
+  font-size: 0.75rem; font-weight: 500;
+  padding: 0.34rem 0.6rem;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 2px;
+  cursor: pointer;
+}
+button:hover { background: var(--surface-2); border-color: var(--ink-3); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.mini {
+  padding: 0.1rem 0.34rem; font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+button.seedbtn {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem; color: var(--ink-2);
+  background: transparent; border-color: var(--rule-soft);
+}
+button.seedbtn:hover { color: var(--ink); background: var(--surface-2); }
+.circ-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.75rem; color: var(--ink-2); margin-bottom: 1.2rem;
+}
+.circ-row input[type=range] { flex: 1; accent-color: var(--accent); }
+.circ-row .v {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+
+/* ---------------- popover ---------------- */
+
+#veil {
+  position: fixed; inset: 0; z-index: 950;
+  background: rgba(0,0,0,.42);
+  display: flex; align-items: center; justify-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+#modal {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 3px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.35);
+  width: min(880px, 100%); max-height: 100%;
+  display: flex; flex-direction: column;
+}
+#modal .mh {
+  display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+  padding: .8rem 1rem; border-bottom: 1px solid var(--rule);
+}
+#modal .mh b { font-size: .92rem; font-weight: 600; }
+#modal .mh .sp { flex: 1; }
+.tabs { display: flex; gap: 2px; }
+.tab {
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem;
+  padding: .26rem .6rem; cursor: pointer;
+  background: transparent; color: var(--ink-2);
+  border: 1px solid var(--rule-soft); border-radius: 2px;
+}
+.tab[aria-selected="true"] {
+  background: var(--accent); border-color: var(--accent); color: var(--paper);
+}
+:root[data-theme="dark"] .tab[aria-selected="true"],
+:root:not([data-theme="light"]) .tab[aria-selected="true"] { color: #0d1014; }
+#payload {
+  flex: 1; min-height: 340px; resize: none;
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem; line-height: 1.5;
+  padding: .8rem 1rem; border: none; outline: none;
+  background: var(--paper); color: var(--ink);
+  white-space: pre; overflow: auto;
+}
+#modal .mf {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  padding: .7rem 1rem; border-top: 1px solid var(--rule);
+  font-size: .74rem; color: var(--ink-2);
+}
+#modal .mf .sp { flex: 1; }
+
+#pop {
+  position: fixed; z-index: 900;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: 0 8px 26px rgba(0,0,0,.24);
+  padding: 0.55rem;
+  min-width: 190px;
+}
+#pop .ph {
+  font-size: 0.73rem; font-weight: 600;
+  padding-bottom: 0.4rem; margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--rule-soft);
+}
+#pop .pl {
+  font-size: 0.6rem; font-weight: 600; letter-spacing: 0.11em;
+  text-transform: uppercase; color: var(--ink-3);
+  margin: 0.45rem 0 0.3rem;
+}
+#pop .prow { display: flex; flex-wrap: wrap; gap: 3px; }
+[hidden] { display: none !important; }
+
+footer.foot {
+  border-top: 1px solid var(--rule);
+  padding: 1.2rem clamp(1rem, 3vw, 2rem) 2.5rem;
+  font-size: 0.78rem; color: var(--ink-2);
+  line-height: 1.55;
+}
+footer.foot p { margin: 0 0 0.6rem; max-width: 78ch; }
+footer.foot p:last-child { margin-bottom: 0; }
+footer.foot b { color: var(--ink); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Programme mix — Saxon school</h1>
+    <p class="sub serif">
+      All 33 functions from the brief, drawn at true area. Drag between floors or click a
+      block to move and split it. Rules from §3, §5, §6 and §10 are checked live.
+    </p>
+  </div>
+  <div class="totals">
+    <div class="tot"><span class="lab">Placed</span><span class="val" id="t-placed">0</span></div>
+    <div class="tot"><span class="lab">Unplaced</span><span class="val" id="t-unplaced">0</span></div>
+    <div class="tot"><span class="lab">Net target</span><span class="val">5 300</span></div>
+    <div class="tot"><span class="lab">Errors</span><span class="val" id="t-err">0</span></div>
+    <div class="tot"><span class="lab">Warnings</span><span class="val" id="t-warn">0</span></div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="stack-pane">
+    <div class="pane-head">
+      <p class="section-label">Floor stack — ground at the bottom</p>
+      <div style="display:flex;gap:.4rem;align-items:center">
+        <button id="add-floor">Add floor</button>
+        <button id="auto" title="Generate a new arrangement">Shuffle</button>
+        <button id="seed" class="seedbtn" title="Re-apply this arrangement">seed —</button>
+        <button id="clear">Clear all</button>
+        <button id="export">Export…</button>
+      </div>
+    </div>
+    <div class="floors" id="floors"></div>
+  </div>
+
+  <aside>
+    <p class="section-label">Circulation, plant &amp; sanitary allowance</p>
+    <div class="circ-row">
+      <input type="range" id="circ" min="0" max="30" step="1" value="18"
+             aria-label="Circulation allowance as a percentage of floor plate">
+      <span class="v" id="circ-v">18%</span>
+    </div>
+
+    <p class="section-label">Issues</p>
+    <div class="issues" id="issues"></div>
+
+    <p class="section-label" style="margin-top:1.4rem">Unplaced functions</p>
+    <div id="tray"></div>
+  </aside>
+</div>
+
+<footer class="foot">
+  <p>
+    <b>How area is drawn.</b> Every block's on-screen area is proportional to its floor area at
+    one constant scale across the whole page, so a 1 350 m² sports hall is exactly ten times the
+    block of a 135 m² pair of classrooms. Blocks are packed by squarified treemap and grouped by
+    category, so a floor's mix reads as contiguous regions. The dashed red line is the plate area
+    net of the circulation allowance; anything crossing it is a real overrun, not a drawing artefact.
+  </p>
+  <p>
+    <b>Shuffle.</b> Each roll is a fresh arrangement, not noise. What is physically fixed stays
+    fixed — the hall and reception sit at grade every time — and everything else is drawn from
+    weighted preferences, taking the ground floor while it has room and moving up when it does
+    not. So each arrangement is plausible but differently compromised, and a capacity error that
+    survives is real: those plates genuinely cannot hold that programme. The seed beside the
+    button names the current roll; press it to lay the same one out again after you have moved
+    things around.
+  </p>
+  <p>
+    <b>What it does not know.</b> This is a mix diagram, not a plan — it has no geometry, so it cannot
+    tell you whether a 1 350 m² hall with 9 m clear height actually fits under three storeys, whether a
+    floor plate's proportions can hold the rooms assigned to it, or anything about the site, structure
+    or daylight. Adjacency is tested by floor separation only: same floor passes, one floor apart warns,
+    two or more fails.
+  </p>
+  <p>
+    <b>Colour.</b> Four categories rather than the brief's five — assembly, dining and care are merged
+    into one shared group, because five hues cannot be told apart under colour-vision deficiency when
+    blocks touch on all sides. The four here were validated for that; red and amber are reserved for
+    errors and warnings and never label a category. Areas are indicative competition values (§20).
+  </p>
+</footer>
+
+<div id="veil" hidden>
+  <div id="modal" role="dialog" aria-modal="true" aria-label="Export programme data">
+    <div class="mh">
+      <b>Export</b>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-fmt="json" aria-selected="true">model.json</button>
+        <button class="tab" role="tab" data-fmt="rooms" aria-selected="false">rooms.csv</button>
+        <button class="tab" role="tab" data-fmt="floors" aria-selected="false">floors.csv</button>
+      </div>
+      <span class="sp"></span>
+      <button id="x-close">Close</button>
+    </div>
+    <textarea id="payload" readonly spellcheck="false"></textarea>
+    <div class="mf">
+      <span id="x-note"></span>
+      <span class="sp"></span>
+      <button id="x-copy">Copy</button>
+      <button id="x-dl">Download</button>
+    </div>
+  </div>
+</div>
+
+<div id="ghost" hidden></div>
+<div id="pop" hidden></div>
+
+<script>
+"use strict";
+
+/* ============================ data ============================ */
+
+const CATS = {
+  teach:  { label: "Teaching & learning",  order: 0 },
+  sport:  { label: "Sport",                order: 1 },
+  admin:  { label: "Administration & staff", order: 2 },
+  shared: { label: "Shared & community",   order: 3 },
+};
+
+// tags drive the rules; unit areas are the brief's own
+const ITEMS = [
+  { id:"cls",     n:"Standard classroom",       c:"teach",  q:18, u:65,   t:["classroom"] },
+  { id:"flex",    n:"Flexible / project room",  c:"teach",  q:4,  u:70,   t:["classroom"] },
+  { id:"small",   n:"Small-group / support",    c:"teach",  q:8,  u:20,   t:["smallgroup"] },
+  { id:"sped",    n:"Special education room",   c:"teach",  q:3,  u:25,   t:["smallgroup"] },
+  { id:"prep",    n:"Teacher preparation",      c:"teach",  q:2,  u:35,   t:[] },
+  { id:"sci",     n:"Science / practical",      c:"teach",  q:2,  u:75,   t:[] },
+  { id:"art",     n:"Art / creative workshop",  c:"teach",  q:2,  u:70,   t:[] },
+  { id:"music",   n:"Music room",               c:"teach",  q:2,  u:65,   t:["quiet"] },
+  { id:"lib",     n:"Library / media centre",   c:"teach",  q:1,  u:150,  t:["quiet"] },
+  { id:"commons", n:"Student commons",          c:"teach",  q:1,  u:120,  t:[] },
+
+  { id:"hall",    n:"Triple sports hall",       c:"sport",  q:1,  u:1350, t:["noisy"], fh:10.5 },
+  { id:"sportst", n:"Sports equipment store",   c:"sport",  q:1,  u:180,  t:[] },
+  { id:"change",  n:"Changing room",            c:"sport",  q:4,  u:35,   t:[] },
+  { id:"shower",  n:"Shower / WC",              c:"sport",  q:1,  u:100,  t:[] },
+  { id:"sportstf",n:"Sports staff",             c:"sport",  q:1,  u:20,   t:[] },
+  { id:"firstaid",n:"First aid room",           c:"sport",  q:1,  u:15,   t:[] },
+
+  { id:"recep",   n:"Administration / reception",c:"admin", q:1,  u:50,   t:[] },
+  { id:"head",    n:"Principal's office",       c:"admin",  q:1,  u:20,   t:[] },
+  { id:"office",  n:"Administration office",    c:"admin",  q:3,  u:15,   t:[] },
+  { id:"meet",    n:"Meeting room",             c:"admin",  q:2,  u:25,   t:[] },
+  { id:"staffrm", n:"Staff room / lounge",      c:"admin",  q:1,  u:70,   t:[] },
+  { id:"staffwk", n:"Staff workroom",           c:"admin",  q:1,  u:40,   t:[] },
+  { id:"staffch", n:"Staff changing",           c:"admin",  q:1,  u:30,   t:[] },
+  { id:"staffwc", n:"Staff sanitary",           c:"admin",  q:1,  u:20,   t:[] },
+
+  { id:"assembly",n:"Assembly hall",            c:"shared", q:1,  u:200,  t:["afterhours"] },
+  { id:"stage",   n:"Stage",                    c:"shared", q:1,  u:50,   t:[] },
+  { id:"servkit", n:"Kitchen / serving",        c:"shared", q:1,  u:35,   t:[] },
+  { id:"commrm",  n:"Community meeting room",   c:"shared", q:1,  u:60,   t:["afterhours"] },
+  { id:"dining",  n:"Dining room",              c:"shared", q:1,  u:180,  t:[] },
+  { id:"regkit",  n:"Regeneration kitchen",     c:"shared", q:1,  u:60,   t:[] },
+  { id:"foodst",  n:"Food storage",             c:"shared", q:1,  u:20,   t:[] },
+  { id:"care",    n:"After-school care room",   c:"shared", q:2,  u:50,   t:[] },
+  { id:"quiet",   n:"Care / quiet room",        c:"shared", q:1,  u:20,   t:[] },
+];
+
+const BY_ID = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+const NET_TARGET = ITEMS.reduce((a, i) => a + i.q * i.u, 0);   // 5300
+
+/* --- rules ------------------------------------------------------ */
+// "close": same floor ok, 1 apart warns, 2+ errors
+const CLOSE = [
+  { a:"classroom",  b:"smallgroup", why:"Classrooms ↔ small-group rooms", ref:"§10" },
+  { a:"lib",        b:"commons",    why:"Library ↔ learning commons",     ref:"§10" },
+  { a:"dining",     b:"regkit",     why:"Dining ↔ kitchen",               ref:"§10" },
+  { a:"regkit",     b:"foodst",     why:"Kitchen ↔ food storage",         ref:"§10" },
+  { a:"hall",       b:"change",     why:"Sports hall ↔ changing rooms",   ref:"§4" },
+  { a:"change",     b:"shower",     why:"Changing ↔ showers",             ref:"§4" },
+  { a:"hall",       b:"sportst",    why:"Sports hall ↔ equipment store",  ref:"§4" },
+  { a:"care",       b:"dining",     why:"Care ↔ dining",                  ref:"§10" },
+  { a:"assembly",   b:"stage",      why:"Assembly hall ↔ stage",          ref:"§5" },
+  { a:"assembly",   b:"servkit",    why:"Assembly ↔ serving kitchen",     ref:"§5" },
+];
+// "apart": sharing a floor is a warning
+const APART = [
+  { a:"hall", b:"lib",   why:"Sports hall ↔ library",   ref:"§10" },
+  { a:"hall", b:"music", why:"Sports hall ↔ music room", ref:"§10" },
+];
+// level rules: [id, test(floorIdx, nFloors) -> true if ok, severity, message, ref]
+const LEVEL = [
+  { id:"hall",     ok:f => f === 0, sev:"error",
+    msg:"Sports hall must sit at grade", ref:"§4" },
+  { id:"recep",    ok:f => f === 0, sev:"error",
+    msg:"Administration must be at the main entrance", ref:"§3" },
+  { id:"assembly", ok:f => f === 0, sev:"warning",
+    msg:"Assembly hall should be at grade for independent after-hours use", ref:"§5" },
+  { id:"commrm",   ok:f => f === 0, sev:"warning",
+    msg:"Community room should be at grade for independent after-hours use", ref:"§5" },
+  { id:"dining",   ok:f => f === 0, sev:"warning",
+    msg:"Dining should open onto the outdoor play areas", ref:"§6" },
+  { id:"care",     ok:f => f <= 1, sev:"warning",
+    msg:"Care should be reachable without crossing the school", ref:"§6" },
+  { id:"cls",      ok:f => f <= 2, sev:"warning",
+    msg:"Standard classrooms above the second floor — the youngest pupils are 4", ref:"§12" },
+];
+
+/* ============================ state ============================ */
+
+let uid = 1;
+// 6 600 m² gross against the brief's 6 200–6 400 indicative total. Grade is
+// deliberately just short of holding everything that wants to be there, so what
+// gets the ground floor is a real choice rather than a foregone conclusion.
+// 6 500 m² gross. Ground carries the hall (1 350 m²) plus 1 750 m² of school, so
+// the floors above can be 1 700 m² without oversailing it. Usable 5 330 against a
+// 5 300 m² programme: 30 m² of slack, which is as tight as this brief gets.
+let floors = [
+  { name: "Ground",  plate: 3100, height: 4.5 },
+  { name: "Level 1", plate: 1700, height: 3.8 },
+  { name: "Level 2", plate: 1700, height: 3.8 },
+];
+let blocks = [];        // {u, id, q, f}   f = floor index, or null for tray
+let circ = 0.18;
+let selected = null;
+
+const AREA_SCALE = 75;  // px² per m² — one constant for the whole page
+
+function reset() {
+  blocks = ITEMS.map(i => ({ u: uid++, id: i.id, q: i.q, f: null }));
+}
+const area = b => b.q * BY_ID[b.id].u;
+const onFloor = f => blocks.filter(b => b.f === f);
+const floorArea = f => onFloor(f).reduce((a, b) => a + area(b), 0);
+const usable = f => Math.round(floors[f].plate * (1 - circ));
+const fmt = n => Math.round(n).toLocaleString("en-GB").replace(/,/g, " ");
+
+/* ===================== squarified treemap ===================== */
+
+function worst(row, L) {
+  const s = row.reduce((a, o) => a + o.a, 0);
+  if (s <= 0 || L <= 0) return Infinity;
+  const t = s / L;
+  let mx = -Infinity, mn = Infinity;
+  for (const o of row) { if (o.a > mx) mx = o.a; if (o.a < mn) mn = o.a; }
+  if (mn <= 0) return Infinity;
+  return Math.max((t * t) / mn, mx / (t * t));
+}
+
+// values: [{key, v}] -> [{key, x, y, w, h}], filling rect exactly
+function squarify(values, rect) {
+  const out = [];
+  const sum = values.reduce((a, o) => a + o.v, 0);
+  if (sum <= 0 || rect.w <= 0 || rect.h <= 0) return out;
+  const scale = (rect.w * rect.h) / sum;
+  const items = values.map(o => ({ key: o.key, a: o.v * scale }));
+  let r = { ...rect }, i = 0;
+
+  while (i < items.length) {
+    const L = Math.min(r.w, r.h);
+    let row = [items[i]], k = i + 1;
+    while (k < items.length &&
+           worst(row.concat(items[k]), L) <= worst(row, L)) {
+      row.push(items[k]); k++;
+    }
+    const rowA = row.reduce((a, o) => a + o.a, 0);
+    const thick = rowA / L;
+    let off = 0;
+    if (r.w >= r.h) {
+      for (const o of row) {
+        const hh = o.a / thick;
+        out.push({ key: o.key, x: r.x, y: r.y + off, w: thick, h: hh });
+        off += hh;
+      }
+      r = { x: r.x + thick, y: r.y, w: r.w - thick, h: r.h };
+    } else {
+      for (const o of row) {
+        const ww = o.a / thick;
+        out.push({ key: o.key, x: r.x + off, y: r.y, w: ww, h: thick });
+        off += ww;
+      }
+      r = { x: r.x, y: r.y + thick, w: r.w, h: r.h - thick };
+    }
+    i = k;
+  }
+  return out;
+}
+
+/* ============================ rules ============================ */
+
+// floors that contain a given item id or tag
+function floorsWith(sel) {
+  const s = new Set();
+  for (const b of blocks) {
+    if (b.f === null) continue;
+    const it = BY_ID[b.id];
+    if (it.id === sel || it.t.includes(sel)) s.add(b.f);
+  }
+  return [...s];
+}
+
+function validate() {
+  const out = [];
+
+  // 1 — capacity
+  floors.forEach((fl, i) => {
+    const used = floorArea(i), cap = usable(i);
+    if (used > cap) {
+      out.push({ sev: "error", floor: i,
+        title: `${fl.name} over capacity by ${fmt(used - cap)} m²`,
+        why: `${fmt(used)} m² placed against ${fmt(cap)} m² usable ` +
+             `(${fmt(fl.plate)} m² plate less ${Math.round(circ * 100)}% circulation).`,
+        ref: "§7" });
+    }
+  });
+
+  // 2 — adjacency, must be close
+  for (const r of CLOSE) {
+    const A = floorsWith(r.a), B = floorsWith(r.b);
+    if (!A.length || !B.length) continue;
+    let d = Infinity;
+    for (const a of A) for (const b of B) d = Math.min(d, Math.abs(a - b));
+    if (d >= 2) out.push({ sev: "error", title: `${r.why} — ${d} floors apart`,
+      why: "The brief lists this pair as one that must be close.", ref: r.ref });
+    else if (d === 1) out.push({ sev: "warning", title: `${r.why} — split across floors`,
+      why: "Workable, but the brief asks for these to be close.", ref: r.ref });
+  }
+
+  // 3 — adjacency, keep apart
+  for (const r of APART) {
+    const A = floorsWith(r.a), B = floorsWith(r.b);
+    const shared = A.filter(x => B.includes(x));
+    if (shared.length) out.push({ sev: "warning", floor: shared[0],
+      title: `${r.why} — same floor`,
+      why: "Noisy sport against quiet learning; separate them where possible.", ref: r.ref });
+  }
+
+  // 4 — level rules
+  for (const r of LEVEL) {
+    for (const b of blocks) {
+      if (b.id !== r.id || b.f === null) continue;
+      if (!r.ok(b.f, floors.length)) {
+        out.push({ sev: r.sev, floor: b.f, block: b.u,
+          title: `${BY_ID[r.id].n} on ${floors[b.f].name}`,
+          why: r.msg, ref: r.ref });
+      }
+    }
+  }
+
+  // 4b — nothing may be built over a full-height volume
+  for (const b of blocks) {
+    const it = BY_ID[b.id];
+    if (b.f === null || !it.fh) continue;
+    const room = floors[b.f].plate - area(b);          // plate left beside it
+    for (let i = b.f + 1; i < floors.length; i++) {
+      if (floors[i].plate > room + 0.5) {
+        out.push({ sev: "error", floor: i,
+          title: `${floors[i].name} oversails the ${it.n.toLowerCase()}`,
+          why: `${it.n} needs ${it.fh} m clear, so nothing sits on it. ` +
+               `${floors[b.f].name} has ${fmt(room)} m² beside it, but ${floors[i].name} ` +
+               `is ${fmt(floors[i].plate)} m² — ${fmt(floors[i].plate - room)} m² with no support.`,
+          ref: "§4" });
+      }
+    }
+  }
+
+  // 5 — completeness
+  const un = blocks.filter(b => b.f === null);
+  if (un.length) {
+    const m2 = un.reduce((a, b) => a + area(b), 0);
+    out.push({ sev: "warning",
+      title: `${un.length} function${un.length > 1 ? "s" : ""} unplaced — ${fmt(m2)} m²`,
+      why: "The programme is not complete until the tray is empty.", ref: "§2–6" });
+  }
+
+  out.sort((a, b) => (a.sev === b.sev) ? 0 : (a.sev === "error" ? -1 : 1));
+  return out;
+}
+
+/* ============================ render ============================ */
+
+const $ = s => document.querySelector(s);
+const elFloors = $("#floors"), elTray = $("#tray"), elIssues = $("#issues");
+
+function render() {
+  const issues = validate();
+  const flagFloors = new Set(issues.filter(i => i.sev === "error" && i.floor != null).map(i => i.floor));
+  const flagBlocks = new Set(issues.filter(i => i.block != null).map(i => i.block));
+
+  /* --- floors: highest level first --- */
+  elFloors.innerHTML = "";
+  for (let i = floors.length - 1; i >= 0; i--) {
+    const fl = floors[i], used = floorArea(i), cap = usable(i);
+    const div = document.createElement("div");
+    div.className = "floor" + (flagFloors.has(i) ? " flag-error" : "");
+    div.dataset.floor = i;
+
+    const bar = document.createElement("div");
+    bar.className = "floor-bar";
+    const diff = cap - used;
+    bar.innerHTML =
+      `<span class="floor-name">${fl.name}</span>` +
+      `<label class="floor-meta" style="gap:.3rem;align-items:center">plate
+         <input class="plate-input" type="number" min="100" max="9000" step="50"
+                value="${fl.plate}" data-plate="${i}" aria-label="${fl.name} plate area in m²"> m²</label>` +
+      `<label class="floor-meta" style="gap:.3rem;align-items:center">h
+         <input class="plate-input" style="width:3.4rem" type="number" min="2.5" max="16" step="0.1"
+                value="${fl.height}" data-height="${i}" aria-label="${fl.name} storey height in metres"> m</label>` +
+      `<span class="floor-meta">` +
+        `<span>usable <b>${fmt(cap)}</b></span>` +
+        `<span>placed <b>${fmt(used)}</b></span>` +
+        (diff < 0 ? `<span class="over-by">over ${fmt(-diff)} m²</span>`
+                  : `<span class="free">free ${fmt(diff)} m²</span>`) +
+      `</span>` +
+      `<span class="spacer"></span>` +
+      `<button class="mini" data-del="${i}" title="Remove this floor">remove</button>`;
+    div.appendChild(bar);
+
+    const canvas = document.createElement("div");
+    canvas.className = "canvas";
+    div.appendChild(canvas);
+    elFloors.appendChild(div);
+
+    // geometry needs a measured width, so lay out after insertion
+    const W = canvas.clientWidth || 600;
+    const capH = (fl.plate * (1 - circ) * AREA_SCALE) / W;
+    const contentH = (used * AREA_SCALE) / W;
+    const H = Math.max(capH, contentH, 30);
+    canvas.style.height = H + "px";
+
+    if (contentH > capH + 0.5) {
+      const oz = document.createElement("div");
+      oz.className = "overflow-zone";
+      oz.style.top = capH + "px";
+      oz.style.height = (H - capH) + "px";
+      canvas.appendChild(oz);
+    }
+
+    const mine = onFloor(i);
+    if (!mine.length) {
+      const hint = document.createElement("div");
+      hint.className = "empty-hint";
+      hint.textContent = "drop functions here";
+      canvas.appendChild(hint);
+    } else {
+      // nest: categories first, then items inside each category
+      const groups = {};
+      for (const b of mine) (groups[BY_ID[b.id].c] ||= []).push(b);
+      const gKeys = Object.keys(groups).sort((a, c) => CATS[a].order - CATS[c].order);
+      const gVals = gKeys.map(k => ({ key: k, v: groups[k].reduce((a, b) => a + area(b), 0) }))
+                         .sort((a, c) => c.v - a.v);
+      const gRects = squarify(gVals, { x: 0, y: 0, w: W, h: contentH });
+
+      for (const gr of gRects) {
+        const bs = groups[gr.key].slice().sort((a, b) => area(b) - area(a));
+        const rects = squarify(bs.map(b => ({ key: b.u, v: area(b) })),
+                               { x: gr.x, y: gr.y, w: gr.w, h: gr.h });
+        for (const rc of rects) {
+          const b = bs.find(x => x.u === rc.key), it = BY_ID[b.id];
+          const el = document.createElement("div");
+          el.className = `block b-${it.c}` +
+            (rc.w < 46 || rc.h < 21 ? " tiny" : "") +
+            (flagBlocks.has(b.u) ? " flag" : "") +
+            (selected === b.u ? " sel" : "");
+          el.style.cssText =
+            `left:${rc.x + 1}px;top:${rc.y + 1}px;` +
+            `width:${Math.max(rc.w - 2, 1)}px;height:${Math.max(rc.h - 2, 1)}px`;
+          el.dataset.u = b.u;
+          el.tabIndex = 0;
+          el.title = `${it.n}${b.q > 1 ? " ×" + b.q : ""} — ${fmt(area(b))} m²`;
+          el.innerHTML = `<span class="bn">${it.n}${b.q > 1 ? " ×" + b.q : ""}</span>` +
+                         `<span class="ba">${fmt(area(b))} m²</span>`;
+          canvas.appendChild(el);
+        }
+      }
+
+      if (capH - contentH > 26) {
+        const sl = document.createElement("div");
+        sl.className = "slack";
+        sl.style.top = contentH + "px";
+        sl.style.height = (capH - contentH) + "px";
+        sl.textContent = `${fmt(cap - used)} m² free`;
+        canvas.appendChild(sl);
+      }
+
+      if (contentH > capH + 0.5) {
+        const cl = document.createElement("div");
+        cl.className = "cap-line";
+        cl.style.top = capH + "px";
+        cl.innerHTML = `<span>capacity ${fmt(cap)} m²</span>`;
+        canvas.appendChild(cl);
+      }
+    }
+  }
+
+  /* --- tray --- */
+  const un = blocks.filter(b => b.f === null);
+  elTray.innerHTML = "";
+  if (!un.length) {
+    elTray.innerHTML = `<p class="tray-empty">All functions placed.</p>`;
+  } else {
+    for (const key of Object.keys(CATS)) {
+      const mine = un.filter(b => BY_ID[b.id].c === key);
+      if (!mine.length) continue;
+      const g = document.createElement("div");
+      g.className = "cat-group";
+      const tot = mine.reduce((a, b) => a + area(b), 0);
+      g.innerHTML = `<div class="cat-head"><i class="i-${key}"></i>${CATS[key].label}` +
+                    `<span class="n">${fmt(tot)} m²</span></div>`;
+      const list = document.createElement("div");
+      list.className = "chips";
+      for (const b of mine) {
+        const it = BY_ID[b.id];
+        const c = document.createElement("div");
+        c.className = `chip b-${it.c}`;
+        c.dataset.u = b.u;
+        c.tabIndex = 0;
+        c.innerHTML = `<span class="cn">${it.n}</span>` +
+          `<span class="cq">${b.q > 1 ? b.q + " × " + it.u + " = " : ""}${fmt(area(b))} m²</span>`;
+        list.appendChild(c);
+      }
+      g.appendChild(list);
+      elTray.appendChild(g);
+    }
+  }
+
+  /* --- issues --- */
+  elIssues.innerHTML = "";
+  if (!issues.length) {
+    elIssues.innerHTML = `<div class="all-clear">No rule violations. Programme complete.</div>`;
+  } else {
+    for (const is of issues) {
+      const d = document.createElement("div");
+      d.className = "issue " + is.sev;
+      d.innerHTML = `<span class="ic">${is.sev === "error" ? "✕" : "!"}</span>` +
+        `<span><b>${is.title}</b><span class="why">${is.why}</span> <code>${is.ref}</code></span>`;
+      elIssues.appendChild(d);
+    }
+  }
+
+  /* --- totals --- */
+  const placed = blocks.filter(b => b.f !== null).reduce((a, b) => a + area(b), 0);
+  const unp = NET_TARGET - placed;
+  const nErr = issues.filter(i => i.sev === "error").length;
+  $("#t-placed").textContent = fmt(placed);
+  $("#t-unplaced").textContent = fmt(unp);
+  const sb = $("#seed");
+  if (sb) sb.textContent = "seed " + curSeed.toString(36);
+
+  const nWarn = issues.length - nErr;
+  const te = $("#t-err"), tw = $("#t-warn");
+  te.textContent = nErr; te.className = "val " + (nErr ? "bad" : "good");
+  tw.textContent = nWarn; tw.className = "val" + (nWarn ? "" : " good");
+}
+
+/* ============================ moving ============================ */
+
+function move(u, f) {
+  const b = blocks.find(x => x.u === u);
+  if (b) { b.f = f; render(); }
+}
+
+function split(u, take) {
+  const b = blocks.find(x => x.u === u);
+  if (!b || take < 1 || take >= b.q) return;
+  blocks.push({ u: uid++, id: b.id, q: take, f: null });
+  b.q -= take;
+  render();
+}
+
+/* --- pointer drag --- */
+let drag = null;
+const ghost = $("#ghost");
+
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest(".block, .chip");
+  if (!el || e.button !== 0) return;
+  drag = { u: +el.dataset.u, x0: e.clientX, y0: e.clientY, live: false, el };
+  el.setPointerCapture(e.pointerId);
+});
+
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.live) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
+    drag.live = true;
+    const b = blocks.find(x => x.u === drag.u), it = BY_ID[b.id];
+    ghost.className = `b-${it.c}`;
+    ghost.textContent = `${it.n}${b.q > 1 ? " ×" + b.q : ""} · ${fmt(area(b))} m²`;
+    ghost.hidden = false;
+    drag.el.style.opacity = "0.4";
+  }
+  ghost.style.left = (e.clientX + 12) + "px";
+  ghost.style.top = (e.clientY + 12) + "px";
+  const fl = document.elementFromPoint(e.clientX, e.clientY)?.closest(".floor");
+  document.querySelectorAll(".floor.over").forEach(f => f.classList.remove("over"));
+  if (fl) fl.classList.add("over");
+});
+
+document.addEventListener("pointerup", e => {
+  if (!drag) return;
+  const wasLive = drag.live, u = drag.u, el = drag.el;
+  el.style.opacity = "";
+  ghost.hidden = true;
+  document.querySelectorAll(".floor.over").forEach(f => f.classList.remove("over"));
+  drag = null;
+  if (!wasLive) { openPop(u, el); return; }
+
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const fl = t?.closest(".floor");
+  if (fl) move(u, +fl.dataset.floor);
+  else if (t?.closest("aside")) move(u, null);
+  else render();
+});
+
+/* --- click popover: accessible move + split --- */
+const pop = $("#pop");
+
+function openPop(u, anchor) {
+  const b = blocks.find(x => x.u === u);
+  if (!b) return;
+  selected = u;
+  const it = BY_ID[b.id];
+  let html = `<div class="ph">${it.n}${b.q > 1 ? " ×" + b.q : ""} · ${fmt(area(b))} m²</div>`;
+  html += `<div class="pl">Move to</div><div class="prow">`;
+  for (let i = floors.length - 1; i >= 0; i--) {
+    html += `<button class="mini" data-move="${i}"${b.f === i ? " disabled" : ""}>${floors[i].name}</button>`;
+  }
+  html += `<button class="mini" data-move="null"${b.f === null ? " disabled" : ""}>Unplaced</button></div>`;
+  if (b.q > 1) {
+    html += `<div class="pl">Split off</div><div class="prow">`;
+    const opts = [...new Set([1, Math.floor(b.q / 2), b.q - 1])].filter(v => v >= 1 && v < b.q);
+    for (const v of opts) html += `<button class="mini" data-split="${v}">${v} of ${b.q}</button>`;
+    html += `</div>`;
+  }
+  pop.innerHTML = html;
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+  pop.style.left = Math.min(r.left, innerWidth - pr.width - 10) + "px";
+  pop.style.top = Math.min(r.bottom + 6, innerHeight - pr.height - 10) + "px";
+  render();
+}
+
+function closePop() {
+  if (pop.hidden) return;
+  pop.hidden = true; selected = null; render();
+}
+
+pop.addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const u = selected;
+  if (btn.dataset.move !== undefined) {
+    move(u, btn.dataset.move === "null" ? null : +btn.dataset.move);
+    closePop();
+  } else if (btn.dataset.split !== undefined) {
+    split(u, +btn.dataset.split);
+    closePop();
+  }
+});
+
+document.addEventListener("pointerdown", e => {
+  if (!pop.hidden && !e.target.closest("#pop") && !e.target.closest(".block, .chip")) closePop();
+}, true);
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closePop(); veil.hidden = true; }
+  if (e.key === "Enter" || e.key === " ") {
+    const el = e.target.closest?.(".block, .chip");
+    if (el) { e.preventDefault(); openPop(+el.dataset.u, el); }
+  }
+});
+
+/* ============================ controls ============================ */
+
+elFloors.addEventListener("change", e => {
+  const pi = e.target.closest("[data-plate]");
+  if (pi) {
+    floors[+pi.dataset.plate].plate = Math.max(100, Math.min(9000, +pi.value || 100));
+    render(); return;
+  }
+  const hi = e.target.closest("[data-height]");
+  if (hi) {
+    floors[+hi.dataset.height].height = Math.max(2.5, Math.min(16, +hi.value || 3.8));
+    render();
+  }
+});
+
+elFloors.addEventListener("click", e => {
+  const del = e.target.closest("[data-del]");
+  if (!del) return;
+  const i = +del.dataset.del;
+  if (floors.length <= 1) return;
+  blocks.forEach(b => {
+    if (b.f === i) b.f = null;
+    else if (b.f !== null && b.f > i) b.f--;
+  });
+  floors.splice(i, 1);
+  floors.forEach((f, k) => { f.name = k === 0 ? "Ground" : "Level " + k; });
+  render();
+});
+
+$("#add-floor").addEventListener("click", () => {
+  const last = floors[floors.length - 1];
+  floors.push({ name: "Level " + floors.length, plate: last.plate, height: last.height });
+  render();
+});
+
+$("#clear").addEventListener("click", () => { reset(); render(); });
+
+$("#circ").addEventListener("input", e => {
+  circ = +e.target.value / 100;
+  $("#circ-v").textContent = e.target.value + "%";
+  render();
+});
+
+/* ===================== seeded arrangement generator =====================
+
+   Not uniform noise — that would break every rule every time and tell you
+   nothing. The physically fixed things stay fixed (the hall and reception sit
+   at grade); everything else is drawn from weighted preferences, so each roll
+   is plausible but differently compromised. Capacity is then rebalanced as far
+   as the stack allows, which means a surviving capacity error is real: the
+   plates genuinely cannot hold the programme.                              */
+
+function mulberry32(a) {
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rng = Math.random, curSeed = 0;
+const OPENING_SEED = 61;
+const chance  = p => rng() < p;
+const pick    = a => a[Math.floor(rng() * a.length)];
+const randInt = (a, b) => a + Math.floor(rng() * (b - a + 1));
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ids that must not drift during rebalancing
+const PINNED = new Set(["hall", "sportst", "change", "shower", "sportstf", "firstaid", "recep"]);
+
+// distribute an item's units across the given floors, splitting where needed
+function spread(id, list) {
+  blocks = blocks.filter(b => b.id !== id);
+  const q = BY_ID[id].q, n = list.length;
+  const base = Math.floor(q / n);
+  let extra = q % n;
+  for (const f of list) {
+    const add = base + (extra > 0 ? 1 : 0);
+    if (extra > 0) extra--;
+    if (add > 0) blocks.push({ u: uid++, id, q: add, f });
+  }
+}
+
+function autoPlace(seed) {
+  curSeed = (seed === undefined ? (Math.random() * 4294967296) >>> 0 : seed) >>> 0;
+  rng = mulberry32(curSeed);
+  reset();
+
+  const N = floors.length;
+  const all = [...Array(N).keys()];
+  const upper = N > 1 ? all.slice(1) : [0];
+  const room = f => usable(f) - floorArea(f);
+  const byRoom = list => list.slice().sort((a, b) => room(b) - room(a));
+
+  // Place on the first preferred floor that still has room; if none does, fall
+  // back to whichever floor has most. Grade fills up honestly rather than being
+  // stuffed and unpicked afterwards.
+  const at = (id, prefs) => {
+    const need = BY_ID[id].q * BY_ID[id].u;
+    const f = prefs.find(x => room(x) >= need);
+    const use = f === undefined ? byRoom(all)[0] : f;
+    spread(id, [use]);
+    return use;
+  };
+
+  // 1 — fixed at grade: the hall by its section, reception by §3
+  ["hall", "sportst", "change", "shower", "sportstf", "firstaid", "recep"]
+    .forEach(id => spread(id, [0]));
+
+  // 2 — after-hours cluster, wanting grade so it can run independently
+  const pub = at("assembly", chance(0.85) ? [0, ...byRoom(upper)] : byRoom(all));
+  at("stage",   chance(0.85) ? [pub, ...byRoom(all)] : byRoom(all));
+  at("servkit", chance(0.85) ? [pub, ...byRoom(all)] : byRoom(all));
+  at("commrm",  chance(0.8)  ? [pub, 0, ...byRoom(all)] : byRoom(all));
+
+  // 3 — dining, with the kitchen occasionally left behind
+  const din = at("dining", chance(0.75) ? [0, ...byRoom(all)] : byRoom(all));
+  at("regkit", chance(0.85) ? [din, ...byRoom(all)] : byRoom(all));
+  at("foodst", chance(0.9)  ? [din, ...byRoom(all)] : byRoom(all));
+
+  // 4 — care, drawn toward dining
+  const care = at("care", chance(0.7) ? [din, ...byRoom(all)] : byRoom(all));
+  at("quiet", chance(0.8) ? [care, ...byRoom(all)] : byRoom(all));
+
+  // 5 — staff, loosely gathered
+  const stf = at("staffrm", chance(0.55) ? [0, ...byRoom(all)] : byRoom(all));
+  ["head", "office", "meet", "staffwk", "staffch", "staffwc"]
+    .forEach(id => at(id, chance(0.8) ? [stf, ...byRoom(all)] : byRoom(all)));
+
+  // 6 — library and commons, usually paired
+  const lib = at("lib", byRoom(all));
+  at("commons", chance(0.7) ? [lib, ...byRoom(all)] : byRoom(all));
+
+  // 7 — specialist rooms wander; music sometimes lands over the hall
+  ["sci", "art", "music"].forEach(id =>
+    at(id, chance(0.75) ? byRoom(upper) : byRoom(all)));
+
+  // 8 — classrooms last, one at a time into whatever slack is left, so they
+  //     split across floors the way the plates actually allow
+  const tF = [];
+  blocks = blocks.filter(b => b.id !== "cls");
+  const counts = {};
+  // some rolls gather the year groups on one floor, others spread them
+  const gather = chance(0.35) ? pick(upper) : null;
+  for (let i = 0; i < BY_ID.cls.q; i++) {
+    const need = BY_ID.cls.u;
+    let f;
+    if (gather !== null && room(gather) >= need && chance(0.9)) f = gather;
+    else f = chance(0.82) ? byRoom(upper)[0] : pick(upper);
+    counts[f] = (counts[f] || 0) + 1;
+    blocks.push({ u: uid++, id: "cls", q: 1, f });     // provisional, merged below
+  }
+  blocks = blocks.filter(b => b.id !== "cls");
+  for (const k of Object.keys(counts)) {
+    blocks.push({ u: uid++, id: "cls", q: counts[k], f: +k });
+    tF.push(+k);
+  }
+
+  // 9 — the teaching support that must stay with the classrooms
+  spread("flex",  chance(0.7)  ? tF : [byRoom(all)[0]]);
+  spread("small", chance(0.75) ? tF : [pick(all)]);
+  spread("sped",  chance(0.75) ? tF : [pick(all)]);
+  at("prep", [...byRoom(tF), ...byRoom(all)]);
+
+  rebalance();
+  render();
+}
+
+// Would putting this item on that floor satisfy its own level rule?
+function levelOk(id, f) {
+  const r = LEVEL.find(x => x.id === id);
+  return !r || r.ok(f, floors.length);
+}
+
+// Shed the worst overloads onto whatever floor has most slack — but never by
+// creating a level violation, and never by moving something pinned to grade.
+// Bounded, so an impossible stack stays visibly impossible rather than fudged.
+function rebalance() {
+  for (let pass = 0; pass < 40; pass++) {
+    let worstF = -1, worstOver = 0;
+    floors.forEach((_, i) => {
+      const over = floorArea(i) - usable(i);
+      if (over > worstOver) { worstOver = over; worstF = i; }
+    });
+    if (worstF < 0) return;
+
+    let bestF = -1, bestFree = 0;
+    floors.forEach((_, i) => {
+      if (i === worstF) return;
+      const free = usable(i) - floorArea(i);
+      if (free > bestFree) { bestFree = free; bestF = i; }
+    });
+    if (bestF < 0) return;
+
+    const movable = blocks
+      .filter(b => b.f === worstF && !PINNED.has(b.id) &&
+                   area(b) <= bestFree && levelOk(b.id, bestF))
+      .sort((a, b) => area(b) - area(a));
+    if (!movable.length) return;
+
+    const cand = movable.slice(0, Math.min(3, movable.length));
+    (cand.find(b => area(b) >= worstOver) || cand[0]).f = bestF;
+  }
+}
+
+$("#auto").addEventListener("click", () => autoPlace());
+$("#seed").addEventListener("click", () => autoPlace(curSeed));
+
+/* ========================= export =========================
+
+   Two audiences. rooms.csv is the schedule of accommodation an architect or QS
+   actually wants. model.json is the contract for the next stage: it carries the
+   stack geometry (base elevations, storey heights), the full-height constraint
+   that governs what can be built over what, and a `massing` block whose
+   site-dependent fields are left null for the site stage to fill.            */
+
+function exportModel() {
+  let z = 0;
+  const fl = floors.map((f, i) => {
+    const o = { level: i, name: f.name, plate_m2: f.plate, storey_height_m: f.height,
+                base_elevation_m: +z.toFixed(2), usable_m2: usable(i),
+                placed_m2: floorArea(i), free_m2: usable(i) - floorArea(i) };
+    z += f.height;
+    return o;
+  });
+
+  const pl = blocks.filter(b => b.f !== null)
+    .sort((a, b) => a.f - b.f || BY_ID[a.id].c.localeCompare(BY_ID[b.id].c) || area(b) - area(a))
+    .map(b => {
+      const it = BY_ID[b.id];
+      return { level: b.f, floor: floors[b.f].name, id: b.id, name: it.n,
+               category: it.c, qty: b.q, unit_area_m2: it.u, area_m2: area(b),
+               clear_height_m: it.fh || null, tags: it.t };
+    });
+
+  const byCat = {};
+  for (const k of Object.keys(CATS)) byCat[k] = 0;
+  pl.forEach(x => byCat[x.category] += x.area_m2);
+
+  // volumes nothing may be built over, and what that leaves beside them
+  const fhz = pl.filter(x => x.clear_height_m).map(x => ({
+    level: x.level, id: x.id, area_m2: x.area_m2, clear_height_m: x.clear_height_m,
+    max_plate_above_m2: floors[x.level].plate - x.area_m2
+  }));
+
+  const placed = pl.reduce((a, x) => a + x.area_m2, 0);
+  const gross = floors.reduce((a, f) => a + f.plate, 0);
+  const iss = validate();
+
+  return {
+    schema: "saxon-mix/1",
+    project: "Primary & lower secondary school, Saxon VS",
+    stage: "concept — indicative competition areas, see brief §20",
+    seed: curSeed.toString(36),
+    circulation_allowance: circ,
+    totals: {
+      net_target_m2: NET_TARGET, placed_m2: placed, unplaced_m2: NET_TARGET - placed,
+      gross_plate_m2: gross, footprint_m2: floors[0].plate,
+      stack_height_m: +z.toFixed(2),
+      max_height_m: +Math.max(z, ...fhz.map(f => f.clear_height_m), 0).toFixed(2),
+      efficiency: +(placed / gross).toFixed(3)
+    },
+    by_category_m2: byCat,
+    floors: fl,
+    placements: pl,
+    constraints: {
+      full_height_zones: fhz,
+      rule: "No floor plate above a full-height zone may exceed max_plate_above_m2."
+    },
+    issues: iss.map(i => ({ severity: i.sev, title: i.title, ref: i.ref })),
+    massing: {
+      note: "Site-dependent fields are null. The site stage resolves anchors against " +
+            "the buildable polygon and returns achieved plates for re-validation.",
+      site: null,
+      strategy: null,
+      bars: fl.map(f => ({
+        level: f.level, target_plate_m2: f.plate_m2,
+        storeys: 1, storey_height_m: f.storey_height_m,
+        base_elevation_m: f.base_elevation_m,
+        anchor: null, align: "outer", depth_m: null, length_m: null
+      })),
+      external_programme_min_m2: 4600,
+      external_programme_max_m2: 7150,
+      min_site_area_m2: floors[0].plate + 4600
+    }
+  };
+}
+
+const csvCell = v => {
+  const s = Array.isArray(v) ? v.join(" ") : (v === null ? "" : String(v));
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+const toCsv = (cols, rows) =>
+  [cols.join(","), ...rows.map(r => cols.map(c => csvCell(r[c])).join(","))].join("\n");
+
+function exportText(fmt) {
+  const m = exportModel();
+  if (fmt === "rooms")
+    return toCsv(["level","floor","category","name","qty","unit_area_m2","area_m2",
+                  "clear_height_m","tags"], m.placements);
+  if (fmt === "floors")
+    return toCsv(["level","name","plate_m2","storey_height_m","base_elevation_m",
+                  "usable_m2","placed_m2","free_m2"], m.floors);
+  return JSON.stringify(m, null, 2);
+}
+
+const veil = $("#veil");
+let curFmt = "json";
+
+function showExport(fmt) {
+  curFmt = fmt;
+  document.querySelectorAll(".tab").forEach(t =>
+    t.setAttribute("aria-selected", String(t.dataset.fmt === fmt)));
+  const txt = exportText(fmt);
+  $("#payload").value = txt;
+  const m = exportModel();
+  $("#x-note").textContent =
+    `${fmt === "json" ? "1 model" : m[fmt === "rooms" ? "placements" : "floors"].length + " rows"}` +
+    ` · ${(new Blob([txt]).size / 1024).toFixed(1)} kB · seed ${m.seed}`;
+  veil.hidden = false;
+  $("#payload").focus();
+}
+
+$("#export").addEventListener("click", () => showExport(curFmt));
+$("#x-close").addEventListener("click", () => { veil.hidden = true; });
+veil.addEventListener("click", e => { if (e.target === veil) veil.hidden = true; });
+document.querySelectorAll(".tab").forEach(t =>
+  t.addEventListener("click", () => showExport(t.dataset.fmt)));
+
+$("#x-copy").addEventListener("click", async () => {
+  const b = $("#x-copy"), txt = $("#payload").value;
+  try {
+    await navigator.clipboard.writeText(txt);
+  } catch (_) {
+    $("#payload").select();
+    try { document.execCommand("copy"); } catch (_) {}
+  }
+  b.textContent = "Copied";
+  setTimeout(() => { b.textContent = "Copy"; }, 1400);
+});
+
+// Downloads are blocked inside the artifact sandbox; they work in the standalone
+// file. Copy is the path that always works, so say so rather than failing silently.
+$("#x-dl").addEventListener("click", () => {
+  const name = { json: "saxon-mix.json", rooms: "saxon-rooms.csv", floors: "saxon-floors.csv" }[curFmt];
+  try {
+    const url = URL.createObjectURL(new Blob([$("#payload").value],
+      { type: curFmt === "json" ? "application/json" : "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    $("#x-note").textContent = "If nothing saved, this view blocks downloads — use Copy.";
+  } catch (_) {
+    $("#x-note").textContent = "Downloads are blocked here — use Copy.";
+  }
+});
+
+let rt;
+addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 120); });
+
+autoPlace(OPENING_SEED);
+</script>
+
+</body>
+</html>
