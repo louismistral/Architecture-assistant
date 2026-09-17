@@ -144,10 +144,13 @@ body[data-kind="tool"] #panels{
 .legend__extra{border-top:1px solid var(--rule-soft);margin-top:var(--s-1);padding-top:var(--s-2)}
 
 /* Le technique est un neutre : en dessin d'architecture il se hachure, et la
-   hachure est l'encodage secondaire qui le rend identifiable sans la couleur. */
+   hachure est l'encodage secondaire qui le rend identifiable sans la couleur. Elle n'apparaissait pas : les mêmes éléments reçoivent
+   un `style.background` RACCOURCI en inline, qui remet `background-image` à
+   `none` avec la spécificité d'un style en ligne. Le JS ne pose plus que
+   `backgroundColor`. */
 .is-hatched{
   background-image:repeating-linear-gradient(45deg,
-    rgba(0,0,0,var(--hatch-op)) 0 1.5px, transparent 1.5px 5px);
+    var(--hatch-ink) 0 1.5px, transparent 1.5px 5px);
 }
 
 /* --- barre de vue -------------------------------------------------------- */

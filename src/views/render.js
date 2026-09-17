@@ -25,7 +25,7 @@ export function scheduleList(items, showChap){
   var ul = el("ul","schedule");
   items.forEach(function(it){
     var li = el("li");
-    var sw = el("i","sw"); sw.style.background = "var(" + FMAP[it.f].c + ")";
+    var sw = el("i","sw"); sw.style.backgroundColor = "var(" + FMAP[it.f].c + ")";
     if(it.f === "tec") sw.classList.add("is-hatched");
     li.appendChild(sw);
     var nm = el("div","nm");
@@ -149,7 +149,7 @@ export function render(){
     var p = el("section","panel");
     var head = el("div","panel-head");
     var r = el("i","panel-rule");
-    if(gp.col) r.style.background = "var(" + gp.col + ")";
+    if(gp.col) r.style.backgroundColor = "var(" + gp.col + ")";
     head.appendChild(r);
     head.appendChild(el("h2", null, gp.name));
     head.appendChild(el("span","tot mono", fmt(gp.total) + " m²"));
@@ -161,7 +161,7 @@ export function render(){
       gp.mix.forEach(function(m){
         var i2 = el("i");
         i2.style.flex = m.v + " 0 0";
-        i2.style.background = "var(" + m.f.c + ")";
+        i2.style.backgroundColor = "var(" + m.f.c + ")";
         i2.title = m.f.name + " — " + fmt(m.v) + " m²";
         mb.appendChild(i2);
       });
@@ -250,7 +250,7 @@ function fillTotals(tb){
     var tr = el("tr", cls || null), th = el("th", null);
     th.scope = "row";
     if(col){
-      var sw = el("span","sw"); sw.style.background = "var(" + col + ")";
+      var sw = el("span","sw"); sw.style.backgroundColor = "var(" + col + ")";
       th.appendChild(sw);
     }
     th.appendChild(document.createTextNode(name));

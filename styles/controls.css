@@ -78,8 +78,13 @@
    c'est l'ordre du fichier qui tranche. Placés plus haut, les états actifs
    perdaient leur fond et il ne restait qu'un texte couleur --paper sur fond
    transparent : le bouton sélectionné devenait invisible. */
-.btn[aria-current="true"],.btn[aria-pressed="true"],
+/* `aria-selected` est l'attribut du patron d'onglets, et les deux nouvelles
+   barres d'onglets — celle du chrome et celle du panneau du plan — n'expriment
+   leur état que par lui. Il n'était stylé nulle part : aucun onglet ne
+   paraissait actif. */
+.btn[aria-current="true"],.btn[aria-pressed="true"],.btn[aria-selected="true"],
 .btn-group .btn[aria-current="true"],.btn-group .btn[aria-pressed="true"],
+.btn-group .btn[aria-selected="true"],
 .seg button[aria-pressed="true"],.tbtn[aria-pressed="true"],
 .roomlist button[aria-current="true"],
 .props .pfl button[aria-current="true"]{

@@ -74,7 +74,7 @@
   --f-pis:#0D95A9;          /* piscine */
   --f-ext:#196B39;          /* cour et extérieurs */
   --fill-op:0.20;           /* opacité des aplats de famille */
-  --hatch-op:0.34;          /* opacité de la hachure du technique */
+  --hatch-ink:rgba(0,0,0,.34);          /* opacité de la hachure du technique */
 
   /* --- familles de caractères ---------------------------------------------
      La pile monospace était réécrite littéralement 43 fois dans le projet. */
@@ -171,7 +171,7 @@
     --f-pis:#21A3BA;
     --f-ext:#46854A;
     --fill-op:0.28;
-    --hatch-op:0.40;
+    --hatch-ink:rgba(0,0,0,.52);
 
     --sh-1:0 1px 2px rgba(0,0,0,.4);
     --sh-2:0 8px 24px rgba(0,0,0,.55);
@@ -208,7 +208,7 @@
   --f-pis:#21A3BA;
   --f-ext:#46854A;
   --fill-op:0.28;
-  --hatch-op:0.40;
+  --hatch-ink:rgba(0,0,0,.52);
 
   --sh-1:0 1px 2px rgba(0,0,0,.4);
   --sh-2:0 8px 24px rgba(0,0,0,.55);

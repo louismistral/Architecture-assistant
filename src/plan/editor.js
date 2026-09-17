@@ -373,7 +373,7 @@ export function buildList(){
        niveau courant s'ouvre, pour que la liste tienne dans un écran. */
     det.open = !!q || here > 0;
     var sum = el("summary");
-    var sw = el("i"); sw.style.background = "var(" + fm.c + ")";
+    var sw = el("i"); sw.style.backgroundColor = "var(" + fm.c + ")";
     if(fm.id === "tec") sw.classList.add("is-hatched");
     sum.appendChild(sw);
     sum.appendChild(el("span","roomlist__famname", fm.name));
@@ -384,7 +384,7 @@ export function buildList(){
       var b = el("button"); b.type = "button"; b.dataset.id = r.id;
       if(!OV && r.fl !== curFl) b.classList.add("oth");
       b.setAttribute("aria-current", String(r.id === sel));
-      var i = el("i"); i.style.background = "var(" + FMAP[r.f].c + ")";
+      var i = el("i"); i.style.backgroundColor = "var(" + FMAP[r.f].c + ")";
       if(r.f === "tec") i.classList.add("is-hatched");
       b.appendChild(i);
       var nm = el("span", null, r.n);

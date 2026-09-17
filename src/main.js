@@ -1,6 +1,7 @@
 import { TABS, isTool, readHash, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
 import { drawVol } from "./vol/volumes.js";
+import { initStore } from "./plan/store.js";
 
 /* ---------- thème ----------
    `[data-theme]` était prévu dans la feuille de tokens mais aucune ligne du
@@ -87,12 +88,28 @@ tabBtns.forEach(function(b, i){
   });
 });
 
+/* Ce compteur est un bouton, avec un `title` qui promet de montrer les postes
+   concernés — et il n'avait aucun gestionnaire : contrôle mort dans le chrome
+   permanent. Il mène à la liste, où les valeurs se saisissent. */
+document.getElementById("barEst").addEventListener("click", function(){
+  goTo("programme", false);
+  var host = document.getElementById("vars");
+  if(host){
+    host.scrollIntoView({ block:"center", behavior:"smooth" });
+    var first = host.querySelector("input");
+    if(first) first.focus({ preventScroll:true });
+  }
+});
+
 window.addEventListener("hashchange", function(){
   if(readHash()) apply();
 });
 
 /* ---------- démarrage ---------- */
 wireTheme();
+/* Avant tout rendu : une surface peut être modifiée depuis l'onglet Programme,
+   donc avant que le Plan ait jamais été ouvert. */
+initStore();
 readHash();
 document.body.dataset.view = view.tab;
 document.body.dataset.kind = isTool() ? "tool" : "doc";

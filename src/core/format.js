@@ -18,4 +18,6 @@ export function slug(t){
    « il faut 3,00 m » avec une virgule. */
 export function dec(n, k){ return n.toFixed(k == null ? 2 : k).replace(".", ","); }
 export function r2(n){ return Math.round(n * 100) / 100; }
-export function dim(n){ return (Math.round(n * 100) / 100).toFixed(2).replace(/\.?0+$/,""); }
+export function dim(n){
+  return (Math.round(n * 100) / 100).toFixed(2).replace(/\.?0+$/,"").replace(".", ",");
+}

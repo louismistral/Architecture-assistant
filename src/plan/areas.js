@@ -49,7 +49,7 @@ export function updatePlanHead(){
   if(!planNode) return;
   var posed = ROOMS.reduce(function(t, r){ return t + r.a; }, 0);
   var pe = ROOMS.reduce(function(t, r){ return t + (r.est ? r.a : 0); }, 0);
-  var sp = planNode.querySelectorAll(".panel-head .pct")[0];
+  var sp = planNode.querySelectorAll(".tool-head .pct")[0];
   if(sp) sp.textContent = fmt(posed) + " m² d\u2019emprise, dont " + fmt(pe) + " à préciser";
 }
 

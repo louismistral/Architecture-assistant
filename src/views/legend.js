@@ -111,7 +111,19 @@ function varBlock(){
       }
       msg.textContent = ""; li.classList.remove("is-bad");
       if(v === it.u) return;
-      if(onSetArea) onSetArea(it.key, v);
+      /* `onSetArea` remplace tout le bloc par un neuf : sans cela, passer d'un
+         champ au suivant d'un seul clic perdait ce clic ET le focus, puisque
+         l'élément visé disparaissait entre le `change` et le `mousedown`. On
+         rend le focus au même champ, identifié par son id stable. */
+      if(onSetArea){
+        onSetArea(it.key, v);
+        var again = document.getElementById(id);
+        if(again && document.activeElement !== again){
+          var atEnd = String(again.value).length;
+          again.focus({ preventScroll:true });
+          try{ again.setSelectionRange(atEnd, atEnd); }catch(_){}
+        }
+      }
     }
     f.addEventListener("submit", commit);
     inp.addEventListener("change", commit);
@@ -134,7 +146,7 @@ function legendBlock(){
   FAM.forEach(function(f){
     var seg = el("div","legend__seg");
     seg.style.flex = f.total + " 0 0";
-    seg.style.background = "var(" + f.c + ")";
+    seg.style.backgroundColor = "var(" + f.c + ")";
     if(f.id === "tec") seg.classList.add("is-hatched");
     seg.title = f.name + " — " + fmt(f.total) + " m²";
     track.appendChild(seg);
@@ -144,7 +156,7 @@ function legendBlock(){
   var key = el("ul","legend__key");
   FAM.forEach(function(f){
     var k = el("li");
-    var sw = el("i","sw"); sw.style.background = "var(" + f.c + ")";
+    var sw = el("i","sw"); sw.style.backgroundColor = "var(" + f.c + ")";
     if(f.id === "tec") sw.classList.add("is-hatched");
     k.appendChild(sw);
     var lb = el("div","legend__lb");

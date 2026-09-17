@@ -405,6 +405,9 @@ export function volPanel(){
   volLinkBtn.addEventListener("click", function(){
     volSetLink(!volLink);
     drawVol();
+    /* Changer de source remplace les volumes : sans ce repeint, les boutons
+       « Niveaux » gardaient un état actif et cliquaient dans le vide. */
+    if(volLvPaint) volLvPaint();
   });
   var cb = el("div","circbar");
   cb.appendChild(el("span","segcap","Circulation"));
@@ -418,6 +421,7 @@ export function volPanel(){
     if(!volLink) volSetLink(true);
     else volSync(false);
     drawVol();
+    if(volLvPaint) volLvPaint();
   });
   cb.appendChild(volCircIn);
   cb.appendChild(volCircOut);

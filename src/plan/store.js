@@ -29,6 +29,7 @@ function chip(txt, ok){
   saveChip.appendChild(document.createTextNode(txt));
 }
 export function saveSoon(){
+  if(!storeReady) return;
   clearTimeout(saveT);
   chip("Enregistrement…", false);
   saveT = setTimeout(function(){
@@ -82,12 +83,45 @@ export function applyStored(rooms){
     drawPlates(); drawLinks(); markProblems(); }
   return n > 0;
 }
+export var storeReady = false;
+var badParts = null;
+
 export function initStore(){
-  chip("Enregistré sur cet appareil", true);
+  if(storeReady) return;
+  /* On LIT avant d'affirmer quoi que ce soit. La pastille annonçait
+     « Enregistré sur cet appareil » dès l'entrée dans la fonction, avant toute
+     lecture et sans vérifier que le stockage répond : en navigation privée
+     l'utilisateur était assuré que son travail était sauvé jusqu'au premier
+     échec d'écriture. */
   try {
     var raw = localStorage.getItem(LSKEY);
-    if(raw){ var o = JSON.parse(raw); applyAreas(o.areas); applyPlans(o.plans); applyLevels(o.nlev, o.levels, o.plate, o.lvls); applyStored(o.rooms); }
-  } catch(_){}
+    if(raw){
+      var o = JSON.parse(raw);
+      /* Chaque section est restaurée indépendamment. Elles partageaient un seul
+         `try` : un champ corrompu — un plan mémorisé sans date, un tableau là où
+         un objet est attendu — faisait échouer TOUTE la restauration en silence,
+         et la sauvegarde suivante écrasait alors le reste avec les valeurs par
+         défaut. Perdre une section vaut mieux que perdre les quatre. */
+      var lost = [];
+      try{ applyAreas(o.areas); }catch(_){ lost.push("surfaces"); }
+      try{ applyPlans(o.plans); }catch(_){ lost.push("plans mémorisés"); }
+      try{ applyLevels(o.nlev, o.levels, o.plate, o.lvls); }catch(_){ lost.push("niveaux"); }
+      try{ applyStored(o.rooms); }catch(_){ lost.push("positions"); }
+      if(lost.length) badParts = lost;
+    }
+    localStorage.setItem(LSKEY + ".probe", "1");
+    localStorage.removeItem(LSKEY + ".probe");
+    if(badParts) chip("Restauration incomplète — " + badParts.join(", "), false);
+    else chip(raw ? "Agencement retrouvé sur cet appareil" : "", !!raw);
+  } catch(_){
+    /* Le stockage lui-même ne répond pas. */
+    failChip();
+  }
+  /* Rien ne doit être écrit avant cette lecture : une surface modifiée depuis
+     l'onglet Programme déclenchait un enregistrement alors que la mémoire ne
+     contenait encore que l'agencement par défaut — deux niveaux, aucun plan
+     mémorisé — et écrasait la composition et les plans de l'utilisateur. */
+  storeReady = true;
   if(!(window.claude && window.claude.use)) return;
   window.claude.use("db").then(function(db){
     if(!db) return;

@@ -26,13 +26,19 @@ function closeOpen(){
 document.addEventListener("pointerdown", function(e){
   if(openMenu && !openMenu.root.contains(e.target)) closeOpen();
 });
+/* En CAPTURE et avec `stopImmediatePropagation`. L'éditeur de plan et l'onglet
+   Site posent eux aussi un gestionnaire d'Échap sur `document` : entre écouteurs
+   d'un même nœud, `stopPropagation` ne suffit pas — ils se déclenchent tous.
+   Fermer un menu désélectionnait donc la pièce en cours. */
 document.addEventListener("keydown", function(e){
   if(e.key === "Escape" && openMenu){
+    e.stopImmediatePropagation();
+    e.preventDefault();
     var b = openMenu.btn;
     closeOpen();
     b.focus();
   }
-});
+}, true);
 
 export function menu(label, items, opts){
   opts = opts || {};
