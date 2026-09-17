@@ -1,32 +1,60 @@
-.vol-wrap{overflow:hidden;cursor:grab;border:1px solid var(--rule);border-radius:4px;background:var(--panel);
-  touch-action:none;position:relative}
+.vol-wrap{overflow:hidden;cursor:grab;border:1px solid var(--rule);border-radius:var(--r-md);
+  background:var(--panel);touch-action:none;position:relative}
 .vol-wrap svg{display:block;width:100%;height:auto}
 g.vol{cursor:move}
 .vh{cursor:nwse-resize}
 g.vol text{pointer-events:none}
 g.vol:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 g.vol.sel text{font-weight:600}
-.vol-key{display:flex;flex-wrap:wrap;gap:6px 20px;margin:12px 0 0;font-size:12px;color:var(--ink-2)}
+.vol-key{display:flex;flex-wrap:wrap;gap:var(--s-2) var(--s-5);margin:var(--s-3) 0 0;
+  font-size:var(--t-xs);color:var(--ink-2)}
 .vol-key span{display:inline-flex;align-items:center;gap:7px}
 .vol-key i{width:20px;height:3px;flex:none}
-.circbar{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--rule);
-  border-radius:3px;background:var(--panel);padding:4px 12px 4px 0}
-.circbar input[type=range]{width:154px;accent-color:var(--focus);cursor:pointer;margin:0}
-.circbar b{font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:500;
-  color:var(--ink-2);white-space:nowrap;min-width:104px}
+.circbar{align-items:center;padding-right:var(--s-3);min-height:var(--ctl-h)}
+.circbar input[type=range]{width:140px;accent-color:var(--focus);cursor:pointer;margin:0}
+.circbar b{font-family:var(--mono);font-size:var(--t-2xs);font-weight:500;
+  color:var(--ink-2);white-space:nowrap;min-width:100px}
 /* --- tableau de bord et notes, repris par l'onglet Volumes --- */
 .arch-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));
-  gap:0 22px;margin-top:20px}
-.arch-metrics div{padding:9px 0;border-top:1px solid var(--rule-soft)}
-.arch-metrics dt{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
-  font-weight:600;font-variation-settings:"wdth" 88;margin-bottom:3px}
-.arch-metrics dd{margin:0;font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:500;
+  gap:0 var(--s-5);margin-top:var(--s-4)}
+.arch-metrics div{padding:var(--s-2) 0;border-top:2px solid var(--rule-soft)}
+.arch-metrics dt{font-size:var(--t-3xs);letter-spacing:var(--track-caps);text-transform:uppercase;
+  color:var(--ink-3);font-weight:600;font-variation-settings:"wdth" 88;margin-bottom:var(--s-1)}
+.arch-metrics dd{margin:0;font-family:var(--mono);font-size:var(--t-num-md);font-weight:500;
   letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.arch-metrics dd small{display:block;font-family:"Archivo",sans-serif;font-size:11px;font-weight:400;
-  letter-spacing:0;color:var(--ink-3);margin-top:3px;line-height:1.35}
-.arch-metrics .ok dd{color:var(--ok)}
-.arch-metrics .ko dd{color:var(--danger)}
+.arch-metrics dd small{display:block;font-family:var(--sans);font-size:var(--t-2xs);font-weight:400;
+  letter-spacing:0;color:var(--ink-2);margin-top:var(--s-1);line-height:var(--lh-snug)}
 .arch-note{margin-top:16px;padding-top:13px;border-top:1px dashed var(--rule);
   font-size:12px;color:var(--ink-3);line-height:1.65;max-width:78ch}
 .arch-note b{color:var(--ink-2);font-weight:500}
 
+
+/* --- barre du Site : trois groupes nommés, au-dessus de la carte --------- */
+.vol-grp{display:grid;gap:var(--s-1)}
+.vol-grp__row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2)}
+.vol-why{font-size:var(--t-3xs);color:var(--ink-3);padding-inline:var(--s-2);white-space:nowrap}
+
+/* --- tableau de bord : deux rangs au lieu d'un seul poids --------------- */
+.arch-metrics .metric--lead{grid-column:span 2}
+.arch-metrics .metric--lead dd .metric__val{font-size:var(--t-num-lg);line-height:1}
+.arch-metrics dd .metric__val{display:block}
+.arch-metrics dd .chip{margin-bottom:var(--s-1)}
+.arch-metrics .ko{border-top-color:var(--danger)}
+.arch-metrics .ok{border-top-color:var(--ok)}
+.chip--ok{background:var(--ok-fill)}
+
+.site-notes{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:0 var(--s-6);margin-top:var(--s-4);border-top:1px solid var(--rule);padding-top:var(--s-2);
+}
+.site-notes p{margin:0 0 var(--s-3);font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-loose)}
+.site-notes kbd{
+  font-family:var(--mono);font-size:var(--t-3xs);border:1px solid var(--rule);
+  border-radius:var(--r-sm);padding:1px var(--s-1);color:var(--ink-2);background:var(--paper);
+}
+
+/* La carte occupait toute la largeur disponible et, l'SVG gardant son rapport,
+   devenait si haute que le tableau de bord passait sous la ligne de flottaison :
+   on ne voyait jamais le verdict en même temps que le plan qu'il juge. */
+.vol-wrap{max-height:clamp(380px,58vh,680px)}
+.vol-wrap svg{max-height:clamp(380px,58vh,680px);object-fit:contain}

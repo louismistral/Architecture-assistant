@@ -49,6 +49,13 @@
   --focus-fill:#3077CD;
   --on-fill:#FFFFFF;
 
+  /* --- couches du fond de plan du site ------------------------------------
+     Elles emprutaient des tokens de famille d'usage : le vert « sport » servait
+     à tracer une emprise et le gris « technique » le bâti existant, d'où trois
+     sens pour un même vert dans le même onglet. */
+  --site-perimetre:#6D3BD4;
+  --site-emprise:#2E7D46;
+
   /* --- familles d'usage --------------------------------------------------
      Huit familles. Chaque couleur passe ≥ 3:1 sur --panel dans les deux
      thèmes. `--f-tec` reste un neutre — en dessin d'architecture le technique
@@ -153,6 +160,8 @@
     --focus:#3D84DB;
     /* les aplats --*-fill ne changent pas : ils ne dépendent pas du fond de page */
 
+    --site-perimetre:#9B7BE8;
+    --site-emprise:#4C9A63;
     --f-cla:#D363A6;
     --f-adm:#DA6022;
     --f-eau:#4086DF;
@@ -188,6 +197,8 @@
   --focus:#3D84DB;
   /* les aplats --*-fill ne changent pas : ils ne dépendent pas du fond de page */
 
+  --site-perimetre:#9B7BE8;
+  --site-emprise:#4C9A63;
   --f-cla:#D363A6;
   --f-adm:#DA6022;
   --f-eau:#4086DF;

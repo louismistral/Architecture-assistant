@@ -20,6 +20,7 @@ export var VOLS = [
 
 export var HOME = VOLS.map(function(v){ return { x:v.x, y:v.y, w:v.w, h:v.h }; });
 export var volNode = null, volMet = null, volEnterre = false;
+var volLvPaint = null, volLvWhy = null;
 
 /* ---- lien avec le plan interactif : un volume par niveau, le schéma posé dedans ----
    Le volume n'est pas un dessin de plus : c'est l'étage lui-même, ramené sur le site. Sa
@@ -322,22 +323,68 @@ export function volCircLabel(){
   volCircOut.textContent = t;
 }
 /* Panneau de l'onglet Volumes : construit une fois, puis réutilisé. */
+function siteNote(title, build){
+  var d = el("details","disclose");
+  d.appendChild(el("summary", null, title));
+  var p = el("p");
+  build(p);
+  d.appendChild(p);
+  return d;
+}
+function siteNotes(){
+  var box = el("div","site-notes");
+
+  box.appendChild(siteNote("Ce que dit le site", function(p){
+    p.textContent = "Le périmètre couvre les parcelles 5606 à 5614 et 4550. Le polygone du géomètre "
+      + "mesure 176,8 × 122,9 m pour " + fmt(PERAIRE) + " m², soit 8,9 % de plus que les "
+      + fmt(11740) + " m² annoncés au règlement — le tracé englobe les bords de route. Aucun bâtiment "
+      + "existant à l\u2019intérieur. Le grand axe du terrain est à 6,3° de l\u2019est, ce qui oriente "
+      + "naturellement les barres de classes vers le sud.";
+  }));
+
+  box.appendChild(siteNote("La nappe commande l\u2019abri PC", function(p){
+    /* L'impératif de démonstration « Déplace le volume gris d'est en ouest et
+       regarde le verdict basculer » est retiré : au milieu de données de
+       géomètre, c'est exactement le registre que la refonte cherche à sortir.
+       Le verdict est déjà dit par la métrique « Marge sur la nappe ». */
+    p.textContent = "Le terrain monte de 463,3 m au sud-ouest à 466,7 m à l\u2019est, tandis que la "
+      + "nappe est à 462,25 m au plus haut, en zone de protection des eaux Au - Karst. La hauteur "
+      + "disponible passe de 1,0 m à l\u2019ouest à 4,5 m à l\u2019est. Un abri enterré demande "
+      + "3,00 m : il n\u2019y a que le tiers est du site où c\u2019est possible.";
+  }));
+
+  box.appendChild(siteNote("Réserves sur le relevé", function(p){
+    p.textContent = "Le plan du terrain est une régression sur 99 points de courbe de niveau du "
+      + "périmètre, erreur moyenne 0,22 m — suffisant pour arbitrer, pas pour dimensionner. Les noms "
+      + "de rue ne figurent pas dans le fichier, les accès restent donc à placer à la main. La "
+      + "pollution des sols de la parcelle 4550 était encore à l\u2019étude au moment du règlement.";
+  }));
+
+  box.appendChild(siteNote("Gestes et raccourcis", function(p){
+    p.innerHTML = "Glisser un volume pour le déplacer · poignées pour le redimensionner · molette "
+      + "pour zoomer · <kbd>R</kbd> pour pivoter · <kbd>Échap</kbd> pour désélectionner. "
+      + "« Niveaux » agit sur le volume sélectionné.";
+  }));
+  return box;
+}
+
 export function volPanel(){
   if(volNode) return volNode;
   volNode = el("section","panel plan-full");
-  var vh = el("div","panel-head");
-  vh.appendChild(el("i","panel-rule"));
-  vh.appendChild(el("h2", null, "Volumes sur le site"));
-  vh.appendChild(el("span","pct mono", "périmètre du concours, 12'783 m²"));
+  var vh = el("div","tool-head");
+  vh.appendChild(el("h1", null, "Site"));
+  vh.appendChild(el("span","pct mono", "périmètre du concours, " + fmt(PERAIRE) + " m²"));
   volNode.appendChild(vh);
-  var psub = el("p","panel-sub"); volNode.appendChild(psub); psub.innerHTML = (
-    "Le programme posé dans le périmètre réel du concours, relevé sur le plan du géomètre. Déplace les volumes\u00a0: ils ne peuvent ni sortir du périmètre, ni s\u2019approcher à moins de 5 m des limites. Le terrain monte de 1,94 % vers l\u2019est — le panneau recalcule à chaque déplacement la hauteur disponible au-dessus de la nappe phréatique. \u00ab\u00a0Depuis le plan interactif\u00a0\u00bb remplace les cinq volumes dessinés à la main par <b>un volume par niveau</b>, pris du plan interactif\u00a0: chaque étage devient une boîte qui porte à l\u2019intérieur son propre schéma, pièce par pièce, aux positions exactes. La <b>barre de circulation</b> fixe ce qu\u2019on ajoute au programme pour le desservir, en pour cent de mètres carrés\u00a0: le volume grandit d\u2019autant autour du schéma, et la bande claire qui apparaît est cette circulation. Les niveaux d\u2019un même bâtiment peuvent se superposer librement\u00a0; l\u2019axonométrie les empile à leur cote.");
+  var psub = el("p","tool-sub");
+  /* Le chapeau faisait 118 mots et expliquait trois commandes avant qu'on les
+     ait vues : ces explications sont devenues leurs propres `title`. */
+  psub.textContent = "Le programme posé dans le périmètre réel du concours. Les volumes ne peuvent ni sortir du périmètre, ni s\u2019approcher à moins de 5 m des limites.";
+  volNode.appendChild(psub);
   var vw = el("div","vol-wrap");
   volHost = vw;
-  volNode.appendChild(vw);
   var vk = el("div","vol-key");
-  [["Périmètre du concours","#7C3AED",2.6,null],
-   ["Bâti existant","var(--ink-3)",3,null],
+  [["Périmètre du concours","var(--site-perimetre)",2.6,null],
+   ["Bâti existant","var(--ink-4)",3,null],
    ["Projet mis à l'enquête","var(--f-adm)",2,"4 3"],
    ["Courbes de niveau et parcelles","var(--rule)",1.5,null]].forEach(function(k){
     var sp = el("span"), i2 = el("i");
@@ -345,7 +392,6 @@ export function volPanel(){
     if(k[3]){ i2.style.background = "none"; i2.style.borderTop = "2px dashed " + k[1]; }
     sp.appendChild(i2); sp.appendChild(document.createTextNode(k[0])); vk.appendChild(sp);
   });
-  volNode.appendChild(vk);
   var vt = el("div","plan-tools");
   var bHome = el("button","tbtn shuffle","Implantation calculée"); bHome.type = "button";
   bHome.addEventListener("click", function(){
@@ -360,7 +406,6 @@ export function volPanel(){
     volSetLink(!volLink);
     drawVol();
   });
-  vt.appendChild(volLinkBtn);
   var cb = el("div","circbar");
   cb.appendChild(el("span","segcap","Circulation"));
   volCircIn = document.createElement("input");
@@ -376,28 +421,52 @@ export function volPanel(){
   });
   cb.appendChild(volCircIn);
   cb.appendChild(volCircOut);
-  vt.appendChild(cb);
   var ms = el("div","zoomseg");
   var mPlan = el("button", null, "Plan"); mPlan.type = "button";
   var mAxo  = el("button", null, "Axonométrie"); mAxo.type = "button";
   ms.appendChild(mPlan); ms.appendChild(mAxo);
-  mPlan.addEventListener("click", function(){ volMode = "plan"; volFit(); drawVol(); });
-  mAxo.addEventListener("click", function(){ volMode = "axo"; VZ = 1; VTX = 0; VTY = 0; drawVol(); });
-  vt.appendChild(ms);
+  /* Aucun des deux ne portait d'état : on ne savait jamais dans quelle vue on
+     était. Même remarque pour « Niveaux 1-4 » plus bas. */
+  function paintMode(){
+    mPlan.setAttribute("aria-current", String(volMode === "plan"));
+    mAxo.setAttribute("aria-current", String(volMode === "axo"));
+  }
+  mPlan.addEventListener("click", function(){ volMode = "plan"; volFit(); drawVol(); paintMode(); });
+  mAxo.addEventListener("click", function(){ volMode = "axo"; VZ = 1; VTX = 0; VTY = 0; drawVol(); paintMode(); });
+  paintMode();
   var ns = el("div","zoomseg");
   ns.appendChild(el("span","segcap","Niveaux"));
+  var lvBtns = [];
+  volLvPaint = function(){
+    var v = (volSel >= 0 && VOLS[volSel]) ? VOLS[volSel] : null;
+    var actif = v && volSel !== 0 && !v.link;
+    lvBtns.forEach(function(o){
+      o.b.setAttribute("aria-current", String(!!actif && v.lv === o.nv));
+      o.b.disabled = !actif;
+    });
+    if(volLvWhy){
+      volLvWhy.textContent = actif ? ""
+        : (volSel < 0 ? "sélectionne un volume"
+          : v && v.link ? "volume repris du plan interactif"
+          : "volume non modifiable");
+    }
+  };
   [1,2,3,4].forEach(function(nv){
     var bb2 = el("button", null, String(nv)); bb2.type = "button";
+    bb2.title = nv + " niveau" + (nv > 1 ? "x" : "");
+    lvBtns.push({ b:bb2, nv:nv });
     bb2.addEventListener("click", function(){
       if(volSel < 0 || volSel === 0 || VOLS[volSel].link) return;
       VOLS[volSel].lv = nv;
       VOLS[volSel].sub = nv > 1 ? "R+" + (nv - 1) + " · " + fmt(VOLS[volSel].w * VOLS[volSel].h * nv) + " m²"
                                 : fmt(VOLS[volSel].w * VOLS[volSel].h) + " m²";
       drawVol();
+      volLvPaint();
     });
     ns.appendChild(bb2);
   });
-  vt.appendChild(ns);
+  volLvWhy = el("span","vol-why");
+  ns.appendChild(volLvWhy);
   var be = el("button","tbtn","Abri enterré"); be.type = "button";
   be.setAttribute("aria-pressed","false");
   be.addEventListener("click", function(){
@@ -405,25 +474,47 @@ export function volPanel(){
     be.setAttribute("aria-pressed", String(volEnterre));
     drawVol();
   });
-  vt.appendChild(be);
   var zs = el("div","zoomseg");
   var zM = el("button", null, "−"); zM.type = "button";
   var zF = el("button", null, "Ajuster"); zF.type = "button";
   var zP = el("button", null, "+"); zP.type = "button";
   zs.appendChild(zM); zs.appendChild(zF); zs.appendChild(zP);
-  zM.addEventListener("click", function(){ VZ = Math.max(0.6, VZ / 1.4); drawVolumes(); });
-  zP.addEventListener("click", function(){ VZ = Math.min(9, VZ * 1.4); drawVolumes(); });
-  zF.addEventListener("click", function(){ volFit(); drawVolumes(); });
-  vt.appendChild(zs);
-  vt.appendChild(bHome);
-  vt.appendChild(el("span","savechip",
-    "glisser un volume · poignées pour redimensionner · molette pour zoomer · R pour pivoter · Niveaux agit sur le volume sélectionné"));
+  /* Ces trois boutons appelaient drawVolumes(), qui dessine le PLAN : zoomer
+     depuis l'axonométrie y faisait retomber silencieusement. drawVol() respecte
+     le mode courant. */
+  zM.addEventListener("click", function(){ VZ = Math.max(0.6, VZ / 1.4); drawVol(); });
+  zP.addEventListener("click", function(){ VZ = Math.min(9, VZ * 1.4); drawVol(); });
+  zF.addEventListener("click", function(){ volFit(); drawVol(); });
+  /* Cette phrase de 128 signes était posée dans un composant en
+     `white-space:nowrap` : ~780 px insécables qui débordaient du cadre à 390 px
+     et ajoutaient un défilement horizontal à toute la page. Elle rejoint l'aide. */
+  /* Treize commandes étaient alignées à plat, dans un ordre qui ne disait rien,
+     et POSÉES SOUS la carte : on réglait la circulation à l'aveugle sous sept
+     cents pixels de plan. Trois groupes nommés, au-dessus de ce qu'ils pilotent. */
+  function grp(caption){
+    var g = el("div","vol-grp");
+    g.appendChild(el("span","label", caption));
+    var row = el("div","vol-grp__row");
+    g.appendChild(row);
+    vt.appendChild(g);
+    return row;
+  }
+  var gSrc = grp("D\u2019où vient le volume");
+  gSrc.appendChild(volLinkBtn); gSrc.appendChild(cb); gSrc.appendChild(bHome);
+  var gVue = grp("Ce qu\u2019on voit");
+  gVue.appendChild(ms); gVue.appendChild(zs); gVue.appendChild(be);
+  var gSel = grp("Volume sélectionné");
+  gSel.appendChild(ns);
+
   volNode.appendChild(vt);
+  volNode.appendChild(vw);
+  volLvPaint();
   volMet = el("dl","arch-metrics");
+  volNode.appendChild(vk);
   volNode.appendChild(volMet);
-  var vn = el("div","arch-note");
-  vn.innerHTML = "<b>Ce que dit le site.</b> Le périmètre couvre les parcelles 5606 à 5614 et 4550. Le polygone du géomètre mesure 176,8 × 122,9 m pour 12&#8239;783 m², soit 8,9 % de plus que les 11&#8239;740 m² annoncés au règlement — le tracé englobe les bords de route. Aucun bâtiment existant à l'intérieur. Le grand axe du terrain est à 6,3° de l'est, ce qui oriente naturellement les barres de classes vers le sud.<br><b>La nappe commande l'abri PC.</b> Le terrain monte de 463,3 m au sud-ouest à 466,7 m à l'est, tandis que la nappe est à 462,25 m au plus haut, en zone de protection des eaux Au - Karst. La hauteur disponible passe de <b>1,0 m à l'ouest à 4,5 m à l'est</b>. Un abri enterré demande 3,00 m : il n'y a que le tiers est du site où c'est possible. Déplace le volume gris d'est en ouest et regarde le verdict basculer.<br><b>Réserves.</b> Le plan du terrain est une régression sur 99 points de courbe de niveau du périmètre, erreur moyenne 0,22 m — suffisant pour arbitrer, pas pour dimensionner. Les noms de rue ne figurent pas dans le fichier, les accès restent donc à placer à la main. La pollution des sols de la parcelle 4550 était encore à l'étude au moment du règlement.";
-  volNode.appendChild(vn);
+  /* Trois paragraphes de ~1'150 signes en 12 px et en gris atténué. Le contenu
+     est du relevé de géomètre : il compte. Il devient consultable. */
+  volNode.appendChild(siteNotes());
   return volNode;
 }
 
@@ -453,7 +544,7 @@ export function drawVolumes(){
   lay("ctr", "var(--rule-soft)", 1);
   lay("par", "var(--rule)", 1);
   lay("mur", "var(--ink-3)", 1);
-  lay("foo", "var(--f-spo)", 1);
+  lay("foo", "var(--site-emprise)", 1);
   lay("rou", "var(--ink-3)", 1.6);
   var gb = s("g", { fill: "var(--ink-3)", "fill-opacity": ".45", stroke: "var(--ink-2)",
     "stroke-width": 1, "vector-effect": "non-scaling-stroke" });
@@ -463,8 +554,8 @@ export function drawVolumes(){
     "stroke-dasharray": "6 4", "vector-effect": "non-scaling-stroke" });
   (SITE.enq || []).forEach(function(P){ ge.appendChild(s("path", { d: vpath(P, 1) })); });
   root.appendChild(ge);
-  root.appendChild(s("path", { d: vpath(PER, 1), fill: "#7C3AED", "fill-opacity": ".05",
-    stroke: "#7C3AED", "stroke-width": 2.6, "vector-effect": "non-scaling-stroke" }));
+  root.appendChild(s("path", { d: vpath(PER, 1), fill: "var(--site-perimetre)", "fill-opacity": ".05",
+    stroke: "var(--site-perimetre)", "stroke-width": 2.6, "vector-effect": "non-scaling-stroke" }));
 
   var ppm = VS0 * VZ, detail = ppm >= (volLink ? 2 : 6), cap = volLink ? null : volCapacity();
   var shown = volLink ? volShown() : -1;
@@ -606,10 +697,19 @@ export function drawVolumes(){
 
 export function volMetrics(cap){
   while(volMet.firstChild) volMet.removeChild(volMet.firstChild);
-  function met(t, v, sub, cls){
-    var d = el("div", cls || null);
+  /* Le verdict conforme/non conforme ne reposait que sur la couleur du texte,
+     dans un rouge qui échouait AA dans les deux thèmes. Il porte désormais un
+     mot, et les sept métriques cessent d'être strictement au même poids : celles
+     qui disent si le projet tient passent au premier rang. */
+  function met(t, v, sub, cls, lead){
+    var d = el("div", (cls || "") + (lead ? " metric--lead" : ""));
     d.appendChild(el("dt", null, t));
-    var dd = el("dd", null, v);
+    var dd = el("dd", null);
+    if(cls){
+      dd.appendChild(el("i", "chip chip--" + (cls === "ok" ? "ok" : "danger"),
+        cls === "ok" ? "conforme" : "insuffisant"));
+    }
+    dd.appendChild(el("span","metric__val", v));
     if(sub) dd.appendChild(el("small", null, sub));
     d.appendChild(dd); volMet.appendChild(d);
   }
@@ -623,7 +723,7 @@ export function volMetrics(cap){
     ROOMS.forEach(function(r){ if(r.ci < 4 && r.fl === TRAY) hors++; });
     met("Emprise au sol", fmt(Math.round(emp0)) + " m²",
         "le plus grand niveau hors sol commande l'emprise : " + Math.round(emp0 / PERAIRE * 100)
-        + " % des 12'783 m² du périmètre");
+        + " % des " + fmt(PERAIRE) + " m² du périmètre");
     met("Surface de plancher", fmt(Math.round(planch0)) + " m²",
         VOLS.length + (VOLS.length > 1 ? " niveaux repris du plan interactif" : " niveau repris du plan interactif"));
     var jeu0 = 0;
@@ -635,10 +735,10 @@ export function volMetrics(cap){
     met("Programme logé", fmt(Math.round(net0)) + " m² · " + nbp + " pièces",
         hors ? hors + " pièce" + (hors > 1 ? "s" : "") + " encore au bac « À placer »"
              : "tout le programme bâti est dans un niveau",
-        hors ? "ko" : "ok");
+        hors ? "ko" : "ok", true);
     met("Terrain libre", fmt(Math.round(PERAIRE - emp0)) + " m²",
         "cour, 70 places de parc, 50 vélos, dépose des bus et 900 m² du 2ᵉ temps",
-        (PERAIRE - emp0) > 3250 ? "ok" : "ko");
+        (PERAIRE - emp0) > 3250 ? "ok" : "ko", true);
     var sous = VOLS.filter(function(v){ return v.lvl < 0; });
     if(sous.length){
       var Cs = vcorners(sous[0]);
@@ -657,7 +757,7 @@ export function volMetrics(cap){
   var besoin = 0;
   ROOMS.forEach(function(r){ if(r.ci < 4) besoin += r.a; });
   met("Emprise au sol", fmt(Math.round(emp)) + " m²",
-      Math.round(emp / PERAIRE * 100) + " % des 12'783 m² du périmètre");
+      Math.round(emp / PERAIRE * 100) + " % des " + fmt(PERAIRE) + " m² du périmètre");
   met("Surface de plancher", fmt(Math.round(planch)) + " m²",
       "il faut " + fmt(Math.round(besoin)) + " m² de programme plus la circulation",
       planch >= besoin * 1.15 ? "ok" : "ko");
@@ -712,10 +812,10 @@ export function drawAxo(){
   }
 
   /* sol : périmètre, routes, parcelles, posés sur le terrain */
-  flat(PER, "#7C3AED", 2.4, 1);
+  flat(PER, "var(--site-perimetre)", 2.4, 1);
   (SITE.rou || []).forEach(function(P){ flat(P, "var(--ink-3)", 1.4, 0); });
   (SITE.par || []).forEach(function(P){ flat(P, "var(--rule)", 0.8, 0); });
-  (SITE.foo || []).forEach(function(P){ flat(P, "var(--f-spo)", 0.9, 0); });
+  (SITE.foo || []).forEach(function(P){ flat(P, "var(--site-emprise)", 0.9, 0); });
   /* bâti existant, extrudé forfaitairement à 7 m */
   (SITE.bat || []).forEach(function(P){
     if(P.length < 3) return;
@@ -828,14 +928,14 @@ export function wireVol(){
       var k = +g.dataset.k;
       drag = { mode: "size", k: k, dir: hd.dataset.dir, m0: Wm,
                v0: { x:VOLS[k].x, y:VOLS[k].y, w:VOLS[k].w, h:VOLS[k].h } };
-      volSel = k;
+      volSel = k; if(volLvPaint) volLvPaint();
     } else if(g){
       var k2 = +g.dataset.k;
       drag = { mode: "move", k: k2, m0: Wm, v0: { x:VOLS[k2].x, y:VOLS[k2].y } };
-      volSel = k2;
+      volSel = k2; if(volLvPaint) volLvPaint();
     } else {
       drag = { mode: "pan", p0: P, tx: VTX, ty: VTY };
-      volSel = -1;
+      volSel = -1; if(volLvPaint) volLvPaint();
     }
     volHost.setPointerCapture(e.pointerId);
     drawVol();
@@ -907,7 +1007,7 @@ export function wireVol(){
     if(view.tab !== "site") return;
     var t = e.target;
     if(t && (t.tagName === "INPUT" || t.tagName === "SELECT")) return;
-    if(e.key === "Escape"){ volSel = -1; drawVol(); return; }
+    if(e.key === "Escape"){ volSel = -1; if(volLvPaint) volLvPaint(); drawVol(); return; }
     if(volSel < 0) return;
     var v = VOLS[volSel], st = e.shiftKey ? 5 : 0.5, nx = v.x, ny = v.y;
     if(e.key === "ArrowLeft") nx -= st;
