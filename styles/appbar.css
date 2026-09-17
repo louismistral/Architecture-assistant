@@ -1,0 +1,182 @@
+/* ============================================================================
+   Chrome permanent, et les DEUX gabarits.
+
+   Le projet n'avait qu'un gabarit — une colonne de lecture de 960 px — dans
+   lequel il rendait cinq choses de trois natures : deux vues de document, un
+   schéma et deux éditeurs. Comme le gabarit était éditorial, l'en-tête faisait
+   ~900 px, soit la hauteur d'un écran de portable : cliquer « Plan » ne montrait
+   pas un pixel de plan, et l'outil devait sortir de la grille par un hack
+   (`left:50%;transform:translateX(-50%)`) pour retrouver de la place.
+   ========================================================================= */
+
+.skip{
+  position:absolute;left:var(--s-2);top:var(--s-2);z-index:100;
+  transform:translateY(-200%);
+  background:var(--ink);color:var(--paper);
+  padding:var(--s-2) var(--s-3);border-radius:var(--r-md);font-size:var(--t-xs);
+}
+.skip:focus{transform:none}
+
+/* lu par les lecteurs d'écran, invisible à l'œil */
+.vh{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;border:0;
+}
+
+/* --- barre d'application ------------------------------------------------- */
+.appbar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:40;
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-3) var(--s-4);
+  padding:var(--s-2) var(--s-5);
+  background:var(--paper);border-bottom:1px solid var(--rule);
+}
+.appbar__brand{
+  display:grid;text-decoration:none;color:inherit;line-height:var(--lh-tight);
+}
+.appbar__brand b{font-size:var(--t-sm);font-weight:600;font-variation-settings:"wdth" 104}
+.appbar__brand span{font-size:var(--t-2xs);color:var(--ink-3)}
+
+.appbar__fig{display:flex;align-items:baseline;gap:var(--s-3);margin:0}
+.appbar__fig .mono{font-size:var(--t-num-sm);font-weight:500;letter-spacing:-.01em}
+.appbar__fig .u{font-size:.78em;color:var(--ink-3);margin-left:.15em}
+.appbar__est{
+  appearance:none;background:none;border:0;padding:var(--s-1) var(--s-2);
+  font:inherit;font-size:var(--t-2xs);color:var(--ink-3);
+  cursor:pointer;border-radius:var(--r-sm);text-decoration:underline;
+  text-decoration-style:dotted;text-underline-offset:3px;
+}
+.appbar__est:hover{color:var(--ink)}
+.appbar__est[data-pending="true"]{color:var(--warn)}
+
+.appbar__tabs{margin-left:auto}
+/* La seule marque qui dise : à gauche on lit, à droite on compose. */
+.appbar__split{box-shadow:inset 2px 0 0 var(--rule-strong)}
+.appbar__theme{flex:none}
+
+@media (max-width:760px){
+  .appbar{padding-inline:var(--s-4);gap:var(--s-2) var(--s-3)}
+  .appbar__tabs{order:3;margin-left:0;width:100%}
+  .appbar__tabs .btn{flex:1 1 0;min-width:0}
+  .appbar__theme{order:2;margin-left:auto}
+}
+
+/* --- les deux gabarits --------------------------------------------------- */
+body[data-kind="doc"] #panels{
+  display:block;max-width:960px;margin:0 auto;
+  padding-inline:var(--s-5);padding-block:var(--s-6) var(--s-8);
+}
+/* Cadre plein : l'outil occupe la fenêtre au lieu de s'en échapper. */
+body[data-kind="tool"] #panels{
+  display:block;max-width:none;margin:0;
+  padding-inline:var(--s-4);padding-block:var(--s-4) var(--s-5);
+}
+#panels:focus-visible{outline:none}
+
+/* --- introduction de l'onglet Programme ---------------------------------- */
+.intro{border-bottom:1px solid var(--rule);padding-bottom:var(--s-5)}
+.intro__head h1{
+  font-size:var(--t-xl);font-weight:600;font-variation-settings:"wdth" 112;
+  letter-spacing:-.018em;line-height:var(--lh-tight);text-wrap:balance;margin:0;
+}
+.intro__lead{margin:var(--s-2) 0 0;max-width:62ch;color:var(--ink-2);font-size:var(--t-md)}
+
+.intro__fig{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--s-2) var(--s-6);margin-top:var(--s-5)}
+.intro__big{
+  margin:0;font-family:var(--mono);font-size:var(--t-num-lg);font-weight:500;
+  letter-spacing:-.03em;line-height:.95;font-variant-numeric:tabular-nums;
+}
+.intro__big .u{font-size:.34em;letter-spacing:0;margin-left:.3em;color:var(--ink-2);font-weight:400}
+.intro__break{
+  display:grid;grid-template-columns:auto auto;gap:0 var(--s-3);margin:0 0 var(--s-1);
+  font-size:var(--t-xs);
+}
+.intro__break dt{color:var(--ink-3)}
+.intro__break dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+
+/* --- surfaces à préciser, saisissables sur place ------------------------- */
+.vars{margin-top:var(--s-5);border:1px dashed var(--rule-strong);border-radius:var(--r-lg);padding:var(--s-4)}
+.vars__head h2{margin:0}
+.vars__note{margin:var(--s-1) 0 var(--s-3);font-size:var(--t-xs);color:var(--ink-2);max-width:70ch}
+.vars__list{
+  list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:0 var(--s-5);
+}
+.vars__list li{
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--s-1) var(--s-3);
+  padding:var(--s-2) 0;border-top:1px solid var(--rule-soft);font-size:var(--t-xs);
+}
+.vars__name{color:var(--ink-2);min-width:0}
+.vars__state{
+  display:block;font-size:var(--t-3xs);text-transform:uppercase;
+  letter-spacing:var(--track-caps);font-weight:600;color:var(--ink-3);
+}
+.vars__list li.is-set .vars__state{color:var(--ok)}
+.vars__field{display:grid;grid-template-columns:auto auto;align-items:center;gap:0 var(--s-2);justify-items:end}
+.vars__field input{
+  width:5.5em;font:inherit;font-family:var(--mono);font-size:var(--t-xs);
+  text-align:right;padding:var(--s-1) var(--s-2);
+  border:1px solid var(--rule);border-radius:var(--r-md);
+  background:var(--panel);color:var(--ink);min-height:var(--tap-min);
+}
+.vars__unit{font-size:var(--t-3xs);color:var(--ink-3)}
+.vars__tot{grid-column:1/-1;font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.vars__msg{grid-column:1/-1;margin:0;font-size:var(--t-3xs);color:var(--danger);text-align:right}
+.vars__list li.is-bad input{border-color:var(--danger)}
+
+/* --- légende des familles ------------------------------------------------ */
+.legend{margin-top:var(--s-5)}
+.legend h2{margin:0 0 var(--s-2)}
+.legend__track{display:flex;gap:2px;height:20px}
+.legend__seg{border-radius:var(--r-sm);min-width:2px}
+.legend__key{
+  list-style:none;margin:var(--s-3) 0 0;padding:0;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:0 var(--s-5);
+}
+.legend__key li{
+  display:grid;grid-template-columns:11px 1fr auto;align-items:baseline;gap:0 var(--s-2);
+  font-size:var(--t-xs);padding:var(--s-1) 0;
+}
+.legend__key .sw{width:11px;height:11px;border-radius:var(--r-sm);position:relative;top:1px}
+.legend__key .sw--dashed{background:none;border:1px dashed var(--ink-3)}
+.legend__lb{color:var(--ink)}
+.legend__lb i{display:block;font-style:normal;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.legend__vl{font-family:var(--mono);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.legend__extra{border-top:1px solid var(--rule-soft);margin-top:var(--s-1);padding-top:var(--s-2)}
+
+/* Le technique est un neutre : en dessin d'architecture il se hachure, et la
+   hachure est l'encodage secondaire qui le rend identifiable sans la couleur. */
+.is-hatched{
+  background-image:repeating-linear-gradient(45deg,
+    rgba(0,0,0,var(--hatch-op)) 0 1.5px, transparent 1.5px 5px);
+}
+
+/* --- barre de vue -------------------------------------------------------- */
+.viewbar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-3) var(--s-4);
+  padding-block:var(--s-4);border-bottom:1px solid var(--rule);
+}
+.viewbar .spacer{flex:1 1 var(--s-5)}
+
+/* --- divulgation progressive --------------------------------------------
+   Règle anti-accordéon : au plus un repli par panneau, et son résumé nomme ce
+   qu'il contient au lieu de dire « en savoir plus ». */
+.disclose{margin-top:var(--s-4)}
+.disclose>summary{
+  cursor:pointer;font-size:var(--t-xs);color:var(--ink-2);
+  padding:var(--s-2) 0;list-style:none;display:flex;align-items:center;gap:var(--s-2);
+  min-height:var(--tap-min);
+}
+.disclose>summary::-webkit-details-marker{display:none}
+.disclose>summary::before{
+  content:"";width:0;height:0;flex:none;
+  border-left:5px solid currentColor;border-block:4px solid transparent;
+  transition:transform var(--dur-2) var(--ease);
+}
+.disclose[open]>summary::before{transform:rotate(90deg) translateX(1px)}
+.disclose>summary:hover{color:var(--ink)}
+.disclose--sources{border-top:1px solid var(--rule);margin-top:var(--s-6)}
+.disclose--sources p{
+  margin:0 0 var(--s-3);font-size:var(--t-xs);color:var(--ink-2);
+  line-height:var(--lh-loose);max-width:72ch;
+}
+.disclose--sources b{color:var(--ink);font-weight:500}

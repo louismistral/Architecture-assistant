@@ -1,4 +1,4 @@
-import { fmt } from "../core/format.js";
+import { el, fmt } from "../core/format.js";
 import { blocks, pack } from "../core/geometry.js";
 import { FMAP } from "../core/model.js";
 import { s, wrapText } from "../core/svg.js";
@@ -12,8 +12,25 @@ export function pxPerM(){
   var w = panelsEl.clientWidth || 900;
   return w < 520 ? 6.2 : (w < 720 ? 7.2 : 8);
 }
-export function drawScalebar(){
-  var sb = document.getElementById("scalebar");
+/* La barre d'échelle vivait dans le chrome global, donc affichée sur les cinq
+   onglets — alors qu'elle ne décrit que les diagrammes du programme. Sur le
+   schéma elle était fausse de 24 %, et sur le site d'un facteur 2, où une
+   SECONDE barre d'échelle, elle juste, s'affichait en même temps. Elle
+   appartient à la vue qu'elle mesure. */
+export function scaleBar(){
+  var box = el("div","scalebar");
+  var sb = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  sb.setAttribute("height","16"); sb.setAttribute("role","img");
+  sb.setAttribute("aria-label","Barre d\u2019échelle de 20 mètres");
+  sb.id = "scalebar";
+  box.appendChild(sb);
+  box.appendChild(el("span","cap mono","20 m"));
+  drawScalebar(sb);
+  return box;
+}
+export function drawScalebar(node){
+  var sb = node || document.getElementById("scalebar");
+  if(!sb) return;
   while(sb.firstChild) sb.removeChild(sb.firstChild);
   var seg = 5 * ppm, W = seg * 4;
   sb.setAttribute("width", W + 1);

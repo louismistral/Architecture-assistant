@@ -1,5 +1,8 @@
 /* --- plan interactif --- */
-.plan-full{position:relative;left:50%;transform:translateX(-50%);width:min(1320px,calc(100vw - 32px))}
+/* Le gabarit « outil » (body[data-kind="tool"]) donne désormais la largeur :
+   l'outil n'a plus à s'échapper de la grille du document par un décalage de
+   50 %, qui provoquait au passage un débordement horizontal via 100vw. */
+.plan-full{width:100%}
 .plan-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:14px 0 12px}
 .plan-tools .spacer{flex:1 1 10px}
 /* Les composants bouton vivent dans styles/controls.css.

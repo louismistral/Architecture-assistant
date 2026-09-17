@@ -4,22 +4,36 @@ import { view } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { FREE, SLINK, SNODE } from "../data/schema.js";
+import { roomForKey, setPosteArea } from "../plan/areas.js";
 import { arrange, fit, planPanel, undoStack } from "../plan/editor.js";
 import { initStore } from "../plan/store.js";
-import { drawDiagram, drawScalebar, panelsEl, ppm, refreshPpm } from "./diagram.js";
+import { drawDiagram, panelsEl, ppm, refreshPpm, scaleBar } from "./diagram.js";
+import { introSection, renderBar, setAreaHandler } from "./legend.js";
 import { drawSchema, linkKey, linkList } from "./schema.js";
 import { tip } from "./tooltip.js";
 import { drawVol, volLink, volPanel, volSync, wireVol } from "../vol/volumes.js";
+
+/* Une surface saisie dans l'onglet Programme passe par l'éditeur de plan, qui
+   la propage à toutes les pièces du poste. Le plan n'a pas besoin d'être ouvert :
+   les effets de bord sur son DOM sont gardés. */
+setAreaHandler(function(key, v){
+  var id = roomForKey(key);
+  if(id) setPosteArea(id, v);
+});
 
 export function scheduleList(items, showChap){
   var ul = el("ul","schedule");
   items.forEach(function(it){
     var li = el("li");
     var sw = el("i","sw"); sw.style.background = "var(" + FMAP[it.f].c + ")";
+    if(it.f === "tec") sw.classList.add("is-hatched");
     li.appendChild(sw);
     var nm = el("div","nm");
     nm.appendChild(el("b", null, it.n));
-    if(it.est){ var tg = el("span","esttag","à préciser"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(tg); }
+    if(it.est){
+      nm.appendChild(document.createTextNode(" "));
+      nm.appendChild(el("span","esttag", it.set ? "fixée" : "à préciser"));
+    }
     var sub = (showChap ? it.chap : "") + (showChap && it.note ? " · " : "") + (it.note || "");
     if(sub) nm.appendChild(el("span","note", sub));
     li.appendChild(nm);
@@ -30,27 +44,57 @@ export function scheduleList(items, showChap){
   return ul;
 }
 
+/* ---------- barre de vue de l'onglet Programme ----------
+   Le regroupement et le niveau de détail étaient dans le chrome global, au même
+   rang que la navigation : un réglage ressemblait à une destination, et le
+   niveau de détail restait offert sur trois onglets où il ne gouverne rien. */
+function programmeBar(){
+  var bar = el("div","viewbar");
+
+  function group(caption, label, pairs, key, onPick){
+    var g = el("div","btn-group");
+    g.setAttribute("role","group");
+    g.setAttribute("aria-label", label);
+    g.appendChild(el("span","segcap", caption));
+    pairs.forEach(function(pr){
+      var b = el("button","btn", pr[1]);
+      b.type = "button";
+      b.setAttribute("aria-current", String(view[key] === pr[0]));
+      b.addEventListener("click", function(){
+        if(view[key] === pr[0]) return;
+        view[key] = pr[0];
+        onPick();
+      });
+      g.appendChild(b);
+    });
+    return g;
+  }
+
+  bar.appendChild(group("Grouper par", "Regroupement du programme",
+    [["chap","Chapitres"],["fam","Familles"]], "group", render));
+  bar.appendChild(group("Détail", "Niveau de détail des diagrammes",
+    [["agg","Groupé"],["unit","Détaillé"]], "mode", render));
+  bar.appendChild(el("span","spacer"));
+  bar.appendChild(scaleBar());
+  return bar;
+}
+
 export function render(){
   refreshPpm();
-  drawScalebar();
-  var W = (panelsEl.clientWidth || 900) / ppm;
-  var fs = 11 / ppm, fsSm = 9.5 / ppm;
   while(panelsEl.firstChild) panelsEl.removeChild(panelsEl.firstChild);
-  document.getElementById("modeSeg").hidden = (view.grouping !== "chap" && view.grouping !== "fam");
   tip.style.opacity = "0";
+  renderBar();
 
-  if(view.grouping === "vol"){
+  if(view.tab === "site"){
     var vp2 = volPanel();
     panelsEl.appendChild(vp2);
     if(volLink) volSync(false);
     drawVol();
     if(!vp2.dataset.wired){ vp2.dataset.wired = "1"; wireVol(); }
-    renderTotals();
     return;
   }
 
-
-  if(view.grouping === "plan"){
+  if(view.tab === "plan"){
     var pp = planPanel();
     panelsEl.appendChild(pp);
     if(!pp.dataset.ready){
@@ -60,34 +104,41 @@ export function render(){
       initStore();
       requestAnimationFrame(fit);
     }
-    renderTotals();
     return;
   }
 
-  if(view.grouping === "sch"){
+  if(view.tab === "adjacences"){
     var p0 = el("section","panel");
     var hd = el("div","panel-head");
-    hd.appendChild(el("i","panel-rule"));
-    hd.appendChild(el("h2", null, "Les pièces que le règlement demande de placer côte à côte"));
+    hd.appendChild(el("h1", null, "Adjacences"));
     hd.appendChild(el("span","pct mono", SLINK.length + " liens · " + SNODE.length + " pièces"));
     p0.appendChild(hd);
     p0.appendChild(el("p","panel-sub",
-      "Chaque fil correspond à une exigence de proximité énoncée dans la colonne « Remarques » du programme. Les pièces restent dessinées à leur surface réelle et à la même échelle que les autres vues ; les blocs en tireté sont les halls et vestiaires « selon projet », non chiffrés mais porteurs de relations."));
+      "Les pièces que le règlement demande de placer côte à côte."));
     p0.appendChild(linkKey());
     var sw = el("div","schema-wrap");
     p0.appendChild(sw);
-    p0.appendChild(linkList());
+    var det = el("details","disclose");
+    det.appendChild(el("summary", null, SLINK.length + " exigences, citées au règlement"));
+    det.appendChild(linkList());
     var fr = el("div","unpriced");
     fr.appendChild(el("b", null, "Sans contrainte de proximité énoncée — "));
     fr.appendChild(document.createTextNode(FREE.join(" · ")));
-    p0.appendChild(fr);
+    det.appendChild(fr);
+    p0.appendChild(det);
     panelsEl.appendChild(p0);
     drawSchema(sw);
-    renderTotals();
     return;
   }
 
-  var groups = view.grouping === "chap"
+  /* ---------- Programme ---------- */
+  panelsEl.appendChild(introSection());
+  panelsEl.appendChild(programmeBar());
+
+  var W = (panelsEl.clientWidth || 900) / ppm;
+  var fs = 11 / ppm, fsSm = 9.5 / ppm;
+
+  var groups = view.group === "chap"
     ? CHAP.map(function(c){ return { name:c.name, sub:c.sub, total:c.total, items:c.items, mix:c.mix, off:c.off, col:null }; })
     : FAM.filter(function(f){ return f.items.length; }).map(function(f){
         return { name:f.name, sub:f.d.charAt(0).toUpperCase() + f.d.slice(1) + ".", total:f.total,
@@ -118,87 +169,148 @@ export function render(){
     }
     var d = el("div","diagram");
     p.appendChild(d);
-    p.appendChild(scheduleList(gp.items, view.grouping === "fam"));
+
+    /* La liste répétait intégralement le diagramme, jusqu'à dix-sept lignes
+       par chapitre : le dessin devenait une illustration de sa propre légende.
+       Elle reste — c'est le seul accès aux petits postes non étiquetés — mais
+       repliée derrière son propre décompte. */
+    var det = el("details","disclose");
+    det.appendChild(el("summary", null,
+      gp.items.length + " postes · " + fmt(gp.total) + " m²"));
+    det.appendChild(scheduleList(gp.items, view.group === "fam"));
     if(gp.off && gp.off.length){
       var o = el("div","unpriced");
-      o.appendChild(el("b", null, "Non chiffré au programme — "));
+      /* « Non chiffré au programme » désignait DEUX statuts opposés à 30 cm
+         d'écart : ces postes-ci n'ont aucune surface et ne comptent dans aucun
+         total, tandis que les huit postes « à préciser » en ont une et sont
+         dans les 7'025 m². L'écart se chiffrait en centaines de m². */
+      o.appendChild(el("b", null, "Hors bilan — "));
       o.appendChild(document.createTextNode(gp.off.join(" · ")));
-      p.appendChild(o);
+      o.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
+      det.appendChild(o);
     }
+    p.appendChild(det);
+
     panelsEl.appendChild(p);
     drawDiagram(d, gp.items, W, fs, fsSm);
     d.querySelector("svg").setAttribute("aria-label",
-      gp.name + " — " + fmt(gp.total) + " m² de surfaces chiffrées, représentées à l'échelle");
+      gp.name + " — " + fmt(gp.total) + " m² de surfaces chiffrées, représentées à l’échelle");
   });
 
-  if(view.grouping === "fam"){
-    var box = el("section","panel");
-    box.style.borderBottom = "none";
+  if(view.group === "fam" && ALL_OFF.length){
+    var box = el("section","panel panel--plain");
     var o2 = el("div","unpriced");
-    o2.style.borderTop = "none";
-    o2.style.marginTop = "0";
-    o2.appendChild(el("b", null, "Postes non chiffrés au programme — "));
+    o2.appendChild(el("b", null, "Hors bilan — "));
     o2.appendChild(document.createTextNode(ALL_OFF.join(" · ")));
+    o2.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
     box.appendChild(o2);
     panelsEl.appendChild(box);
   }
-  renderTotals();
+
+  panelsEl.appendChild(totalsSection());
+  panelsEl.appendChild(sourcesSection());
 }
 
-/* ---------- totals ---------- */
-export function renderTotals(){
-  var tb = document.getElementById("totalsBody");
-  while(tb.firstChild) tb.removeChild(tb.firstChild);
-  document.getElementById("totTitle").textContent =
-    view.grouping === "chap" ? "Récapitulatif par chapitre" : "Récapitulatif par famille d'usage";
-  document.getElementById("thFirst").textContent =
-    view.grouping === "chap" ? "Ensemble" : "Famille d'usage";
+/* ---------- récapitulatif ----------
+   Il était rendu sous les cinq onglets, hors de #panels, avec un titre qui
+   parlait de familles d'usage au bas d'un schéma fonctionnel. Il devient la
+   dernière section de l'onglet qu'il récapitule. */
+function totalsSection(){
+  var sec = el("section","totals");
+  sec.id = "totals";
+  sec.appendChild(el("h2","label--lg",
+    view.group === "chap" ? "Récapitulatif par chapitre" : "Récapitulatif par famille d’usage"));
 
-  function row(name, col, pieces, val){
-    var tr = el("tr"), td = el("td");
+  var tbl = el("table");
+  tbl.appendChild(el("caption","vh",
+    "Surfaces du programme, par " + (view.group === "chap" ? "chapitre" : "famille d’usage")
+    + ", avec le nombre de pièces et la part du total"));
+  var thead = el("thead"), htr = el("tr");
+  [[view.group === "chap" ? "Ensemble" : "Famille d’usage", ""],
+   ["Pièces","n"],["Surface","n"],["Part","n"]].forEach(function(c){
+    var th = el("th", c[1], c[0]);
+    th.scope = "col";
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr); tbl.appendChild(thead);
+  var tb = el("tbody"); tbl.appendChild(tb);
+  sec.appendChild(tbl);
+  fillTotals(tb);
+  return sec;
+}
+
+export function renderTotals(){
+  var sec = document.getElementById("totals");
+  if(!sec || !sec.parentNode) return;       /* absent hors de l'onglet Programme */
+  sec.parentNode.replaceChild(totalsSection(), sec);
+}
+
+function fillTotals(tb){
+  function row(name, col, pieces, val, cls){
+    var tr = el("tr", cls || null), th = el("th", null);
+    th.scope = "row";
     if(col){
       var sw = el("span","sw"); sw.style.background = "var(" + col + ")";
-      td.appendChild(sw);
+      th.appendChild(sw);
     }
-    td.appendChild(document.createTextNode(name));
-    tr.appendChild(td);
-    tr.appendChild(el("td","n", String(pieces)));
+    th.appendChild(document.createTextNode(name));
+    tr.appendChild(th);
+    tr.appendChild(el("td","n", pieces == null ? "—" : String(pieces)));
     tr.appendChild(el("td","n", fmt(val) + " m²"));
     tr.appendChild(el("td","n", Math.round(val / GRAND * 100) + " %"));
     return tr;
   }
   function pieces(items){ return items.reduce(function(a,i){ return a + i.nb; }, 0); }
 
-  if(view.grouping === "chap"){
+  if(view.group === "chap"){
     CHAP.slice(0,4).forEach(function(c){ tb.appendChild(row(c.name, null, pieces(c.items), c.total)); });
-    var sr = el("tr","sum");
-    sr.appendChild(el("td", null, "Sous-total bâti scolaire — 1ᵉʳ temps"));
-    sr.appendChild(el("td","n",""));
-    sr.appendChild(el("td","n", fmt(BUILT) + " m²"));
-    sr.appendChild(el("td","n", Math.round(BUILT/GRAND*100) + " %"));
-    tb.appendChild(sr);
+    tb.appendChild(row("Sous-total bâti scolaire — 1ᵉʳ temps", null, null, BUILT, "sum"));
     CHAP.slice(4).forEach(function(c){ tb.appendChild(row(c.name, null, pieces(c.items), c.total)); });
   } else {
     FAM.forEach(function(f){ if(f.items.length) tb.appendChild(row(f.name, f.c, pieces(f.items), f.total)); });
   }
-  var sp = el("tr","sum");
-  sp.appendChild(el("td", null, "Programme chiffré au règlement"));
-  sp.appendChild(el("td","n",""));
-  sp.appendChild(el("td","n", fmt(PROG) + " m²"));
-  sp.appendChild(el("td","n", Math.round(PROG / GRAND * 100) + " %"));
-  tb.appendChild(sp);
-  var se = el("tr");
-  se.appendChild(el("td", null, "Surfaces à préciser — vestiaires, sanitaires et halls"));
-  se.appendChild(el("td","n",""));
-  se.appendChild(el("td","n", "+ " + fmt(ESTT) + " m²"));
-  se.appendChild(el("td","n", Math.round(ESTT / GRAND * 100) + " %"));
-  se.style.color = "var(--ink-3)";
-  tb.appendChild(se);
-  var gr = el("tr","grand");
-  gr.appendChild(el("td", null, "Total"));
-  gr.appendChild(el("td","n",""));
-  gr.appendChild(el("td","n", fmt(GRAND) + " m²"));
-  gr.appendChild(el("td","n","100 %"));
-  tb.appendChild(gr);
+  tb.appendChild(row("Programme chiffré au règlement", null, null, PROG, "sum"));
+  tb.appendChild(row("Surfaces à préciser — vestiaires, sanitaires et halls", null, null, ESTT, "soft"));
+  tb.appendChild(row("Total", null, null, GRAND, "grand"));
 }
 
+/* ---------- sources et conventions ----------
+   Trois paragraphes denses de 250 mots, imposés sous les cinq onglets. Le
+   contenu est conservé intégralement : c'est la justification des chiffres, et
+   sur un rendu de concours elle compte. Elle cesse simplement d'être lue de
+   force avant qu'on ait vu un dessin. */
+function sourcesSection(){
+  var d = el("details","disclose disclose--sources");
+  d.appendChild(el("summary", null, "Sources et conventions"));
+
+  var a = el("p");
+  a.appendChild(el("b", null, "Surfaces à préciser. "));
+  a.appendChild(document.createTextNode(
+    "Huit postes ne sont pas chiffrés par le règlement — il les compte en nombre de pièces, ou les "
+    + "renvoie « selon projet ». Ils portent notre valeur, modifiable en tête de cet onglet, sur ces "
+    + "bases : vestiaires de classe 0,5 m² par élève, soit 10 m² pour 20 élèves ; WC 2 m² par cabine, "
+    + "soit la cabine standard de 1 × 2 m sans la zone lavabos ; halls posés par défaut à 120, 150 et "
+    + "30 m², sans fondement dans le règlement. Ces valeurs sont à vérifier contre les directives "
+    + "cantonales. Elles apparaissent partout en trait tireté et restent comptées séparément."));
+  d.appendChild(a);
+
+  var b = el("p");
+  b.appendChild(el("b", null, "Lecture des couleurs. "));
+  b.appendChild(document.createTextNode(
+    "Tous les vestiaires et sanitaires sont comptés avec l’eau, y compris les vestiaires de classe ; "
+    + "tout le stockage et les dépôts vont au technique, qui est hachuré ; la salle de pause de l’UAPE "
+    + "va aux locaux du personnel. Chaque hall prend la couleur de ce qu’il dessert — hall d’école avec "
+    + "les classes, foyer de la salle polyvalente avec le sport, hall UAPE avec l’UAPE — et non celle "
+    + "de l’administration."));
+  d.appendChild(b);
+
+  var c = el("p");
+  c.appendChild(el("b", null, "Source. "));
+  c.appendChild(el("i", null, "1.19.a Concours école Saxon — règlement-programme, juillet 2026"));
+  c.appendChild(document.createTextNode(
+    ", chapitre 2.10 « Programme des locaux ». Les postes « selon projet » (halls, foyer), les WC "
+    + "comptés en nombre et les places de stationnement ne sont pas chiffrés au programme. La surface "
+    + "de plancher réelle du projet sera sensiblement supérieure au total ci-dessus."));
+  d.appendChild(c);
+  return d;
+}

@@ -904,7 +904,7 @@ export function wireVol(){
     drawVol();
   }, { passive: false });
   document.addEventListener("keydown", function(e){
-    if(view.grouping !== "vol") return;
+    if(view.tab !== "site") return;
     var t = e.target;
     if(t && (t.tagName === "INPUT" || t.tagName === "SELECT")) return;
     if(e.key === "Escape"){ volSel = -1; drawVol(); return; }

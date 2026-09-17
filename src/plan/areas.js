@@ -10,6 +10,12 @@ import { renderTotals } from "../views/render.js";
 
 export var ITEMBYKEY = {}; ITEMS.forEach(function(it){ ITEMBYKEY[it.key] = it; });
 export function itemOf(id){ return ITEMBYKEY[RMAP[id].key]; }
+/* Une pièce représentative pour un poste du programme : permet de saisir une
+   surface depuis l'onglet Programme, où l'on tient un poste et non une pièce. */
+export function roomForKey(key){
+  for(var i = 0; i < ROOMS.length; i++) if(ROOMS[i].key === key) return ROOMS[i].id;
+  return null;
+}
 export var userAreas = {};
 
 /* Change la surface d'un poste « à préciser » et propage partout. */
@@ -26,7 +32,8 @@ export function setPosteArea(id, v){
     var L = layout[r.id], cx = L.x + L.w / 2, cy = L.y + L.h / 2;
     L.w = d.w; L.h = d.h;
     L.x = snap(cx - d.w / 2); L.y = snap(cy - d.h / 2);
-    var ra = elOf[r.id].querySelector(".ra");
+    var d0 = elOf[r.id];                 /* null tant que le plan n'a pas été ouvert */
+    var ra = d0 && d0.querySelector(".ra");
     if(ra) ra.textContent = fmt(v) + " m²";
     applyRoom(r.id);
   });

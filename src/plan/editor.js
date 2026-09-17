@@ -916,7 +916,7 @@ export function wire(bMinus, bFit, bPlus, bSnap, bRot, bUndo, bReset){
   }, { passive: false });
 
   document.addEventListener("keydown", function(e){
-    if(view.grouping !== "plan") return;
+    if(view.tab !== "plan") return;
     var t = e.target;
     if(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); return; }

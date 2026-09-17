@@ -1,37 +1,110 @@
-import { view } from "./core/viewstate.js";
-import { renderLegend } from "./views/legend.js";
+import { TABS, isTool, readHash, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
 import { drawVol } from "./vol/volumes.js";
 
-/* ---------- barres de contrôle ----------
-   Chaque segment est une liste (id du bouton → valeur d'état) : la valeur
-   n'est écrite qu'ici, et l'état `aria-pressed` en découle. */
-var SEGMENTS = [
-  { key:"grouping", pairs:[["grpChap","chap"],["grpFam","fam"],["grpSch","sch"],
-                           ["grpPlan","plan"],["grpVol","vol"]] },
-  { key:"mode",     pairs:[["modeAgg","agg"],["modeUnit","unit"]] }
+/* ---------- thème ----------
+   `[data-theme]` était prévu dans la feuille de tokens mais aucune ligne du
+   projet ne l'écrivait : le thème sombre n'était pas contrôlable. Trois états,
+   parce que « suivre le système » est le bon défaut et doit rester joignable. */
+var THEMES = [
+  { v:"auto",  icon:"◐", label:"automatique" },
+  { v:"light", icon:"○", label:"clair" },
+  { v:"dark",  icon:"●", label:"sombre" }
 ];
+var themeIdx = 0;
 
-function wireSegment(seg){
-  var btns = seg.pairs.map(function(p){ return [document.getElementById(p[0]), p[1]]; });
-  function paint(){
-    btns.forEach(function(b){ b[0].setAttribute("aria-pressed", String(view[seg.key] === b[1])); });
-  }
-  btns.forEach(function(b){
-    b[0].addEventListener("click", function(){ view[seg.key] = b[1]; paint(); render(); });
-  });
-  paint();
+function readTheme(){
+  try{
+    var s = localStorage.getItem("saxon.theme");
+    for(var i = 0; i < THEMES.length; i++) if(THEMES[i].v === s) return i;
+  }catch(e){ /* mode privé, stockage refusé : on reste sur « automatique » */ }
+  return 0;
 }
-SEGMENTS.forEach(wireSegment);
+function paintTheme(){
+  var t = THEMES[themeIdx];
+  if(t.v === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t.v);
+  var b = document.getElementById("themeBtn");
+  document.getElementById("themeIcon").textContent = t.icon;
+  document.getElementById("themeLabel").textContent = "Thème : " + t.label;
+  b.title = "Thème : " + t.label;
+}
+function wireTheme(){
+  themeIdx = readTheme();
+  paintTheme();
+  document.getElementById("themeBtn").addEventListener("click", function(){
+    themeIdx = (themeIdx + 1) % THEMES.length;
+    try{ localStorage.setItem("saxon.theme", THEMES[themeIdx].v); }catch(e){}
+    paintTheme();
+  });
+}
 
-renderLegend();
+/* ---------- onglets ----------
+   Vrai patron d'onglets : `role="tab"` + `aria-selected`, un seul arrêt de
+   tabulation pour le groupe, flèches pour circuler. L'ancienne barre utilisait
+   `aria-pressed`, donc le vocabulaire des interrupteurs : une destination et un
+   réglage se ressemblaient. */
+var tabBtns = TABS.map(function(t){
+  return { t:t, el:document.getElementById("tab" + t.id.charAt(0).toUpperCase() + t.id.slice(1)) };
+});
+
+function paintTabs(){
+  tabBtns.forEach(function(b){
+    var on = view.tab === b.t.id;
+    b.el.setAttribute("aria-selected", String(on));
+    b.el.tabIndex = on ? 0 : -1;
+  });
+  var cur = tabBtns.filter(function(b){ return view.tab === b.t.id; })[0];
+  if(cur) document.getElementById("panels").setAttribute("aria-labelledby", cur.el.id);
+}
+
+export function goTo(id, focusPanel){
+  if(view.tab === id) return;
+  view.tab = id;
+  apply();
+  if(focusPanel) document.getElementById("panels").focus();
+}
+
+function apply(){
+  document.body.dataset.view = view.tab;
+  document.body.dataset.kind = isTool() ? "tool" : "doc";
+  paintTabs();
+  writeHash();
+  render();
+}
+
+tabBtns.forEach(function(b, i){
+  b.el.addEventListener("click", function(){ goTo(b.t.id, false); });
+  b.el.addEventListener("keydown", function(e){
+    var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1
+          : e.key === "Home" ? -99 : e.key === "End" ? 99 : 0;
+    if(!d) return;
+    e.preventDefault();
+    var n = d === -99 ? 0 : d === 99 ? tabBtns.length - 1
+          : (i + d + tabBtns.length) % tabBtns.length;
+    tabBtns[n].el.focus();
+    goTo(tabBtns[n].t.id, false);
+  });
+});
+
+window.addEventListener("hashchange", function(){
+  if(readHash()) apply();
+});
+
+/* ---------- démarrage ---------- */
+wireTheme();
+readHash();
+document.body.dataset.view = view.tab;
+document.body.dataset.kind = isTool() ? "tool" : "doc";
+paintTabs();
+writeHash();
 render();
 
 var rt;
 window.addEventListener("resize", function(){
   clearTimeout(rt);
   rt = setTimeout(function(){
-    if(view.grouping === "vol") drawVol();
-    else if(view.grouping !== "plan") render();
+    if(view.tab === "site") drawVol();
+    else if(view.tab !== "plan") render();
   }, 140);
 });
