@@ -161,7 +161,7 @@ export function drawPlates(){
     lb.appendChild(el("span", null, "   " + fmt(Math.round(flArea(i))) + " m² · "
       + flCount(i) + " pièces · " + fmt(bu) + " m² bâtis"
       + (PLATE > 0 ? " · " + Math.round(bu / PLATE * 100) + " % du plateau" : "")));
-    if(over) lb.style.color = "#d03b3b";
+    if(over) lb.style.color = "var(--danger)";
     p.appendChild(lb);
     plateLayer.appendChild(p);
   });
@@ -412,11 +412,11 @@ export function buildFloorBar(){
         + "  ·  " + fmt(bu) + " m² bâtis, circulation comprise"
         + (PLATE > 0 ? "  ·  " + pctp + " % du plateau" : "")
       : "niveau vide");
-    if(n && PLATE > 0 && bu > PLATE + 1) em.style.color = "#d03b3b";
+    if(n && PLATE > 0 && bu > PLATE + 1) em.style.color = "var(--danger)";
     b.appendChild(em);
     if(n && flWC(i).use && !flWC(i).wc){
       var nowc = el("em", null, "sans WC");
-      nowc.style.color = "#d03b3b";
+      nowc.style.color = "var(--danger)";
       b.appendChild(nowc);
     }
     b.addEventListener("click", function(){

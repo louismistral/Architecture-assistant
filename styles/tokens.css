@@ -1,23 +1,138 @@
+/* ============================================================================
+   Tokens — source unique des valeurs de dessin de l'interface.
+   Aucune valeur brute (couleur, espace, taille, rayon, ombre) ne doit être
+   écrite ailleurs que dans ce fichier.
+
+   Structure des thèmes, dans cet ordre, sans exception :
+     1. `:root` nu          → la palette CLAIRE complète. Tout token naît ici.
+     2. `prefers-color-scheme: dark` gardé par `:not([data-theme="light"])`
+                            → redéfinit les tokens pour l'OS en sombre, tout en
+                              laissant un choix clair explicite l'emporter.
+     3. `:root[data-theme="dark"]` → redéfinit les mêmes, pour que la bascule
+                              gagne aussi dans l'autre sens.
+   Un token défini uniquement dans 2 ou 3 n'existe pas pour le visiteur qui n'a
+   rien choisi : c'est le bug classique du thème illisible.
+   ========================================================================= */
+
 :root{
   color-scheme: light;
-  --paper:#EDEEE9;
-  --panel:#F8F8F5;
-  --ink:#16191A;
-  --ink-2:#565B59;
-  --ink-3:#8A908C;
-  --rule:#D6D9D1;
-  --rule-soft:#E3E5DE;
-  --grid:#DEE1D9;
-  --fill-op:0.20;
-  --f-cla:#D9539A;
-  --f-adm:#DD5A1A;
-  --f-eau:#2A78D6;
-  --f-tec:#8A908C;
-  --f-spo:#3F9438;
-  --f-uap:#E5A50F;
-  --f-pis:#0A96A8;
-  --f-ext:#1D6B3A;
+
+  /* --- surfaces et encres ------------------------------------------------ */
+  --paper:#EDEEE9;          /* fond de page */
+  --panel:#F8F8F5;          /* fond des panneaux, contrôles, canevas */
+  --ink:#16191A;            /* texte principal — 15.2:1 */
+  --ink-2:#565B59;          /* texte secondaire — 5.9:1 */
+  --ink-3:#636B66;          /* texte atténué — 4.7:1. Était #8A908C, à 2.79:1 : le token
+                               le plus utilisé de l'app ne passait AA sur aucun fond clair. */
+  --ink-4:#808884;          /* NON TEXTUEL uniquement — 3.1:1 : filets, pastilles, états
+                               désactivés. Séparer ce rôle du précédent est ce qui permet à
+                               --ink-3 de devenir lisible sans se confondre avec --ink-2. */
+  --rule:#D6D9D1;           /* filets et bordures */
+  --rule-soft:#E3E5DE;      /* filets internes, séparateurs de liste */
+  --rule-strong:#B9BEB4;    /* bordure au survol — était un token fantôme */
+  --grid:#DEE1D9;           /* quadrillage du plan */
+
+  /* --- couleurs sémantiques ---------------------------------------------
+     Séparées des familles d'usage : un token de famille détourné en couleur
+     d'état (l'ancien `--f-spo` pour « validé », `--f-eau` pour le focus) fait
+     mentir la légende. Valeurs calculées pour ≥ 4.5:1 sur --paper ET --panel. */
+  /* texte, icône et bordure posés sur --paper ou --panel : ≥ 4.5:1 sur les deux */
+  --danger:#BA3E38;
+  --warn:#955E00;
+  --ok:#187A3B;
+  --focus:#226BC0;
+  /* aplats pleins (badge, pastille) : ils portent leur propre fond, donc une seule
+     valeur sert les deux thèmes — blanc dessus à ≥ 4.5:1, détachement du fond ≥ 3:1 */
+  --danger-fill:#C74B43;
+  --warn-fill:#A4690C;
+  --ok-fill:#298646;
+  --focus-fill:#3077CD;
+  --on-fill:#FFFFFF;
+
+  /* --- familles d'usage --------------------------------------------------
+     Huit familles. Chaque couleur passe ≥ 3:1 sur --panel dans les deux
+     thèmes. `--f-tec` reste un neutre — en dessin d'architecture le technique
+     se hachure — mais ne partage plus l'hex de --ink-3, qu'il copiait.
+     Note : huit teintes catégorielles ne peuvent pas être distinguées deux à
+     deux (28 paires, aucun ordre ne franchit le seuil). La couleur n'est donc
+     jamais seule à porter l'identité : partout un libellé, une infobulle ou
+     la hachure l'accompagne. */
+  --f-cla:#DB5494;          /* classes et enseignement */
+  --f-adm:#DD5A02;          /* bureaux et locaux du personnel */
+  --f-eau:#3278D7;          /* locaux liés à l'eau */
+  --f-tec:#79867F;          /* technique, stockage, nettoyage — hachuré */
+  --f-spo:#3F9336;          /* sport et salle polyvalente */
+  --f-uap:#BF830C;          /* UAPE — ocre et non jaune : un jaune vif ne peut
+                               pas atteindre 3:1 sur un fond clair */
+  --f-pis:#0D95A9;          /* piscine */
+  --f-ext:#196B39;          /* cour et extérieurs */
+  --fill-op:0.20;           /* opacité des aplats de famille */
+  --hatch-op:0.34;          /* opacité de la hachure du technique */
+
+  /* --- familles de caractères ---------------------------------------------
+     La pile monospace était réécrite littéralement 43 fois dans le projet. */
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  /* --- échelle typographique --------------------------------------------
+     Sept pas, là où le projet en comptait vingt-deux entre 9.5 et 54 px.
+     Les pas numériques sont distincts : les chiffres portent l'information. */
+  --t-3xs:10px;             /* sur-titres capitales, micro-libellés */
+  --t-2xs:11px;             /* notes, unités, mentions */
+  --t-xs:12px;              /* données denses, lignes de liste */
+  --t-sm:13px;              /* taille de base de l'interface */
+  --t-md:15px;              /* chapô, texte courant */
+  --t-lg:19px;              /* titres de panneau */
+  --t-xl:clamp(26px,4.6vw,38px);   /* titre de page */
+  --t-num-sm:14px;          /* valeurs en ligne */
+  --t-num-md:17px;          /* valeurs de tableau de bord */
+  --t-num-lg:clamp(30px,6vw,44px); /* chiffre-clé */
+
+  --lh-tight:1.15;
+  --lh-snug:1.35;
+  --lh-base:1.5;
+  --lh-loose:1.65;
+  --track-caps:.12em;       /* interlettrage des capitales */
+
+  /* --- échelle d'espacement, base 4 -------------------------------------- */
+  --s-1:4px;
+  --s-2:8px;
+  --s-3:12px;
+  --s-4:16px;
+  --s-5:24px;
+  --s-6:32px;
+  --s-7:48px;
+  --s-8:64px;
+
+  /* --- rayons ------------------------------------------------------------
+     Trois pas par rôle, au lieu de 2/3/4 px employés indifféremment. */
+  --r-sm:2px;               /* pastilles, marques, segments */
+  --r-md:4px;               /* contrôles, champs */
+  --r-lg:8px;               /* panneaux, surfaces flottantes */
+  --r-full:999px;
+
+  /* --- élévation ---------------------------------------------------------
+     Dépensée par rôle : seule une surface qui flotte vraiment en reçoit. */
+  --sh-1:0 1px 2px rgba(22,25,26,.06);
+  --sh-2:0 8px 24px rgba(22,25,26,.12);
+
+  /* --- contrôles ---------------------------------------------------------
+     Une hauteur unique pour tous les boutons et champs : c'est elle qui met
+     fin aux cinq variantes de bouton qui divergeaient de 1 à 2 px. */
+  --ctl-h:32px;
+  --ctl-pad:0 var(--s-3);
+  --tap-min:24px;           /* cible tactile minimale (WCAG 2.2 AA, 2.5.8) */
+
+  /* --- mouvement ---------------------------------------------------------- */
+  --dur-1:.09s;
+  --dur-2:.18s;
+  --ease:cubic-bezier(.2,0,.2,1);
+
+  /* --- trames ------------------------------------------------------------- */
+  --z-props:5;              /* panneau de propriétés au-dessus du canevas */
+  --z-tip:50;               /* infobulle */
 }
+
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme: dark;
@@ -25,39 +140,70 @@
     --panel:#181B1A;
     --ink:#EFF1ED;
     --ink-2:#A6ACA7;
-    --ink-3:#7A817C;
+    --ink-3:#8B928D;          /* était #7A817C, à 4.34:1 sur --panel */
+    --ink-4:#6E756F;
     --rule:#2B302D;
     --rule-soft:#222624;
+    --rule-strong:#414743;
     --grid:#242926;
+
+    --danger:#D95B52;
+    --warn:#B77610;
+    --ok:#3B9555;
+    --focus:#3D84DB;
+    /* les aplats --*-fill ne changent pas : ils ne dépendent pas du fond de page */
+
+    --f-cla:#D363A6;
+    --f-adm:#DA6022;
+    --f-eau:#4086DF;
+    --f-tec:#8D9891;
+    --f-spo:#51A349;
+    --f-uap:#BF8900;
+    --f-pis:#21A3BA;
+    --f-ext:#46854A;
     --fill-op:0.28;
-    --f-cla:#D85C9E;
-    --f-adm:#D65A1E;
-    --f-eau:#3987E5;
-    --f-tec:#939993;
-    --f-spo:#4DA83F;
-    --f-uap:#D9A616;
-    --f-pis:#16A6B8;
-    --f-ext:#2E8B52;
+    --hatch-op:0.40;
+
+    --sh-1:0 1px 2px rgba(0,0,0,.4);
+    --sh-2:0 8px 24px rgba(0,0,0,.55);
   }
 }
+
 :root[data-theme="dark"]{
   color-scheme: dark;
   --paper:#0F1110;
   --panel:#181B1A;
   --ink:#EFF1ED;
   --ink-2:#A6ACA7;
-  --ink-3:#7A817C;
+  --ink-3:#8B928D;
+  --ink-4:#6E756F;
   --rule:#2B302D;
   --rule-soft:#222624;
+  --rule-strong:#414743;
   --grid:#242926;
+
+  --danger:#D95B52;
+  --warn:#B77610;
+  --ok:#3B9555;
+  --focus:#3D84DB;
+  /* les aplats --*-fill ne changent pas : ils ne dépendent pas du fond de page */
+
+  --f-cla:#D363A6;
+  --f-adm:#DA6022;
+  --f-eau:#4086DF;
+  --f-tec:#8D9891;
+  --f-spo:#51A349;
+  --f-uap:#BF8900;
+  --f-pis:#21A3BA;
+  --f-ext:#46854A;
   --fill-op:0.28;
-  --f-cla:#D85C9E;
-  --f-adm:#D65A1E;
-  --f-eau:#3987E5;
-  --f-tec:#939993;
-  --f-spo:#4DA83F;
-  --f-uap:#D9A616;
-  --f-pis:#16A6B8;
-  --f-ext:#2E8B52;
+  --hatch-op:0.40;
+
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 8px 24px rgba(0,0,0,.55);
 }
 
+/* Sur pointeur grossier, les contrôles atteignent la cible tactile. */
+@media (pointer:coarse){
+  :root{ --ctl-h:40px; --tap-min:40px; }
+}

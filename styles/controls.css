@@ -1,14 +1,109 @@
-.controls{
-  display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;
-  padding:16px 0;border-bottom:1px solid var(--rule);
-}
-.controls .spacer{flex:1 1 20px}
-.seg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--panel)}
-.seg button{appearance:none;border:0;background:transparent;cursor:pointer;font:inherit;font-size:12.5px;font-weight:500;color:var(--ink-2);padding:7px 13px}
-.seg button+button{border-left:1px solid var(--rule)}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-.seg button:focus-visible{outline:2px solid var(--f-eau);outline-offset:-2px}
-.scalebar{display:flex;align-items:center;gap:9px}
-.scalebar svg{display:block}
-.scalebar .cap{font-size:11px;color:var(--ink-3)}
+/* ============================================================================
+   UN bouton, UN groupe de boutons.
 
+   Le projet en comptait sept en concurrence pour le même rôle, et la divergence
+   n'était jamais intentionnelle : `.seg` et `.zoomseg` étaient des conteneurs
+   copiés mot pour mot, dont les boutons avaient dérivé d'un demi-pixel de taille
+   et d'un pixel de padding — la preuve étant `.rangeseg button{font-size:12.5px}`,
+   une sous-classe qui n'existait que pour annuler le 13px hérité de la copie.
+
+   Les anciens sélecteurs sont conservés comme alias du composant : cette feuille
+   unifie le rendu sans toucher au DOM. Les vues renommeront leurs classes ensuite.
+   ========================================================================= */
+
+.btn,
+.seg button,.tbtn,.zoomseg button,.floorbar button,
+.props .ratios button,.props .pfl button,.plans h4 button{
+  appearance:none;
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);
+  min-height:var(--ctl-h);padding:var(--ctl-pad);
+  font:inherit;font-size:var(--t-xs);font-weight:500;
+  color:var(--ink-2);background:var(--panel);
+  border:1px solid var(--rule);border-radius:var(--r-md);
+  cursor:pointer;white-space:nowrap;
+  transition:color var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease);
+}
+.btn:hover,
+.seg button:hover,.tbtn:hover,.zoomseg button:hover,
+.props .ratios button:hover,.props .pfl button:hover:not(:disabled),.plans h4 button:hover{
+  color:var(--ink);border-color:var(--rule-strong);
+}
+
+/* Une seule action dominante par vue. */
+.btn--primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn--primary:hover{color:var(--paper);opacity:.88}
+
+/* Pour les listes longues : le cadre disparaît, le bouton reste un bouton. */
+.btn--quiet,.roomlist button,.plans li button,.props .pfla{
+  appearance:none;background:none;border:1px solid transparent;
+  font:inherit;color:var(--ink-2);cursor:pointer;border-radius:var(--r-sm);
+}
+.btn--quiet:hover,.roomlist button:hover{background:var(--rule-soft);color:var(--ink)}
+
+.btn--icon{min-width:var(--ctl-h);padding-inline:var(--s-2)}
+
+/* --- états, portés par ARIA et par rien d'autre ------------------------- */
+.btn[aria-current="true"],.seg button[aria-pressed="true"],
+.floorbar button[aria-current="true"],.roomlist button[aria-current="true"],
+.props .pfl button[aria-current="true"]{
+  background:var(--ink);color:var(--paper);border-color:var(--ink);
+}
+.btn[aria-pressed="true"],.tbtn[aria-pressed="true"]{
+  background:var(--ink);color:var(--paper);border-color:var(--ink);
+}
+/* `opacity:.55` et pas .3/.35/.4 : à .35 un bouton désactivé tombait à 1,4:1
+   et on ne pouvait plus lire ni son nom ni la raison de sa désactivation. */
+.btn:disabled,.tbtn:disabled,.props .pfl button:disabled,
+.floorbar .flact button:disabled{opacity:.55;cursor:default}
+.btn:disabled:hover,.tbtn:disabled:hover{color:var(--ink-2);border-color:var(--rule)}
+
+/* --- groupe de boutons -------------------------------------------------- */
+/* PAS d'`overflow:hidden` ici. C'était la seule règle de tout le projet qui
+   SUPPRIMAIT une fonctionnalité : à 390 px le cinquième onglet sortait du cadre,
+   et comme la valeur était `hidden` et non `auto`, aucun geste ne pouvait le
+   ramener. Un onglet sur cinq n'existait pas sur téléphone, à cause d'un coin
+   arrondi fabriqué en rognant le conteneur. */
+.btn-group,.seg,.zoomseg,.circbar,.floorbar{
+  display:flex;align-items:stretch;
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-md);
+  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.btn-group::-webkit-scrollbar,.seg::-webkit-scrollbar,.zoomseg::-webkit-scrollbar{display:none}
+.btn-group>*,.seg button,.zoomseg button,.floorbar button{flex:0 0 auto}
+
+/* Les boutons d'un groupe partagent un cadre : ils perdent le leur et ne gardent
+   qu'un filet de séparation. Les coins sont arrondis par les enfants d'extrémité
+   plutôt que par un rognage du parent. */
+.btn-group .btn,.seg button,.zoomseg button,.floorbar button{
+  border:0;border-radius:0;background:transparent;
+}
+.btn-group .btn+.btn,.seg button+button,.zoomseg button+button,.floorbar button+button{
+  border-left:1px solid var(--rule);
+}
+.btn-group>:first-child,.seg button:first-child,.zoomseg button:first-child,.floorbar button:first-child{
+  border-start-start-radius:var(--r-md);border-end-start-radius:var(--r-md);
+}
+.btn-group>:last-child,.seg button:last-child,.zoomseg button:last-child,.floorbar button:last-child{
+  border-start-end-radius:var(--r-md);border-end-end-radius:var(--r-md);
+}
+
+/* Étiquette d'un groupe. La règle était écrite `.rangeseg .segcap`, or deux des
+   trois usages ne descendent pas de `.rangeseg` : « Circulation » et « Niveaux »
+   héritaient du corps de page, soit 16 px, et devenaient les plus gros éléments
+   d'une barre où tout le reste fait 12 px. Déscoper corrige les deux d'un coup.
+   Sans capitales : « RANGER Chapitres Familles » se lisait comme trois boutons
+   dont le premier crie. */
+.segcap,.btn-group__label{
+  display:inline-flex;align-items:center;
+  font-size:var(--t-2xs);font-weight:500;color:var(--ink-3);
+  padding-inline:var(--s-3) var(--s-2);white-space:nowrap;
+}
+
+.controls{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-3) var(--s-5);
+  padding-block:var(--s-4);border-bottom:1px solid var(--rule);
+}
+.controls .spacer{flex:1 1 var(--s-5)}
+.scalebar{display:flex;align-items:center;gap:var(--s-2)}
+.scalebar svg{display:block}
+.scalebar .cap{font-size:var(--t-2xs);color:var(--ink-3)}

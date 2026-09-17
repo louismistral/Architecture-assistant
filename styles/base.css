@@ -1,22 +1,55 @@
 *{box-sizing:border-box}
+
+/* `hidden` doit gagner contre toute règle de composant.
+   Sans ce `!important`, `.seg{display:inline-flex}` — une règle d'auteur, donc
+   prioritaire sur la feuille du navigateur — écrasait `[hidden]{display:none}`,
+   et l'attribut posé en JS n'avait aucun effet : le segment « Groupé / Détaillé »
+   restait visible et cliquable sur les onglets où il ne gouverne rien. */
+[hidden]{display:none!important}
+
 body{
   background:var(--paper);
   color:var(--ink);
-  font-family:"Archivo","Helvetica Neue",Arial,sans-serif;
-  line-height:1.5;
+  font-family:var(--sans);
+  line-height:var(--lh-base);
   -webkit-font-smoothing:antialiased;
-}
-.wrap{max-width:960px;margin:0 auto;padding-inline:20px;padding-block:40px 64px}
-.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
-.eyebrow{
-  font-size:11px;font-weight:600;font-variation-settings:"wdth" 88;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  margin:0;
 }
 
-footer{margin-top:34px;font-size:12px;color:var(--ink-3);line-height:1.6}
-footer b{color:var(--ink-2);font-weight:500}
+/* Un seul anneau de focus, déclaré une seule fois, pour tout ce qui est
+   actionnable. `:where()` a une spécificité nulle : un composant peut encore
+   ajuster l'offset sans lutter. L'offset NÉGATIF est le point — l'anneau se
+   dessine à l'intérieur de la boîte, donc il survit aux cinq conteneurs en
+   `overflow:hidden` qui le rognaient. */
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--focus);
+  outline-offset:-2px;
+  border-radius:inherit;
+}
 
-#tip{position:fixed;z-index:50;pointer-events:none;opacity:0;transform:translate(-50%,-100%);background:var(--ink);color:var(--paper);padding:8px 11px;border-radius:4px;max-width:250px;font-size:12px;line-height:1.4;transition:opacity .09s linear}
+.wrap{max-width:960px;margin:0 auto;padding-inline:var(--s-5);padding-block:var(--s-6) var(--s-8)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* Étiquette de rang : le motif « capitales espacées » était réécrit douze fois
+   avec cinq tailles et six interlettrages. C'est la seule signalétique qui dit
+   « ici commence une section » — elle ne peut pas être instable. */
+.label,.eyebrow{
+  font-size:var(--t-3xs);font-weight:600;font-variation-settings:"wdth" 88;
+  letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--ink-3);
+}
+.label--lg,.eyebrow{font-size:var(--t-2xs)}
+
+footer{margin-top:var(--s-6);font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-loose)}
+footer b{color:var(--ink);font-weight:500}
+
+#tip{
+  position:fixed;z-index:var(--z-tip);pointer-events:none;opacity:0;
+  transform:translate(-50%,-100%);background:var(--ink);color:var(--paper);
+  padding:var(--s-2) var(--s-3);border-radius:var(--r-md);max-width:250px;
+  font-size:var(--t-xs);line-height:var(--lh-snug);
+  transition:opacity var(--dur-1) linear;
+}
 #tip .t{font-weight:600;display:block;margin-bottom:2px}
-#tip .m{font-family:"IBM Plex Mono",monospace;font-size:11px;opacity:.72;display:block}
+#tip .m{font-family:var(--mono);font-size:var(--t-2xs);opacity:.78;display:block}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

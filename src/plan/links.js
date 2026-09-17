@@ -52,7 +52,7 @@ export function drawLinks(){
     var p1 = edgePt(A, B.x + B.w / 2, B.y + B.h / 2), p2 = edgePt(B, A.x + A.w / 2, A.y + A.h / 2);
     var split = fa !== fb;
     var ln = s("line", { x1: p1[0] * S, y1: p1[1] * S, x2: p2[0] * S, y2: p2[1] * S,
-      stroke: "#d03b3b", "stroke-width": split ? 2.4 : (ok ? 1.2 : 2), "stroke-linecap": "round",
+      stroke: "var(--danger)", "stroke-width": split ? 2.4 : (ok ? 1.2 : 2), "stroke-linecap": "round",
       "stroke-opacity": split ? 0.95 : (ok ? 0.3 : (sel && (l.a === sel || l.b === sel) ? 1 : 0.6)),
       "vector-effect": "non-scaling-stroke" });
     if(l.opt) ln.setAttribute("stroke-dasharray", "6 5");
@@ -62,9 +62,9 @@ export function drawLinks(){
       var mx0 = (p1[0] + p2[0]) / 2 * S, my0 = (p1[1] + p2[1]) / 2 * S;
       var t0 = "lien coupé", f0 = 10 / z, w0 = (t0.length * 6.1 + 12) / z, h0 = 14.5 / z;
       linkSvg.appendChild(s("rect", { x: mx0 - w0 / 2, y: my0 - h0 / 2, width: w0, height: h0,
-        rx: 2 / z, fill: "#d03b3b" }));
+        rx: 2 / z, fill: "var(--danger)" }));
       var tt0 = s("text", { x: mx0, y: my0 + f0 * 0.35, "text-anchor": "middle",
-        "font-size": f0, fill: "#fff", "font-family": "'IBM Plex Mono', monospace" });
+        "font-size": f0, fill: "var(--on-fill)", "font-family": "'IBM Plex Mono', monospace" });
       tt0.textContent = t0;
       linkSvg.appendChild(tt0);
       return;
@@ -75,9 +75,9 @@ export function drawLinks(){
       var txt = (Math.round(g * 10) / 10) + " m";
       var fsz = 10 / z, bw = (txt.length * 6.3 + 10) / z, bh = 14.5 / z;
       linkSvg.appendChild(s("rect", { x: mx - bw / 2, y: my - bh / 2, width: bw, height: bh,
-        rx: 2 / z, fill: "#d03b3b" }));
+        rx: 2 / z, fill: "var(--danger)" }));
       var t = s("text", { x: mx, y: my + fsz * 0.35, "text-anchor": "middle",
-        "font-size": fsz, fill: "#fff", "font-family": "'IBM Plex Mono', monospace" });
+        "font-size": fsz, fill: "var(--on-fill)", "font-family": "'IBM Plex Mono', monospace" });
       t.textContent = txt;
       linkSvg.appendChild(t);
     }
@@ -88,7 +88,7 @@ export function drawLinks(){
       + (pend ? "  ·  " + pend + " en attente au bac" : "")
       + (cut ? "  ·  " + cut + " coupée" + (cut > 1 ? "s" : "") + " par un niveau" : "")
       + (strayCount ? "  ·  " + strayCount + " pièce" + (strayCount > 1 ? "s" : "") + " hors chapitre" : "")));
-    linkCount.style.color = okN === PLINK.length ? "var(--f-spo)" : "#d03b3b";
+    linkCount.style.color = okN === PLINK.length ? "var(--ok)" : "var(--danger)";
   }
 }
 

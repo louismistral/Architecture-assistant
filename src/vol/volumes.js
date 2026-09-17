@@ -474,7 +474,7 @@ export function drawVolumes(){
     var bad = v.link && !volFits(v, v.x, v.y);
     var g = s("g", { "class": "vol" + (k === volSel ? " sel" : ""), "data-k": k, tabindex: "0" });
     g.appendChild(s("path", { d: vpath(vcorners(v), 1), fill: col,
-      "fill-opacity": detail ? ".10" : ".26", stroke: bad ? "#d03b3b" : col,
+      "fill-opacity": detail ? ".10" : ".26", stroke: bad ? "var(--danger)" : col,
       "stroke-width": k === volSel ? 3 : (bad ? 2.6 : 2),
       "stroke-dasharray": bad ? "9 5" : null, "vector-effect": "non-scaling-stroke" }));
 

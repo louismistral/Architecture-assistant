@@ -21,7 +21,7 @@ h1{
   padding:3px 0;border-top:1px solid var(--rule-soft)}
 .varstrip li span{color:var(--ink-2)}
 .varstrip li b{font-family:"IBM Plex Mono",monospace;font-weight:500;font-variant-numeric:tabular-nums}
-.varstrip li.done b{color:var(--f-spo)}
+.varstrip li.done b{color:var(--ok)}
 .varstrip .vtot{margin-top:9px;font-size:12px;color:var(--ink-2);font-family:"IBM Plex Mono",monospace}
 .legend{margin-top:26px}
 .legend-track{display:flex;gap:2px;height:24px}
