@@ -27,8 +27,21 @@ Typologie sont à construire. Le code 3D et le générateur de volumétrie sont 
 **dormants** — `src/core/gl.js`, `src/vol/place.js`, `massing.js`, `checks.js`,
 `scene3d.js` — sans onglet qui les expose ; ils sont la base du futur Massing.
 
-L'onglet Programme se lit en trois sections, dans cet ordre : **Contraintes**,
-**Surfaces**, **Adjacences**.
+L'onglet Programme porte **trois volets**, dans cet ordre : **Surfaces**,
+**Contraintes**, **Adjacences** (`view.sub`, `SUBS` dans `src/core/viewstate.js`). Ils
+étaient empilés sur une seule page, numérotés 1, 2, 3 : revenir d'une adjacence à la
+surface qu'elle commente demandait quatre écrans de défilement. Ce sont trois lectures du
+même règlement, pas trois étapes — la chronologie du concours, elle, est dans les onglets.
+
+- **Surfaces** — le programme à l'échelle, les huit postes « à préciser » et la part de
+  circulation. C'est le volet d'ouverture, et le seul où l'on saisit quelque chose.
+- **Contraintes** — `src/views/constraints.js`, lu dans `src/data/rules.js`.
+- **Adjacences** — `src/views/schema.js`.
+
+URL : `#programme/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a
+un regroupement. Les formes qui ont circulé avant — `#adjacences` et `#programme/fam` —
+restent valables. Un volet s'ajoute dans `SUBS` plus une branche dans `render()` ; le
+bouton et le routage par hash suivent tout seuls.
 
 ---
 

@@ -1,5 +1,5 @@
 /* ============================================================================
-   LES CONTRAINTES DU CONCOURS, EN TÊTE DE L'ONGLET PROGRAMME
+   LES CONTRAINTES DU CONCOURS — VOLET DE L'ONGLET PROGRAMME
 
    Elles y sont à leur place : ce sont elles qui pèsent sur les surfaces, et
    l'onglet Programme est le premier de la chronologie — programme, puis
@@ -35,9 +35,11 @@ export function constraintsSection(){
       Z = RULES.seisme, X = RULES.ext;
 
   var p = el("section","panel");
+  /* Le titre du volet est porté par son rang de section, une fois : l'onglet, le
+     rang et le panneau écrivaient « Contraintes » trois fois de suite. Reste la
+     source, qui, elle, ne se lit nulle part ailleurs. */
   var hd = el("div","panel-head");
-  hd.appendChild(el("h2", null, "Contraintes du concours"));
-  hd.appendChild(el("span","pct mono", "règlement-programme, juillet 2026"));
+  hd.appendChild(el("span","pct mono", "règlement-programme de concours, juillet 2026"));
   p.appendChild(hd);
   p.appendChild(el("p","panel-sub",
     "Ce que le règlement impose avant qu'une surface soit posée quelque part. "

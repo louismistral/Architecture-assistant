@@ -3,7 +3,7 @@ import {
   ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, ESTT, FMAP, GRAND, PROG,
   setCirc, setItemArea
 } from "../core/model.js";
-import { view } from "../core/viewstate.js";
+import { SUBS, view, writeHash } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { FREE, SLINK, SNODE } from "../data/schema.js";
@@ -90,6 +90,49 @@ function programmeBar(){
   return bar;
 }
 
+/* ---------- volets de l'onglet Programme ----------
+   Le patron d'onglets du chrome, repris tel quel un cran plus bas parce que
+   c'est la même chose : `role="tablist"`, `aria-selected`, un seul arrêt de
+   tabulation pour le groupe, flèches pour circuler, et un `role="tabpanel"`
+   nommé par le volet actif. */
+function subTabs(){
+  var nav = el("nav","btn-group subtabs");
+  nav.setAttribute("role","tablist");
+  nav.setAttribute("aria-label","Volets du programme");
+  var ids = [];
+  SUBS.forEach(function(sb, i){
+    var b = el("button","btn", sb.label);
+    b.type = "button";
+    b.id = "sub" + sb.id.charAt(0).toUpperCase() + sb.id.slice(1);
+    b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", String(view.sub === sb.id));
+    b.setAttribute("aria-controls","subpanel");
+    b.tabIndex = view.sub === sb.id ? 0 : -1;
+    b.addEventListener("click", function(){
+      if(view.sub === sb.id) return;
+      view.sub = sb.id;
+      writeHash();
+      render();
+    });
+    b.addEventListener("keydown", function(e){
+      var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1
+            : e.key === "Home" ? -99 : e.key === "End" ? 99 : 0;
+      if(!d) return;
+      e.preventDefault();
+      var n = d === -99 ? 0 : d === 99 ? SUBS.length - 1 : (i + d + SUBS.length) % SUBS.length;
+      view.sub = SUBS[n].id;
+      writeHash();
+      render();
+      /* Le rendu a refait les boutons : on retrouve le nouveau par son id. */
+      var again = document.getElementById(ids[n]);
+      if(again) again.focus();
+    });
+    ids.push(b.id);
+    nav.appendChild(b);
+  });
+  return nav;
+}
+
 /* Un rang de section : le numéro dit l'ordre de lecture, le titre dit quoi. */
 function sectHead(n, titre, sous){
   var h = el("div","secthead");
@@ -115,25 +158,46 @@ export function render(){
   }
 
   /* ================= Programme =================
-     Trois temps, dans l'ordre où l'on en a besoin : ce que le règlement impose,
-     les surfaces qu'il donne, les proximités qu'il exige. L'onglet suivant —
-     le mixer — part de la troisième. */
+     Trois lectures du même règlement : les surfaces qu'il donne, le cadre qu'il
+     impose, les proximités qu'il exige. Elles étaient empilées sur une seule
+     page et numérotées 1, 2, 3 ; elles sont des volets, parce qu'on y revient
+     sans arrêt et qu'on ne les lit pas d'affilée. La chronologie du concours,
+     elle, reste dans les onglets : Programme, puis le mixer. */
   panelsEl.appendChild(introSection());
+  var sbar = el("div","subtabs-bar");
+  sbar.appendChild(subTabs());
+  panelsEl.appendChild(sbar);
 
-  /* ---- 1 · contraintes ---- */
-  panelsEl.appendChild(sectHead("1", "Contraintes",
-    "Le cadre : site, hauteurs, feu, séisme, mobilité, second temps."));
-  panelsEl.appendChild(constraintsSection());
+  var host = el("div","subpanel");
+  host.id = "subpanel";
+  host.setAttribute("role","tabpanel");
+  host.setAttribute("aria-labelledby",
+    "sub" + view.sub.charAt(0).toUpperCase() + view.sub.slice(1));
+  panelsEl.appendChild(host);
 
-  /* ---- 2 · surfaces ---- */
-  panelsEl.appendChild(sectHead("2", "Surfaces",
+  if(view.sub === "contraintes"){
+    host.appendChild(sectHead("2", "Contraintes",
+      "Le cadre : site, hauteurs libres, protection incendie, séisme, mobilité, second temps."));
+    host.appendChild(constraintsSection());
+    return;
+  }
+  if(view.sub === "adjacences"){
+    host.appendChild(sectHead("3", "Adjacences",
+      "Les pièces que le règlement demande de placer côte à côte. C'est d'ici que "
+      + "le mixer tire ses préférences : un poste va d'abord au niveau de ce qu'il doit toucher."));
+    host.appendChild(adjacencesSection());
+    return;
+  }
+
+  /* ---- volet Surfaces ---- */
+  host.appendChild(sectHead("1", "Surfaces",
     "Le programme des locaux, chaque bloc à sa surface réelle. Les huit postes "
     + "que le règlement ne chiffre pas, et la part de circulation, se saisissent ici."));
-  panelsEl.appendChild(varBlock());
-  panelsEl.appendChild(legendBlock());
-  panelsEl.appendChild(programmeBar());
+  host.appendChild(varBlock());
+  host.appendChild(legendBlock());
+  host.appendChild(programmeBar());
 
-  var W = (panelsEl.clientWidth || 900) / ppm;
+  var W = (host.clientWidth || panelsEl.clientWidth || 900) / ppm;
   var fs = 11 / ppm, fsSm = 9.5 / ppm;
 
   var groups = view.group === "chap"
@@ -189,7 +253,7 @@ export function render(){
     }
     p.appendChild(det);
 
-    panelsEl.appendChild(p);
+    host.appendChild(p);
     drawDiagram(d, gp.items, W, fs, fsSm);
     d.querySelector("svg").setAttribute("aria-label",
       gp.name + " — " + fmt(gp.total) + " m² de surfaces chiffrées, représentées à l’échelle");
@@ -202,23 +266,17 @@ export function render(){
     o2.appendChild(document.createTextNode(ALL_OFF.join(" · ")));
     o2.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
     box.appendChild(o2);
-    panelsEl.appendChild(box);
+    host.appendChild(box);
   }
 
-  panelsEl.appendChild(totalsSection());
-
-  /* ---- 3 · adjacences ---- */
-  panelsEl.appendChild(sectHead("3", "Adjacences",
-    "Les pièces que le règlement demande de placer côte à côte. C'est d'ici que "
-    + "le mixer tire ses préférences : un poste va d'abord au niveau de ce qu'il doit toucher."));
-  panelsEl.appendChild(adjacencesSection());
-
-  panelsEl.appendChild(sourcesSection());
+  host.appendChild(totalsSection());
+  host.appendChild(sourcesSection());
 }
 
 /* ---------- adjacences ----------
-   C'était un onglet. Ce n'en était pas un : on ne s'y rend pas, on l'y lit à la
-   suite des surfaces qu'il commente, et l'onglet suivant s'en sert. */
+   C'était un onglet de premier rang, à côté du mixer : on n'y va pas décider
+   quelque chose, on y lit ce que le règlement exige, comme dans les deux autres
+   volets. Elle est ici, et l'onglet suivant s'en sert. */
 function adjacencesSection(){
   var p0 = el("section","panel");
   var hd = el("div","panel-head");
