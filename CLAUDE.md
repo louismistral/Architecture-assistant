@@ -87,6 +87,24 @@ toiture infiltrées sur site · intégration au bâtiment et aux jardins de l'an
 
 ---
 
+## L'onglet Programme : trois volets
+
+`view.sub` — **Surfaces**, **Contraintes**, **Adjacences**, dans cet ordre. Les trois
+lisent le règlement ; on ne compose ni dans l'un ni dans l'autre (c'est « Plan » et
+« Site »). Un volet s'ajoute dans `SUBS` (`src/core/viewstate.js`) plus une branche dans
+`render()` ; le bouton et le routage suivent.
+
+- **Surfaces** — le programme dessiné à l'échelle, les surfaces à préciser, le
+  récapitulatif et les sources. `views/legend.js` + `views/diagram.js`.
+- **Contraintes** — `src/views/rules.js`. Tout ce qui y est chiffré vient de
+  `src/data/rules.js` : la vue NOMME les valeurs, elle ne les redit pas. Changer une
+  contrainte à la source change cette page, le générateur de volumétrie et son contrôle
+  d'un seul geste.
+- **Adjacences** — `views/schema.js`, inchangé, descendu d'un cran.
+
+URL : `#programme/<volet>` et, pour Surfaces seule, `#programme/surfaces/<chap|fam>`.
+Les formes anciennes `#adjacences` et `#programme/fam` restent valables.
+
 ## L'onglet Site : proposer une volumétrie, puis la contrôler
 
 ```
@@ -117,8 +135,8 @@ approche, un clic net désigne un volume.
 ## Où modifier quoi
 
 - **Une surface, un nombre, une famille, une note** : `src/data/program.js` seul.
-- **Une contrainte du concours** : `src/data/rules.js` seul — le générateur, le contrôle
-  et les textes en découlent.
+- **Une contrainte du concours** : `src/data/rules.js` seul — le volet Contraintes, le
+  générateur de volumétrie et son contrôle en découlent.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle.
 - **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait

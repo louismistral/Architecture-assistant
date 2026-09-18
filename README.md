@@ -20,13 +20,18 @@ Depuis un terminal cloud, redirige le port 8000 vers ta machine.
 
 C'est la décision structurante du projet, et tout le reste en découle.
 
-L'application rend **quatre vues de deux natures** : deux vues de *document*, qu'on lit,
-et deux *outils*, qu'on opère. `document.body.dataset.kind` commute la mise en page :
+L'application rend **trois vues de deux natures** : une vue de *document*, qu'on lit, et
+deux *outils*, qu'on opère. `document.body.dataset.kind` commute la mise en page :
 
 | gabarit | vues | mise en page |
 |---|---|---|
-| `doc` | Programme, Adjacences | colonne de lecture de 960 px, défilement assumé |
+| `doc` | Programme | colonne de lecture de 960 px, défilement assumé |
 | `tool` | Plan, Site | cadre plein, l'outil occupe la fenêtre |
+
+L'onglet Programme porte **trois volets** — Surfaces, Contraintes, Adjacences — qui lisent
+tous le règlement sous un angle différent. « Adjacences » était une destination de premier
+rang à côté de « Plan » et « Site » : elle ne compose rien, elle lit, et elle descend donc
+d'un cran. Le volet est dans `view.sub`.
 
 Le chrome permanent (`.appbar`, collant, ~52 px) ne contient que le nom du projet, le
 total vivant, les quatre onglets et la bascule de thème. **Tout contenu éditorial
@@ -34,8 +39,9 @@ appartient à la vue qu'il décrit** : le chapô, le chiffre-clé, les surfaces 
 légende, le récapitulatif et les sources vivent dans l'onglet Programme ; la barre
 d'échelle aussi, parce qu'elle n'est exacte que là.
 
-La vue courante est dans le fragment d'URL (`#plan`, `#programme/fam`) : rechargeable et
-partageable.
+La vue courante est dans le fragment d'URL (`#plan`, `#programme/surfaces/fam`,
+`#programme/contraintes`) : rechargeable et partageable. Les deux formes qui ont circulé
+avant les volets — `#adjacences` et `#programme/fam` — restent valables.
 
 ## Structure
 
@@ -71,6 +77,7 @@ src/
                       surfaces à préciser saisissables, légende)
     diagram.js        diagrammes à l'échelle et barre d'échelle
     schema.js         dessin des adjacences
+    rules.js          volet Contraintes : le règlement, lu depuis data/rules.js
     menu.js           menu déroulant — ce qui permet de ranger sans rien supprimer
     tooltip.js        infobulle
   plan/               plan interactif
@@ -152,6 +159,8 @@ conséquence de son entrée de menu.
   `styles/tokens.css` pour les valeurs. Les deux fichiers sont liés par l'id de famille.
 - **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`), un bouton dans
   `index.html`, et une branche dans `render()` (`src/views/render.js`).
+- **Un volet de Programme** : ajouter une entrée dans `SUBS` (`src/core/viewstate.js`) et
+  une branche dans `render()`. Le bouton et le routage par hash suivent tout seuls.
 - **L'état de vue** : `src/core/viewstate.js` — lu partout, écrit seulement par `main.js`.
 
 Règle du projet : chaque état mutable appartient à un seul module ; les autres le lisent

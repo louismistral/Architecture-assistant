@@ -65,3 +65,52 @@ g.blk{cursor:default}
 .totals .sw{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm);margin-right:var(--s-2)}
 
 @media (max-width:560px){.schedule{grid-template-columns:1fr}}
+
+/* ---------- volets de l'onglet Programme ----------
+   Le même composant de groupe de boutons que la barre d'application, un cran
+   plus bas : collant sous elle, et séparé du contenu par le même filet que les
+   panneaux, pour qu'on voie tout de suite ce qu'il gouverne. */
+.subtabs-bar{position:sticky;top:0;z-index:1;margin:0 0 var(--s-4);padding:var(--s-3) 0;
+  background:var(--paper);border-bottom:1px solid var(--rule)}
+.subtabs{width:max-content;max-width:100%}
+.subpanel:focus-visible{outline:none}
+@media (max-width:620px){ .subtabs{width:100%} .subtabs .btn{flex:1 1 0;min-width:0} }
+
+/* ---------- contraintes ----------
+   Deux colonnes : ce qui est exigé à gauche, la valeur et ce qu'elle impose à
+   droite. Le même contrat de lecture que le tableau de bord de l'onglet Site,
+   parce que ce sont les mêmes valeurs. */
+.reg{margin:var(--s-3) 0 0;display:grid;gap:0}
+.reg div{display:grid;grid-template-columns:minmax(0,15rem) minmax(0,1fr);gap:var(--s-2) var(--s-4);
+  padding:var(--s-2) 0;border-bottom:1px solid var(--rule-soft)}
+.reg div:last-child{border-bottom:0}
+.reg dt{font-size:var(--t-sm);color:var(--ink)}
+.reg dd{margin:0}
+.reg__val{display:block;font-family:var(--mono);font-size:var(--t-num-sm);font-weight:500;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+/* Une valeur qui n'est pas un nombre n'a rien à faire en chasse fixe : la
+   police à chasse fixe sert à aligner des chiffres, pas à citer une zone. */
+.reg__val--txt{font-family:var(--sans);font-size:var(--t-sm);font-weight:500;letter-spacing:0}
+.reg dd small{display:block;margin-top:2px;font-size:var(--t-2xs);color:var(--ink-3);
+  line-height:var(--lh-snug);max-width:64ch}
+.reg__note{margin:var(--s-3) 0 0;font-size:var(--t-2xs);color:var(--ink-3);
+  line-height:var(--lh-loose);max-width:74ch}
+
+.reg-tab{width:100%;border-collapse:collapse;font-size:var(--t-sm);margin-top:var(--s-3)}
+.reg-tab th,.reg-tab td{padding:var(--s-2) var(--s-3) var(--s-2) 0;text-align:left;
+  border-bottom:1px solid var(--rule-soft);font-weight:400;vertical-align:baseline}
+.reg-tab td.n,.reg-tab th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.reg-tab thead th{font-size:var(--t-3xs);letter-spacing:var(--track-caps);text-transform:uppercase;
+  color:var(--ink-3);border-bottom-color:var(--rule)}
+.reg-tab tbody th{color:var(--ink)}
+.reg-tab td:last-child{font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+
+.reg-list{margin:var(--s-3) 0 0;padding:0;list-style:none;display:grid;gap:var(--s-2)}
+.reg-list li{padding-left:var(--s-3);border-left:2px solid var(--rule);
+  font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-snug);max-width:74ch}
+
+@media (max-width:620px){
+  .reg div{grid-template-columns:1fr;gap:2px}
+  .reg-tab td:last-child,.reg-tab th:last-child{display:none}
+}

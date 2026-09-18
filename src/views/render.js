@@ -1,6 +1,6 @@
 import { el, fmt } from "../core/format.js";
 import { ALL_OFF, BUILT, ESTT, FMAP, GRAND, PROG } from "../core/model.js";
-import { view } from "../core/viewstate.js";
+import { SUBS, view, writeHash } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { FREE, SLINK, SNODE } from "../data/schema.js";
@@ -9,6 +9,7 @@ import { arrange, fit, planPanel, undoStack } from "../plan/editor.js";
 import { initStore } from "../plan/store.js";
 import { drawDiagram, panelsEl, ppm, refreshPpm, scaleBar } from "./diagram.js";
 import { introSection, renderBar, setAreaHandler } from "./legend.js";
+import { rulesPanels } from "./rules.js";
 import { drawSchema, linkKey, linkList } from "./schema.js";
 import { tip } from "./tooltip.js";
 import { drawVol, volLink, volPanel, volSync, wireVol } from "../vol/volumes.js";
@@ -79,6 +80,71 @@ function programmeBar(){
   return bar;
 }
 
+/* ---------- volets de l'onglet Programme ----------
+   Vrai patron d'onglets imbriqué : `role="tablist"` et `aria-selected`, un seul
+   arrêt de tabulation pour le groupe, flèches pour circuler — le même patron
+   que la barre d'application, parce que c'est la même chose un cran plus bas.
+   Les trois volets lisent le règlement ; on ne compose dans aucun. */
+function subTabs(){
+  var nav = el("nav","btn-group subtabs");
+  nav.setAttribute("role","tablist");
+  nav.setAttribute("aria-label","Volets du programme");
+  var btns = [];
+  SUBS.forEach(function(sb, i){
+    var b = el("button","btn", sb.label);
+    b.type = "button";
+    b.id = "sub" + sb.id.charAt(0).toUpperCase() + sb.id.slice(1);
+    b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", String(view.sub === sb.id));
+    b.setAttribute("aria-controls","subpanel");
+    b.tabIndex = view.sub === sb.id ? 0 : -1;
+    b.addEventListener("click", function(){
+      if(view.sub === sb.id) return;
+      view.sub = sb.id;
+      writeHash();
+      render();
+    });
+    b.addEventListener("keydown", function(e){
+      var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1
+            : e.key === "Home" ? -99 : e.key === "End" ? 99 : 0;
+      if(!d) return;
+      e.preventDefault();
+      var n = d === -99 ? 0 : d === 99 ? SUBS.length - 1 : (i + d + SUBS.length) % SUBS.length;
+      view.sub = SUBS[n].id;
+      writeHash();
+      render();
+      var again = document.getElementById(btns[n]);
+      if(again) again.focus();
+    });
+    btns.push(b.id);
+    nav.appendChild(b);
+  });
+  return nav;
+}
+
+/* ---------- volet Adjacences ---------- */
+function adjacencesPanel(){
+  var p0 = el("section","panel");
+  var hd = el("div","panel-head");
+  hd.appendChild(el("h1", null, "Adjacences"));
+  hd.appendChild(el("span","pct mono", SLINK.length + " liens · " + SNODE.length + " pièces"));
+  p0.appendChild(hd);
+  p0.appendChild(el("p","panel-sub",
+    "Les pièces que le règlement demande de placer côte à côte."));
+  p0.appendChild(linkKey());
+  var sw = el("div","schema-wrap");
+  p0.appendChild(sw);
+  var det = el("details","disclose");
+  det.appendChild(el("summary", null, SLINK.length + " exigences, citées au règlement"));
+  det.appendChild(linkList());
+  var fr = el("div","unpriced");
+  fr.appendChild(el("b", null, "Sans contrainte de proximité énoncée — "));
+  fr.appendChild(document.createTextNode(FREE.join(" · ")));
+  det.appendChild(fr);
+  p0.appendChild(det);
+  return { panel: p0, wrap: sw };
+}
+
 export function render(){
   refreshPpm();
   while(panelsEl.firstChild) panelsEl.removeChild(panelsEl.firstChild);
@@ -107,35 +173,33 @@ export function render(){
     return;
   }
 
-  if(view.tab === "adjacences"){
-    var p0 = el("section","panel");
-    var hd = el("div","panel-head");
-    hd.appendChild(el("h1", null, "Adjacences"));
-    hd.appendChild(el("span","pct mono", SLINK.length + " liens · " + SNODE.length + " pièces"));
-    p0.appendChild(hd);
-    p0.appendChild(el("p","panel-sub",
-      "Les pièces que le règlement demande de placer côte à côte."));
-    p0.appendChild(linkKey());
-    var sw = el("div","schema-wrap");
-    p0.appendChild(sw);
-    var det = el("details","disclose");
-    det.appendChild(el("summary", null, SLINK.length + " exigences, citées au règlement"));
-    det.appendChild(linkList());
-    var fr = el("div","unpriced");
-    fr.appendChild(el("b", null, "Sans contrainte de proximité énoncée — "));
-    fr.appendChild(document.createTextNode(FREE.join(" · ")));
-    det.appendChild(fr);
-    p0.appendChild(det);
-    panelsEl.appendChild(p0);
-    drawSchema(sw);
+  /* ---------- Programme : trois volets ---------- */
+  var sbar = el("div","subtabs-bar");
+  sbar.appendChild(subTabs());
+  panelsEl.appendChild(sbar);
+  var host = el("div","subpanel");
+  host.id = "subpanel";
+  host.setAttribute("role","tabpanel");
+  host.setAttribute("aria-labelledby",
+    "sub" + view.sub.charAt(0).toUpperCase() + view.sub.slice(1));
+  panelsEl.appendChild(host);
+
+  if(view.sub === "adjacences"){
+    var adj = adjacencesPanel();
+    host.appendChild(adj.panel);
+    drawSchema(adj.wrap);
+    return;
+  }
+  if(view.sub === "contraintes"){
+    rulesPanels().forEach(function(p){ host.appendChild(p); });
     return;
   }
 
-  /* ---------- Programme ---------- */
-  panelsEl.appendChild(introSection());
-  panelsEl.appendChild(programmeBar());
+  /* ---------- volet Surfaces ---------- */
+  host.appendChild(introSection());
+  host.appendChild(programmeBar());
 
-  var W = (panelsEl.clientWidth || 900) / ppm;
+  var W = (host.clientWidth || panelsEl.clientWidth || 900) / ppm;
   var fs = 11 / ppm, fsSm = 9.5 / ppm;
 
   var groups = view.group === "chap"
@@ -191,7 +255,7 @@ export function render(){
     }
     p.appendChild(det);
 
-    panelsEl.appendChild(p);
+    host.appendChild(p);
     drawDiagram(d, gp.items, W, fs, fsSm);
     d.querySelector("svg").setAttribute("aria-label",
       gp.name + " — " + fmt(gp.total) + " m² de surfaces chiffrées, représentées à l’échelle");
@@ -204,11 +268,11 @@ export function render(){
     o2.appendChild(document.createTextNode(ALL_OFF.join(" · ")));
     o2.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
     box.appendChild(o2);
-    panelsEl.appendChild(box);
+    host.appendChild(box);
   }
 
-  panelsEl.appendChild(totalsSection());
-  panelsEl.appendChild(sourcesSection());
+  host.appendChild(totalsSection());
+  host.appendChild(sourcesSection());
 }
 
 /* ---------- récapitulatif ----------
