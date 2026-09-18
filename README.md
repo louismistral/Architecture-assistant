@@ -59,7 +59,9 @@ pas trois étapes ; la chronologie du concours est dans les onglets, pas ici.
 
 1. **Surfaces** — le programme des locaux à l'échelle, les huit postes « à préciser » et
    **la part de circulation**, saisissables sur place. Volet d'ouverture, et le seul où
-   l'on saisit quelque chose.
+   l'on saisit quelque chose. La circulation y est dessinée **à l'échelle** avec les
+   locaux — un bloc hachuré, sans couleur de famille — et comptée dans la somme de
+   chaque chapitre : le titre donne le bâti, la ligne à côté d'où il vient.
 2. **Contraintes** — site, hauteurs libres, protection incendie, parasismique, mobilité,
    second temps. Tout est lu dans `src/data/rules.js`.
 3. **Adjacences** — le schéma fonctionnel, d'où le mixer tire ses préférences de

@@ -1,6 +1,6 @@
 import { el, fmt } from "../core/format.js";
 import {
-  ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, ESTT, FMAP, GRAND, PROG,
+  ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, ESTT, FMAP, GRAND, GRANDG, PROG,
   setCirc, setItemArea
 } from "../core/model.js";
 import { SUBS, view, writeHash } from "../core/viewstate.js";
@@ -23,14 +23,25 @@ import { tip } from "./tooltip.js";
    relit les surfaces à chaque rendu, il n'en garde aucune copie. */
 setAreaHandler(function(key, v){
   if(!setItemArea(key, v)) return false;
-  renderLegend(); renderTotals(); saveSoon();
+  refreshProgramme();
   return true;
 });
 setCircHandler(function(p){
   if(!setCirc(p)) return false;
-  renderLegend(); renderTotals(); saveSoon();
+  refreshProgramme();
   return true;
 });
+/* Une surface saisie, ou la part de circulation réglée, déplace TOUT le volet
+   Surfaces : le chiffre-clé, les diagrammes à l'échelle, la somme de chaque
+   chapitre et le récapitulatif. Seuls la légende et le récapitulatif étaient
+   refaits — un chapitre continuait donc d'afficher l'ancienne circulation
+   après qu'on l'eut changée. Le champ reprend le focus par son id stable,
+   comme il le faisait déjà quand la légende seule était remplacée. */
+function refreshProgramme(){
+  if(view.tab === "programme" && view.sub === "surfaces") render();
+  else { renderBar(); renderLegend(); renderTotals(); }
+  saveSoon();
+}
 
 export function scheduleList(items, showChap){
   var ul = el("ul","schedule");
@@ -200,11 +211,15 @@ export function render(){
   var W = (host.clientWidth || panelsEl.clientWidth || 900) / ppm;
   var fs = 11 / ppm, fsSm = 9.5 / ppm;
 
+  /* `circ` est la part de circulation que porte le groupe, au prorata de ce
+     qu'il pèse dans le bâti scolaire ; `gross` est sa somme, circulation
+     comprise. Les deux viennent du modèle : rien n'est recalculé ici. */
   var groups = view.group === "chap"
-    ? CHAP.map(function(c){ return { name:c.name, sub:c.sub, total:c.total, items:c.items, mix:c.mix, off:c.off, col:null }; })
+    ? CHAP.map(function(c){ return { name:c.name, sub:c.sub, total:c.total, circ:c.circ,
+        gross:c.gross, items:c.items, mix:c.mix, off:c.off, col:null }; })
     : FAM.filter(function(f){ return f.items.length; }).map(function(f){
         return { name:f.name, sub:f.d.charAt(0).toUpperCase() + f.d.slice(1) + ".", total:f.total,
-                 items:f.items, mix:null, off:[], col:f.c };
+                 circ:f.circ, gross:f.gross, items:f.items, mix:null, off:[], col:f.c };
       });
 
   groups.forEach(function(gp){
@@ -214,8 +229,16 @@ export function render(){
     if(gp.col) r.style.backgroundColor = "var(" + gp.col + ")";
     head.appendChild(r);
     head.appendChild(el("h3", null, gp.name));
-    head.appendChild(el("span","tot mono", fmt(gp.total) + " m²"));
-    head.appendChild(el("span","pct mono", Math.round(gp.total / GRAND * 100) + " % du total"));
+    /* Le chiffre du chapitre est sa surface BÂTIE : le programme plus la part de
+       circulation qu'il porte. Il n'affichait que le programme, alors que le
+       reste de l'application — le mixer, les plateaux, les hauteurs — travaille
+       sur le bâti. La décomposition suit, pour qu'on voie d'où vient l'écart. */
+    head.appendChild(el("span","tot mono", fmt(Math.round(gp.gross)) + " m²"));
+    if(gp.circ > 0.5){
+      head.appendChild(el("span","pct mono",
+        fmt(gp.total) + " + " + fmt(Math.round(gp.circ)) + " de circulation"));
+    }
+    head.appendChild(el("span","pct mono", Math.round(gp.gross / GRANDG * 100) + " % du total"));
     p.appendChild(head);
     if(gp.sub) p.appendChild(el("p","panel-sub", gp.sub));
     if(gp.mix && gp.mix.length > 1){
@@ -238,7 +261,8 @@ export function render(){
        repliée derrière son propre décompte. */
     var det = el("details","disclose");
     det.appendChild(el("summary", null,
-      gp.items.length + " postes · " + fmt(gp.total) + " m²"));
+      gp.items.length + " postes · " + fmt(gp.total) + " m²"
+      + (gp.circ > 0.5 ? " de programme" : "")));
     det.appendChild(scheduleList(gp.items, view.group === "fam"));
     if(gp.off && gp.off.length){
       var o = el("div","unpriced");
@@ -254,9 +278,12 @@ export function render(){
     p.appendChild(det);
 
     host.appendChild(p);
-    drawDiagram(d, gp.items, W, fs, fsSm);
+    drawDiagram(d, gp.items, W, fs, fsSm, Math.round(gp.circ),
+      Math.round(CIRC * 100) + " % de la surface bâtie, part de " + gp.name.toLowerCase());
     d.querySelector("svg").setAttribute("aria-label",
-      gp.name + " — " + fmt(gp.total) + " m² de surfaces chiffrées, représentées à l’échelle");
+      gp.name + " — " + fmt(Math.round(gp.gross)) + " m² représentés à l’échelle, dont "
+      + fmt(gp.total) + " m² de programme"
+      + (gp.circ > 0.5 ? " et " + fmt(Math.round(gp.circ)) + " m² de circulation" : ""));
   });
 
   if(view.group === "fam" && ALL_OFF.length){
@@ -351,12 +378,21 @@ function fillTotals(tb){
   }
   function pieces(items){ return items.reduce(function(a,i){ return a + i.nb; }, 0); }
 
+  /* La colonne « Surface » reste celle du PROGRAMME : c'est la comptabilité du
+     règlement, et elle doit rester comparable à lui. La part de circulation que
+     porte chaque ligne se lit sous son nom, et se resomme aux deux dernières
+     lignes du tableau. */
+  function circSub(a){ return a > 0.5 ? "+ " + fmt(Math.round(a)) + " m² de circulation" : null; }
   if(view.group === "chap"){
-    CHAP.slice(0,4).forEach(function(c){ tb.appendChild(row(c.name, null, pieces(c.items), c.total)); });
+    CHAP.slice(0,4).forEach(function(c){
+      tb.appendChild(row(c.name, null, pieces(c.items), c.total, null, circSub(c.circ)));
+    });
     tb.appendChild(row("Sous-total bâti scolaire — 1ᵉʳ temps", null, null, BUILT, "sum"));
     CHAP.slice(4).forEach(function(c){ tb.appendChild(row(c.name, null, pieces(c.items), c.total)); });
   } else {
-    FAM.forEach(function(f){ if(f.items.length) tb.appendChild(row(f.name, f.c, pieces(f.items), f.total)); });
+    FAM.forEach(function(f){
+      if(f.items.length) tb.appendChild(row(f.name, f.c, pieces(f.items), f.total, null, circSub(f.circ)));
+    });
   }
   tb.appendChild(row("Programme chiffré au règlement", null, null, PROG, "sum"));
   tb.appendChild(row("Surfaces à préciser — vestiaires, sanitaires et halls", null, null, ESTT, "soft"));

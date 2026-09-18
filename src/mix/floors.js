@@ -171,33 +171,13 @@ export function place(key, want){
 }
 export function toTray(){ BLOCKS.forEach(function(b){ b.fl = TRAY; }); }
 
-/* ---------- éditer la pile ------------------------------------------------ */
-export function addFloor(){
-  FLOORS.push({ lvl: lvlOf(FLOORS.length - 1) + 1,
-                plate: FLOORS[FLOORS.length - 1].plate });
-  return FLOORS.length - 1;
-}
-export function delFloor(){
-  if(FLOORS.length < 2 || lvlOf(FLOORS.length - 1) <= 0) return false;
-  var i = FLOORS.length - 1;
-  BLOCKS.forEach(function(b){ if(b.fl === i) b.fl = TRAY; });
-  FLOORS.pop();
-  return true;
-}
-/* Un sous-sol s'insère SOUS la pile : tous les indices montent d'un cran, les
-   cotes ne bougent pas. Rien n'y descend tout seul. */
-export function addBasement(){
-  FLOORS.unshift({ lvl: lvlOf(0) - 1, plate: FLOORS[0].plate });
-  BLOCKS.forEach(function(b){ if(b.fl !== TRAY) b.fl += 1; });
-  return 0;
-}
-export function delBasement(){
-  if(FLOORS.length < 2 || lvlOf(0) >= 0) return false;
-  BLOCKS.forEach(function(b){ if(b.fl === 0) b.fl = TRAY; });
-  FLOORS.shift();
-  BLOCKS.forEach(function(b){ if(b.fl !== TRAY) b.fl -= 1; });
-  return true;
-}
+/* ---------- éditer la pile ------------------------------------------------
+   `addFloor` / `delFloor` / `addBasement` / `delBasement` vivaient ici et
+   n'avaient plus qu'un appelant chacun, dans une barre repliée. La pile se
+   choisit désormais d'un geste — tant de sous-sols, tant d'étages — et
+   `setStack` fait tout : ajouter, retirer, et renvoyer au bac ce qui tombe
+   hors de la nouvelle pile. Quatre commandes incrémentales pour une décision
+   qui ne l'est pas, c'était quatre chemins vers le même état. */
 export function setPlate(i, v){
   if(!FLOORS[i]) return false;
   var n = Math.round(v);
@@ -206,13 +186,24 @@ export function setPlate(i, v){
   FLOORS[i].plate = n;
   return true;
 }
-/* Redéfinit la pile d'un coup — restauration, ou tirage qui propose aussi un
-   nombre de niveaux. `nsub` sous-sols, `nup` étages au-dessus du rez. */
+export var SUB_MAX = 3, UP_MAX = 8;
+
+/* Redéfinit la pile d'un coup — restauration, tirage qui propose aussi un
+   nombre de niveaux, ou choix direct du nombre d'étages. `nsub` sous-sols,
+   `nup` étages au-dessus du rez.
+
+   Sans `plates`, chaque cote GARDE le plateau qu'elle avait : changer le nombre
+   d'étages remettait sinon tous les plateaux à leur valeur par défaut, et le
+   réglage niveau par niveau était perdu sans que rien ne le dise. */
 export function setStack(nsub, nup, plates){
-  var lo = -Math.max(0, Math.min(3, nsub)), hi = Math.max(0, Math.min(8, nup));
+  var lo = -Math.max(0, Math.min(SUB_MAX, nsub)), hi = Math.max(0, Math.min(UP_MAX, nup));
+  var garde = {};
+  FLOORS.forEach(function(F){ garde[F.lvl] = F.plate; });
+  var ref = garde[0] || FLOORS[0].plate || PLATE_DEF;
   var next = [], l;
   for(l = lo; l <= hi; l++){
-    next.push({ lvl: l, plate: (plates && plates[l - lo] > 0) ? plates[l - lo] : PLATE_DEF });
+    next.push({ lvl: l, plate: (plates && plates[l - lo] > 0) ? plates[l - lo]
+                             : (garde[l] > 0 ? garde[l] : ref) });
   }
   var shift = idxOfLvl(0) - (0 - lo);
   FLOORS = next;
@@ -225,6 +216,18 @@ export function setStack(nsub, nup, plates){
 }
 export function nSub(){ return Math.max(0, -lvlOf(0)); }
 export function nUp(){ return Math.max(0, lvlOf(FLOORS.length - 1)); }
+/* Ce que coûterait une pile de `nsub` sous-sols et `nup` étages : le nombre de
+   pièces posées aux cotes qui disparaîtraient, et qui repartiraient au bac. La
+   commande qui les renvoie doit pouvoir le dire avant d'être cliquée. */
+export function stackCost(nsub, nup){
+  var lo = -Math.max(0, Math.min(SUB_MAX, nsub)), hi = Math.max(0, Math.min(UP_MAX, nup)), n = 0;
+  BLOCKS.forEach(function(b){
+    if(b.fl === TRAY) return;
+    var l = lvlOf(b.fl);
+    if(l < lo || l > hi) n += b.q;
+  });
+  return n;
+}
 
 /* Surface hors enveloppe scolaire posée à un niveau — la cour, la piscine et
    le chauffage à distance. Elle se compte, mais pas sur le plateau. */
