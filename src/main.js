@@ -1,7 +1,7 @@
 import { TABS, isTool, readHash, setSub, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
-import { drawVol } from "./vol/volumes.js";
-import { initStore } from "./plan/store.js";
+import { resizeMix } from "./views/mixer.js";
+import { initStore, verifieQuantites } from "./mix/store.js";
 
 /* ---------- thème ----------
    `[data-theme]` était prévu dans la feuille de tokens mais aucune ligne du
@@ -113,8 +113,9 @@ window.addEventListener("hashchange", function(){
 /* ---------- démarrage ---------- */
 wireTheme();
 /* Avant tout rendu : une surface peut être modifiée depuis l'onglet Programme,
-   donc avant que le Plan ait jamais été ouvert. */
+   donc avant que le mixer ait jamais été ouvert. */
 initStore();
+verifieQuantites();
 readHash();
 document.body.dataset.view = view.tab;
 document.body.dataset.kind = isTool() ? "tool" : "doc";
@@ -126,7 +127,10 @@ var rt;
 window.addEventListener("resize", function(){
   clearTimeout(rt);
   rt = setTimeout(function(){
-    if(view.tab === "site") drawVol();
-    else if(view.tab !== "plan") render();
+    /* Le mixer ne se refait pas en entier : seule la largeur du canevas change,
+       donc seul le pavage est à refaire. Un rendu complet perdrait le repli
+       ouvert, la graine tapée et le défilement. */
+    if(view.tab === "mixer") resizeMix();
+    else render();
   }, 140);
 });

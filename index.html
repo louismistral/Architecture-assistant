@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Saxon — programme et implantation</title>
+<title>Saxon — programme et répartition</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles/tokens.css">
@@ -12,8 +12,7 @@
 <link rel="stylesheet" href="styles/controls.css">
 <link rel="stylesheet" href="styles/program.css">
 <link rel="stylesheet" href="styles/schema.css">
-<link rel="stylesheet" href="styles/plan.css">
-<link rel="stylesheet" href="styles/volumes.css">
+<link rel="stylesheet" href="styles/mixer.css">
 </head>
 <body>
 <a class="skip" href="#panels">Aller au contenu</a>
@@ -41,13 +40,9 @@
     <button class="btn" type="button" id="tabProgramme" role="tab"
             aria-selected="true" aria-controls="panels">Programme</button>
     <!-- Le filet est la seule marque qui distingue les deux natures :
-         à gauche on lit, à droite on compose. « Adjacences » est passée sous
-         « Programme », avec les surfaces et les contraintes : les trois lisent
-         le règlement, elles ne composent rien. -->
-    <button class="btn appbar__split" type="button" id="tabPlan" role="tab"
-            aria-selected="false" aria-controls="panels" tabindex="-1">Plan</button>
-    <button class="btn" type="button" id="tabSite" role="tab"
-            aria-selected="false" aria-controls="panels" tabindex="-1">Site</button>
+         à gauche on lit, à droite on compose. -->
+    <button class="btn appbar__split" type="button" id="tabMixer" role="tab"
+            aria-selected="false" aria-controls="panels" tabindex="-1">Programme mixer</button>
   </nav>
 
   <button class="btn btn--icon appbar__theme" type="button" id="themeBtn"

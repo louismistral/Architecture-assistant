@@ -1,0 +1,238 @@
+/* ============================================================================
+   ONGLET « PROGRAMME MIXER »
+
+   Aucune valeur de dessin ici qui ne vienne de `tokens.css`. Les seules
+   exceptions sont les dimensions posées EN LIGNE par le JS — la position et la
+   taille de chaque bloc, la hauteur d'un canevas — qui sont des surfaces
+   calculées à l'échelle et n'ont rien à faire dans une feuille de style.
+   ========================================================================= */
+
+.mix{position:relative}
+
+.mix-bar{gap:var(--s-3) var(--s-4)}
+.mix-seed{display:flex;align-items:center}
+.mix-seed input{
+  width:6.5em;font:inherit;font-family:var(--mono);font-size:var(--t-xs);
+  padding:var(--s-1) var(--s-2);min-height:var(--ctl-h);
+  border:1px solid var(--rule);border-radius:var(--r-md);
+  background:var(--panel);color:var(--ink);
+}
+.mix-opt{
+  display:inline-flex;align-items:center;gap:var(--s-2);
+  font-size:var(--t-xs);color:var(--ink-2);cursor:pointer;min-height:var(--tap-min);
+}
+
+/* --- la grille : la pile, et son flanc ---------------------------------- */
+.mix-grid{
+  display:grid;grid-template-columns:minmax(0,1fr) 320px;
+  gap:var(--s-5);align-items:start;margin-top:var(--s-4);
+}
+.mix-main{min-width:0}
+.mix-side{
+  position:sticky;top:calc(var(--ctl-h) + var(--s-6));
+  display:grid;gap:var(--s-4);
+  max-height:calc(100vh - var(--s-8));overflow-y:auto;
+  border-left:1px solid var(--rule);padding-left:var(--s-4);
+}
+@media (max-width:1000px){
+  .mix-grid{grid-template-columns:1fr}
+  .mix-side{position:static;max-height:none;border-left:0;border-top:1px solid var(--rule);
+            padding-left:0;padding-top:var(--s-4)}
+}
+
+/* --- le bandeau de chiffres --------------------------------------------- */
+.mix-sum{
+  display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-6);
+  padding-bottom:var(--s-4);border-bottom:1px solid var(--rule);margin-bottom:var(--s-4);
+}
+.mix-fig{display:grid;gap:1px}
+.mix-fig b{
+  font-family:var(--mono);font-size:var(--t-num-md);font-weight:500;
+  font-variant-numeric:tabular-nums;line-height:var(--lh-tight);
+}
+.mix-fig__l{font-size:var(--t-2xs);color:var(--ink-2)}
+.mix-fig__s{font-size:var(--t-3xs);color:var(--ink-3)}
+
+/* --- la pile -------------------------------------------------------------
+   Le niveau le plus haut en tête, le rez en bas, les sous-sols dessous : c'est
+   la convention de coupe. Une rangée horizontale disait l'inverse d'un endroit
+   à l'autre de la même vue. */
+.mix-stack{display:flex;flex-direction:column;gap:var(--s-3)}
+.mix-ground{height:2px;background:var(--ink-4);margin-top:var(--s-1)}
+
+.mix-fl{
+  border:1px solid var(--rule);border-radius:var(--r-lg);
+  background:var(--panel);overflow:hidden;
+}
+.mix-fl.is-drop{border-color:var(--focus);box-shadow:inset 0 0 0 1px var(--focus)}
+.mix-fl__bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);
+  padding:var(--s-2) var(--s-3);border-bottom:1px solid var(--rule-soft);
+}
+.mix-fl__bar .spacer{flex:1 1 var(--s-4)}
+.mix-fl__n{font-size:var(--t-sm);font-weight:600;font-variation-settings:"wdth" 104}
+.mix-fl__plate{display:inline-flex;align-items:center;gap:var(--s-2)}
+.mix-fl__plate input{
+  width:5.5em;font:inherit;font-family:var(--mono);font-size:var(--t-xs);
+  text-align:right;padding:var(--s-1) var(--s-2);min-height:var(--tap-min);
+  border:1px solid var(--rule);border-radius:var(--r-md);
+  background:var(--paper);color:var(--ink);
+}
+.mix-fl__u,.mix-fl__meta,.mix-fl__h{font-size:var(--t-2xs);color:var(--ink-3)}
+/* La hauteur de niveau est une autre nature de chiffre que le décompte des
+   pièces : un filet les sépare, sinon « 0 m² bâtis 3,25 m » se lit d'un trait. */
+.mix-fl__h{padding-left:var(--s-3);border-left:1px solid var(--rule)}
+.mix-fl__hors{margin-left:var(--s-2);color:var(--ink-4)}
+.mix-fl__pct{font-size:var(--t-xs);color:var(--ink-2)}
+.mix-fl__pct.is-over{color:var(--danger);font-weight:600}
+
+/* --- le canevas d'un niveau --------------------------------------------- */
+.mix-fl__canvas{position:relative;overflow:hidden;background:var(--paper)}
+.mix-empty{
+  position:absolute;inset:0;margin:0;display:flex;align-items:center;justify-content:center;
+  font-size:var(--t-2xs);color:var(--ink-4);
+}
+/* La ligne de plateau et la bande de dépassement : on voit qu'un niveau déborde
+   avant d'avoir lu le chiffre qui le dit. Elles passent AU-DESSUS des blocs —
+   posées dessous, elles étaient intégralement recouvertes par le pavage, qui
+   remplit son rectangle sans laisser un pixel. La bande ne porte pas d'aplat :
+   elle se marque par ses deux bords, sinon elle effacerait ce qu'elle désigne. */
+.mix-cap{
+  position:absolute;left:0;right:0;height:0;z-index:3;
+  border-top:1px dashed var(--danger);pointer-events:none;
+}
+.mix-cap span{
+  position:absolute;right:var(--s-1);top:2px;
+  font-size:var(--t-3xs);color:var(--danger);
+  background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
+}
+.mix-over{
+  position:absolute;left:0;right:0;z-index:2;pointer-events:none;
+  box-shadow:inset 3px 0 0 var(--danger),inset -3px 0 0 var(--danger);
+}
+
+/* --- un bloc = une part de poste, à sa surface exacte -------------------- */
+.mixblk{
+  position:absolute;overflow:hidden;cursor:grab;touch-action:none;
+  border:1px solid var(--ink);border-radius:var(--r-sm);
+  padding:2px var(--s-1);
+  display:flex;flex-direction:column;justify-content:center;
+  font-size:var(--t-3xs);line-height:var(--lh-tight);color:var(--ink);
+}
+.mixblk>b{
+  font-weight:600;font-size:var(--t-3xs);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  mix-blend-mode:normal;
+}
+.mixblk__a{font-family:var(--mono);font-size:var(--t-3xs);opacity:.82}
+.mixblk.is-tiny>b,.mixblk.is-tiny .mixblk__a{display:none}
+/* Une surface à préciser porte le trait tireté, partout, sur tous les dessins. */
+.mixblk.is-est{border-style:dashed}
+.mixblk.is-sel{outline:2px solid var(--focus);outline-offset:-2px}
+.mixblk.is-dragging{opacity:.4}
+.mixblk:hover{border-width:2px}
+
+.mix-ghost{
+  position:fixed;z-index:var(--z-tip);pointer-events:none;
+  background:var(--ink);color:var(--paper);
+  padding:var(--s-1) var(--s-2);border-radius:var(--r-md);
+  font-size:var(--t-2xs);box-shadow:var(--sh-2);
+}
+
+/* --- modifier la pile ---------------------------------------------------- */
+.mix-edit{margin-top:var(--s-3)}
+.mix-edit__row{display:flex;flex-wrap:wrap;gap:var(--s-2)}
+.mix-act{
+  flex-direction:column;align-items:flex-start;gap:0;
+  height:auto;padding-block:var(--s-2);text-align:left;white-space:normal;
+}
+.mix-why{font-size:var(--t-3xs);color:var(--ink-3);font-weight:400;line-height:var(--lh-snug)}
+
+/* --- le flanc : circulation, contrôle, bac ------------------------------- */
+.mix-circ{
+  border:1px dashed var(--rule-strong);border-radius:var(--r-lg);padding:var(--s-3);
+}
+.mix-circ h3{margin:0 0 var(--s-1)}
+.mix-circ__v{
+  margin:0;font-family:var(--mono);font-size:var(--t-num-md);font-weight:500;
+  font-variant-numeric:tabular-nums;
+}
+.mix-circ__v .u{font-size:var(--t-2xs);color:var(--ink-3);margin-left:var(--s-2);font-weight:400}
+.mix-circ__n{margin:var(--s-1) 0 var(--s-2);font-size:var(--t-2xs);color:var(--ink-2)}
+.mix-circ__go{font-size:var(--t-2xs);padding:var(--s-1) var(--s-2);min-height:var(--tap-min)}
+
+.mix-issues__hd,.mix-tray__hd{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-2);margin-bottom:var(--s-2);
+}
+.mix-issues__hd h3,.mix-tray__hd h3{margin:0}
+.mix-tray__hd .mono{font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-ok{margin:0;font-size:var(--t-2xs);color:var(--ok)}
+
+.mix-list{margin:0;padding:0;list-style:none;display:grid;gap:var(--s-2)}
+.mix-list li{
+  display:grid;grid-template-columns:auto 1fr;gap:var(--s-2);align-items:baseline;
+  font-size:var(--t-2xs);color:var(--ink-2);line-height:var(--lh-snug);
+}
+.mix-list li i{
+  font-style:normal;font-family:var(--mono);font-size:var(--t-3xs);
+  padding:1px var(--s-1);border-radius:var(--r-sm);white-space:nowrap;
+}
+.mix-list li.e i{background:var(--danger-fill);color:var(--on-fill)}
+.mix-list li.w i{background:var(--rule-soft);color:var(--ink-3);border:1px solid var(--rule)}
+.mix-list li span{color:var(--ink-3)}
+
+.mix-tray.is-drop{outline:2px solid var(--focus);outline-offset:var(--s-2);border-radius:var(--r-md)}
+.mix-cat{margin-bottom:var(--s-3)}
+.mix-cat__h{
+  display:flex;justify-content:space-between;gap:var(--s-2);
+  font-size:var(--t-3xs);color:var(--ink-3);
+  padding-bottom:2px;border-bottom:1px solid var(--rule-soft);margin-bottom:var(--s-2);
+}
+.mix-chips{display:flex;flex-wrap:wrap;gap:var(--s-1)}
+.mixchip{
+  appearance:none;display:inline-flex;align-items:center;gap:var(--s-1);
+  font:inherit;font-size:var(--t-3xs);color:var(--ink-2);
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-md);
+  padding:var(--s-1) var(--s-2);min-height:var(--tap-min);
+  cursor:grab;touch-action:none;
+}
+.mixchip:hover{color:var(--ink);border-color:var(--rule-strong)}
+.mixchip .sw{width:9px;height:9px;border-radius:var(--r-sm);flex:none}
+.mixchip .mono{color:var(--ink-3)}
+.mixchip.is-dragging{opacity:.4}
+.mix-tray__note{
+  margin:var(--s-3) 0 0;padding-top:var(--s-2);border-top:1px dashed var(--rule);
+  font-size:var(--t-3xs);color:var(--ink-3);line-height:var(--lh-snug);
+}
+.mix-tray__note b{color:var(--ink-2);font-weight:500}
+.mix-tray__note span{display:block;margin-top:2px}
+
+/* --- déplacer et scinder, au clic comme au clavier ----------------------- */
+.mix-pop{
+  position:absolute;z-index:var(--z-props);min-width:230px;max-width:300px;
+  background:var(--panel);border:1px solid var(--rule-strong);border-radius:var(--r-lg);
+  box-shadow:var(--sh-2);padding:var(--s-3);
+}
+.mix-pop h4{margin:0;font-size:var(--t-sm);font-weight:600}
+.mix-pop__s{margin:2px 0 0;font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-pop__l{
+  margin-top:var(--s-3);font-size:var(--t-3xs);font-weight:600;
+  letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--ink-3);
+}
+.mix-pop__r{display:flex;flex-wrap:wrap;gap:var(--s-1);margin-top:var(--s-1)}
+.mix-pop__r .btn{font-size:var(--t-3xs);padding-inline:var(--s-2)}
+/* Un niveau que le règlement n'admet pas reste cliquable : rien n'est empêché,
+   il est seulement marqué — et le contrôle dira ce qu'il en coûte. */
+.mix-pop__r .btn.is-warn{border-style:dashed;border-color:var(--warn);color:var(--warn)}
+
+/* Le filet qui sépare l'enveloppe scolaire de ce qui est posé au terrain sans
+   peser sur le plateau : cour, piscine, chauffage à distance. */
+.mix-hors{
+  position:absolute;left:0;right:0;height:0;z-index:3;
+  border-top:1px solid var(--ink-4);pointer-events:none;
+}
+.mix-hors span{
+  position:absolute;left:var(--s-1);top:2px;
+  font-size:var(--t-3xs);color:var(--ink-3);
+  background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
+}

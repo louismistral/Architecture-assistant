@@ -53,6 +53,16 @@ export var RULES = {
     }
   },
 
+  /* --- part de circulation ----------------------------------------------- */
+  /* Hypothèse de PROJET, pas un chiffre du règlement : la part de la surface
+     bâtie qui n'est pas un local du programme — couloirs, escaliers, paliers,
+     sas, gaines. Elle se règle dans l'onglet Programme, parmi les surfaces à
+     préciser, et c'est de là que tous les onglets suivants la lisent.
+     Convention, une seule dans tout le projet : c'est une part de la surface
+     BÂTIE, donc bâti = utile / (1 − part). Une part de 0,18 ajoute 22 % à la
+     surface utile, et non 18 %. */
+  circ: { def: 0.18, min: 0.05, max: 0.45 },
+
   /* --- 2.6 protection incendie, AEAI DPI 16-15 art. 2.4 et 3.4 (écoles) --- */
   feu: {
     cageMin: 1,        /* une cage d'escalier compartimentée au minimum */
@@ -72,8 +82,8 @@ export var RULES = {
   ext: { voitures: 70, velos: 50, bus: 2, depose: 4, mPlace: 25 },
 
   /* --- niveaux ----------------------------------------------------------- */
-  /* Règles de niveau déjà opposables au plan interactif (`src/plan/niv.js`),
-     rappelées ici parce que la volumétrie les décide avant le plan. */
+  /* Règles de niveau, lues par le mixer (`src/mix/niv.js`) : c'est lui qui
+     décide à quel étage va chaque poste, avant toute volumétrie. */
   niv: {
     classeMax: 2,      /* classes au plus au 2ᵉ étage — évacuation et âge des élèves */
     solRez: ["Salle de sport double","Local chauffage CAD","Piscine","Hall","UAPE","Bureaux"],
