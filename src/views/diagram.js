@@ -41,12 +41,37 @@ export function drawScalebar(node){
   }
 }
 
-export function drawDiagram(host, items, W, fs, fsSm){
+/* La circulation n'est pas un poste du programme : elle n'a ni numéro d'article
+   ni famille d'usage. Elle est pourtant une surface, et la plus grande après
+   les classes — la dessiner à l'échelle avec les locaux est la seule façon de
+   voir ce qu'elle pèse. Elle entre donc dans le pavage comme un bloc, hachuré
+   et sans couleur de famille, exactement comme dans la légende. */
+function circItem(a, quoi){
+  return { n:"Circulation", nb:1, u:a, tot:a, f:null, circ:1,
+           note:"couloirs, escaliers, paliers, sas — " + quoi };
+}
+export var CIRCPAT = "diagcirc";
+
+export function drawDiagram(host, items, W, fs, fsSm, circ, circNote){
   while(host.firstChild) host.removeChild(host.firstChild);
-  var list = blocks(items);
+  var src = items;
+  if(circ > 0) src = items.concat([circItem(circ, circNote || "part de la surface bâtie")]);
+  var list = blocks(src);
   var H = pack(list, W);
   var svg = s("svg", { viewBox: "0 0 " + W.toFixed(2) + " " + H.toFixed(2),
     width: "100%", height: (H * ppm).toFixed(1), preserveAspectRatio: "xMinYMin meet", role: "img" });
+
+  /* La hachure de la circulation : même trame à 45° que sa pastille de légende,
+     définie une fois par diagramme. `--hatch-ink` est le token de la hachure du
+     technique ; c'est la même encre, et elle suit le thème. */
+  if(circ > 0){
+    var defs = s("defs"), pat = s("pattern", { id: CIRCPAT, width: 1.2, height: 1.2,
+      patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
+    pat.appendChild(s("line", { x1: 0, y1: 0, x2: 0, y2: 1.2,
+      stroke: "var(--hatch-ink)", "stroke-width": 0.35 }));
+    defs.appendChild(pat);
+    svg.appendChild(defs);
+  }
 
   var used = 0;
   list.forEach(function(b){ used = Math.max(used, b.x + b.w); });
@@ -63,10 +88,12 @@ export function drawDiagram(host, items, W, fs, fsSm){
   svg.appendChild(g);
 
   list.forEach(function(b){
-    var col = "var(" + FMAP[b.ref.f].c + ")";
-    var grp = s("g", { "class": "blk", tabindex: "0" });
+    var cir = b.ref.circ;
+    var col = cir ? "var(--ink-4)" : "var(" + FMAP[b.ref.f].c + ")";
+    var grp = s("g", { "class": "blk" + (cir ? " blk--circ" : ""), tabindex: "0" });
     var rct = s("rect", { x: b.x, y: b.y, width: b.w, height: b.h,
-      fill: col, "fill-opacity": b.ref.est ? "0.1" : "var(--fill-op)", stroke: col,
+      fill: cir ? "url(#" + CIRCPAT + ")" : col,
+      "fill-opacity": b.ref.est ? "0.1" : (cir ? "1" : "var(--fill-op)"), stroke: col,
       "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" });
     if(b.ref.est) rct.setAttribute("stroke-dasharray", "5 3");
     grp.appendChild(rct);
@@ -112,12 +139,13 @@ export function drawDiagram(host, items, W, fs, fsSm){
     }
 
     var dims = dim(b.w) + " × " + dim(b.h) + " m";
-    var line2 = (view.mode === "agg"
+    var line2 = (cir || view.mode === "agg"
       ? (b.cnt > 1 ? b.cnt + " × " + fmt(b.ref.u) + " m² = " + fmt(b.area) + " m²" : fmt(b.area) + " m²")
       : fmt(b.area) + " m² (1 pièce sur " + b.ref.nb + ")") + " · " + dims;
+    var quoi = cir ? "Hors des huit familles d\u2019usage" : FMAP[b.ref.f].name;
     grp.setAttribute("data-tip", b.label + (b.ref.est ? "  (à préciser)" : "") + "|" + line2 + "|"
-      + FMAP[b.ref.f].name + (b.ref.note ? " · " + b.ref.note : ""));
-    grp.setAttribute("aria-label", b.label + ", " + fmt(b.area) + " mètres carrés, " + FMAP[b.ref.f].name);
+      + quoi + (b.ref.note ? " · " + b.ref.note : ""));
+    grp.setAttribute("aria-label", b.label + ", " + fmt(b.area) + " mètres carrés, " + quoi);
     svg.appendChild(grp);
   });
   host.appendChild(svg);

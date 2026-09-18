@@ -3,8 +3,13 @@ import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
 
 export var FMAP = {}; FAM.forEach(function(f){ FMAP[f.id] = f; f.total = 0; f.items = []; });
-CHAP.forEach(function(ch){
+CHAP.forEach(function(ch, ci){
+  ch.ci = ci;
   ch.items.forEach(function(it){
+    /* L'indice du chapitre voyage avec le poste : c'est lui qui dit si le poste
+       est du bâti scolaire — les quatre premiers chapitres — donc s'il porte
+       une part de circulation. */
+    it.ci = ci;
     it.key = ch.id + "|" + it.n;
     it.u0 = it.u;
     it.tot = it.nb * it.u;
@@ -45,6 +50,7 @@ export var CIRC = RULES.circ.def;     /* part de la surface bâtie */
 export var CIRCSET = false;           /* l'utilisateur a-t-il tranché ? */
 export var CIRCA = 0;                 /* m² de circulation du bâti scolaire */
 export var BUILTG = 0;                /* bâti scolaire, circulation comprise */
+export var GRANDG = 0;                /* total du programme, circulation comprise */
 
 export function recompute(){
   ESTT = 0;
@@ -64,6 +70,22 @@ export function recompute(){
   BUILT = CHAP.slice(0,4).reduce(function(t,c){ return t + c.total; }, 0);
   BUILTG = BUILT / (1 - CIRC);
   CIRCA = BUILTG - BUILT;
+  GRANDG = GRAND + CIRCA;
+  /* La circulation se répartit sur les chapitres et les familles au prorata de
+     ce qu'ils pèsent dans le bâti scolaire : c'est l'arithmétique du total,
+     appliquée groupe par groupe, et les parts se resomment exactement à CIRCA.
+     Les deux derniers chapitres — infrastructures du second temps et
+     extérieurs — sont hors enveloppe et n'en portent aucune. */
+  CHAP.forEach(function(ch, ci){
+    ch.scol = ci < 4 ? ch.total : 0;
+    ch.circ = ch.scol / (1 - CIRC) - ch.scol;
+    ch.gross = ch.total + ch.circ;
+  });
+  FAM.forEach(function(f){
+    f.scol = f.items.reduce(function(t,i){ return t + (i.ci < 4 ? i.tot : 0); }, 0);
+    f.circ = f.scol / (1 - CIRC) - f.scol;
+    f.gross = f.total + f.circ;
+  });
 }
 recompute();
 

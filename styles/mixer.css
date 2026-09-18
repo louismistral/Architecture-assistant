@@ -236,3 +236,8 @@
   font-size:var(--t-3xs);color:var(--ink-3);
   background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
 }
+
+/* Le rang d'édition de la pile n'est plus replié : le nombre d'étages et la
+   présence d'un sous-sol sont deux décisions de projet, elles se voient. */
+.mix-edit__row{align-items:center}
+.mix-edit__note{margin:var(--s-2) 0 0;max-width:74ch}

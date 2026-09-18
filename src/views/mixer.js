@@ -23,10 +23,10 @@ import { view } from "../core/viewstate.js";
 import { RULES } from "../data/rules.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import {
-  FLOORS, PLATE_MAX, PLATE_MIN, TRAY, addBasement, addFloor,
-  areaOf, blockOf, delBasement, delFloor, flArea, flBuilt, flCount, flHeight,
-  flLibre, flName, flNet, horsAt, lvlOf, move, onFloor, resetBlocks, setPlate,
-  split, toTray, trayArea, trayBlocks, usable
+  FLOORS, PLATE_MAX, PLATE_MIN, SUB_MAX, TRAY,
+  areaOf, blockOf, flArea, flBuilt, flCount, flHeight,
+  flLibre, flName, flNet, horsAt, lvlOf, move, nSub, nUp, onFloor, resetBlocks,
+  setPlate, setStack, split, stackCost, toTray, trayArea, trayBlocks, usable
 } from "../mix/floors.js";
 import { PMAP, aOf, posesDedans, qOf, uOf } from "../mix/prog.js";
 import { rangeOf, repartir } from "../mix/shuffle.js";
@@ -163,42 +163,57 @@ function circBlock(){
   return s;
 }
 
-/* ---------- éditer la pile ------------------------------------------------ */
-function stackEdit(){
-  var det = el("details","disclose mix-edit");
-  det.appendChild(el("summary", null, "Modifier la pile"));
-  var row = el("div","mix-edit__row");
+/* ---------- éditer la pile ------------------------------------------------
+   La pile se composait à coups d'« Ajouter un étage » / « Retirer l'étage »,
+   quatre commandes repliées sous un `<details>` : pour passer d'un rez seul à
+   un R+3 avec sous-sol il fallait déplier, puis cliquer quatre fois, sans
+   jamais voir la pile qu'on visait. Le nombre d'étages et la présence d'un
+   sous-sol sont deux décisions de projet : elles se CHOISISSENT, d'un geste,
+   et à découvert. */
+var UP_CHOIX = 5;                 /* rez seul, puis R+1 à R+4 */
 
-  function act(label, hint, fn, disabled, why){
-    var b = el("button","btn mix-act");
-    b.type = "button";
-    b.appendChild(el("span", null, label));
-    /* La raison d'une commande indisponible passe du `title` — invisible au
-       clavier, au doigt et sur mobile — à une ligne lisible. */
-    if(disabled){ b.disabled = true; if(why) b.appendChild(el("span","mix-why", why)); }
-    else if(hint) b.appendChild(el("span","mix-why", hint));
-    if(fn) b.addEventListener("click", fn);
-    return b;
+function pileSeg(caption, n, cur, titre, pick){
+  /* `.btn-group` et `.btn`, comme partout ailleurs : le projet a compté jusqu'à
+     sept groupes de boutons concurrents, et `.zoomseg` n'a plus de feuille. */
+  var g = el("div","btn-group");
+  g.setAttribute("role","group");
+  g.setAttribute("aria-label", caption + " de la pile");
+  g.appendChild(el("span","segcap", caption));
+  for(var v = 0; v < n; v++){
+    (function(v){
+      var b = el("button","btn", String(v));
+      b.type = "button";
+      b.setAttribute("aria-current", String(v === cur));
+      b.title = titre(v);
+      b.addEventListener("click", function(){
+        if(v === cur) return;
+        pick(v);
+        selU = null;
+        drawMix();
+        saveSoon();
+      });
+      g.appendChild(b);
+    })(v);
   }
-  var top = FLOORS.length - 1;
-  var canTop = FLOORS.length >= 2 && lvlOf(top) > 0;
-  var canBas = FLOORS.length >= 2 && lvlOf(0) < 0;
+  return g;
+}
+function stackEdit(){
+  var box = el("div","mix-edit");
+  var row = el("div","mix-edit__row");
+  var sub = nSub(), up = nUp();
 
-  row.appendChild(act("Ajouter un étage", null, function(){
-    addFloor(); drawMix(); saveSoon();
-  }, false));
-  row.appendChild(act("Retirer l’étage",
-    flCount(top) ? "ses " + flCount(top) + " pièces repartent au bac" : null,
-    function(){ if(delFloor()){ drawMix(); saveSoon(); } },
-    !canTop, "il ne reste que le rez-de-chaussée"));
-  row.appendChild(act("Creuser un sous-sol",
-    "réservé au technique, au stockage, au nettoyage et à l’abri PC",
-    function(){ addBasement(); drawMix(); saveSoon(); }, false));
-  row.appendChild(act("Combler le sous-sol",
-    canBas && flCount(0) ? "ses " + flCount(0) + " pièces repartent au bac" : null,
-    function(){ if(delBasement()){ drawMix(); saveSoon(); } },
-    !canBas, "aucun sous-sol creusé"));
-  det.appendChild(row);
+  row.appendChild(pileSeg("Étages", UP_CHOIX, up, function(v){
+    var c = stackCost(sub, v);
+    return (v === 0 ? "Rez-de-chaussée seul" : "Rez + " + v + " étage" + (v > 1 ? "s" : ""))
+         + (c ? " — " + c + " pièce" + (c > 1 ? "s" : "") + " repartiraient au bac" : "");
+  }, function(v){ setStack(sub, v); }));
+
+  row.appendChild(pileSeg("Sous-sols", SUB_MAX, sub, function(v){
+    var c = stackCost(v, up);
+    return (v === 0 ? "Aucun sous-sol" : v === 1 ? "Un sous-sol"
+           : v + " sous-sols")
+         + (c ? " — " + c + " pièce" + (c > 1 ? "s" : "") + " repartiraient au bac" : "");
+  }, function(v){ setStack(v, up); }));
 
   var bRaz = el("button","btn btn--quiet mix-act","Repartir du programme");
   bRaz.type = "button";
@@ -206,8 +221,22 @@ function stackEdit(){
   bRaz.addEventListener("click", function(){
     resetBlocks(); selU = null; drawMix(); saveSoon();
   });
-  det.appendChild(bRaz);
-  return det;
+  row.appendChild(bRaz);
+  box.appendChild(row);
+
+  /* La conséquence est écrite, pas seulement mise en `title` : réduire la pile
+     défait du travail posé, et cela doit se lire avant le clic. */
+  var perdu = 0, v;
+  for(v = 0; v < UP_CHOIX; v++) perdu = Math.max(perdu, stackCost(sub, v));
+  for(v = 0; v < SUB_MAX; v++) perdu = Math.max(perdu, stackCost(v, up));
+  box.appendChild(el("p","mix-why mix-edit__note",
+    "Le sous-sol est réservé au technique, au stockage, au nettoyage et à l\u2019abri PC. "
+    + (perdu
+      ? "Réduire la pile renvoie au bac les pièces des niveaux retirés — jusqu\u2019à "
+        + perdu + " d\u2019un seul geste."
+      : "Réduire la pile renvoie au bac les pièces des niveaux retirés.")
+    + " Les plateaux réglés niveau par niveau sont conservés."));
+  return box;
 }
 
 /* ---------- rendu --------------------------------------------------------- */

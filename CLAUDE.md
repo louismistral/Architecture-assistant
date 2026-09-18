@@ -77,8 +77,14 @@ sur le **bâti scolaire** — les quatre premiers chapitres ; la piscine, le cha
 distance, la cour et son préau n'ont pas de couloirs à nous.
 
 - Valeur par défaut et bornes : `RULES.circ` dans `src/data/rules.js`.
-- Valeur vivante, `CIRC`, et les m² qui en découlent, `CIRCA` / `BUILTG` :
+- Valeur vivante, `CIRC`, et les m² qui en découlent, `CIRCA` / `BUILTG` / `GRANDG` :
   `src/core/model.js` seul. `setCirc()` est le seul écrivain.
+- **Elle se répartit sur les chapitres et les familles** au prorata de ce qu'ils pèsent
+  dans le bâti scolaire — `ch.circ` / `ch.gross`, `f.circ` / `f.gross`, calculés dans
+  `recompute()` et nulle part ailleurs. Les parts se resomment exactement à `CIRCA`.
+  Le volet Surfaces affiche le BÂTI de chaque chapitre (programme + circulation), la
+  décomposition à côté, et dessine la circulation **à l'échelle** dans le diagramme :
+  un bloc hachuré, sans couleur de famille, comme sa ligne de légende.
 - Elle se réglait auparavant dans DEUX outils, sous le même mot et avec deux
   arithmétiques opposées : 15 % ajoutés à l'utile dans le générateur de volumétrie,
   18 % du bâti dans le plan. L'écart valait 200 m².
@@ -179,10 +185,13 @@ morceau de poste posé à un niveau (6 de ces 18 salles au 1ᵉʳ étage). Un po
 sauf ceux dont le règlement impose les dimensions — la salle de sport double, 28 × 32 m,
 ne se coupe pas.
 
-Par défaut la pile n'a qu'un **rez-de-chaussée**. On creuse des sous-sols et on monte des
-étages aux deux extrémités seulement ; **Shuffle** peut aussi proposer le nombre de
-niveaux, déduit de la surface bâtie à loger, du plateau du rez et de ce que le règlement
-admet en sous-sol.
+Par défaut la pile n'a qu'un **rez-de-chaussée**. Le nombre d'étages et le nombre de
+sous-sols **se choisissent d'un geste**, sous la pile : deux groupes de boutons, `setStack`
+fait le reste — il ajoute, il retire, il renvoie au bac ce qui tombe hors de la nouvelle
+pile, et il conserve les plateaux réglés niveau par niveau. `stackCost(nsub, nup)` dit
+d'avance combien de pièces une réduction renverrait au bac. **Shuffle** peut aussi proposer
+le nombre de niveaux, déduit de la surface bâtie à loger, du plateau du rez et de ce que le
+règlement admet en sous-sol.
 
 Les locaux engins de la salle de gym (180 m²) ne sont pas posés : le règlement les
 convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deux fois.
