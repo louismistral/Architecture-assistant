@@ -170,7 +170,9 @@
 
 .mix-list{margin:0;padding:0;list-style:none;display:grid;gap:var(--s-2)}
 .mix-list li{
-  display:grid;grid-template-columns:auto 1fr;gap:var(--s-2);align-items:baseline;
+  /* La pastille et le texte sont désormais DANS le bouton, qui porte ses deux
+     colonnes : laissée en grille, la ligne envoyait le panneau déplié dans la
+     deuxième colonne, sur trois caractères de large. */
   font-size:var(--t-2xs);color:var(--ink-2);line-height:var(--lh-snug);
 }
 .mix-list li i{
@@ -241,3 +243,24 @@
    présence d'un sous-sol sont deux décisions de projet, elles se voient. */
 .mix-edit__row{align-items:center}
 .mix-edit__note{margin:var(--s-2) 0 0;max-width:74ch}
+
+/* --- un écart se clique, et propose son remède -----------------------------
+   La liste ne faisait que dire. Chaque ligne est maintenant une commande : elle
+   s'ouvre sur le geste qui résoudrait l'écart, ou sur « laisser comme ça » —
+   une décision de projet, qui mérite d'être prise et non subie. */
+.mix-iss{
+  display:grid;grid-template-columns:auto 1fr;gap:var(--s-2);align-items:baseline;
+  width:100%;text-align:left;padding:var(--s-1) var(--s-2) var(--s-1) 0;
+  background:none;border:0;border-radius:var(--r-sm);cursor:pointer;
+  font:inherit;color:inherit;
+}
+.mix-iss:hover{background:var(--rule-soft)}
+.mix-list li.is-open{background:var(--rule-soft);border-radius:var(--r-md);padding:var(--s-1)}
+.mix-list li.is-open .mix-iss:hover{background:none}
+.mix-list li.ok{opacity:.72}
+.mix-list li.ok i{background:none;border:1px dashed var(--rule-strong);color:var(--ink-3)}
+.mix-iss__p{display:grid;gap:var(--s-2);padding:var(--s-2) var(--s-2) var(--s-1)}
+.mix-iss__w{margin:0;font-size:var(--t-3xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.mix-issues__hd--soft{margin-top:var(--s-4)}
+.chip--soft{background:var(--rule);color:var(--ink-2)}
+.mix-reprendre{margin-left:auto}

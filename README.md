@@ -118,8 +118,11 @@ src/
     niv.js            règles de niveau du règlement, cotes admissibles par poste
     floors.js         la pile de niveaux, les parts posées, déplacer / scinder
     shuffle.js        répartition ordonnée, tirage, proposition de pile
-    checks.js         contrôle d'une répartition → avertissements
-    store.js          persistance : surfaces précisées, circulation, pile, répartition
+    checks.js         contrôle d'une répartition → écarts, avec leur code et leurs remèdes
+    fix.js            les remèdes : déplacer, vider, agrandir un plateau, poser un WC
+    accept.js         les écarts qu'on assume — « laisser comme ça »
+    store.js          persistance : surfaces précisées, circulation, pile, répartition,
+                      écarts assumés
   views/
     render.js         aiguillage par onglet, onglet Programme, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
@@ -176,6 +179,11 @@ programme ; il ne les réécrit pas.
 dit : rouge pour une règle écrite au règlement ou à l'AEAI, ambre pour une règle de projet
 ou une marge qui se discute. Le plateau, le nombre de niveaux et la part de circulation
 sont des choix de projet : leur dépassement est ambre. Rien n'est empêché.
+
+**Un écart dit aussi ce qui le réparerait.** On le clique, il propose le geste — `fix.js`
+le fabrique, `checks.js` le nomme à côté de la règle qu'il répare — ou « laisser comme
+ça », qui ne l'efface pas : il quitte le verdict, passe dans « laissés tels quels » et se
+reprend d'un clic. Un remède qui en créerait un autre n'est jamais proposé.
 
 **Une action qui détruit le travail en cours le dit.** Dans son libellé ou dans sa ligne de
 conséquence.

@@ -21,6 +21,7 @@ import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
 import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
 import { RULES } from "../data/rules.js";
+import { accept, clearAccepts, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import {
   FLOORS, PLATE_MAX, PLATE_MIN, SUB_MAX, TRAY,
@@ -40,6 +41,9 @@ var TINY_W = 46, TINY_H = 21;
 var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null, editEl = null;
 var popEl = null, ghostEl = null;
 var tirerNiveaux = false, selU = null, drag = null, wired = false;
+/* Le code de l'écart déplié, s'il y en a un. Un seul à la fois : ouvrir le
+   suivant referme le précédent, comme un menu. */
+var openIss = null;
 
 /* ---------- construction du panneau --------------------------------------- */
 export function mixPanel(){
@@ -487,6 +491,11 @@ function blockNode(b, r){
 }
 
 /* ---------- avertissements ------------------------------------------------ */
+/* ---------- le contrôle, et ce qu'on en fait -------------------------------
+   Un écart qui ne fait que s'afficher laisse tout le travail à faire : on le
+   lisait, et il fallait retrouver soi-même le poste, le niveau et le geste. On
+   clique dessus, il propose le geste qui le résoudrait — ou de le laisser tel
+   quel, ce qui est une décision de projet et non un oubli. */
 function drawIssues(){
   while(issuesEl.firstChild) issuesEl.removeChild(issuesEl.firstChild);
   var list = mixCheck(), v = mixVerdict(list);
@@ -494,26 +503,97 @@ function drawIssues(){
   hd.appendChild(el("h3","label","Contrôle"));
   if(v.e) hd.appendChild(el("i","chip chip--danger", v.e + " conflit" + (v.e > 1 ? "s" : "")));
   if(v.w) hd.appendChild(el("i","chip chip--warn", v.w + " à vérifier"));
+  if(!v.e && !v.w) hd.appendChild(el("i","chip chip--ok", "rien à signaler"));
   issuesEl.appendChild(hd);
 
-  if(!list.length){
+  var vifs = list.filter(function(x){ return !x.ok; });
+  var assumes = list.filter(function(x){ return x.ok; });
+
+  if(!vifs.length){
     issuesEl.appendChild(el("p","mix-ok",
       "Aucun conflit : chaque poste est posé à un niveau que le programme autorise."));
-    return;
+  } else {
+    issuesEl.appendChild(issList(vifs, false));
   }
+  if(assumes.length){
+    var ah = el("div","mix-issues__hd mix-issues__hd--soft");
+    ah.appendChild(el("h3","label", "Laissés tels quels"));
+    ah.appendChild(el("i","chip chip--soft", String(assumes.length)));
+    var bAll = el("button","btn btn--quiet mix-reprendre","Tout reprendre");
+    bAll.type = "button";
+    bAll.addEventListener("click", function(){
+      clearAccepts(); openIss = null; drawMix(); saveSoon();
+    });
+    ah.appendChild(bAll);
+    issuesEl.appendChild(ah);
+    issuesEl.appendChild(issList(assumes, true));
+  }
+}
+
+function issList(list, assume){
   var ul = el("ul","mix-list");
   list.forEach(function(w){
-    var li = el("li", w.sev === "e" ? "e" : "w");
-    li.appendChild(el("i", null, w.sev === "e" ? "conflit" : "à vérifier"));
+    var li = el("li", (assume ? "ok" : (w.sev === "e" ? "e" : "w")) + (openIss === w.code ? " is-open" : ""));
+
+    var bt = el("button","mix-iss");
+    bt.type = "button";
+    bt.setAttribute("aria-expanded", String(openIss === w.code));
+    bt.appendChild(el("i", null, assume ? "assumé" : (w.sev === "e" ? "conflit" : "à vérifier")));
     var t = el("div");
     t.appendChild(document.createTextNode(w.msg));
     var ref = " — " + (/^\d/.test(w.ref) ? "art. " : "") + w.ref;
     if(w.ex) ref += " · " + w.ex + (w.n > 1 ? " et " + (w.n - 1) + " autre" + (w.n > 2 ? "s" : "") : "");
     t.appendChild(el("span", null, ref));
-    li.appendChild(t);
+    bt.appendChild(t);
+    bt.addEventListener("click", function(){
+      openIss = (openIss === w.code) ? null : w.code;
+      drawIssues();
+      var again = issuesEl.querySelector("li.is-open .mix-iss");
+      if(again) again.focus({ preventScroll:true });
+    });
+    li.appendChild(bt);
+
+    if(openIss === w.code) li.appendChild(issPanel(w, assume));
     ul.appendChild(li);
   });
-  issuesEl.appendChild(ul);
+  return ul;
+}
+
+function issPanel(w, assume){
+  var box = el("div","mix-iss__p");
+  if(w.fl != null && FLOORS[w.fl]){
+    box.appendChild(el("p","mix-iss__w", "Niveau concerné : " + flName(w.fl).toLowerCase() + "."));
+  }
+  if(!w.fixes.length){
+    box.appendChild(el("p","mix-iss__w", w.note
+      || "Aucun geste du mixer ne le résout : cela se joue plus loin, au dessin."));
+  }
+  w.fixes.forEach(function(f){
+    var b = el("button","btn mix-act", f.label);
+    b.type = "button";
+    if(f.hint) b.appendChild(el("span","mix-why", f.hint));
+    b.addEventListener("click", function(){
+      if(f.run() === false) return;
+      openIss = null; selU = null;
+      drawMix(); saveSoon();
+    });
+    box.appendChild(b);
+  });
+
+  /* « Laisser comme ça » n'efface rien : l'écart change de rang, garde sa place
+     dans la liste, et se reprend d'un clic. */
+  var bo = el("button","btn btn--quiet mix-act", assume ? "Reprendre cet écart" : "Laisser comme ça");
+  bo.type = "button";
+  bo.appendChild(el("span","mix-why", assume
+    ? "il revient au contrôle et recompte dans le verdict"
+    : "il quitte le verdict et passe dans « laissés tels quels »"));
+  bo.addEventListener("click", function(){
+    if(assume) unaccept(w.code); else accept(w.code);
+    openIss = null;
+    drawMix(); saveSoon();
+  });
+  box.appendChild(bo);
+  return box;
 }
 
 /* ---------- le bac -------------------------------------------------------- */
