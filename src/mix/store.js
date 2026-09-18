@@ -1,17 +1,20 @@
 /* ============================================================================
    PERSISTANCE
 
-   Deux choses seulement méritent de survivre à un rechargement : les surfaces
+   Trois choses méritent de survivre à un rechargement : les surfaces
    que l'utilisateur a précisées (elles appartiennent à l'onglet Programme et
    changent tous les totaux) et la répartition qu'il a composée. Elles sont
    lues AVANT le premier rendu, parce qu'une surface peut être modifiée depuis
-   l'onglet Programme, donc avant que le mixer ait jamais été ouvert.
+   l'onglet Programme, donc avant que le mixer ait jamais été ouvert. S'y ajoutent
+   les écarts qu'on a assumés : les reprendre un par un à chaque ouverture
+   reviendrait à ne jamais pouvoir en assumer un.
 
    Chaque section est restaurée indépendamment : perdre la pile vaut mieux que
    perdre aussi les surfaces.
    ========================================================================= */
 import { el } from "../core/format.js";
 import { CIRC, CIRCSET, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
+import { acceptList, setAccepts } from "./accept.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
 
@@ -53,6 +56,9 @@ export function saveSoon(){
       plates: FLOORS.map(function(F){ return F.plate; }),
       blocks: BLOCKS.filter(function(b){ return b.fl !== TRAY; })
                     .map(function(b){ return { k:b.key, q:b.q, f:b.fl }; }),
+      /* Les écarts assumés survivent eux aussi : les reprendre un par un à
+         chaque ouverture reviendrait à ne jamais pouvoir en assumer un. */
+      accepts: acceptList(),
       updatedAt: Date.now()
     };
     try {
@@ -125,6 +131,7 @@ export function initStore(){
       try{ if(o.circ != null) loadCirc(o.circ); }catch(_){ lost.push("circulation"); }
       try{ applyStack(o.lvls, o.plates); }catch(_){ lost.push("niveaux"); }
       try{ applyBlocks(o.blocks); }catch(_){ lost.push("répartition"); }
+      try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
       if(lost.length) badParts = lost;
     }
     localStorage.setItem(LSKEY + ".probe", "1");

@@ -166,7 +166,9 @@ src/mix/prog.js       le programme vu comme des parts à poser ; adjacences par 
 src/mix/niv.js        règles de niveau, cotes admissibles d'un poste
 src/mix/floors.js     la pile de niveaux, les parts posées, déplacer / scinder
 src/mix/shuffle.js    répartition ordonnée, tirage, proposition de pile
-src/mix/checks.js     contrôle d'une répartition → avertissements
+src/mix/checks.js     contrôle d'une répartition → écarts, avec code et remèdes
+src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
+src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
 src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le popover
 ```
@@ -175,6 +177,22 @@ src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le po
 et `checks.js` la dit : rouge pour une règle écrite au règlement ou à l'AEAI, ambre pour
 une règle de projet ou une marge qui se discute. Le plateau, le nombre de niveaux et la
 part de circulation sont des choix de projet : leur dépassement est ambre.
+
+**Un écart se clique.** Il s'ouvre sur le geste qui le résoudrait — déplacer le poste au
+niveau que la règle admet, vider le niveau, porter le plateau à la surface qu'il faut,
+poser un WC — ou sur « laisser comme ça ». Chaque écart porte donc deux choses de plus
+qu'un message :
+
+- un **code** stable (`niv:<i>:<poste>`, `plate:<cote>`, `adj:<a>|<b>`…), construit sur les
+  COTES et non sur les indices de niveau, pour qu'assumer un écart ne se défasse pas au
+  premier réglage. `accept.js` tient la liste, `store.js` la persiste ;
+- ses **remèdes**, fabriqués par `fix.js` et nommés dans `checks.js`, à côté de la règle
+  qu'ils réparent. Un remède qui en créerait un autre n'est pas proposé : `fixDeplacer`
+  rend `null` pour une cote que `lvRange` refuse au poste. Un écart sans remède mécanique
+  — les deux cages d'escalier se dessinent à la typologie — porte une `note` qui le dit.
+
+« Laisser comme ça » n'efface rien : l'écart quitte le verdict, passe dans « laissés tels
+quels » et se reprend d'un clic.
 
 **Les contraintes de connexion ne sont jamais dures.** Le tirage les prend comme des
 préférences — un poste va d'abord au niveau où se trouve déjà ce que le règlement lui
