@@ -118,3 +118,20 @@ g.blk{cursor:default}
 .totals__s{display:block;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
 
 @media (max-width:560px){.cons__grid{grid-template-columns:1fr}}
+
+/* --- volets de l'onglet Programme -----------------------------------------
+   Le même groupe de boutons que le chrome, un cran plus bas. Il colle sous la
+   barre d'application et porte le filet qui le sépare de ce qu'il gouverne :
+   sans lui, en défilant, on ne savait plus dans quel volet on se trouvait. */
+.subtabs-bar{position:sticky;top:0;z-index:1;margin:var(--s-5) 0 var(--s-4);
+  padding:var(--s-3) 0;background:var(--paper);border-bottom:1px solid var(--rule)}
+.subtabs{width:max-content;max-width:100%}
+.subpanel:focus-visible{outline:none}
+/* Le rang de section ouvre le volet : il n'a plus à s'en détacher comme quand
+   trois d'entre eux se suivaient sur la même page, et son filet doublerait
+   celui de la barre de volets, à deux pixels au-dessus. */
+.subpanel>.secthead:first-child{margin-top:0;padding-top:0;border-top:0}
+@media (max-width:620px){
+  .subtabs{width:100%}
+  .subtabs .btn{flex:1 1 0;min-width:0}
+}

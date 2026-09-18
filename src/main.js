@@ -1,4 +1,4 @@
-import { TABS, isTool, readHash, view, writeHash } from "./core/viewstate.js";
+import { TABS, isTool, readHash, setSub, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
 import { resizeMix } from "./views/mixer.js";
 import { initStore, verifieQuantites } from "./mix/store.js";
@@ -92,7 +92,12 @@ tabBtns.forEach(function(b, i){
    concernés — et il n'avait aucun gestionnaire : contrôle mort dans le chrome
    permanent. Il mène à la liste, où les valeurs se saisissent. */
 document.getElementById("barEst").addEventListener("click", function(){
-  goTo("programme", false);
+  /* Les surfaces à préciser se saisissent dans le volet Surfaces : depuis
+     « Contraintes » ou « Adjacences », changer d'onglet ne suffisait plus. */
+  var move = view.tab !== "programme" || view.sub !== "surfaces";
+  setSub("surfaces");
+  if(view.tab !== "programme") goTo("programme", false);
+  else if(move) apply();
   var host = document.getElementById("vars");
   if(host){
     host.scrollIntoView({ block:"center", behavior:"smooth" });

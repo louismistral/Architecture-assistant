@@ -47,18 +47,23 @@ Le chrome permanent (`.appbar`, collant, ~52 px) ne contient que le nom du proje
 total vivant, les onglets et la bascule de thème. **Tout contenu éditorial appartient à la
 vue qu'il décrit.**
 
-La vue courante est dans le fragment d'URL (`#mixer`, `#programme/fam`) : rechargeable et
-partageable.
+La vue courante est dans le fragment d'URL (`#mixer`, `#programme/surfaces/fam`,
+`#programme/contraintes`) : rechargeable et partageable. Les formes qui ont circulé avant
+les volets — `#adjacences` et `#programme/fam` — restent valables.
 
-### L'onglet Programme, en trois temps
+### L'onglet Programme, en trois volets
 
-1. **Contraintes** — site, hauteurs libres, protection incendie, parasismique, mobilité,
+Ils étaient empilés sur une seule page : revenir d'une adjacence à la surface qu'elle
+commente demandait quatre écrans de défilement. Ce sont trois lectures du même règlement,
+pas trois étapes ; la chronologie du concours est dans les onglets, pas ici.
+
+1. **Surfaces** — le programme des locaux à l'échelle, les huit postes « à préciser » et
+   **la part de circulation**, saisissables sur place. Volet d'ouverture, et le seul où
+   l'on saisit quelque chose.
+2. **Contraintes** — site, hauteurs libres, protection incendie, parasismique, mobilité,
    second temps. Tout est lu dans `src/data/rules.js`.
-2. **Surfaces** — le programme des locaux à l'échelle, les huit postes « à préciser » et
-   **la part de circulation**, saisissables sur place.
-3. **Adjacences** — le schéma fonctionnel. C'était un onglet ; ce n'en était pas un : on
-   ne s'y rend pas, on le lit à la suite des surfaces qu'il commente. C'est de là que le
-   mixer tire ses préférences de placement.
+3. **Adjacences** — le schéma fonctionnel, d'où le mixer tire ses préférences de
+   placement.
 
 ### L'onglet Programme mixer
 
@@ -190,6 +195,8 @@ survol n'existe ni au doigt, ni au clavier, ni sur mobile.
   nœud du schéma correspond à quel poste du programme, et le signale si un nom change.
 - **Les familles et leurs couleurs** : `src/data/families.js` pour les libellés,
   `styles/tokens.css` pour les valeurs. Les deux fichiers sont liés par l'id de famille.
+- **Un volet de Programme** : une entrée dans `SUBS` (`src/core/viewstate.js`) et une
+  branche dans `render()`. Le bouton et le routage par hash suivent tout seuls.
 - **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`), un bouton dans
   `index.html`, et une branche dans `render()` (`src/views/render.js`).
 - **L'état de vue** : `src/core/viewstate.js` — lu partout, écrit seulement par `main.js`.
