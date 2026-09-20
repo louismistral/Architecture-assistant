@@ -403,9 +403,13 @@ quoi ce programme ressemblerait-il, physiquement, sur ce site ?
   un nœud reste FIGÉ tant qu'il est sur une courbe et que la voisine est plus loin que le
   pas — donc partout sur le site. Ce qui a précédé : un plan incliné à trois nombres, qui
   se trompait de deux mètres au pied du coteau, puis une moyenne pondérée qui suivait la
-  pente en gros mais pas les courbes, et les laissait flotter au-dessus du maillage. Les bâtiments existants portent leur pied et leur faîte (`SITE.bath`),
-  lus dans les solides du calque « batiments 3d ». Le fichier Rhino n'a **pas de calque
-  d'arbres** : ce qu'on ne relève pas ne s'invente pas.
+  pente en gros mais pas les courbes, et les laissait flotter au-dessus du maillage.
+  Les bâtiments existants portent leur pied et leur faîte (`SITE.bath`), lus dans les
+  solides du calque « batiments 3d ». Tout ce qui traverse le cadre — le périmètre plus
+  55 m — y est **coupé**, et non gardé entier : une polyligne dont un seul sommet tombait
+  dedans partait sinon à cent mètres dans le vide, au-delà du maillage du terrain, et le
+  relevé flottait dans le blanc. Le fichier Rhino n'a **pas de calque d'arbres** : ce
+  qu'on ne relève pas ne s'invente pas.
 - **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait
   pas lire `var(--f-cla)` : `cssRGB()` fait résoudre le token par le navigateur et le
   garde en cache tant que le thème ne change pas.
