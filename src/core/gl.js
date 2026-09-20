@@ -87,15 +87,36 @@ export function glInit(canvas){
 }
 /* Un sommet = 10 flottants : position, normale, couleur. */
 export var STRIDE = 10;
+function lier(G, buf){
+  var gl = G.gl, st = STRIDE * 4;
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.enableVertexAttribArray(G.a.pos); gl.vertexAttribPointer(G.a.pos, 3, gl.FLOAT, false, st, 0);
+  gl.enableVertexAttribArray(G.a.nrm); gl.vertexAttribPointer(G.a.nrm, 3, gl.FLOAT, false, st, 12);
+  gl.enableVertexAttribArray(G.a.col); gl.vertexAttribPointer(G.a.col, 4, gl.FLOAT, false, st, 24);
+}
 export function glDraw(G, data, mode, count){
   var gl = G.gl;
   gl.bindBuffer(gl.ARRAY_BUFFER, G.buf);
   gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
-  var st = STRIDE * 4;
-  gl.enableVertexAttribArray(G.a.pos); gl.vertexAttribPointer(G.a.pos, 3, gl.FLOAT, false, st, 0);
-  gl.enableVertexAttribArray(G.a.nrm); gl.vertexAttribPointer(G.a.nrm, 3, gl.FLOAT, false, st, 12);
-  gl.enableVertexAttribArray(G.a.col); gl.vertexAttribPointer(G.a.col, 4, gl.FLOAT, false, st, 24);
+  lier(G, G.buf);
   gl.drawArrays(mode, 0, count);
+}
+
+/* Un maillage qui ne bouge JAMAIS mérite son propre tampon. Le relief du site,
+   ses courbes de niveau et le bâti existant sont calculés une fois ; les
+   renvoyer à la carte graphique à chaque image coûtait quatre mégaoctets par
+   tour de caméra, pour un modèle identique d'une image à l'autre. */
+export function glStatic(G, data){
+  var gl = G.gl, b = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  return { buf:b, n:data.length / STRIDE };
+}
+export function glLibere(G, s){ if(s && s.buf) G.gl.deleteBuffer(s.buf); }
+export function glDrawStatic(G, s, mode){
+  if(!s || !s.n) return;
+  lier(G, s.buf);
+  G.gl.drawArrays(mode, 0, s.n);
 }
 
 /* ---- couleurs du thème --------------------------------------------------- */

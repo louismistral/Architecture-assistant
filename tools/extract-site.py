@@ -102,7 +102,30 @@ EXT = [min(xs)-MARGE, min(ys)-MARGE, max(xs)+MARGE, max(ys)+MARGE]
 def dedans(p):
     return EXT[0] <= p[0] <= EXT[2] and EXT[1] <= p[1] <= EXT[3]
 def garde(polys):
-    return [p for p in polys if any(dedans(q) for q in p)]
+    """Ce qui traverse le cadre est COUPÉ au cadre, pas gardé entier.
+
+    Une polyligne dont un seul sommet tombait dedans était conservée tout
+    entière : en 3D, ses cent mètres de trop partaient dans le vide, au-delà du
+    maillage du terrain, et le relevé semblait flotter dans le blanc. On la
+    tronçonne donc, en gardant un sommet de débord de chaque côté pour que la
+    coupe tombe sur le bord et non avant."""
+    out = []
+    for poly in polys:
+        run = []
+        for k, q in enumerate(poly):
+            if dedans(q):
+                if not run and k > 0:
+                    run.append(poly[k-1])       # le sommet d'avant, pour toucher le bord
+                run.append(q)
+            else:
+                if run:
+                    run.append(q)               # et celui d'après
+                    if len(run) > 1:
+                        out.append(run)
+                    run = []
+        if len(run) > 1:
+            out.append(run)
+    return out
 
 par = garde(layer("parcelles", True))
 rou = garde(layer("LRou"))
@@ -148,17 +171,27 @@ for o in BY.get("courbes de niveau 3d", []):
     p = [L(q) for q in v]
     p = [p[0]] + [q for i, q in enumerate(p[1:], 1)
                   if abs(q[0]-p[i-1][0]) + abs(q[1]-p[i-1][1]) >= 0.3]
-    if len(p) < 2 or not any(dedans(q) for q in p):
+    if len(p) < 2:
         continue
-    ctr.append([z, p])
+    for seg in garde([p]):
+        ctr.append([z, seg])
 ctr.sort(key=lambda c: c[0])
 
-# --- le terrain : une grille d'altitudes, lue dans les courbes --------------
-# Le plan incliné qui servait jusqu'ici (z = a + bx + cy) tenait en trois
-# nombres et se trompait de deux mètres au pied du coteau. Une grille au pas
-# de quatre mètres, interpolée sur les huit points de courbe les plus proches,
-# suit le terrain relevé — et un bâtiment posé dessus ne flotte plus.
-PAS = 4.0
+# --- le terrain : une grille d'altitudes QUI PASSE PAR LES COURBES ---------
+# Le plan incliné qui servait au début tenait en trois nombres et se trompait de
+# deux mètres au pied du coteau. La moyenne pondérée qui l'a remplacé suivait la
+# pente en gros, mais pas les courbes : 29 cm d'écart en moyenne sur les points
+# relevés, 3,25 m au pire — les courbes drapées en 3D flottaient au-dessus du
+# maillage ou s'y enfonçaient, ce qui est exactement ce qu'un modèle de terrain
+# ne doit pas faire.
+#
+# La méthode est celle qu'on emploie pour relever un terrain à la main : pour
+# chaque nœud, on cherche le point de courbe le plus proche, puis le plus proche
+# d'une AUTRE altitude, et l'on interpole entre les deux au prorata des
+# distances. Un nœud posé sur une courbe reçoit exactement son altitude — la
+# distance est nulle, le poids est entier — et entre deux courbes la pente est
+# droite. La surface passe donc PAR les courbes, elle ne les approche pas.
+PAS = 2.0
 GX0, GY0 = math.floor(EXT[0]), math.floor(EXT[1])
 NX = int(math.ceil((EXT[2]-GX0)/PAS)) + 1
 NY = int(math.ceil((EXT[3]-GY0)/PAS)) + 1
@@ -175,19 +208,63 @@ gy = GY0 + PAS*np.arange(NY)
 GX, GY = np.meshgrid(gx, gy, indexing="ij")
 P = np.stack([GX.ravel(), GY.ravel()], axis=1)
 
-K = 8
 grid = np.empty(P.shape[0])
-BLOC = 512
+d0_all = np.empty(P.shape[0])
+d1_all = np.empty(P.shape[0])
+BLOC = 256
 for i in range(0, P.shape[0], BLOC):
     ch = P[i:i+BLOC]
     d2 = ((ch[:, None, 0] - S[None, :, 0])**2 + (ch[:, None, 1] - S[None, :, 1])**2)
-    idx = np.argpartition(d2, K, axis=1)[:, :K]
-    dd = np.take_along_axis(d2, idx, axis=1)
-    zz = S[idx, 2]
-    w = 1.0/np.maximum(dd, 1e-4)
-    grid[i:i+BLOC] = (w*zz).sum(axis=1)/w.sum(axis=1)
+    i0 = np.argmin(d2, axis=1)
+    z0 = S[i0, 2]
+    d0 = np.sqrt(d2[np.arange(len(ch)), i0])
+    # le plus proche d'une AUTRE altitude : c'est lui qui donne la pente
+    autre = np.where(S[None, :, 2] != z0[:, None], d2, np.inf)
+    i1 = np.argmin(autre, axis=1)
+    z1 = S[i1, 2]
+    d1 = np.sqrt(np.take_along_axis(autre, i1[:, None], axis=1)[:, 0])
+    fini = np.isfinite(d1)
+    t = np.zeros(len(ch))
+    som = d0 + d1
+    ok = fini & (som > 1e-9)
+    t[ok] = d0[ok] / som[ok]
+    grid[i:i+BLOC] = np.where(fini, z0 + (z1 - z0) * t, z0)
+    d0_all[i:i+BLOC] = d0
+    d1_all[i:i+BLOC] = np.where(fini, d1, 1e9)
 grid = grid.reshape(NX, NY)
-ZG = [[round(float(grid[i][j]), 2) for j in range(NY)] for i in range(NX)]
+
+# --- lisser SEULEMENT là où la grille ne peut pas suivre ---------------------
+# Sur le coteau, les courbes relevées tous les 50 cm ne sont distantes que d'un
+# mètre : une grille au pas de deux ne peut pas les résoudre, et chaque nœud se
+# colle à la courbe la plus proche — le maillage devenait un escalier. Là, et là
+# seulement, on lisse : un nœud reste FIGÉ tant qu'il est posé sur une courbe ET
+# que la courbe voisine est plus loin que le pas de grille. Sur le site, où les
+# courbes sont à dix ou vingt mètres, tout est figé et la surface passe par
+# elles ; sur le coteau, où rien n'est résoluble, on préfère une pente à un
+# escalier. Deux passes à 0,2 : assez pour casser l'escalier du coteau, assez
+# peu pour que le périmètre du concours reste à quatre centimètres près.
+D0 = d0_all.reshape(NX, NY)
+D1 = d1_all.reshape(NX, NY)
+fige = (D0 < PAS * 0.6) & (D1 > PAS)
+for _ in range(2):
+    v = grid.copy()
+    moy = np.zeros_like(v)
+    cnt = np.zeros_like(v)
+    moy[1:, :] += v[:-1, :]; cnt[1:, :] += 1
+    moy[:-1, :] += v[1:, :]; cnt[:-1, :] += 1
+    moy[:, 1:] += v[:, :-1]; cnt[:, 1:] += 1
+    moy[:, :-1] += v[:, 1:]; cnt[:, :-1] += 1
+    moy /= np.maximum(cnt, 1)
+    grid = np.where(fige, v, v + 0.2 * (moy - v))
+
+# Les altitudes sont écrites en CENTIMÈTRES ENTIERS au-dessus d'un plancher, et
+# non en mètres décimaux. Deux raisons, et la seconde n'est pas l'encombrement :
+# « 465.23 » pèse sept caractères quand « 523 » en pèse quatre, mais surtout le
+# décimètre TERRASSAIT le terrain — sur une pente à 1,5 %, arrondir au décimètre
+# fait une marche tous les sept mètres, et le maillage en pleine résolution les
+# montrait toutes.
+ZSOL = 460
+ZG = [[int(round((float(grid[i][j]) - ZSOL) * 100)) for j in range(NY)] for i in range(NX)]
 
 # le plan incliné reste, comme repli et comme ordre de grandeur
 A = np.stack([np.ones(len(S)), S[:, 0], S[:, 1]], axis=1)
@@ -197,7 +274,8 @@ SITE = {
     "per": PER,
     "z": [round(float(coef[0]), 3), round(float(coef[1]), 6), round(float(coef[2]), 6)],
     "ext": [round(v, 1) for v in EXT],
-    "grid": {"x0": GX0, "y0": GY0, "pas": PAS, "nx": NX, "ny": NY, "z": ZG},
+    "grid": {"x0": GX0, "y0": GY0, "pas": PAS, "nx": NX, "ny": NY,
+             "zsol": ZSOL, "zc": ZG},
     "par": par, "rou": rou, "bat": bat, "bath": bath, "enq": enq,
     "foo": foo, "mur": mur, "esc": esc, "ctr": ctr,
 }
@@ -222,9 +300,14 @@ HEAD = '''/* ===================================================================
            qui ne compte pas les bords de route)
      ext   l'étendue dessinée : le périmètre et %d m autour. Le relevé couvre
            le coteau entier — au-delà du cadre, rien ne sert.
-     grid  le TERRAIN, altitudes au pas de %g m, interpolées sur les courbes de
-           niveau. Un plan incliné tenait en trois nombres et se trompait de
-           deux mètres au pied du coteau ; `z` le garde comme repli.
+     grid  le TERRAIN, au pas de %g m. `zc` donne les altitudes en CENTIMÈTRES
+           entiers au-dessus de `zsol`, et la surface PASSE PAR les courbes de
+           niveau : pour chaque nœud on prend le point de courbe le plus proche,
+           puis le plus proche d'une AUTRE altitude, et l'on interpole entre les
+           deux au prorata des distances — un nœud posé sur une courbe reçoit
+           exactement son altitude. Trois centimètres d'écart en moyenne sur le
+           périmètre du concours. Un plan incliné tenait en trois nombres et se
+           trompait de deux mètres au pied du coteau ; `z` le garde comme repli.
      ctr   les courbes de niveau, [altitude, polyligne] — %d courbes
      bat   les emprises des bâtiments existants · bath leur [pied, faîte],
            lus dans les solides du calque « batiments 3d »

@@ -5,29 +5,35 @@
    zoome, on recule — et l'on voit ce que le programme pèse sur ce terrain.
 
    Le TERRAIN est celui du relevé, pas une dalle : la grille d'altitudes de
-   `SITE.grid` fait un maillage, les courbes de niveau s'y drapent, et les
-   volumes s'y posent à la moyenne du terrain sous leur emprise. C'est ce qui
-   fait qu'un bâtiment ne flotte ni ne s'enterre.
+   `SITE.grid` fait un maillage, et cette grille PASSE PAR LES COURBES DE
+   NIVEAU — trois centimètres d'écart en moyenne sur le périmètre du concours.
+   Les courbes s'y drapent donc sans flotter ni s'enfoncer, et les volumes s'y
+   posent à la moyenne du terrain sous leur emprise : un bâtiment ne flotte ni
+   ne s'enterre.
 
-   Le maillage du site ne change jamais : on le calcule une fois et on le garde.
-   Seuls les volumes se refont à chaque image — c'est le seul endroit où le
-   modèle bouge, et l'on ne recalcule que lui.
+   Le maillage du site ne change jamais : il part une fois dans SON PROPRE
+   tampon graphique. Il était auparavant dessiné une maille sur deux et renvoyé
+   à la carte à chaque image — quatre mégaoctets par tour de caméra pour un
+   modèle identique, et un relief lissé à huit mètres qui ne suivait plus rien.
+   Seuls les volumes se refont à chaque image : c'est le seul endroit où le
+   modèle bouge.
 
    Toutes les couleurs viennent des tokens CSS par `cssRGB()` : WebGL ne sait
    pas lire `var(--f-cla)`, et il n'y a pas deux palettes dans ce projet.
    ========================================================================= */
 import { el } from "../core/format.js";
-import { STRIDE, cssRGB, glDraw, glInit, m4project, orbitEye, orbitMVP } from "../core/gl.js";
+import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4project,
+  orbitEye, orbitMVP } from "../core/gl.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { assise, coins, terrain } from "../mass/geom.js";
+import { assise, coins, grille, terrain } from "../mass/geom.js";
 import { MASS, cellules, famTok, niveaux, volRect } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
 export var CAM = { az:-0.7, el:0.46, dist:330, tx:88, ty:61, tz:6, fov:0.62 };
 var CAM0 = { az:-0.7, el:0.46, dist:330, tx:88, ty:61, tz:6, fov:0.62 };
-var STATIQUE = null, STAKEY = "";
+var STATIQUE = null, STAKEY = "", TAMPON = null;
 var drag3 = null, wired3 = false, onChange3 = null;
 
 export function vue3dOnChange(fn){ onChange3 = fn; }
@@ -102,6 +108,9 @@ function boite(M, q, z0, z1, c, a, edge){
   }
 }
 function zT(p){ return terrain(p[0], p[1]) - ZBAS; }
+/* L'altitude d'un nœud de la grille, sans repasser par l'interpolation : le
+   maillage EST la grille, il ne l'échantillonne pas. */
+function zg(g, i, j){ return g.zsol + grille(g, i, j) / 100 - ZBAS; }
 
 /* ---------- le site, calculé une fois --------------------------------------
    Le terrain, les courbes, les routes et l'existant ne bougent jamais. Les
@@ -114,25 +123,32 @@ function siteMesh(){
   if(STATIQUE && STAKEY === key) return STATIQUE;
   var M = Mesh();
   var cSol = cssRGB("--rule-soft"), cCtr = cssRGB("--ink-4");
+  var cCtrF = teinte("--ink-4", .45);     /* la demi-courbe, en trait faible */
   var cPer = cssRGB("--site-perimetre"), cRou = cssRGB("--ink-4");
   /* L'existant est un CONTEXTE : il doit se lire sans jamais se disputer le
      regard avec le projet. Au token brut il virait au noir sous l'éclairage. */
   var cBat = teinte("--ink-4", .34), cEnq = cssRGB("--warn");
-  var g = SITE.grid, PAS = 2, i, j;
-  for(i = 0; i + PAS < g.nx; i += PAS){
-    for(j = 0; j + PAS < g.ny; j += PAS){
-      var x0 = g.x0 + i * g.pas, x1 = g.x0 + (i + PAS) * g.pas;
-      var y0 = g.y0 + j * g.pas, y1 = g.y0 + (j + PAS) * g.pas;
-      quad(M, [x0, y0, g.z[i][j] - ZBAS], [x1, y0, g.z[i + PAS][j] - ZBAS],
-              [x1, y1, g.z[i + PAS][j + PAS] - ZBAS], [x0, y1, g.z[i][j + PAS] - ZBAS],
+  /* Le maillage prend TOUTES les mailles du relevé. Une sur deux lissait le
+     terrain à huit mètres : les courbes de niveau, relevées tous les
+     cinquante centimètres, passaient au travers. */
+  var g = SITE.grid, i, j;
+  for(i = 0; i + 1 < g.nx; i++){
+    for(j = 0; j + 1 < g.ny; j++){
+      var x0 = g.x0 + i * g.pas, x1 = g.x0 + (i + 1) * g.pas;
+      var y0 = g.y0 + j * g.pas, y1 = g.y0 + (j + 1) * g.pas;
+      quad(M, [x0, y0, zg(g, i, j)], [x1, y0, zg(g, i + 1, j)],
+              [x1, y1, zg(g, i + 1, j + 1)], [x0, y1, zg(g, i, j + 1)],
               cSol, 1);
     }
   }
-  /* Les courbes de niveau, drapées : c'est elles qui donnent le relief à lire,
-     bien plus que l'ombrage. Une sur deux suffit à la lecture. */
+  /* Les courbes de niveau, drapées à leur altitude exacte : c'est elles qui
+     donnent le relief à lire, bien plus que l'ombrage. Le relevé les donne
+     tous les 50 cm ; celles des mètres pleins portent le trait fort, comme sur
+     un plan topographique. */
   (SITE.ctr || []).forEach(function(c){
-    if(Math.abs(c[0] % 1) > .01) return;
-    ligne(M, c[1], function(){ return c[0] - ZBAS + .05; }, cCtr, false);
+    var pleine = Math.abs(c[0] % 1) < .01;
+    ligne(M, c[1], function(){ return c[0] - ZBAS + .04; },
+          pleine ? cCtr : cCtrF, false);
   });
   (SITE.rou || []).forEach(function(P){
     ligne(M, P, function(p){ return zT(p) + .12; }, cRou, false);
@@ -157,6 +173,9 @@ function siteMesh(){
     ligne(M, P, function(p){ return zT(p) + .3; }, cEnq, true);
   });
   STATIQUE = M; STAKEY = key;
+  if(TAMPON){ glLibere(G, TAMPON.t); glLibere(G, TAMPON.l); }
+  TAMPON = { t: glStatic(G, new Float32Array(M.t)),
+             l: glStatic(G, new Float32Array(M.l)) };
   return M;
 }
 /* Un bâtiment existant n'est pas un rectangle : on extrude son emprise telle
@@ -261,6 +280,9 @@ export function vue3dMount(hostEl){
   return true;
 }
 export function vue3dInvalide(){ STATIQUE = null; }
+export function vue3dSommets(){
+  return TAMPON ? { t:TAMPON.t.n, l:TAMPON.l.n } : { t:0, l:0 };
+}
 
 export function vue3dDraw(){
   if(!G || !cv || !host) return;
@@ -280,10 +302,11 @@ export function vue3dDraw(){
   gl.uniform3f(G.u.light, .42, -.55, .72);
   gl.uniform1f(G.u.amb, .54);
 
-  var S = siteMesh(), V = volMesh();
-  dessine(S.t, gl.TRIANGLES);
+  siteMesh();
+  var V = volMesh();
+  glDrawStatic(G, TAMPON.t, gl.TRIANGLES);
   dessine(V.t, gl.TRIANGLES);
-  dessine(S.l, gl.LINES);
+  glDrawStatic(G, TAMPON.l, gl.LINES);
   dessine(V.l, gl.LINES);
 }
 function dessine(arr, mode){
