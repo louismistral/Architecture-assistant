@@ -69,7 +69,7 @@ export function fixDeplacer(key, fl, quoi){
   var r = lvRange(p), l = lvlOf(fl);
   if(l < r.min || l > r.max) return null;
   /* La surface se lit par `aOf` : le poste ne porte PAS sa surface unitaire —
-     elle se règle dans l'onglet Programme et se relit à chaque appel. */
+     elle se règle dans le cahier des charges et se relit à chaque appel. */
   var a = aOf(key, qOf(key));
   return acte("Déplacer " + (quoi || p.n) + " au " + flName(fl).toLowerCase(),
     margeDe(fl, a),

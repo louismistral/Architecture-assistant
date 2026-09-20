@@ -40,7 +40,7 @@ mise en page :
 
 | gabarit | vue | mise en page |
 |---|---|---|
-| `doc` | Programme | colonne de lecture de 960 px, défilement assumé |
+| `doc` | Cahier des charges | colonne de lecture de 960 px, défilement assumé |
 | `tool` | Programme mixer | cadre plein, l'outil occupe la fenêtre |
 
 Le chrome permanent (`.appbar`, collant, ~52 px) ne contient que le nom du projet, le
@@ -48,14 +48,15 @@ total vivant, les onglets et la bascule de thème. **Tout contenu éditorial app
 vue qu'il décrit.**
 
 La vue courante est dans le fragment d'URL (`#mixer`, `#programme/surfaces/fam`,
-`#programme/contraintes`) : rechargeable et partageable. Les formes qui ont circulé avant
-les volets — `#adjacences` et `#programme/fam` — restent valables.
+`#programme/contraintes`) : rechargeable et partageable. L'identifiant de l'onglet reste
+`programme` ; les formes qui ont circulé avant — `#adjacences`, `#programme/adjacences` et
+`#programme/fam` — restent valables et mènent au volet qui les a reprises.
 
-### L'onglet Programme, en trois volets
+### Le cahier des charges, en deux volets
 
-Ils étaient empilés sur une seule page : revenir d'une adjacence à la surface qu'elle
-commente demandait quatre écrans de défilement. Ce sont trois lectures du même règlement,
-pas trois étapes ; la chronologie du concours est dans les onglets, pas ici.
+Ils étaient trois, empilés sur une seule page avant cela : revenir d'une adjacence à la
+surface qu'elle commente demandait quatre écrans de défilement. Ce sont deux lectures du
+même règlement, pas deux étapes ; la chronologie du concours est dans les onglets, pas ici.
 
 1. **Surfaces** — le programme des locaux à l'échelle, les huit postes « à préciser » et
    **la part de circulation**, saisissables sur place. Volet d'ouverture, et le seul où
@@ -63,9 +64,10 @@ pas trois étapes ; la chronologie du concours est dans les onglets, pas ici.
    locaux — un bloc hachuré, sans couleur de famille — et comptée dans la somme de
    chaque chapitre : le titre donne le bâti, la ligne à côté d'où il vient.
 2. **Contraintes** — site, hauteurs libres, protection incendie, parasismique, mobilité,
-   second temps. Tout est lu dans `src/data/rules.js`.
-3. **Adjacences** — le schéma fonctionnel, d'où le mixer tire ses préférences de
-   placement.
+   second temps, tout lu dans `src/data/rules.js` ; puis le **schéma fonctionnel** des
+   adjacences, d'où le mixer tire ses préférences de placement. Les adjacences ont été un
+   onglet, puis un volet : une proximité exigée entre deux locaux n'est pas d'une autre
+   nature qu'une hauteur libre ou une distance au voisin.
 
 ### L'onglet Programme mixer
 
@@ -91,7 +93,7 @@ index.html            la coquille seule : barre d'application, #panels, #tip
 styles/
   tokens.css          SOURCE UNIQUE de toute valeur de dessin — voir plus bas
   base.css            corps de page, [hidden], l'anneau de focus unique, infobulle
-  appbar.css          chrome permanent, les deux gabarits, intro de Programme, replis
+  appbar.css          chrome permanent, les deux gabarits, chapô du cahier des charges, replis
   controls.css        LE bouton, LE groupe de boutons, LA pastille de verdict
   program.css         panneaux, diagrammes, contraintes, rangs de section, récapitulatif
   schema.css          adjacences
@@ -100,7 +102,8 @@ src/
   data/               données pures, sans logique
     families.js       familles d'usage (id, couleur, libellé)        ← source unique
     program.js        programme des locaux, chapitre 2.10             ← source unique
-    schema.js         nœuds et liens des adjacences                   ← source unique
+    schema.js         nœuds, pôles et liens des adjacences            ← source unique
+                      ni surface ni coordonnée : le nœud dit quels postes il désigne
     site.js           périmètre du concours, terrain, nappe phréatique — relevé seul
     rules.js          contraintes du concours : distances, hauteurs libres, feu,
                       nappe, stationnement, circulation, second temps ← source unique
@@ -124,11 +127,11 @@ src/
     store.js          persistance : surfaces précisées, circulation, pile, répartition,
                       écarts assumés
   views/
-    render.js         aiguillage par onglet, onglet Programme, récapitulatif, sources
+    render.js         aiguillage par onglet, cahier des charges, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
     constraints.js    la section Contraintes, lue dans rules.js
     diagram.js        diagrammes à l'échelle et barre d'échelle
-    schema.js         dessin des adjacences
+    schema.js         schéma fonctionnel : colonnes par pôle, fils routés, tout déduit
     mixer.js          l'onglet Programme mixer
     tooltip.js        infobulle
   vol/                DORMANT — à reconstruire en onglet Massing
@@ -205,7 +208,7 @@ survol n'existe ni au doigt, ni au clavier, ni sur mobile.
   nœud du schéma correspond à quel poste du programme, et le signale si un nom change.
 - **Les familles et leurs couleurs** : `src/data/families.js` pour les libellés,
   `styles/tokens.css` pour les valeurs. Les deux fichiers sont liés par l'id de famille.
-- **Un volet de Programme** : une entrée dans `SUBS` (`src/core/viewstate.js`) et une
+- **Un volet du cahier des charges** : une entrée dans `SUBS` (`src/core/viewstate.js`) et une
   branche dans `render()`. Le bouton et le routage par hash suivent tout seuls.
 - **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`), un bouton dans
   `index.html`, et une branche dans `render()` (`src/views/render.js`).
