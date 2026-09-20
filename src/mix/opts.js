@@ -16,12 +16,22 @@ export var tirerNiveaux = false;
    de proximité peut s'éparpiller sur trois étages — et le contrôle le dira. */
 export var grouper = false;
 
+/* Un bloc montre-t-il les pièces qu'il contient ? Un poste de 18 salles est
+   UNE part posée d'un coup ; ouvert, il montre ses dix-huit salles, et chacune
+   se prend séparément. C'est là que se fait la scission — sur le bloc, pas
+   dans un menu. */
+export var pieces = true;
+
 export function setTirer(on){ tirerNiveaux = !!on; }
 export function setGrouper(on){ grouper = !!on; }
+export function setPieces(on){ pieces = !!on; }
 
-export function optsOf(){ return { niv: tirerNiveaux ? 1 : 0, grp: grouper ? 1 : 0 }; }
+export function optsOf(){
+  return { niv: tirerNiveaux ? 1 : 0, grp: grouper ? 1 : 0, pcs: pieces ? 1 : 0 };
+}
 export function setOpts(o){
   if(!o) return;
   tirerNiveaux = !!o.niv;
   grouper = !!o.grp;
+  if(o.pcs !== undefined) pieces = !!o.pcs;
 }

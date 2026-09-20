@@ -188,6 +188,37 @@ export function moveGroupe(u, fl){
   Object.keys(keys).forEach(fuse);
   return n > 0;
 }
+/* Rassembler CE qui doit se tenir : chaque grappe de proximité se retrouve sur
+   un seul niveau — celui où elle pèse déjà le plus, pour défaire le moins de
+   travail possible. C'est le geste qu'on attend en enclenchant l'interrupteur :
+   sans lui, il annonçait une règle sans l'appliquer à ce qui était déjà posé. */
+export function regrouper(){
+  var fait = {}, n = 0;
+  BLOCKS.slice().forEach(function(b){
+    if(b.fl === TRAY) return;
+    var keys = grappeDe(b.key);
+    if(keys.length < 2) return;
+    var id = keys.slice().sort().join("|");
+    if(fait[id]) return;
+    fait[id] = 1;
+    var set = {}, aire = {};
+    keys.forEach(function(k){ set[k] = 1; });
+    BLOCKS.forEach(function(x){
+      if(!set[x.key] || x.fl === TRAY) return;
+      aire[x.fl] = (aire[x.fl] || 0) + areaOf(x);
+    });
+    var cible = -1, max = -1, k;
+    for(k in aire) if(aire[k] > max){ max = aire[k]; cible = parseInt(k, 10); }
+    if(cible < 0) return;
+    BLOCKS.forEach(function(x){
+      if(!set[x.key] || x.fl === TRAY || x.fl === cible) return;
+      x.fl = cible; n++;
+    });
+    keys.forEach(fuse);
+  });
+  return n;
+}
+
 /* Les parts qu'un déplacement groupé emmènerait, la part elle-même comprise. */
 export function grappeBlocs(u){
   var b = blockOf(u);

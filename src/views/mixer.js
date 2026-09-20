@@ -11,11 +11,15 @@
    squarifié, `src/core/treemap.js`). Une liste ne dirait pas qu'un niveau est
    plein ; un dessin le dit avant qu'on ait lu un chiffre.
 
-   Trois gestes : glisser un bloc d'un niveau à l'autre, cliquer pour le
-   déplacer ou le scinder au clavier, et demander une proposition tirée au
-   sort. Deux interrupteurs les gouvernent (`mix/opts.js`) : le tirage
-   propose-t-il aussi la pile, et ce que le règlement veut côte à côte se
-   déplace-t-il ensemble.
+   Deux gestes, et ils se font sur le dessin : on GLISSE un bloc d'un niveau
+   à l'autre, et l'on SCINDE en tirant une pièce hors de son bloc. Il y avait
+   un menu pour cela — « déplacer vers », « scinder 6 sur 18 » — qui demandait
+   de choisir un niveau dans une liste et un nombre dans une autre, alors que
+   la pile et le bloc étaient là, sous les yeux. Deux blocs d'un même poste qui
+   se retrouvent au même niveau se refondent en un (`fuse`), donc rien ne se
+   perd à se tromper. Trois interrupteurs gouvernent ces gestes (`mix/opts.js`)
+   : le tirage propose-t-il aussi la pile, ce que le règlement veut côte à côte
+   se déplace-t-il ensemble, et un bloc montre-t-il ses pièces.
 
    Ce qui agit sur l'ENSEMBLE est dans la barre du haut ; ce qui agit sur UN
    niveau — son plateau, son retrait — est sur le niveau lui-même ; et l'on
@@ -35,12 +39,12 @@ import {
   FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
   addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt,
   flCount, flHeight, flLibre, flName, flNet, floorCost, grappeBlocs, horsAt,
-  lvlOf, move, moveGroupe, onFloor, setPlate, split, toTray, trayArea,
-  trayBlocks, usable
+  lvlOf, move, moveGroupe, onFloor, regrouper, setPlate, split, toTray,
+  trayArea, trayBlocks, usable
 } from "../mix/floors.js";
-import { grouper, setGrouper, setTirer, tirerNiveaux } from "../mix/opts.js";
+import { grouper, pieces, setGrouper, setPieces, setTirer, tirerNiveaux } from "../mix/opts.js";
 import { PMAP, aOf, posesDedans, qOf, uOf } from "../mix/prog.js";
-import { rangeOf, repartir } from "../mix/shuffle.js";
+import { repartir } from "../mix/shuffle.js";
 import { saveSoon, setChip } from "../mix/store.js";
 
 /* Surface d'un mètre carré, en pixels carrés. Constante pour toute la vue :
@@ -49,7 +53,7 @@ var AIRE = 70;
 var TINY_W = 46, TINY_H = 21;
 
 var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null;
-var popEl = null, ghostEl = null;
+var ghostEl = null;
 var selU = null, drag = null, wired = false;
 /* Le code de l'écart déplié, s'il y en a un. Un seul à la fois : ouvrir le
    suivant referme le précédent, comme un menu. L'écart ouvert désigne aussi
@@ -105,9 +109,28 @@ export function mixPanel(){
   bGrp.addEventListener("click", function(){
     setGrouper(!grouper);
     bGrp.setAttribute("aria-pressed", String(grouper));
+    /* Enclencher la règle la fait porter sur ce qui est DÉJÀ posé : sinon elle
+       s'annonçait sans rien changer, et une grappe éparpillée le restait. */
+    if(grouper) regrouper();
+    selU = null; openIss = null; issFocus = null;
     drawMix(); saveSoon();
   });
   bar.appendChild(bGrp);
+
+  /* Un bloc est un poste entier — dix-huit salles de classe posées d'un coup.
+     Ouvert, il montre ses dix-huit salles, et chacune se prend séparément :
+     c'est là que se fait la scission, sur le bloc et non dans un menu. */
+  var bPcs = el("button","btn","Voir les pièces");
+  bPcs.type = "button";
+  bPcs.setAttribute("aria-pressed", String(pieces));
+  bPcs.title = "Découpe chaque bloc en ses pièces : une pièce se glisse seule, "
+             + "le bloc entier se prend par son nom";
+  bPcs.addEventListener("click", function(){
+    setPieces(!pieces);
+    bPcs.setAttribute("aria-pressed", String(pieces));
+    drawMix(); saveSoon();
+  });
+  bar.appendChild(bPcs);
 
   var bVide = el("button","btn","Tout au bac");
   bVide.type = "button";
@@ -141,10 +164,6 @@ export function mixPanel(){
   side.appendChild(trayEl);
   grid.appendChild(side);
   p.appendChild(grid);
-
-  popEl = el("div","mix-pop");
-  popEl.hidden = true;
-  p.appendChild(popEl);
 
   if(!ghostEl){
     ghostEl = el("div","mix-ghost");
@@ -451,6 +470,37 @@ function paintFloor(host, i){
   }
 }
 
+/* Les pièces d'un bloc, dessinées DANS le bloc. Dix-huit salles de classe
+   posées d'un coup formaient un rectangle muet : on lisait « ×18 » et il
+   fallait un menu pour en détacher six. Ouvert, le bloc montre ses dix-huit
+   cellules, et l'on tire celle qu'on veut ailleurs — la scission est le
+   déplacement d'une pièce, elle n'a pas à être un geste de plus.
+   Rien n'est dessiné si une cellule devient trop petite pour être visée, ni
+   pour un poste dont le règlement impose les dimensions : il ne se coupe pas. */
+var PC_W = 9, PC_H = 7;
+function pieceGrid(b, r){
+  var p = PMAP[b.key];
+  if(!pieces || p.solid || b.q < 2) return null;
+  var w = r.w - 4, h = r.h - 16;
+  if(w < 3 * PC_W || h < 2 * PC_H) return null;
+  /* Cellules aussi carrées que le permet le rectangle restant : le nombre de
+     colonnes se déduit de sa forme, il n'est pas un réglage. */
+  var cols = Math.round(Math.sqrt(b.q * w / h));
+  if(!(cols >= 1)) cols = 1;
+  if(cols > b.q) cols = b.q;
+  var rows = Math.ceil(b.q / cols);
+  if(w / cols < PC_W || h / rows < PC_H) return null;
+  var g = el("div","mixblk__pcs");
+  g.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+  for(var i = 0; i < b.q; i++){
+    var c = el("span","mixpc");
+    c.dataset.u = String(b.u);
+    c.dataset.pc = "1";
+    g.appendChild(c);
+  }
+  return g;
+}
+
 function blockNode(b, r){
   var p = PMAP[b.key], a = areaOf(b);
   var d = el("div","mixblk");
@@ -477,14 +527,23 @@ function blockNode(b, r){
   if(issFocus && issFocus.keys.indexOf(b.key) >= 0) d.classList.add("is-flag", "is-" + issFocus.sev);
   if(r.w < TINY_W || r.h < TINY_H) d.classList.add("is-tiny");
 
-  d.appendChild(el("b", null, p.n + (b.q > 1 ? " ×" + b.q : "")));
-  d.appendChild(el("span","mixblk__a mono", fmt(Math.round(a)) + " m²"));
+  /* Le NOM est la prise du bloc entier, une CELLULE celle d'une pièce : deux
+     prises distinctes valent mieux qu'un modificateur à retenir. */
+  var lb = el("div","mixblk__lb");
+  lb.appendChild(el("b", null, p.n + (b.q > 1 ? " ×" + b.q : "")));
+  lb.appendChild(el("span","mixblk__a mono", fmt(Math.round(a)) + " m²"));
+  d.appendChild(lb);
+  var g = pieceGrid(b, r);
+  if(g){ d.appendChild(g); d.classList.add("has-pcs"); }
   d.setAttribute("data-tip", p.n + (b.q > 1 ? " ×" + b.q : "")
     + (p.est ? "  (à préciser)" : "") + "|"
     + b.q + " × " + fmt(uOf(b.key)) + " m² = " + fmt(Math.round(a)) + " m²|"
     + FMAP[p.f].name + (p.note ? " · " + p.note : ""));
   d.setAttribute("aria-label", p.n + ", " + b.q + " pièce" + (b.q > 1 ? "s" : "")
-    + ", " + fmt(Math.round(a)) + " mètres carrés");
+    + ", " + fmt(Math.round(a)) + " mètres carrés, "
+    + (b.fl === TRAY ? "au bac" : flName(b.fl))
+    + ". Flèches haut et bas pour changer de niveau"
+    + (b.q > 1 && !p.solid ? ", majuscule pour n’en détacher qu’une pièce" : ""));
   return d;
 }
 
@@ -666,7 +725,7 @@ function drawTray(){
 }
 
 /* Déplacer, avec ou sans sa grappe. Un seul point de passage : le glisser, le
-   popover et le clavier doivent obéir à l'interrupteur de la même façon. */
+   glisser et le clavier doivent obéir à l'interrupteur de la même façon. */
 function bouger(u, fl){
   return grouper ? moveGroupe(u, fl) : move(u, fl);
 }
@@ -680,86 +739,36 @@ function combien(u){
   return n;
 }
 
-/* ---------- popover : déplacer, scinder -----------------------------------
-   Le clavier et le doigt ont le même accès que la souris : le glisser n'est
-   jamais le seul chemin. */
-function openPop(u, anchor){
+/* Où va un bloc quand on le pousse d'un cran. Le bac est le cran d'en
+   dessous du rez : la pile et le bac sont une seule échelle. */
+function voisin(fl, dir){
+  var t = fl + dir;
+  if(t < TRAY || t >= FLOORS.length) return null;
+  return t;
+}
+/* Retrouver le bloc après un déplacement : `fuse` peut l'avoir absorbé dans
+   celui qui était déjà là, et le clavier perdrait son point d'appui. */
+function refocus(key, fl){
+  var n = null;
+  (fl === TRAY ? trayBlocks() : onFloor(fl)).forEach(function(x){
+    if(n || x.key !== key) return;
+    n = document.querySelector('[data-u="' + x.u + '"]');
+  });
+  if(n) n.focus();
+}
+/* Déplacer au clavier, une pièce ou le bloc entier : le glisser n'est jamais
+   le seul chemin. Maj détache UNE pièce — c'est la scission, au clavier. */
+function pousser(u, fl, unePiece){
   var b = blockOf(u);
-  if(!b || !popEl) return;
-  selU = u;
-  while(popEl.firstChild) popEl.removeChild(popEl.firstChild);
-  var p = PMAP[b.key];
-  popEl.appendChild(el("h4", null, p.n + (b.q > 1 ? " ×" + b.q : "")));
-  popEl.appendChild(el("p","mix-pop__s",
-    fmt(Math.round(areaOf(b))) + " m² · " + FMAP[p.f].name));
-
-  var cand = rangeOf(p);
-  /* Quand l'interrupteur est enclenché, le popover dit ce qu'il emmène : sinon
-     on déplace quinze pièces en croyant en déplacer une. */
-  var suite = combien(u);
-  popEl.appendChild(el("div","mix-pop__l",
-    "Déplacer vers" + (suite ? " — avec " + suite + " pièce" + (suite > 1 ? "s liées" : " liée") : "")));
-  var row = el("div","mix-pop__r");
-  for(var i = FLOORS.length - 1; i >= 0; i--){
-    (function(i){
-      var bt = el("button","btn", flName(i));
-      bt.type = "button";
-      bt.disabled = (b.fl === i);
-      /* Un niveau que le règlement n'admet pas reste cliquable : rien n'est
-         empêché. Il est seulement marqué, et le contrôle le dira. */
-      if(cand.indexOf(i) < 0) bt.classList.add("is-warn");
-      bt.addEventListener("click", function(){
-        bouger(u, i); closePop(); drawMix(); saveSoon();
-      });
-      row.appendChild(bt);
-    })(i);
+  if(!b || fl === null || fl === b.fl) return;
+  var key = b.key, cu = u;
+  if(unePiece && b.q > 1){
+    var nb = split(u, 1);
+    if(nb) cu = nb.u;
   }
-  var bt0 = el("button","btn","Au bac");
-  bt0.type = "button";
-  bt0.disabled = (b.fl === TRAY);
-  bt0.addEventListener("click", function(){ bouger(u, TRAY); closePop(); drawMix(); saveSoon(); });
-  row.appendChild(bt0);
-  popEl.appendChild(row);
-
-  if(b.q > 1 && !p.solid){
-    popEl.appendChild(el("div","mix-pop__l","Scinder"));
-    var row2 = el("div","mix-pop__r"), vus = {};
-    [1, Math.floor(b.q / 2), b.q - 1].forEach(function(v){
-      if(v < 1 || v >= b.q || vus[v]) return;
-      vus[v] = 1;
-      var bs = el("button","btn", v + " sur " + b.q);
-      bs.type = "button";
-      bs.addEventListener("click", function(){
-        var nb = split(u, v);
-        closePop();
-        drawMix(); saveSoon();
-        if(nb) openPopById(nb.u);
-      });
-      row2.appendChild(bs);
-    });
-    popEl.appendChild(row2);
-  } else if(p.solid){
-    popEl.appendChild(el("p","mix-pop__s",
-      "Dimensions imposées au règlement : ce poste ne se scinde pas."));
-  }
-
-  popEl.hidden = false;
-  var host = popEl.offsetParent || popEl.parentNode;
-  var hr = host.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
-  var x = ar.left - hr.left, y = ar.bottom - hr.top + 6;
-  popEl.style.left = Math.max(4, Math.min(x, hr.width - popEl.offsetWidth - 4)) + "px";
-  popEl.style.top = y + "px";
-  var f = popEl.querySelector("button:not(:disabled)");
-  if(f) f.focus();
-}
-function openPopById(u){
-  var node = document.querySelector('[data-u="' + u + '"]');
-  if(node) openPop(u, node);
-}
-function closePop(){
-  if(!popEl) return;
-  popEl.hidden = true;
-  selU = null;
+  bouger(cu, fl);
+  drawMix(); saveSoon();
+  refocus(key, fl);
 }
 
 /* ---------- gestes -------------------------------------------------------- */
@@ -778,7 +787,10 @@ function wireMix(){
   document.addEventListener("pointerdown", function(e){
     var node = e.target.closest ? e.target.closest(".mixblk,.mixchip") : null;
     if(!node || e.button !== 0) return;
-    drag = { u: parseInt(node.dataset.u, 10), x0: e.clientX, y0: e.clientY, live:false, el:node };
+    /* Une cellule tirée n'emmène qu'elle : c'est là que se fait la scission. */
+    var pc = e.target.closest ? e.target.closest(".mixpc") : null;
+    drag = { u: parseInt(node.dataset.u, 10), pc: !!pc,
+             x0: e.clientX, y0: e.clientY, live:false, el:node };
     try{ node.setPointerCapture(e.pointerId); }catch(_){}
   });
   document.addEventListener("pointermove", function(e){
@@ -791,9 +803,11 @@ function wireMix(){
       var b = blockOf(drag.u);
       if(b){
         while(ghostEl.firstChild) ghostEl.removeChild(ghostEl.firstChild);
+        var seul = drag.pc && b.q > 1;
         var suite = combien(drag.u);
         ghostEl.appendChild(document.createTextNode(
-          PMAP[b.key].n + (b.q > 1 ? " ×" + b.q : "") + " · " + fmt(Math.round(areaOf(b))) + " m²"
+          PMAP[b.key].n + (seul ? " ×1" : (b.q > 1 ? " ×" + b.q : ""))
+          + " · " + fmt(Math.round(seul ? uOf(b.key) : areaOf(b))) + " m²"
           + (suite ? "  + " + suite + " liée" + (suite > 1 ? "s" : "") : "")));
       }
       ghostEl.hidden = false;
@@ -811,33 +825,44 @@ function wireMix(){
   });
   document.addEventListener("pointerup", function(e){
     if(!drag) return;
-    var live = drag.live, u = drag.u, node = drag.el;
+    var live = drag.live, u = drag.u, node = drag.el, pc = drag.pc;
     node.classList.remove("is-dragging");
     ghostEl.hidden = true;
     Array.prototype.forEach.call(document.querySelectorAll(".is-drop"),
       function(n){ n.classList.remove("is-drop"); });
     drag = null;
-    if(!live){ openPop(u, node); return; }
+    /* Un clic net ne déplace rien : il désigne, et le clavier prend la suite. */
+    if(!live){
+      selU = (selU === u ? null : u);
+      drawMix();
+      var again = document.querySelector('[data-u="' + u + '"]');
+      if(again) again.focus();
+      return;
+    }
     var over = document.elementFromPoint(e.clientX, e.clientY);
     var fl = over && over.closest ? over.closest(".mix-fl") : null;
     var tr = over && over.closest ? over.closest(".mix-tray") : null;
-    if(fl){ bouger(u, parseInt(fl.dataset.floor, 10)); drawMix(); saveSoon(); }
-    else if(tr){ bouger(u, TRAY); drawMix(); saveSoon(); }
+    if(fl) pousser(u, parseInt(fl.dataset.floor, 10), pc);
+    else if(tr) pousser(u, TRAY, pc);
   });
 
+  /* Le glisser au clavier : les flèches montent et descendent le bloc d'un
+     cran — le bac étant le cran sous le rez —, Maj n'en emmène qu'une pièce,
+     Suppr le renvoie au bac. Le menu qu'ils remplacent demandait de choisir
+     un niveau dans une liste alors que la pile était là, sous les yeux. */
   document.addEventListener("keydown", function(e){
-    if(e.key === "Escape" && popEl && !popEl.hidden){ closePop(); drawMix(); return; }
-    if(e.key !== "Enter" && e.key !== " ") return;
-    var node = e.target.closest ? e.target.closest(".mixblk") : null;
+    var node = e.target.closest ? e.target.closest(".mixblk,.mixchip") : null;
     if(!node) return;
+    var u = parseInt(node.dataset.u, 10), b = blockOf(u);
+    if(!b) return;
+    var cible;
+    if(e.key === "ArrowUp") cible = voisin(b.fl, 1);
+    else if(e.key === "ArrowDown") cible = voisin(b.fl, -1);
+    else if(e.key === "Delete" || e.key === "Backspace") cible = TRAY;
+    else return;
     e.preventDefault();
-    openPop(parseInt(node.dataset.u, 10), node);
+    pousser(u, cible === undefined ? null : cible, e.shiftKey);
   });
-  document.addEventListener("pointerdown", function(e){
-    if(!popEl || popEl.hidden) return;
-    if(e.target.closest && (e.target.closest(".mix-pop") || e.target.closest(".mixblk,.mixchip"))) return;
-    closePop();
-  }, true);
 }
 
 /* Le redimensionnement change la largeur du canevas, donc le pavage. */
