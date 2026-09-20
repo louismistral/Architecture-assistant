@@ -84,8 +84,9 @@ Il prend les surfaces et les organise sur des niveaux. Rien d'autre.
   bande, sous un filet, hors du compte.
 - **Shuffle** tire une répartition, et peut aussi proposer un nombre de niveaux ; une
   **graine** la rend rejouable à l'identique.
-- On glisse un bloc d'un niveau à l'autre. Ouvert — interrupteur « Voir les pièces » —,
-  il montre ses pièces : en tirer une hors du bloc, c'est le scinder. Deux parts d'un même
+- On glisse un bloc d'un niveau à l'autre. Divisé — interrupteur « Voir les pièces » —,
+  il porte les refends tiretés de ses pièces : en tirer une hors du bloc, c'est le
+  scinder. Deux parts d'un même
   poste qui se retrouvent au même niveau se refondent. Au clavier, sur le bloc au foyer :
   flèches haut et bas pour changer de niveau, Maj pour n'emmener qu'une pièce, Suppr pour
   le renvoyer au bac.

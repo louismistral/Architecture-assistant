@@ -249,10 +249,13 @@ renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
   qui est déjà posé : `regrouper()` ramène chaque grappe au niveau où elle pèse déjà le
   plus, pour défaire le moins de travail possible. Sans cela l'interrupteur annonçait une
   règle sans l'appliquer, et une grappe éparpillée le restait.
-- **Voir les pièces** — un bloc montre les pièces qui le composent, une cellule par
-  pièce, à sa surface unitaire. C'est la prise de la scission. Rien n'est dessiné pour un
-  poste que le règlement ne coupe pas, ni quand une cellule deviendrait trop petite pour
-  être visée.
+- **Voir les pièces** — le bloc est DIVISÉ en ses pièces, à la surface unitaire du
+  poste, par des traits tiretés qui vont d'un bord à l'autre : un refend de plan, qui
+  sépare sans clore. C'est la prise de la scission. Des rectangles cernés donnaient à
+  lire dix-huit objets rangés dans une boîte plutôt qu'un poste découpé. La trame est
+  PLEINE — on préfère un partage exact à des cellules parfaitement carrées, sinon la
+  dernière rangée semble inachevée. Rien n'est divisé pour un poste que le règlement ne
+  coupe pas, ni quand une pièce deviendrait trop petite pour être visée.
 
 Le tirage est la seule proposition : « Répartir », son jumeau ordonné, donnait la même
 chose à l'ordre des chapitres près, et la graine rend le tirage aussi rejouable.
