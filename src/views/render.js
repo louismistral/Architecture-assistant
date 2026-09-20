@@ -313,9 +313,9 @@ function adjacencesSection(){
   p0.appendChild(hd);
   p0.appendChild(el("p","panel-sub",
     "Les locaux que le règlement demande de placer côte à côte, rangés par pôle. "
-    + "Chaque rectangle vaut sa surface : à largeur constante, sa hauteur est celle "
-    + "de ses m². Un local trop petit pour porter son nom le range dessous — le "
-    + "rectangle reste juste, le nom reste lisible."));
+    + "Le dessin est en mètres : chaque rectangle vaut sa surface, dans ses deux "
+    + "côtés, et porte les cotes que le règlement impose quand il en donne. Un local "
+    + "trop petit pour écrire son nom le range dessous."));
   p0.appendChild(linkKey());
   var sw = el("div","schema-wrap");
   p0.appendChild(sw);
