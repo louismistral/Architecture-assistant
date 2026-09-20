@@ -30,12 +30,11 @@ et surfaces   programme sur       sur le site coupes
 ```
 
 L'ancien ordre faisait l'inverse : l'onglet Site venait APRÈS le Plan, donc on dessinait
-la typologie d'un niveau avant d'avoir choisi le volume. Les deux dernières étapes sont à
-reconstruire ; le code 3D reste en place pour cela (`src/core/gl.js`, `src/vol/`), sans
-onglet qui l'expose.
+la typologie d'un niveau avant d'avoir choisi le volume. Seule la typologie reste à
+construire.
 
-L'application rend donc aujourd'hui **deux vues, de deux natures** : une vue de
-*document*, qu'on lit, et un *outil*, qu'on opère. `document.body.dataset.kind` commute la
+L'application rend donc aujourd'hui **trois vues, de deux natures** : une vue de
+*document*, qu'on lit, et deux *outils*, qu'on opère. `document.body.dataset.kind` commute la
 mise en page :
 
 | gabarit | vue | mise en page |
@@ -120,7 +119,7 @@ src/
     geometry.js       surfaces → blocs, empilage, proportions admissibles
     treemap.js        pavage squarifié — un bloc vaut sa surface
     rand.js           tirage reproductible à graine (mulberry32)
-    gl.js             WebGL minimal — dormant, pour le futur onglet Massing
+    gl.js             WebGL minimal : matrices, programme, tampons, caméra orbitale
   mix/                répartir le programme sur les niveaux
     prog.js           le programme vu comme des parts à poser, adjacences par poste
     niv.js            règles de niveau du règlement, cotes admissibles par poste
@@ -132,6 +131,12 @@ src/
     opts.js           les trois interrupteurs : tirer la pile, grouper, voir les pièces
     store.js          persistance : surfaces précisées, circulation, pile, répartition,
                       écarts assumés
+  mass/               poser le programme en volumes, sur le terrain relevé
+    geom.js           terrain interpolé, rectangles tournés, distances, alignements
+    model.js          l'état du massing, les niveaux relus du mixer, le bilan de surface
+    gen.js            le générateur : parti → figure → réparation → note
+    checks.js         contrôle d'une volumétrie → alertes info / à vérifier / erreur
+    etat.js           ce que le massing enregistre (lu par mix/store.js)
   views/
     render.js         aiguillage par onglet, cahier des charges, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
@@ -139,12 +144,10 @@ src/
     diagram.js        diagrammes à l'échelle et barre d'échelle
     schema.js         schéma fonctionnel : grappes rayonnantes, locaux à l'échelle
     mixer.js          l'onglet Programme mixer
+    massing.js        l'onglet Massing : rail de commandes, plan et 3D côte à côte
+    plan.js           la vue en plan : relevé, volumes, sélection, déplacement, rotation
+    vue3d.js          la vue 3D : terrain maillé, courbes drapées, existant, volumes
     tooltip.js        infobulle
-  vol/                DORMANT — à reconstruire en onglet Massing
-    place.js          terrain, périmètre, recul, distance entre boîtes
-    massing.js        générateur : programme + règles + parti → volumes
-    checks.js         contrôle d'une volumétrie → avertissements
-    scene3d.js        la vue 3D : terrain, relevé, bâti existant, volumes
   main.js             thème, onglets, routage, premier rendu
 Design-1.2.0-v38/     le plugin « Design » d'Anthropic, déposé ici pour servir de grille
                       d'audit (design-system, design-critique, ux-copy, a11y)

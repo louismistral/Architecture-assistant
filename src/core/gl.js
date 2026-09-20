@@ -3,7 +3,7 @@
    Le projet n'a aucune dépendance et n'en prendra pas pour de la 3D : il faut
    une caméra en perspective, un tampon de profondeur et un éclairage plat,
    soit une page de code. Tout ce qui est propre au site vit dans
-   `src/vol/scene3d.js` ; ici, rien qui parle d'architecture.
+   `src/views/vue3d.js` ; ici, rien qui parle d'architecture.
    ========================================================================= */
 
 /* ---- matrices 4×4, en colonnes (convention WebGL) ----------------------- */

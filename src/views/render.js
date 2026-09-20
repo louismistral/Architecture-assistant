@@ -7,6 +7,7 @@ import { SUBS, view, writeHash } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { FREE, SLINK, SNODE } from "../data/schema.js";
+import { drawMass, massPanel } from "./massing.js";
 import { drawMix, mixPanel } from "./mixer.js";
 import { saveSoon } from "../mix/store.js";
 import { constraintsSection } from "./constraints.js";
@@ -165,6 +166,14 @@ export function render(){
     var mp = mixPanel();
     panelsEl.appendChild(mp);
     drawMix();
+    return;
+  }
+  /* Le massing se dessine APRÈS avoir rejoint le document : son plan a besoin
+     d'une largeur mesurable, et WebGL d'un canevas attaché. */
+  if(view.tab === "massing"){
+    var ma = massPanel();
+    panelsEl.appendChild(ma);
+    requestAnimationFrame(drawMass);
     return;
   }
 

@@ -4,7 +4,8 @@
    protection incendie AEAI DPI 16-15 (DOC/1.19.d).
 
    Données pures, aucune logique : les vérifications vivent dans
-   `src/vol/checks.js`, le générateur de volumétrie dans `src/vol/massing.js`.
+   `src/mix/checks.js` et `src/mass/checks.js`, le générateur de volumétrie dans
+   `src/mass/gen.js`.
 
    Ce fichier ne contient AUCUNE surface de programme. Les surfaces sont fixes
    et n'ont qu'une source, `src/data/program.js` ; on change les proportions
