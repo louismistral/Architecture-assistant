@@ -180,9 +180,9 @@ src/mix/shuffle.js    répartition ordonnée, tirage, proposition de pile
 src/mix/checks.js     contrôle d'une répartition → écarts, avec code et remèdes
 src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
 src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
-src/mix/opts.js       les deux interrupteurs : tirer la pile, grouper les liés
+src/mix/opts.js       les trois interrupteurs : tirer la pile, grouper, voir les pièces
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
-src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le popover
+src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le glisser
 ```
 
 **Le mixer ne refuse rien.** Une répartition qui sort des règles est produite quand même
@@ -220,13 +220,23 @@ morceau de poste posé à un niveau (6 de ces 18 salles au 1ᵉʳ étage). Un po
 sauf ceux dont le règlement impose les dimensions — la salle de sport double, 28 × 32 m,
 ne se coupe pas.
 
+**Tout se fait SUR le dessin.** Un bloc se glisse d'un niveau à l'autre ; ouvert, il
+montre ses pièces et l'on tire hors de lui celle qu'on veut ailleurs — la scission n'est
+pas un geste de plus, c'est le déplacement d'une pièce. Deux parts d'un même poste qui se
+retrouvent au même niveau se refondent (`fuse`), donc se tromper ne coûte rien. Un menu
+faisait cela avant : « déplacer vers » listait les niveaux et « scinder » demandait
+« combien sur combien », alors que la pile et le bloc étaient là, sous les yeux. Le
+clavier fait les mêmes gestes sur le bloc au foyer : flèches haut et bas pour changer de
+niveau — le bac étant le cran sous le rez —, Maj pour n'emmener qu'une pièce, Suppr pour
+renvoyer au bac.
+
 Par défaut la pile n'a qu'un **rez-de-chaussée**. On l'édite **là où elle se dessine** :
 « + Ajouter un étage » en tête de pile, « + Creuser un sous-sol » au pied, et une corbeille
 sur chaque niveau qui le retire en renvoyant ses pièces au bac (`addFloorTop`,
 `addFloorBottom`, `delFloorAt`). Retirer un niveau du MILIEU est permis : les cotes se
 renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
 
-**Deux interrupteurs**, dans la barre du haut, persistés avec le reste :
+**Trois interrupteurs**, dans la barre du haut, persistés avec le reste :
 
 - **Shuffle niveaux** — le tirage propose aussi la pile, déduite de la surface bâtie à
   loger, du plateau du rez et de ce que le règlement admet en sous-sol.
@@ -235,7 +245,14 @@ renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
   `floors.js`). Une mutualisation possible n'en fait pas partie : elle est offerte, pas
   due. La grappe de la salle de sport compte quatorze postes — elle est grande parce que
   le règlement le dit, et c'est ce que l'interrupteur donne à voir. Éteint, une grappe
-  peut s'éparpiller sur trois étages, et le contrôle le dira.
+  peut s'éparpiller sur trois étages, et le contrôle le dira. L'enclencher AGIT sur ce
+  qui est déjà posé : `regrouper()` ramène chaque grappe au niveau où elle pèse déjà le
+  plus, pour défaire le moins de travail possible. Sans cela l'interrupteur annonçait une
+  règle sans l'appliquer, et une grappe éparpillée le restait.
+- **Voir les pièces** — un bloc montre les pièces qui le composent, une cellule par
+  pièce, à sa surface unitaire. C'est la prise de la scission. Rien n'est dessiné pour un
+  poste que le règlement ne coupe pas, ni quand une cellule deviendrait trop petite pour
+  être visée.
 
 Le tirage est la seule proposition : « Répartir », son jumeau ordonné, donnait la même
 chose à l'ordre des chapitres près, et la graine rend le tirage aussi rejouable.

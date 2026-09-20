@@ -82,11 +82,13 @@ Il prend les surfaces et les organise sur des niveaux. Rien d'autre.
   plateau dit ce qui tient ; la bande qui la dépasse dit ce qui ne tient pas.
 - Ce qui ne pèse pas sur le plateau — cour, piscine, chauffage à distance — a sa propre
   bande, sous un filet, hors du compte.
-- **Répartir** propose l'ordre des chapitres du règlement, sans hasard. **Shuffle** tire
-  une alternative, et peut aussi proposer un nombre de niveaux. Les deux gestes partagent
-  un moteur ; une **graine** rend toute proposition rejouable à l'identique.
-- On glisse un bloc d'un niveau à l'autre, ou on l'ouvre d'un clic — ou de la touche
-  Entrée — pour le déplacer et le scinder.
+- **Shuffle** tire une répartition, et peut aussi proposer un nombre de niveaux ; une
+  **graine** la rend rejouable à l'identique.
+- On glisse un bloc d'un niveau à l'autre. Ouvert — interrupteur « Voir les pièces » —,
+  il montre ses pièces : en tirer une hors du bloc, c'est le scinder. Deux parts d'un même
+  poste qui se retrouvent au même niveau se refondent. Au clavier, sur le bloc au foyer :
+  flèches haut et bas pour changer de niveau, Maj pour n'emmener qu'une pièce, Suppr pour
+  le renvoyer au bac.
 
 ## Structure
 
@@ -99,7 +101,7 @@ styles/
   controls.css        LE bouton, LE groupe de boutons, LA pastille de verdict
   program.css         panneaux, diagrammes, contraintes, rangs de section, récapitulatif
   schema.css          adjacences
-  mixer.css           le mixer : pile, canevas d'un niveau, blocs, bac, popover
+  mixer.css           le mixer : pile, canevas d'un niveau, blocs, pièces, bac
 src/
   data/               données pures, sans logique
     families.js       familles d'usage (id, couleur, libellé)        ← source unique
@@ -126,7 +128,7 @@ src/
     checks.js         contrôle d'une répartition → écarts, avec leur code et leurs remèdes
     fix.js            les remèdes : déplacer, vider, agrandir un plateau, poser un WC
     accept.js         les écarts qu'on assume — « laisser comme ça »
-    opts.js           les deux interrupteurs : tirer la pile, grouper les liés
+    opts.js           les trois interrupteurs : tirer la pile, grouper, voir les pièces
     store.js          persistance : surfaces précisées, circulation, pile, répartition,
                       écarts assumés
   views/

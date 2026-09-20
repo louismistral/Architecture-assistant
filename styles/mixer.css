@@ -119,13 +119,36 @@
   display:flex;flex-direction:column;justify-content:center;
   font-size:var(--t-3xs);line-height:var(--lh-tight);color:var(--ink);
 }
-.mixblk>b{
+.mixblk b{
   font-weight:600;font-size:var(--t-3xs);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   mix-blend-mode:normal;
 }
 .mixblk__a{font-family:var(--mono);font-size:var(--t-3xs);opacity:.82}
-.mixblk.is-tiny>b,.mixblk.is-tiny .mixblk__a{display:none}
+.mixblk.is-tiny b,.mixblk.is-tiny .mixblk__a{display:none}
+/* Le nom est la PRISE DU BLOC ENTIER ; sous lui, les cellules sont les prises
+   des pièces. Deux prises distinctes valent mieux qu'un modificateur à
+   retenir : on tire le nom pour emmener les dix-huit salles, une cellule pour
+   n'en détacher qu'une. */
+.mixblk__lb{flex:0 0 auto;min-height:0}
+/* Bloc ouvert, le nom et les m² tiennent sur UNE ligne : chaque ligne reprise
+   au titre est une rangée de cellules rendue visible. */
+.mixblk.has-pcs .mixblk__lb{
+  display:flex;gap:var(--s-1);align-items:baseline;justify-content:space-between;
+}
+.mixblk.has-pcs .mixblk__lb b{min-width:0}
+.mixblk.has-pcs{justify-content:flex-start;gap:2px}
+.mixblk__pcs{
+  flex:1 1 auto;min-height:0;display:grid;gap:1px;
+  grid-auto-rows:1fr;align-content:stretch;
+}
+/* Une cellule = une pièce, à la surface unitaire du poste. Le trait suffit :
+   elle porte déjà l'aplat de famille du bloc qui la contient. */
+.mixpc{
+  border:1px solid currentColor;border-radius:1px;opacity:.38;
+  cursor:grab;touch-action:none;
+}
+.mixpc:hover{opacity:1;background:var(--paper)}
 /* Une surface à préciser porte le trait tireté, partout, sur tous les dessins. */
 .mixblk.is-est{border-style:dashed}
 .mixblk.is-sel{outline:2px solid var(--focus);outline-offset:-2px}
@@ -208,24 +231,6 @@
 }
 .mix-tray__note b{color:var(--ink-2);font-weight:500}
 .mix-tray__note span{display:block;margin-top:2px}
-
-/* --- déplacer et scinder, au clic comme au clavier ----------------------- */
-.mix-pop{
-  position:absolute;z-index:var(--z-props);min-width:230px;max-width:300px;
-  background:var(--panel);border:1px solid var(--rule-strong);border-radius:var(--r-lg);
-  box-shadow:var(--sh-2);padding:var(--s-3);
-}
-.mix-pop h4{margin:0;font-size:var(--t-sm);font-weight:600}
-.mix-pop__s{margin:2px 0 0;font-size:var(--t-2xs);color:var(--ink-3)}
-.mix-pop__l{
-  margin-top:var(--s-3);font-size:var(--t-3xs);font-weight:600;
-  letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--ink-3);
-}
-.mix-pop__r{display:flex;flex-wrap:wrap;gap:var(--s-1);margin-top:var(--s-1)}
-.mix-pop__r .btn{font-size:var(--t-3xs);padding-inline:var(--s-2)}
-/* Un niveau que le règlement n'admet pas reste cliquable : rien n'est empêché,
-   il est seulement marqué — et le contrôle dira ce qu'il en coûte. */
-.mix-pop__r .btn.is-warn{border-style:dashed;border-color:var(--warn);color:var(--warn)}
 
 /* Le filet qui sépare l'enveloppe scolaire de ce qui est posé au terrain sans
    peser sur le plateau : cour, piscine, chauffage à distance. */
