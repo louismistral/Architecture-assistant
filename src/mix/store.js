@@ -1,13 +1,15 @@
 /* ============================================================================
    PERSISTANCE
 
-   Trois choses méritent de survivre à un rechargement : les surfaces
+   Quatre choses méritent de survivre à un rechargement : les surfaces
    que l'utilisateur a précisées (elles appartiennent au cahier des charges et
    changent tous les totaux) et la répartition qu'il a composée. Elles sont
    lues AVANT le premier rendu, parce qu'une surface peut être modifiée depuis
    le cahier des charges, donc avant que le mixer ait jamais été ouvert. S'y ajoutent
-   les écarts qu'on a assumés : les reprendre un par un à chaque ouverture
-   reviendrait à ne jamais pouvoir en assumer un.
+   les écarts qu'on a assumés — les reprendre un par un à chaque ouverture
+   reviendrait à ne jamais pouvoir en assumer un —, et le MASSING : volumes
+   posés, positions, rotations, parti et réglages. Aller au mixer et revenir ne
+   doit pas défaire une implantation qu'on vient de composer.
 
    Chaque section est restaurée indépendamment : perdre la pile vaut mieux que
    perdre aussi les surfaces.
@@ -16,6 +18,7 @@ import { el } from "../core/format.js";
 import { CIRC, CIRCSET, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
 import { optsOf, setOpts } from "./opts.js";
+import { massOf, setMass } from "../mass/etat.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
 
@@ -63,6 +66,10 @@ export function saveSoon(){
       /* Les deux interrupteurs du mixer : les retrouver éteints à chaque
          ouverture revenait à ne jamais pouvoir s'en servir. */
       opts: optsOf(),
+      /* Le MASSING : les volumes posés, leurs positions, leurs rotations, le
+         parti et les réglages. Aller au mixer et revenir ne doit pas défaire
+         une implantation qu'on a passé un quart d'heure à régler. */
+      mass: massOf(),
       updatedAt: Date.now()
     };
     try {
@@ -137,6 +144,7 @@ export function initStore(){
       try{ applyBlocks(o.blocks); }catch(_){ lost.push("répartition"); }
       try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
       try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
+      try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
       if(lost.length) badParts = lost;
     }
     localStorage.setItem(LSKEY + ".probe", "1");

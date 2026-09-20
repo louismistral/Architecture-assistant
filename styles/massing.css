@@ -1,0 +1,158 @@
+/* ============================================================================
+   L'ONGLET MASSING
+
+   Deux vues côte à côte — le plan et le volume — et un rail de commandes à
+   gauche. La disposition est celle du mixer : ce qui agit sur l'ENSEMBLE est
+   rangé sur un bord, ce qu'on regarde tient tout le reste.
+
+   Aucune valeur de dessin ici qui ne vienne de `tokens.css`. Les couleurs de
+   famille des volumes sont posées en ligne par le JS parce qu'elles sortent du
+   programme, comme dans le mixer ; le trait, lui, est au style.
+   ========================================================================= */
+.mass{ padding-block: var(--s-4) var(--s-6); }
+.mass-grid{
+  display:grid; gap:var(--s-5);
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  align-items:start;
+}
+@media (max-width: 960px){
+  .mass-grid{ grid-template-columns: minmax(0,1fr); }
+  /* En une seule colonne, le rail n'a plus de raison de défiler tout seul :
+     un ascenseur dans un ascenseur ne se manœuvre pas au doigt. */
+  .mass-rail{ max-height:none; overflow:visible; padding-right:0; }
+}
+
+/* --- le rail ------------------------------------------------------------- */
+.mass-rail{
+  display:flex; flex-direction:column; gap:var(--s-5);
+  max-height: calc(100vh - 120px); overflow:auto;
+  padding-right: var(--s-2);
+}
+.mass-bloc{ border-top:1px solid var(--rule); padding-top:var(--s-3); }
+.mass-bloc:first-child{ border-top:0; padding-top:0; }
+.mass-bloc__h{
+  display:flex; align-items:baseline; gap:var(--s-2);
+  margin-bottom:var(--s-2);
+}
+.mass-bloc__h .chip{ margin-left:auto; }
+.mass-note{
+  margin:var(--s-2) 0 0; font-size:var(--t-2xs); line-height:var(--lh-normal);
+  color:var(--ink-3);
+}
+.mass-deux{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
+.mass-deux .btn{ width:100%; }
+
+/* Les partis : une grille de boutons plutôt qu'une liste déroulante. On les
+   compare du regard, et l'on voit d'un coup combien il y en a. */
+.mass-partis{ display:flex; flex-wrap:wrap; gap:var(--s-1); }
+.mass-partis .btn{ font-size:var(--t-3xs); padding-inline:var(--s-2); }
+.mass-etages{ display:flex; flex-wrap:wrap; gap:var(--s-1); margin-top:var(--s-2); }
+.mass-etages .btn{ font-size:var(--t-3xs); padding-inline:var(--s-2); }
+
+/* Un réglage porte son CHIFFRE : un curseur sans valeur ne se règle pas, il se
+   tâtonne. */
+.mass-par{
+  display:flex; align-items:center; gap:var(--s-2); margin-top:var(--s-2);
+  font-size:var(--t-2xs);
+}
+.mass-par__n{ flex:1 1 auto; color:var(--ink-2); }
+.mass-par input{
+  width:5.5em; height:var(--ctl-h); text-align:right;
+  background:var(--panel); color:var(--ink);
+  border:1px solid var(--rule); border-radius:var(--r-sm);
+  padding-inline:var(--s-2); font-size:var(--t-xs);
+}
+.mass-par__u{ width:1.6em; color:var(--ink-3); font-size:var(--t-3xs); }
+.mass-cur{ display:block; margin-top:var(--s-3); font-size:var(--t-2xs); }
+.mass-cur__h{ display:flex; align-items:baseline; gap:var(--s-2); }
+.mass-cur__h .mono{ margin-left:auto; color:var(--ink-3); font-size:var(--t-3xs); }
+.mass-cur input[type="range"]{ width:100%; margin-top:2px; accent-color:var(--focus); }
+.mass-cur__p{
+  display:flex; justify-content:space-between;
+  font-size:var(--t-3xs); color:var(--ink-3);
+}
+.mass-sel__l{ margin:0; font-size:var(--t-2xs); color:var(--ink-2); }
+
+/* Le bilan : demandé, posé, écart. Trois colonnes de chiffres alignés — c'est
+   la question à laquelle l'outil doit répondre à tout moment. */
+.mass-bil{ width:100%; border-collapse:collapse; font-size:var(--t-3xs); }
+.mass-bil th{
+  text-align:right; font-weight:600; color:var(--ink-3);
+  padding:2px 0; border-bottom:1px solid var(--rule);
+  letter-spacing:var(--track-caps); text-transform:uppercase;
+}
+.mass-bil th:first-child, .mass-bil td:first-child{ text-align:left; }
+.mass-bil td{ text-align:right; padding:2px 0; border-bottom:1px solid var(--rule-soft); }
+.mass-bil__e{ color:var(--ink-3); }
+.mass-bil__e.is-off{ color:var(--warn); font-weight:600; }
+
+/* Les alertes : trois niveaux, et la frontière entre eux se lit à la pastille. */
+.mass-al{ list-style:none; margin:0; padding:0; display:grid; gap:2px; }
+.mass-al__b{
+  display:block; width:100%; text-align:left; cursor:pointer;
+  background:none; border:0; border-radius:var(--r-sm);
+  padding:var(--s-1) var(--s-2);
+  font:inherit; font-size:var(--t-2xs); line-height:var(--lh-normal); color:var(--ink-2);
+}
+.mass-al__b:hover{ background:var(--rule-soft); }
+.mass-al__b .chip{ margin-right:var(--s-2); vertical-align:1px; }
+.mass-al__r{ color:var(--ink-3); font-size:var(--t-3xs); }
+
+/* --- les deux vues ------------------------------------------------------- */
+.mass-vues{ display:grid; gap:var(--s-4); }
+@media (min-width: 1180px){
+  .mass-vues{ grid-template-columns:1fr 1fr; }
+}
+.mass-vue{ min-width:0; }
+.mass-vue__h{
+  display:flex; align-items:baseline; gap:var(--s-2); margin-bottom:var(--s-2);
+}
+.mass-cam{ font-size:var(--t-3xs); color:var(--ink-3); }
+
+.plan, .vue3d{
+  position:relative; background:var(--panel);
+  border:1px solid var(--rule); border-radius:var(--r-md);
+  overflow:hidden; height:min(62vh, 560px);
+}
+.plan__svg{ display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+.vue3d__c{ display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+.vue3d__fail{
+  margin:0; padding:var(--s-5); font-size:var(--t-2xs); color:var(--ink-3);
+}
+
+/* --- le relevé, en plan --------------------------------------------------
+   Un rendu d'architecte : le terrain en traits fins, le bâti en aplat léger,
+   le périmètre du concours seul en trait fort. La hiérarchie des traits EST le
+   dessin. */
+.plan-ctr{ fill:none; stroke:var(--ink-4); stroke-width:.18; opacity:.5; }
+.plan-ctr.is-maitre{ stroke-width:.32; opacity:.8; }
+.plan-par{ fill:none; stroke:var(--ink-4); stroke-width:.22; opacity:.7; stroke-dasharray:2.4 1.6; }
+.plan-rou{ fill:none; stroke:var(--ink-4); stroke-width:.45; opacity:.9; }
+.plan-foo{ fill:none; stroke:var(--ink-4); stroke-width:.3; opacity:.6; }
+.plan-mur{ fill:none; stroke:var(--ink-3); stroke-width:.3; opacity:.7; }
+.plan-bat{
+  fill:var(--ink-4); fill-opacity:.24; stroke:var(--ink-3); stroke-width:.35;
+}
+.plan-enq{ fill:none; stroke:var(--warn); stroke-width:.4; stroke-dasharray:2 1.6; }
+.plan-per{
+  fill:none; stroke:var(--site-perimetre); stroke-width:1; stroke-linejoin:round;
+}
+
+/* --- les volumes, en plan ------------------------------------------------- */
+.plan-vol{ cursor:move; }
+.plan-vol__et{ fill:none; stroke:var(--ink-3); stroke-width:.25; stroke-dasharray:1.6 1.2; }
+.plan-vol__p{ fill:var(--site-emprise); fill-opacity:.55; stroke:var(--ink); stroke-width:.5; }
+.plan-vol__p.is-fix{ stroke-dasharray:none; fill-opacity:.7; }
+.plan-cel{ fill-opacity:var(--fill-op); stroke:var(--paper); stroke-width:.12; }
+.plan-vol__c{ fill:none; stroke:var(--ink); stroke-width:.55; stroke-linejoin:round; }
+.plan-vol.is-sel .plan-vol__c,
+.plan-vol.is-sel .plan-vol__p{ stroke:var(--focus); stroke-width:.9; }
+.plan-vol__n{
+  font-size:2.6px; fill:var(--ink); font-weight:600; paint-order:stroke;
+  stroke:var(--panel); stroke-width:.7; stroke-linejoin:round;
+}
+.plan-poi__l{ stroke:var(--focus); stroke-width:.3; stroke-dasharray:1 .8; }
+.plan-poi__c{ fill:var(--panel); stroke:var(--focus); stroke-width:.5; cursor:grab; }
+
+.plan-ech, .plan-nord{ fill:none; stroke:var(--ink-3); stroke-width:.35; }
+.plan-ech__t{ font-size:2.6px; fill:var(--ink-3); font-family:var(--mono); }

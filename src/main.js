@@ -1,6 +1,7 @@
 import { TABS, isTool, readHash, setSub, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
 import { resizeMix } from "./views/mixer.js";
+import { resizeMass } from "./views/massing.js";
 import { initStore, verifieQuantites } from "./mix/store.js";
 
 /* ---------- thème ----------
@@ -130,7 +131,10 @@ window.addEventListener("resize", function(){
     /* Le mixer ne se refait pas en entier : seule la largeur du canevas change,
        donc seul le pavage est à refaire. Un rendu complet perdrait le repli
        ouvert, la graine tapée et le défilement. */
+    /* Le massing non plus : le canevas WebGL perdrait sa caméra, et le plan
+       son cadrage. Seules leurs largeurs changent. */
     if(view.tab === "mixer") resizeMix();
+    else if(view.tab === "massing") resizeMass();
     else render();
   }, 140);
 });

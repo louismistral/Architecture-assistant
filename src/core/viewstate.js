@@ -1,18 +1,16 @@
 /* État de la vue — source unique de vérité.
 
-   DEUX destinations, là où il y en avait quatre. Les onglets ne sont pas un
-   sommaire : ils sont la CHRONOLOGIE du concours. Chacun se sert de ce que le
-   précédent a décidé.
+   TROIS destinations. Les onglets ne sont pas un sommaire : ils sont la
+   CHRONOLOGIE du concours. Chacun se sert de ce que le précédent a décidé.
 
-       Programme  →  Programme mixer  →  (Massing)  →  (Typologie)
-       contraintes    répartition du     volumétrie     plans et coupes
-       et surfaces    programme sur
-                      les niveaux
+       Cahier des charges  →  Programme mixer  →  Massing  →  (Typologie)
+       contraintes            répartition du     volumétrie   plans et coupes
+       et surfaces            programme sur      sur le site
+                              les niveaux
 
    L'ancien ordre faisait l'inverse : on dessinait le Plan d'un niveau avant
-   d'avoir choisi le Site, donc la typologie décidait du volume. Les deux
-   dernières étapes sont à reconstruire ; le code 3D reste en place pour cela
-   (`src/core/gl.js`, `src/vol/`).
+   d'avoir choisi le Site, donc la typologie décidait du volume. Seule la
+   typologie reste à construire.
 
    `view.tab`   quelle vue est à l'écran        → pilote body[data-view]
    `view.sub`   volet du cahier des charges      → surfaces, contraintes, adjacences
@@ -22,7 +20,8 @@
 
 export var TABS = [
   { id:"programme", label:"Cahier des charges", kind:"doc"  },
-  { id:"mixer",     label:"Programme mixer", kind:"tool" }
+  { id:"mixer",     label:"Programme mixer", kind:"tool" },
+  { id:"massing",   label:"Massing", kind:"tool" }
 ];
 
 /* Les DEUX volets du cahier des charges. Ils étaient trois, empilés sur une

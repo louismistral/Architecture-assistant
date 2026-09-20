@@ -22,10 +22,13 @@ contraintes             programme sur       sur le site coupes
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :
 l'onglet Site venait après le Plan, donc la typologie décidait du volume.
 
-**Aujourd'hui, deux onglets existent** : Cahier des charges et Programme mixer. Massing et
-Typologie sont à construire. Le code 3D et le générateur de volumétrie sont conservés
-**dormants** — `src/core/gl.js`, `src/vol/place.js`, `massing.js`, `checks.js`,
-`scene3d.js` — sans onglet qui les expose ; ils sont la base du futur Massing.
+**Aujourd'hui, trois onglets existent** : Cahier des charges, Programme mixer et Massing.
+Seule la Typologie reste à construire. Le dossier `src/vol/`, qui gardait dormants un
+générateur de volumétrie et une scène 3D, a été RETIRÉ quand le Massing a été construit :
+le garder aurait fait deux générateurs, deux contrôles et deux scènes pour une seule
+question, et ce projet n'a qu'une source par décision. Ce qui en valait la peine est
+repris dans `src/mass/` et `src/views/vue3d.js` ; `src/core/gl.js`, qui ne parle pas
+d'architecture, est resté où il était.
 
 Le **cahier des charges** porte **deux volets**, dans cet ordre : **Surfaces** et
 **Contraintes** (`view.sub`, `SUBS` dans `src/core/viewstate.js`). Ils étaient trois,
@@ -276,6 +279,99 @@ chose à l'ordre des chapitres près, et la graine rend le tirage aussi rejouabl
 Les locaux engins de la salle de gym (180 m²) ne sont pas posés : le règlement les
 convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deux fois.
 
+---
+
+## L'onglet Massing : poser le programme sur le terrain
+
+```
+src/data/site.js      le relevé, engendré du fichier Rhino    ← SOURCE UNIQUE
+src/mass/geom.js      terrain interpolé, rectangles tournés, distances, alignements
+src/mass/model.js     l'état, les niveaux RELUS du mixer, le bilan de surface
+src/mass/gen.js       le générateur : parti → figure → réparation → note
+src/mass/checks.js    alertes info / à vérifier / erreur
+src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
+src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
+src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation
+src/views/vue3d.js    la 3D : terrain maillé, courbes drapées, existant, volumes
+```
+
+**Le massing ne redit rien du programme : il le LIT.** `niveaux()` relit `FLOORS` à chaque
+appel — jamais de copie, jamais de cache. Un poste déplacé d'étage dans le mixer change la
+volumétrie sans qu'on ait à synchroniser quoi que ce soit ; et déplacer un volume ici ne
+touche pas au programme, parce que ce n'est pas la même question. Les couleurs, les noms,
+les surfaces, les familles et les niveaux sont les mêmes objets, lus au même endroit.
+
+**Un VOLUME est un rectangle tourné qui porte une pile de niveaux**, désignés par leur
+INDICE dans `FLOORS`. Deux volumes qui portent le niveau 1 se partagent sa surface bâtie,
+et la somme de leurs emprises vaut cette surface : c'est l'invariant du massing, et
+`bilan()` le vérifie après un tirage comme après une modification à la main. Chaque niveau
+d'un volume porte ses propres cotes et son propre décalage — c'est ce qui donne les
+retraits, les terrasses et les porte-à-faux sans ajouter le moindre réglage.
+
+**Un volume n'est pas une boîte : c'est du programme extrudé.** `cellules()` pave le
+rectangle d'un niveau avec les postes qui s'y trouvent, au prorata de la part que ce corps
+en porte — le même pavage squarifié que le mixer, la même règle « un bloc vaut sa
+surface », les mêmes couleurs de famille. En mode « couleurs programme » on lit donc OÙ
+sont les classes ; en « monochrome », la forme seule.
+
+### DEUX TIRAGES, et ils ne se confondent jamais
+
+- **Shuffle programme** — celui du mixer, appelé d'ici : il rebat la répartition dans les
+  étages, et la volumétrie s'y adapte. L'interrupteur « Shuffle niveaux » est le même objet
+  que dans le mixer (`mix/opts.js`), pas une copie.
+- **Shuffle massing** — il ne touche PAS au programme. Mêmes postes, mêmes surfaces, mêmes
+  niveaux, même répartition ; seule la solution architecturale change : nombre de corps,
+  position, orientation, proportions, forme, hauteurs, retraits, terrasses.
+
+Ils ont deux graines distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
+`MASS.graine`. Les confondre ferait qu'on ne peut plus changer l'une sans perdre l'autre.
+
+### Ce n'est pas un tirage
+
+Un tirage pur pose des boîtes au hasard et laisse l'architecte trier. `genMass()` compose,
+mesure et jette : il lit le programme niveau par niveau, lit le site, compose une figure
+selon le parti, la RÉPARE — tant qu'un corps sort du périmètre, touche un voisin ou percute
+l'existant, on le ramène —, la NOTE, et recommence trente fois. Les alignements sont des
+PRÉFÉRENCES notées, jamais des règles : axe du périmètre, perpendiculaire, longues limites
+de parcelle, routes, nord-sud. Un corps peut prendre n'importe quel angle ; il gagne
+seulement à se ranger.
+
+**La salle de sport double fait un corps à elle.** Le règlement lui donne ses deux cotes,
+28 × 32 m, et 7,00 m libres : sa surface sort du partage avant qu'il commence, sinon le
+prorata l'aurait coupée en deux. Les postes `hors` — piscine, chauffage à distance, cour —
+ne sont pas des volumes : le règlement les veut indépendants et au second temps.
+
+**Les sous-sols vont sous le corps le plus HAUT du site**, pas le plus grand : la nappe est
+à 462,25 m et le règlement veut 3,00 m de couverture, qu'on ne trouve qu'au tiers est.
+
+Douze partis, chacun composant vraiment différemment : auto, bloc compact, barre, barres
+parallèles, L, U, cour, pavillons, hameau, terrasses, peigne, composition libre. « Auto »
+les essaie tous et garde celui qui tient le mieux sur ce site avec ce programme.
+
+### Le contrôle ne refuse rien, il chiffre
+
+Trois niveaux : **erreur** pour une règle écrite (règlement, AEAI) ou une géométrie
+impossible ; **à vérifier** pour une règle de projet ou une marge qui se discute ; **info**
+pour ce qu'il faut savoir sans corriger. Les porte-à-faux sont autorisés et signalés, avec
+leur dépassement maximum. Le bilan de surface est donné niveau par niveau — demandé, posé,
+écart — parce que c'est la question à laquelle l'outil doit répondre à tout moment.
+
+### Le plan et la 3D sont le même modèle
+
+Le plan est en mètres sur le relevé : courbes de niveau, parcelles, routes, murets,
+bâtiments existants, périmètre. On y zoome, on s'y déplace, on sélectionne un volume en
+cliquant, on le déplace en le tirant, on le tourne par sa poignée — et la 3D suit à
+l'instant. La 3D montre le terrain MAILLÉ depuis `SITE.grid`, les courbes drapées, les
+bâtiments existants à leur vraie hauteur, et les volumes du projet. Le fichier Rhino n'a
+pas de calque d'arbres : il n'y en a donc pas au dessin.
+
+L'état du massing — volumes, positions, rotations, parti, réglages — est persisté avec le
+reste (`mass/etat.js`, clé `saxon-mix-v1`) : aller au mixer et revenir ne défait pas une
+implantation qu'on vient de composer.
+
+Le massing n'essaie pas de finir un projet. Il répond à une question de début d'étude : à
+quoi ce programme ressemblerait-il, physiquement, sur ce site ?
+
 ## Où modifier quoi
 
 - **Une surface, un nombre, une famille, une note** : `src/data/program.js` seul.
@@ -287,7 +383,18 @@ convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deu
   ordonne les branches d'une grappe et nomme ce qu'elle traverse. `LIENS_ORPHELINS` signale tout
   nom de poste qui ne correspond plus.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
-- **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle.
+- **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle. Il est
+  **engendré** par `tools/extract-site.py` depuis `DOC/site_plan.3dm`, le relevé Rhino du
+  concours : on ne le corrige pas à la main, on corrige le script et on le rejoue
+  (`python3 tools/extract-site.py`, avec `rhino3dm` et `numpy`). Le fichier Rhino est en
+  centimètres et en coordonnées suisses LV95 ; la conversion vers les mètres locaux —
+  origine au coin sud-ouest du périmètre — vit dans le script et nulle part ailleurs.
+  Le **terrain** n'est plus un plan incliné à trois nombres, qui se trompait de deux
+  mètres au pied du coteau : c'est une grille d'altitudes au pas de 4 m, interpolée sur
+  les courbes de niveau cotées du relevé (`SITE.grid`, 463,0 à 467,9 m sur le périmètre,
+  465,0 de moyenne). Les bâtiments existants portent leur pied et leur faîte (`SITE.bath`),
+  lus dans les solides du calque « batiments 3d ». Le fichier Rhino n'a **pas de calque
+  d'arbres** : ce qu'on ne relève pas ne s'invente pas.
 - **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait
   pas lire `var(--f-cla)` : `cssRGB()` fait résoudre le token par le navigateur et le
   garde en cache tant que le thème ne change pas.
@@ -311,14 +418,27 @@ Promise.all([import('./src/mix/floors.js'),import('./src/mix/shuffle.js'),
 });"
 ```
 
-Et le générateur de volumétrie, resté dormant :
+Et la volumétrie, sans navigateur — le générateur, le bilan de surface et le contrôle :
 
 ```bash
 node --input-type=module -e "
-Promise.all([import('./src/vol/massing.js'),import('./src/vol/checks.js')]).then(([m,c])=>{
-  ['compact','barres','cour','pavillons'].forEach(p=>{
-    m.massSet('parti',p);
-    console.log(p, JSON.stringify(c.massVerdict(c.massCheck(m.massGen()))));
+Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
+             import('./src/mass/model.js'),import('./src/mass/checks.js')]).then(([S,G,M,C])=>{
+  S.repartir({ alea:false, etages:true });
+  ['auto','compact','barre','barres','L','U','cour','pavillons','hameau',
+   'terrasses','peigne','libre'].forEach(function(p){
+    M.massSet('parti', p);
+    M.massVols(G.genMass(11));
+    var b = M.bilanTotal();
+    console.log(p, M.MASS.vol.length + ' corps',
+      'demandé ' + Math.round(b.demande) + ' · posé ' + Math.round(b.pose),
+      JSON.stringify(C.massVerdict(C.massCheck())));
   });
 });"
+```
+
+Le relevé se regénère depuis le fichier Rhino (`rhino3dm` et `numpy` requis) :
+
+```bash
+python3 tools/extract-site.py
 ```
