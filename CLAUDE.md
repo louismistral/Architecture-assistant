@@ -287,7 +287,18 @@ convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deu
   ordonne les branches d'une grappe et nomme ce qu'elle traverse. `LIENS_ORPHELINS` signale tout
   nom de poste qui ne correspond plus.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
-- **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle.
+- **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle. Il est
+  **engendré** par `tools/extract-site.py` depuis `DOC/site_plan.3dm`, le relevé Rhino du
+  concours : on ne le corrige pas à la main, on corrige le script et on le rejoue
+  (`python3 tools/extract-site.py`, avec `rhino3dm` et `numpy`). Le fichier Rhino est en
+  centimètres et en coordonnées suisses LV95 ; la conversion vers les mètres locaux —
+  origine au coin sud-ouest du périmètre — vit dans le script et nulle part ailleurs.
+  Le **terrain** n'est plus un plan incliné à trois nombres, qui se trompait de deux
+  mètres au pied du coteau : c'est une grille d'altitudes au pas de 4 m, interpolée sur
+  les courbes de niveau cotées du relevé (`SITE.grid`, 463,0 à 467,9 m sur le périmètre,
+  465,0 de moyenne). Les bâtiments existants portent leur pied et leur faîte (`SITE.bath`),
+  lus dans les solides du calque « batiments 3d ». Le fichier Rhino n'a **pas de calque
+  d'arbres** : ce qu'on ne relève pas ne s'invente pas.
 - **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait
   pas lire `var(--f-cla)` : `cssRGB()` fait résoudre le token par le navigateur et le
   garde en cache tant que le thème ne change pas.
