@@ -21,32 +21,27 @@ import { FMAP, ITEMBYKEY } from "../core/model.js";
 import { s, wrapText } from "../core/svg.js";
 import { FREE, SLINK, SNODE, SPOLE } from "../data/schema.js";
 
-/* ---------- géométrie, en unités de dessin --------------------------------
-   Les rectangles valent leur surface. Toutes les colonnes ont la MÊME largeur :
-   à largeur constante, l'aire d'un rectangle est proportionnelle à sa hauteur,
-   donc à ses m². C'est ce qui permet d'être à l'échelle sans renoncer à
-   l'alignement — l'ancien schéma, libre de ses deux dimensions, était à
-   l'échelle mais n'alignait rien.
+/* ---------- géométrie : le dessin est en MÈTRES ---------------------------
+   Un rectangle vaut sa surface, dans ses DEUX dimensions : un local de 144 m²
+   est un carré de 12 m de côté, un local de 6 m² un carré de 2,45 m. C'est la
+   même convention que les diagrammes du volet Surfaces, et la seule qui se
+   lise comme telle — une hauteur seule proportionnelle transformait les petits
+   locaux en filets et les grands en colonnes, exact mais illisible.
 
-   Un local de 6 m² à cette échelle mesure moins d'une unité : il ne peut pas
-   contenir son nom. Le nom passe alors SOUS le rectangle, dans l'emplacement
-   que le nœud occupe. Le rectangle reste juste, le nom reste lisible. */
-var NW = 42, NGAP = 7;               /* largeur d'un rectangle, écart entre deux emplacements */
-var COLH = 230;                      /* budget de hauteur du pôle le plus lourd */
-var HMIN = 0.7;                      /* filet du seul cas sans surface : le hors bilan */
-var GUT = 26, HEAD = 11, PAD = 3;    /* gouttière entre colonnes, bandeau de pôle */
-var CHAN = 2;                        /* écart entre deux fils d'un même faisceau */
-var FS = 4.2, FSSM = 3.4;            /* corps du nom, corps de la surface */
-var LINEH = FS * 1.1, SUBH = FSSM * 1.35;
+   Le règlement impose parfois les deux côtés : la salle de sport double fait
+   28 × 32 m. Ces cotes sont dans `program.js` et le schéma les lit ; il ne les
+   redit pas.
 
-/* m² par unité de dessin carrée. Déduite des données : le pôle le plus lourd
-   tient dans son budget, quelle que soit la surface qu'on lui donne. */
-export var UA = 1;
-/* Aucun plancher : la proportion est exacte, du plus petit au plus grand. Le
-   filet de 1,4 px du contour suffit à faire voir un local de 6 m², qui ne fait
-   ici que six dixièmes d'unité — l'arrondir l'aurait rendu plus gros qu'il
-   n'est, et c'est précisément ce que le dessin doit dire. */
-export function hOf(a){ return a / (NW * UA); }
+   L'alignement, lui, ne vient plus des dimensions mais de la COLONNE : chaque
+   pôle a un axe, ses locaux s'y centrent, les fils courent dans les gouttières.
+   L'ancien schéma plaçait les siens à la main, et n'alignait rien. */
+var CGAP = 20, NGAP = 5;             /* gouttière entre pôles, écart entre deux locaux */
+var HEAD = 11, PAD = 3;              /* bandeau de pôle, marge intérieure */
+var CHAN = 1.8;                      /* écart entre deux fils d'un même faisceau */
+var HMIN = 0.9;                      /* filet du seul cas sans surface : le hors bilan */
+var FS = 3.4, FSSM = 2.8;            /* corps du nom, corps de la surface */
+var LINEH = FS * 1.12, SUBH = FSSM * 1.4;
+var CWMIN = 26;                      /* largeur de colonne minimale : celle d'un nom */
 
 /* La table des nœuds est construite au chargement : `linkList()` la lit pour
    nommer les deux bouts d'un lien, et elle est appelée AVANT le premier dessin.
@@ -68,45 +63,57 @@ export function nodeArea(nd){
   });
   return { a:a, est:est, hors: n === 0 };
 }
+/* Les côtés d'un local, en mètres. Cotes imposées par le règlement quand il en
+   donne — elles vivent dans `program.js` —, carré de même surface sinon. */
+export function nodeBox(nd){
+  var A = nodeArea(nd);
+  if(A.hors) return { w:HMIN * 4, h:HMIN, a:0, est:A.est, hors:1, split:0 };
+  var it = (nd.k && nd.k.length === 1) ? ITEMBYKEY[nd.k[0]] : null;
+  if(it && it.w && it.h) return { w:it.w, h:it.h, a:A.a, est:A.est, hors:0, split:it.split ? 1 : 0 };
+  var c = Math.sqrt(A.a);
+  return { w:c, h:c, a:A.a, est:A.est, hors:0, split:0 };
+}
 
 function layout(){
-  /* 1 · l'échelle, déduite du pôle le plus lourd */
-  var maxA = 0;
+  /* 1 · la largeur d'un pôle : celle de son plus grand local, sans descendre
+     sous ce qu'il faut pour écrire un nom. Une largeur unique, prise sur les
+     1'296 m² de salles de classe, laissait quatre colonnes aux trois quarts
+     vides. */
   SPOLE.forEach(function(pl){
-    var t = 0;
-    SNODE.forEach(function(nd){ if(nd.p === pl.id) t += nodeArea(nd).a; });
-    pl.area = t;
-    if(t > maxA) maxA = t;
+    var w = CWMIN;
+    SNODE.forEach(function(nd){ if(nd.p === pl.id) w = Math.max(w, nodeBox(nd).w); });
+    pl.cw = Math.ceil(w);
   });
-  UA = maxA > 0 ? maxA / (NW * COLH) : 1;
 
-  /* 2 · chaque nœud : son rectangle, son nom, l'emplacement qu'il occupe */
+  /* 2 · chaque local : ses cotes, son nom, l'emplacement qu'il occupe */
   var x = 0, maxH = 0;
   SPOLE.forEach(function(pl, ci){
     var rows = SNODE.filter(function(nd){ return nd.p === pl.id; });
+    var CW = pl.cw;
     pl.x = x; pl.rows = rows;
-    var y = HEAD;
+    var y = HEAD, t = 0;
     rows.forEach(function(nd, i){
-      var A = nodeArea(nd);
-      nd.lines = wrapText(nd.n, Math.floor((NW - 3) / (FS * 0.5)), 2);
-      var lab = nd.lines.length * LINEH + SUBH + 2;
-      /* Un local sans surface — mentionné au règlement, hors bilan — n'a pas de
-         proportion à respecter : il prend le filet. */
-      nd.hh = A.hors ? HMIN : hOf(A.a);
-      /* Le nom tient dans le rectangle, ou il se range dessous. */
-      nd.labIn = nd.hh >= lab + 2;
-      nd.slot = nd.labIn ? nd.hh : nd.hh + lab;
-      nd.x = x; nd.y = y; nd.w = NW;
-      nd.cx = x + NW / 2;
-      nd.cy = y + nd.hh / 2;          /* le fil s'accroche au RECTANGLE, pas à l'emplacement */
-      nd.col = ci; nd.row = i;
+      var B = nodeBox(nd);
+      t += B.a;
+      nd.bw = B.w; nd.bh = B.h; nd.box = B;
+      nd.lines = wrapText(nd.n, Math.max(6, Math.floor((B.w - 2) / (FS * 0.52))), 2);
+      var lab = nd.lines.length * LINEH + SUBH + 1.5;
+      /* Le nom tient dans le local, ou il se range dessous. */
+      nd.labIn = !B.hors && B.h >= lab + 1.5 && B.w >= 13;
+      if(!nd.labIn) nd.lines = wrapText(nd.n, Math.floor((CW + 6) / (FS * 0.52)), 2);
+      nd.slot = nd.labIn ? B.h : B.h + nd.lines.length * LINEH + SUBH + 1.5;
+      nd.cx = x + CW / 2;                    /* le local est centré sur l'axe du pôle */
+      nd.x = nd.cx - B.w / 2; nd.y = y;
+      nd.cy = y + B.h / 2;                   /* le fil s'accroche au LOCAL, pas à l'emplacement */
+      nd.cw = CW; nd.col = ci; nd.row = i;
       y += nd.slot + NGAP;
     });
+    pl.area = t;
     pl.h = y - NGAP;
     if(pl.h > maxH) maxH = pl.h;
-    x += NW + GUT;
+    x += CW + CGAP;
   });
-  SCH_W = x - GUT;
+  SCH_W = x - CGAP;
   SCH_H = maxH;
 }
 
@@ -115,6 +122,11 @@ function layout(){
    au bord ; d'une colonne à l'autre, il sort par le flanc, traverse la
    gouttière et rentre par le flanc d'en face. Les fils qui partagent une
    gouttière ou un canal sont décalés pour ne pas se superposer. */
+/* Bords de la colonne d'un nœud : les canaux et les gouttières s'y appuient,
+   et non sur les côtés du local, qui changent avec sa surface. */
+function COL0(nd){ return nd.cx - nd.cw / 2; }
+function COL1(nd){ return nd.cx + nd.cw / 2; }
+
 function routes(){
   var chan = {}, gut = {}, out = [];
   SLINK.forEach(function(lk){
@@ -126,8 +138,8 @@ function routes(){
         /* Rangs voisins et rien entre eux : le fil passe droit d'un bord à
            l'autre. Un nom rangé sous le rectangle du haut occupe ce vide : le
            fil part alors dans le canal, plutôt que de traverser le texte. */
-        out.push({ lk:lk, d:"M " + hi.cx + " " + (hi.y + hi.hh) + " L " + lo.cx + " " + lo.y,
-                   mx:hi.cx, my:(hi.y + hi.hh + lo.y) / 2 });
+        out.push({ lk:lk, d:"M " + hi.cx + " " + (hi.y + hi.bh) + " L " + lo.cx + " " + lo.y,
+                   mx:hi.cx, my:(hi.y + hi.bh + lo.y) / 2 });
         return;
       }
       /* rangs éloignés : le fil contourne par le canal, à gauche de la colonne */
@@ -135,7 +147,7 @@ function routes(){
          colonne s'y rangent les uns derrière les autres. */
       var kc = hi.col;
       chan[kc] = (chan[kc] || 0) + 1;
-      var cx = hi.x - PAD - 1 - chan[kc] * CHAN;
+      var cx = COL0(hi) - PAD - chan[kc] * CHAN;
       out.push({ lk:lk,
         d:"M " + hi.x + " " + hi.cy + " L " + cx + " " + hi.cy
           + " L " + cx + " " + lo.cy + " L " + lo.x + " " + lo.cy,
@@ -149,9 +161,9 @@ function routes(){
        et deux faisceaux qui se mêlent ne se suivent plus du regard. */
     var kg = L.col;
     gut[kg] = (gut[kg] || 0) + 1;
-    var gx = L.x + NW + 4 + (gut[kg] - 1) * CHAN;
+    var gx = COL1(L) + 3 + (gut[kg] - 1) * CHAN;
     out.push({ lk:lk,
-      d:"M " + (L.x + NW) + " " + L.cy + " L " + gx + " " + L.cy
+      d:"M " + (L.x + L.bw) + " " + L.cy + " L " + gx + " " + L.cy
         + " L " + gx + " " + R.cy + " L " + R.x + " " + R.cy,
       mx:gx, my:(L.cy + R.cy) / 2 });
   });
@@ -167,7 +179,7 @@ export function drawSchema(host){
 
   /* La marge de gauche loge le canal de la première colonne : sans elle, les
      fils de l'enseignement sortaient du cadre et étaient rognés. */
-  var REF = 100, hRef = hOf(REF), foot = hRef + 12;
+  var REF = 100, cRef = Math.sqrt(REF), foot = cRef + 12;
   var svg = s("svg", { viewBox: "-16 -3 " + (SCH_W + 24) + " " + (SCH_H + 8 + foot),
     preserveAspectRatio: "xMinYMin meet", role: "img",
     "aria-label": "Schéma fonctionnel : les locaux rangés par pôle, reliés par les "
@@ -176,13 +188,18 @@ export function drawSchema(host){
   /* --- bandeaux de pôle : une colonne dit ce qu'elle regroupe --- */
   var gp = s("g", null);
   SPOLE.forEach(function(pl){
-    gp.appendChild(s("rect", { x: pl.x - PAD, y: 0, width: NW + 2 * PAD,
+    gp.appendChild(s("rect", { x: pl.x - PAD, y: 0, width: pl.cw + 2 * PAD,
       height: pl.h + PAD, rx: 2,
       fill: "var(--rule-soft)", "fill-opacity": ".55", stroke: "none" }));
-    var t = s("text", { x: pl.x, y: HEAD - 4.2, "font-size": fsCap,
-      fill: "var(--ink-3)", "letter-spacing": ".1" });
-    t.textContent = pl.n.toUpperCase();
-    gp.appendChild(t);
+    /* Le nom du pôle se plie à la largeur de sa colonne : posé d'un trait, il
+       débordait sur le pôle voisin dès que la colonne était étroite. */
+    var cap = wrapText(pl.n.toUpperCase(), Math.max(8, Math.floor(pl.cw / (fsCap * 0.62))), 2);
+    cap.forEach(function(ln, i){
+      var t = s("text", { x: pl.x, y: HEAD - 3.5 - (cap.length - 1 - i) * fsCap * 1.15,
+        "font-size": fsCap, fill: "var(--ink-3)", "letter-spacing": ".1" });
+      t.textContent = ln;
+      gp.appendChild(t);
+    });
   });
   svg.appendChild(gp);
 
@@ -217,18 +234,24 @@ export function drawSchema(host){
     var grp = s("g", { "class": "blk", tabindex: "0" });
     /* Le rayon d'angle suit la hauteur : à 1,5 fixe, un rectangle de trois
        unités devenait une pastille et ne se comparait plus aux autres. */
-    var rc = s("rect", { x: nd.x, y: nd.y, width: NW, height: nd.hh,
-      rx: Math.min(1.5, nd.hh / 4),
+    var rc = s("rect", { x: nd.x, y: nd.y, width: nd.bw, height: nd.bh,
+      rx: Math.min(1.2, nd.bh / 4),
       fill: A.hors ? "var(--panel)" : col,
       "fill-opacity": A.hors ? "1" : "var(--fill-op)",
       stroke: col, "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" });
     if(A.est || A.hors) rc.setAttribute("stroke-dasharray", "4 3");
     grp.appendChild(rc);
+    /* La salle double se partage : le refend est au programme, pas ici. */
+    if(nd.box.split){
+      grp.appendChild(s("line", { x1: nd.cx, y1: nd.y, x2: nd.cx, y2: nd.y + nd.bh,
+        stroke: col, "stroke-width": 1.2, "stroke-dasharray": "4 3",
+        "vector-effect": "non-scaling-stroke" }));
+    }
 
     /* Le nom et la surface forment UNE pile : centrée dans le rectangle quand
        il est assez haut, rangée juste dessous sinon. */
     var lines = nd.lines, blk = lines.length * LINEH + SUBH;
-    var top0 = nd.labIn ? nd.cy - blk / 2 : nd.y + nd.hh + 1.2;
+    var top0 = nd.labIn ? nd.cy - blk / 2 : nd.y + nd.bh + 1;
     var ink = nd.labIn ? "var(--ink)" : "var(--ink)";
     lines.forEach(function(ln, i){
       var t = s("text", { x: nd.cx, y: top0 + fs * 0.8 + i * LINEH, "text-anchor": "middle",
@@ -255,16 +278,16 @@ export function drawSchema(host){
      Un rectangle de référence, à la même largeur que tous les autres, le fait. */
   var fy = SCH_H + 12;
   var gf = s("g", null);
-  gf.appendChild(s("rect", { x: 0, y: fy, width: NW, height: hRef, rx: Math.min(1.5, hRef / 4),
+  gf.appendChild(s("rect", { x: 0, y: fy, width: cRef, height: cRef, rx: 1.2,
     fill: "var(--ink-4)", "fill-opacity": ".18", stroke: "var(--ink-3)",
     "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
-  var ft = s("text", { x: NW + 4, y: fy + hRef / 2 + fsSm * 0.4, "font-size": fsSm,
+  var ft = s("text", { x: cRef + 4, y: fy + cRef / 2 + fsSm * 0.4, "font-size": fsSm,
     fill: "var(--ink-3)", "font-family": "'IBM Plex Mono', monospace" });
-  ft.textContent = fmt(REF) + " m²";
+  ft.textContent = fmt(REF) + " m² · " + fmt(cRef) + " × " + fmt(cRef) + " m";
   gf.appendChild(ft);
-  var f2 = s("text", { x: NW + 26, y: fy + hRef / 2 + fs * 0.35, "font-size": fs,
+  var f2 = s("text", { x: cRef + 46, y: fy + cRef / 2 + fs * 0.35, "font-size": fs,
     fill: "var(--ink-3)" });
-  f2.textContent = "à largeur constante, la hauteur d\u2019un rectangle vaut sa surface";
+  f2.textContent = "le dessin est en mètres : un local vaut sa surface, dans ses deux côtés";
   gf.appendChild(f2);
   svg.appendChild(gf);
 

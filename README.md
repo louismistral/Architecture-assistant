@@ -67,8 +67,9 @@ même règlement, pas deux étapes ; la chronologie du concours est dans les ong
    second temps, tout lu dans `src/data/rules.js` ; puis le **schéma fonctionnel** des
    adjacences, d'où le mixer tire ses préférences de placement. Les adjacences ont été un
    onglet, puis un volet : une proximité exigée entre deux locaux n'est pas d'une autre
-   nature qu'une hauteur libre ou une distance au voisin. Le schéma est **à l'échelle** :
-   à largeur de colonne constante, la hauteur d'un rectangle vaut sa surface.
+   nature qu'une hauteur libre ou une distance au voisin. Le schéma est **à l'échelle et en
+   mètres** : un local vaut sa surface dans ses deux côtés, et porte les cotes que le
+   règlement impose quand il en donne. L'alignement vient des colonnes, pas des cotes.
 
 ### L'onglet Programme mixer
 
@@ -132,7 +133,7 @@ src/
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
     constraints.js    la section Contraintes, lue dans rules.js
     diagram.js        diagrammes à l'échelle et barre d'échelle
-    schema.js         schéma fonctionnel : colonnes par pôle à l'échelle, fils routés
+    schema.js         schéma fonctionnel : locaux à l'échelle, colonnes par pôle, fils routés
     mixer.js          l'onglet Programme mixer
     tooltip.js        infobulle
   vol/                DORMANT — à reconstruire en onglet Massing

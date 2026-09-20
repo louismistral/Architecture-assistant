@@ -39,10 +39,14 @@ commente demandait quatre écrans de défilement.
   `src/data/schema.js`). Les adjacences ont été un onglet, puis un volet : une proximité
   exigée entre deux locaux n'est pas d'une autre nature qu'une hauteur libre ou une
   distance au voisin. C'est une contrainte, et elle se lit avec les autres.
-  Le schéma est **à l'échelle** : toutes les colonnes ont la même largeur, donc la
-  hauteur d'un rectangle vaut sa surface. Un local trop petit pour porter son nom le
-  range dessous — le rectangle reste juste, le nom reste lisible. L'échelle se déduit
-  des surfaces du jour, pas d'une constante : `UA`, m² par unité de dessin carrée.
+  Le schéma est **à l'échelle, et en mètres** : une unité de dessin vaut un mètre, donc
+  un local de 144 m² est un carré de 12 m de côté, et l'aire du rectangle vaut ses m²
+  dans ses DEUX côtés — la même convention que les diagrammes du volet Surfaces. Quand
+  le règlement impose les deux cotes (salle de sport double, 28 × 32 m), le schéma les
+  lit dans `program.js` au lieu de les redire. L'alignement ne vient pas des dimensions
+  mais de la COLONNE : chaque pôle a un axe, ses locaux s'y centrent, sa largeur est
+  celle de son plus grand local. Un local trop petit pour écrire son nom le range
+  dessous.
 
 URL : `#programme/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a
 un regroupement. L'identifiant de l'onglet reste `programme` : les liens qui ont circulé
