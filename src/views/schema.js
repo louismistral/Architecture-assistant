@@ -7,14 +7,21 @@
    des coordonnées posées à la main : rien n'alignait quoi que ce soit et les
    fils se croisaient.
 
-   Ici, une seule dimension est libre. Toutes les colonnes ont la même largeur,
-   donc l'aire d'un rectangle est proportionnelle à sa hauteur, donc à ses m² :
-   on reste à l'échelle sans renoncer à l'alignement. Les locaux sont rangés en
-   colonnes par pôle, les fils sont orthogonaux et routés dans les gouttières.
+   Les colonnes par pôle qui ont suivi alignaient tout, mais donnaient à lire
+   l'organigramme du programme plutôt que les proximités qu'il exige — et le
+   lien, seul, est la contrainte.
 
-   Toute la géométrie est DÉDUITE de `data/schema.js` : ajouter un nœud ou un
-   lien ne demande aucune coordonnée, et l'échelle se recalcule sur les
-   surfaces du jour.
+   Le dessin part donc du LIEN, à la façon d'une carte heuristique. Chaque
+   composante connexe des adjacences est une GRAPPE — la notion même que le
+   mixer déplace d'un bloc. Elle a un centre, le local le plus lié ; ses
+   voisins rayonnent autour de lui par branches courbes, et les voisins de
+   ceux-là sur l'anneau suivant. On voit alors ce qu'une colonne taisait : ce
+   qui tient ensemble, jusqu'où, et autour de quoi.
+
+   Les rectangles restent EN MÈTRES et à l'échelle : seule la disposition a
+   changé. Toute la géométrie est DÉDUITE de `data/schema.js` — ajouter un
+   nœud ou un lien ne demande aucune coordonnée, et l'échelle se recalcule sur
+   les surfaces du jour.
    ========================================================================= */
 import { el, fmt } from "../core/format.js";
 import { FMAP, ITEMBYKEY } from "../core/model.js";
@@ -35,13 +42,13 @@ import { FREE, SLINK, SNODE, SPOLE } from "../data/schema.js";
    L'alignement, lui, ne vient plus des dimensions mais de la COLONNE : chaque
    pôle a un axe, ses locaux s'y centrent, les fils courent dans les gouttières.
    L'ancien schéma plaçait les siens à la main, et n'alignait rien. */
-var CGAP = 20, NGAP = 5;             /* gouttière entre pôles, écart entre deux locaux */
-var HEAD = 11, PAD = 3;              /* bandeau de pôle, marge intérieure */
-var CHAN = 1.8;                      /* écart entre deux fils d'un même faisceau */
+var RGAP = 8;                        /* jour entre deux anneaux d'une grappe */
+var AGAP = 6;                        /* jour entre deux locaux d'un même anneau */
+var CLGAP = 14, CAPH = 9, PAD = 4;   /* jour entre grappes, bandeau, marge */
+var FSCAP = 3.4;                     /* corps du titre d'une grappe */
 var HMIN = 0.9;                      /* filet du seul cas sans surface : le hors bilan */
 var FS = 3.4, FSSM = 2.8;            /* corps du nom, corps de la surface */
 var LINEH = FS * 1.12, SUBH = FSSM * 1.4;
-var CWMIN = 26;                      /* largeur de colonne minimale : celle d'un nom */
 
 /* La table des nœuds est construite au chargement : `linkList()` la lit pour
    nommer les deux bouts d'un lien, et elle est appelée AVANT le premier dessin.
@@ -74,138 +81,328 @@ export function nodeBox(nd){
   return { w:c, h:c, a:A.a, est:A.est, hors:0, split:0 };
 }
 
-function layout(){
-  /* 1 · la largeur d'un pôle : celle de son plus grand local, sans descendre
-     sous ce qu'il faut pour écrire un nom. Une largeur unique, prise sur les
-     1'296 m² de salles de classe, laissait quatre colonnes aux trois quarts
-     vides. */
-  SPOLE.forEach(function(pl){
-    var w = CWMIN;
-    SNODE.forEach(function(nd){ if(nd.p === pl.id) w = Math.max(w, nodeBox(nd).w); });
-    pl.cw = Math.ceil(w);
-  });
+/* ---------- le graphe : qui doit toucher qui -------------------------------
+   Le schéma était rangé en COLONNES, une par pôle, et les liens couraient
+   d'une colonne à l'autre dans des gouttières. L'ordre y était parfait et le
+   propos perdu : on lisait l'organigramme du programme, pas les proximités
+   qu'il exige. Or c'est le lien qui est la contrainte.
 
-  /* 2 · chaque local : ses cotes, son nom, l'emplacement qu'il occupe */
-  var x = 0, maxH = 0;
-  SPOLE.forEach(function(pl, ci){
-    var rows = SNODE.filter(function(nd){ return nd.p === pl.id; });
-    var CW = pl.cw;
-    pl.x = x; pl.rows = rows;
-    var y = HEAD, t = 0;
-    rows.forEach(function(nd, i){
-      var B = nodeBox(nd);
-      t += B.a;
-      nd.bw = B.w; nd.bh = B.h; nd.box = B;
-      nd.lines = wrapText(nd.n, Math.max(6, Math.floor((B.w - 2) / (FS * 0.52))), 2);
-      var lab = nd.lines.length * LINEH + SUBH + 1.5;
-      /* Le nom tient dans le local, ou il se range dessous. */
-      nd.labIn = !B.hors && B.h >= lab + 1.5 && B.w >= 13;
-      if(!nd.labIn) nd.lines = wrapText(nd.n, Math.floor((CW + 6) / (FS * 0.52)), 2);
-      nd.slot = nd.labIn ? B.h : B.h + nd.lines.length * LINEH + SUBH + 1.5;
-      nd.cx = x + CW / 2;                    /* le local est centré sur l'axe du pôle */
-      nd.x = nd.cx - B.w / 2; nd.y = y;
-      nd.cy = y + B.h / 2;                   /* le fil s'accroche au LOCAL, pas à l'emplacement */
-      nd.cw = CW; nd.col = ci; nd.row = i;
-      y += nd.slot + NGAP;
-    });
-    pl.area = t;
-    pl.h = y - NGAP;
-    if(pl.h > maxH) maxH = pl.h;
-    x += CW + CGAP;
+   Le dessin part donc du LIEN. Chaque composante connexe des adjacences est
+   une GRAPPE — la même notion que le mixer déplace d'un bloc —, elle a un
+   centre, et ses locaux rayonnent autour de lui par branches courbes, de
+   proche en proche. C'est la forme d'une carte heuristique, et elle dit ce
+   qu'une colonne taisait : ce qui tient ensemble, et jusqu'où. */
+function graphe(){
+  var adj = {};
+  SNODE.forEach(function(nd){ adj[nd.id] = []; });
+  SLINK.forEach(function(lk){
+    if(!adj[lk.a] || !adj[lk.b]) return;
+    adj[lk.a].push({ id:lk.b, lk:lk });
+    adj[lk.b].push({ id:lk.a, lk:lk });
   });
-  SCH_W = x - CGAP;
-  SCH_H = maxH;
+  return adj;
+}
+/* Les grappes, dans l'ordre des pôles : la plus liée d'abord. */
+function grappes(adj){
+  var vus = {}, out = [];
+  SNODE.forEach(function(nd){
+    if(vus[nd.id]) return;
+    var pile = [nd.id], ids = [];
+    vus[nd.id] = 1;
+    while(pile.length){
+      var id = pile.pop();
+      ids.push(id);
+      adj[id].forEach(function(e){ if(!vus[e.id]){ vus[e.id] = 1; pile.push(e.id); } });
+    }
+    out.push(ids);
+  });
+  return out;
+}
+var PORD = {};
+SPOLE.forEach(function(pl, i){ PORD[pl.id] = i; });
+
+/* L'arbre d'une grappe : son centre est le local le plus lié — à égalité, le
+   plus grand. Les liens qui ne sont pas dans l'arbre ne disparaissent pas : ce
+   sont des exigences comme les autres, et ils se tracent en travers. */
+function arbre(ids, adj){
+  var hub = ids[0], best = -1;
+  ids.forEach(function(id){
+    var sc = adj[id].length * 1e6 + nodeArea(SMAP[id]).a;
+    if(sc > best){ best = sc; hub = id; }
+  });
+  var par = {}, dep = {}, kids = {}, vus = {}, ordre = [hub], i = 0;
+  ids.forEach(function(id){ kids[id] = []; });
+  vus[hub] = 1; dep[hub] = 0; par[hub] = null;
+  while(i < ordre.length){
+    var id = ordre[i++];
+    /* Les enfants se rangent par pôle puis par surface : deux locaux du même
+       pôle restent dans le même secteur, et la grappe garde une lecture. */
+    adj[id].slice().sort(function(x, y){
+      var px = PORD[SMAP[x.id].p], py = PORD[SMAP[y.id].p];
+      if(px !== py) return px - py;
+      return nodeArea(SMAP[y.id]).a - nodeArea(SMAP[x.id]).a;
+    }).forEach(function(e){
+      if(vus[e.id]) return;
+      vus[e.id] = 1; par[e.id] = id; dep[e.id] = dep[id] + 1;
+      kids[id].push(e.id); ordre.push(e.id);
+    });
+  }
+  return { hub:hub, par:par, dep:dep, kids:kids, ordre:ordre, ids:ids };
 }
 
-/* ---------- routage des fils ----------------------------------------------
-   Deux cas, deux tracés, et rien d'autre : dans une colonne, le fil descend
-   au bord ; d'une colonne à l'autre, il sort par le flanc, traverse la
-   gouttière et rentre par le flanc d'en face. Les fils qui partagent une
-   gouttière ou un canal sont décalés pour ne pas se superposer. */
-/* Bords de la colonne d'un nœud : les canaux et les gouttières s'y appuient,
-   et non sur les côtés du local, qui changent avec sa surface. */
-function COL0(nd){ return nd.cx - nd.cw / 2; }
-function COL1(nd){ return nd.cx + nd.cw / 2; }
+/* ---------- la carte d'une grappe ------------------------------------------
+   Un anneau par profondeur, dont le rayon est déduit de l'encombrement des
+   locaux qu'il porte : rien n'est posé à la main. L'angle d'une branche est
+   proportionnel à ce qu'elle a à loger — sa part du tour, et celle de ses
+   propres branches. Quand le tour ne suffit plus, on écarte les anneaux : les
+   secteurs étant en 1/rayon, un seul passage suffit à les ramener dans le
+   tour. */
+var TOUR = Math.PI * 2 * 0.94;
+function poser(T){
+  /* Le rayon se calcule NŒUD PAR NŒUD, et non par anneau. Un anneau commun
+     prenait sa distance sur le plus encombrant de ses locaux : l'abri PC de
+     750 m² repoussait tout le deuxième anneau, et la chaîne de petits locaux
+     de l'UAPE partait à deux cents mètres du centre pour rien. */
+  var R = {}, i, id, pa;
+  R[T.hub] = 0;
+  for(i = 1; i < T.ordre.length; i++){
+    id = T.ordre[i]; pa = T.par[id];
+    R[id] = R[pa] + SMAP[pa].diam / 2 + RGAP + SMAP[id].diam / 2;
+  }
 
-function routes(){
-  var chan = {}, gut = {}, out = [];
+  var sp = {};
+  function spans(){
+    var j;
+    for(j = T.ordre.length - 1; j >= 0; j--){
+      var k = T.ordre[j], nd = SMAP[k], som = 0;
+      T.kids[k].forEach(function(c){ som += sp[c]; });
+      var besoin = R[k] > 0 ? (nd.diam + AGAP) / R[k] : 0;
+      sp[k] = Math.max(besoin, som);
+    }
+    var t = 0;
+    T.kids[T.hub].forEach(function(c){ t += sp[c]; });
+    return t;
+  }
+  /* Le tour ne suffit plus : on écarte tout. Les secteurs étant en 1/rayon, un
+     seul passage les ramène dans le tour. */
+  var tot = spans();
+  if(tot > TOUR){
+    var f = tot / TOUR;
+    T.ids.forEach(function(x){ R[x] *= f; });
+    tot = spans();
+  }
+
+  var ang = {};
+  ang[T.hub] = 0;
+  /* La racine remplit le tour : ses branches s'écartent au maximum. Une
+     branche interne, elle, reste CENTRÉE dans le secteur de son parent — sinon
+     elle s'en éloigne et le lien cesse de se suivre du regard. */
+  function repartir(id, a0, a1, plein){
+    var k = T.kids[id], som = 0;
+    k.forEach(function(c){ som += sp[c]; });
+    if(!som) return;
+    var large = a1 - a0;
+    var ech = plein ? large / som : 1;
+    var cur = a0 + (plein ? 0 : (large - som) / 2);
+    k.forEach(function(c){
+      var w = sp[c] * ech;
+      ang[c] = cur + w / 2;
+      repartir(c, cur, cur + w, false);
+      cur += w;
+    });
+  }
+  repartir(T.hub, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2, true);
+
+  T.ids.forEach(function(x){
+    var nd = SMAP[x], r = R[x], th = ang[x];
+    nd.th = th; nd.r = r;
+    nd.cx = r * Math.cos(th); nd.cy = r * Math.sin(th);
+    nd.x = nd.cx - nd.bw / 2; nd.y = nd.cy - nd.bh / 2;
+  });
+  return T;
+}
+
+/* Les cotes d'un local et la place que prend son nom — communes aux deux
+   temps du calcul, puisque le secteur d'une branche en dépend. */
+function mesurer(){
+  SNODE.forEach(function(nd){
+    var B = nodeBox(nd);
+    nd.bw = B.w; nd.bh = B.h; nd.box = B;
+    nd.lines = wrapText(nd.n, Math.max(6, Math.floor((B.w - 2) / (FS * 0.52))), 2);
+    var lab = nd.lines.length * LINEH + SUBH + 1.5;
+    nd.labIn = !B.hors && B.h >= lab + 1.5 && B.w >= 13;
+    if(!nd.labIn) nd.lines = wrapText(nd.n, 18, 2);
+    /* Ce que le local occupe VRAIMENT : son rectangle, et le nom rangé dessous
+       quand il n'y tient pas. Le secteur d'une branche se mesurait sur le seul
+       rectangle — un local de 9 m² sous un nom de trente mètres de long se
+       voyait accorder trois mètres, et les noms se chevauchaient. */
+    var lw = 0;
+    nd.lines.forEach(function(ln){ lw = Math.max(lw, ln.length * FS * 0.52); });
+    lw = Math.max(lw, 9 * FSSM * 0.62);            /* la ligne de surface */
+    nd.labW = nd.labIn ? 0 : lw;
+    nd.labH = nd.labIn ? 0 : lab;
+    /* Diamètre du cercle qui contient tout : une grappe tourne, donc la mesure
+       ne peut pas dépendre de l'angle. */
+    var ew = Math.max(nd.bw, nd.labW), eh = nd.bh + nd.labH;
+    nd.diam = Math.sqrt(ew * ew + eh * eh);
+  });
+}
+
+/* Ce qu'une grappe annonce d'elle-même : son compte, sa surface, et les pôles
+   qu'elle TRAVERSE — car elle en traverse, et c'est précisément ce que des
+   colonnes par pôle ne pouvaient pas montrer. */
+function legende(T){
+  var aire = 0, pols = [];
+  T.ids.forEach(function(id){
+    aire += nodeArea(SMAP[id]).a;
+    var pp = SMAP[id].p;
+    if(pols.indexOf(pp) < 0) pols.push(pp);
+  });
+  pols.sort(function(a, b){ return PORD[a] - PORD[b]; });
+  return T.ids.length + " LOCAUX LIÉS · " + fmt(Math.round(aire)) + " M² · "
+    + pols.map(function(id){
+        var n = id;
+        SPOLE.forEach(function(x){ if(x.id === id) n = x.n; });
+        return n.toUpperCase();
+      }).join(" · ");
+}
+
+/* Le cadre d'une grappe, nom rangé dessous compris. */
+function cadre(T){
+  var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  T.ids.forEach(function(id){
+    var nd = SMAP[id], lw = Math.max(nd.bw, nd.labW);
+    if(nd.cx - lw / 2 < x0) x0 = nd.cx - lw / 2;
+    if(nd.cx + lw / 2 > x1) x1 = nd.cx + lw / 2;
+    if(nd.y < y0) y0 = nd.y;
+    if(nd.y + nd.bh + nd.labH > y1) y1 = nd.y + nd.bh + nd.labH;
+  });
+  T.cap = legende(T);
+  T.x0 = x0 - PAD; T.y0 = y0 - PAD - CAPH;
+  /* Le cadre tient aussi son propre titre : plus large que le dessin pour une
+     grappe de deux locaux, il sortait de la planche et se rognait. */
+  T.w = Math.max(x1 - x0 + 2 * PAD, T.cap.length * FSCAP * 0.6 + 2 * PAD);
+  T.h = y1 - y0 + 2 * PAD + CAPH;
+  return T;
+}
+
+function layout(){
+  mesurer();
+  var adj = graphe();
+  var maps = grappes(adj).map(function(ids){ return cadre(poser(arbre(ids, adj))); });
+  /* La plus grande grappe donne la largeur de la planche ; les autres se
+     rangent derrière elle, par étagères. Une seule rangée aurait doublé la
+     largeur et divisé par deux le corps des noms. */
+  maps.sort(function(a, b){ return b.w * b.h - a.w * a.h; });
+  var large = 0;
+  maps.forEach(function(m){ if(m.w > large) large = m.w; });
+  var x = 0, y = 0, hRang = 0, W = 0;
+  maps.forEach(function(m){
+    /* On ne casse une étagère que si la grappe la dépasse VRAIMENT : un ou
+       deux mètres de plus élargissent la planche d'un cheveu, une étagère de
+       plus lui coûte toute une hauteur de grappe. */
+    if(x > 0 && x + m.w > large + CLGAP + 0.5){ x = 0; y += hRang + CLGAP; hRang = 0; }
+    m.dx = x - m.x0; m.dy = y - m.y0;
+    m.ox = m.dx; m.oy = m.dy;              /* le centre de la grappe, une fois posée */
+    m.ids.forEach(function(id){
+      var nd = SMAP[id];
+      nd.cx += m.dx; nd.cy += m.dy; nd.x += m.dx; nd.y += m.dy;
+    });
+    m.px = x; m.py = y;
+    if(x + m.w > W) W = x + m.w;
+    if(m.h > hRang) hRang = m.h;
+    x += m.w + CLGAP;
+  });
+  SCH_W = W;
+  SCH_H = y + hRang;
+  return maps;
+}
+
+/* ---------- les branches ---------------------------------------------------
+   Une branche de carte heuristique est une COURBE : elle sort de son local et
+   entre dans l'autre, et deux branches voisines ne se confondent pas comme le
+   faisaient deux fils orthogonaux rangés dans la même gouttière. Le lien de
+   l'arbre suit le rayon, les deux autres s'infléchissent vers le centre de la
+   grappe. Le trait, lui, ne dit toujours qu'une chose : la nature de
+   l'exigence. */
+function bord(nd, ux, uy){
+  var w = nd.bw / 2, h = nd.bh / 2;
+  var tx = ux ? w / Math.abs(ux) : Infinity;
+  var ty = uy ? h / Math.abs(uy) : Infinity;
+  var t = Math.min(tx, ty);
+  return { x: nd.cx + ux * t, y: nd.cy + uy * t };
+}
+function branches(maps){
+  var ou = {};
+  maps.forEach(function(m){ m.ids.forEach(function(id){ ou[id] = m; }); });
+  var out = [];
   SLINK.forEach(function(lk){
-    var A = SMAP[lk.a], B = SMAP[lk.b];
-    if(!A || !B) return;
-    if(A.col === B.col){
-      var hi = A.row < B.row ? A : B, lo = A.row < B.row ? B : A;
-      if(lo.row - hi.row === 1 && hi.labIn){
-        /* Rangs voisins et rien entre eux : le fil passe droit d'un bord à
-           l'autre. Un nom rangé sous le rectangle du haut occupe ce vide : le
-           fil part alors dans le canal, plutôt que de traverser le texte. */
-        out.push({ lk:lk, d:"M " + hi.cx + " " + (hi.y + hi.bh) + " L " + lo.cx + " " + lo.y,
-                   mx:hi.cx, my:(hi.y + hi.bh + lo.y) / 2 });
-        return;
-      }
-      /* rangs éloignés : le fil contourne par le canal, à gauche de la colonne */
-      /* Le canal d'une colonne longe son flanc gauche ; les fils d'une même
-         colonne s'y rangent les uns derrière les autres. */
-      var kc = hi.col;
-      chan[kc] = (chan[kc] || 0) + 1;
-      var cx = COL0(hi) - PAD - chan[kc] * CHAN;
+    var A = SMAP[lk.a], B = SMAP[lk.b], m = ou[lk.a];
+    if(!A || !B || !m) return;
+    var estArbre = (m.par[lk.a] === lk.b) || (m.par[lk.b] === lk.a);
+    if(estArbre){
+      var P = m.par[lk.a] === lk.b ? B : A, C = P === A ? B : A;
+      /* Le centre n'a pas d'angle : sa branche part droit sur l'enfant. */
+      var t0 = P.r > 0 ? P.th : C.th, t1 = C.th;
+      var p0 = bord(P, Math.cos(t0), Math.sin(t0));
+      var p1 = bord(C, -Math.cos(t1), -Math.sin(t1));
+      var rm = P.r + (C.r - P.r) * 0.55;
+      var c1x = m.ox + rm * Math.cos(t0), c1y = m.oy + rm * Math.sin(t0);
+      var c2x = m.ox + rm * Math.cos(t1), c2y = m.oy + rm * Math.sin(t1);
       out.push({ lk:lk,
-        d:"M " + hi.x + " " + hi.cy + " L " + cx + " " + hi.cy
-          + " L " + cx + " " + lo.cy + " L " + lo.x + " " + lo.cy,
-        mx:cx, my:(hi.cy + lo.cy) / 2 });
+        d:"M " + p0.x.toFixed(2) + " " + p0.y.toFixed(2)
+          + " C " + c1x.toFixed(2) + " " + c1y.toFixed(2)
+          + " " + c2x.toFixed(2) + " " + c2y.toFixed(2)
+          + " " + p1.x.toFixed(2) + " " + p1.y.toFixed(2),
+        mx:(p0.x + 3 * c1x + 3 * c2x + p1.x) / 8,
+        my:(p0.y + 3 * c1y + 3 * c2y + p1.y) / 8 });
       return;
     }
-    /* d'une colonne à l'autre : la gouttière la plus à gauche des deux */
-    var L = A.col < B.col ? A : B, R = A.col < B.col ? B : A;
-    /* Les fils d'une gouttière se rangent contre la colonne de GAUCHE : le
-       flanc droit de la gouttière appartient au canal de la colonne suivante,
-       et deux faisceaux qui se mêlent ne se suivent plus du regard. */
-    var kg = L.col;
-    gut[kg] = (gut[kg] || 0) + 1;
-    var gx = COL1(L) + 3 + (gut[kg] - 1) * CHAN;
+    /* Hors de l'arbre : la corde s'infléchit vers le centre de la grappe. */
+    var qx = m.ox + ((A.cx + B.cx) / 2 - m.ox) * 0.55;
+    var qy = m.oy + ((A.cy + B.cy) / 2 - m.oy) * 0.55;
+    var a0 = bord(A, qx - A.cx, qy - A.cy);
+    var b0 = bord(B, qx - B.cx, qy - B.cy);
     out.push({ lk:lk,
-      d:"M " + (L.x + L.bw) + " " + L.cy + " L " + gx + " " + L.cy
-        + " L " + gx + " " + R.cy + " L " + R.x + " " + R.cy,
-      mx:gx, my:(L.cy + R.cy) / 2 });
+      d:"M " + a0.x.toFixed(2) + " " + a0.y.toFixed(2)
+        + " Q " + qx.toFixed(2) + " " + qy.toFixed(2)
+        + " " + b0.x.toFixed(2) + " " + b0.y.toFixed(2),
+      mx:(a0.x + 2 * qx + b0.x) / 4, my:(a0.y + 2 * qy + b0.y) / 4 });
   });
   return out;
 }
 
-/* ---------- dessin --------------------------------------------------------- */
 export function drawSchema(host){
   while(host.firstChild) host.removeChild(host.firstChild);
-  layout();
+  var maps = layout();
   var eff = Math.max(host.clientWidth || 900, 900) / (SCH_W + 12);
-  var fs = FS, fsSm = FSSM, fsCap = 3.4;
+  var fs = FS, fsSm = FSSM, fsCap = FSCAP;
 
-  /* La marge de gauche loge le canal de la première colonne : sans elle, les
-     fils de l'enseignement sortaient du cadre et étaient rognés. */
   var REF = 100, cRef = Math.sqrt(REF), foot = cRef + 12;
-  var svg = s("svg", { viewBox: "-16 -3 " + (SCH_W + 24) + " " + (SCH_H + 8 + foot),
+  var svg = s("svg", { viewBox: "-6 -3 " + (SCH_W + 12) + " " + (SCH_H + 8 + foot),
     preserveAspectRatio: "xMinYMin meet", role: "img",
-    "aria-label": "Schéma fonctionnel : les locaux rangés par pôle, reliés par les "
-      + "adjacences que le règlement exige." });
+    "aria-label": "Schéma fonctionnel : les locaux groupés en grappes de proximité, "
+      + "chacune autour du local le plus lié, reliés par les adjacences que le "
+      + "règlement exige." });
 
-  /* --- bandeaux de pôle : une colonne dit ce qu'elle regroupe --- */
+  /* --- le cadre d'une grappe, et ce qu'elle regroupe ---
+     Une grappe se lit d'abord comme un tout : elle porte son compte, sa
+     surface, et les pôles qu'elle traverse — car elle en traverse, et c'est
+     précisément ce que les colonnes par pôle ne pouvaient pas montrer. */
   var gp = s("g", null);
-  SPOLE.forEach(function(pl){
-    gp.appendChild(s("rect", { x: pl.x - PAD, y: 0, width: pl.cw + 2 * PAD,
-      height: pl.h + PAD, rx: 2,
-      fill: "var(--rule-soft)", "fill-opacity": ".55", stroke: "none" }));
-    /* Le nom du pôle se plie à la largeur de sa colonne : posé d'un trait, il
-       débordait sur le pôle voisin dès que la colonne était étroite. */
-    var cap = wrapText(pl.n.toUpperCase(), Math.max(8, Math.floor(pl.cw / (fsCap * 0.62))), 2);
-    cap.forEach(function(ln, i){
-      var t = s("text", { x: pl.x, y: HEAD - 3.5 - (cap.length - 1 - i) * fsCap * 1.15,
-        "font-size": fsCap, fill: "var(--ink-3)", "letter-spacing": ".1" });
-      t.textContent = ln;
-      gp.appendChild(t);
-    });
+  maps.forEach(function(m){
+    gp.appendChild(s("rect", { x: m.px, y: m.py, width: m.w, height: m.h, rx: 3,
+      fill: "var(--rule-soft)", "fill-opacity": ".5", stroke: "none" }));
+    var cap = s("text", { x: m.px + PAD, y: m.py + CAPH - 3,
+      "font-size": fsCap, fill: "var(--ink-3)", "letter-spacing": ".1" });
+    cap.textContent = m.cap;
+    gp.appendChild(cap);
   });
   svg.appendChild(gp);
 
-  /* --- fils --- */
+  /* --- branches --- */
   var gl = s("g", { fill: "none" });
-  routes().forEach(function(r){
+  branches(maps).forEach(function(r){
     var lk = r.lk;
     var e = s("path", { d: r.d,
       stroke: lk.opt ? "var(--ink-4)" : "var(--ink-2)",
@@ -275,7 +472,7 @@ export function drawSchema(host){
 
   /* --- l'étalon : ce que vaut un rectangle -----------------------------------
      Les surfaces sont écrites sur chaque carte, mais rien ne calibrait l'œil.
-     Un rectangle de référence, à la même largeur que tous les autres, le fait. */
+     Un rectangle de référence, posé au pied de la planche, le fait. */
   var fy = SCH_H + 12;
   var gf = s("g", null);
   gf.appendChild(s("rect", { x: 0, y: fy, width: cRef, height: cRef, rx: 1.2,

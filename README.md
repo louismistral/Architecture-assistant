@@ -137,7 +137,7 @@ src/
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
     constraints.js    la section Contraintes, lue dans rules.js
     diagram.js        diagrammes à l'échelle et barre d'échelle
-    schema.js         schéma fonctionnel : locaux à l'échelle, colonnes par pôle, fils routés
+    schema.js         schéma fonctionnel : grappes rayonnantes, locaux à l'échelle
     mixer.js          l'onglet Programme mixer
     tooltip.js        infobulle
   vol/                DORMANT — à reconstruire en onglet Massing
