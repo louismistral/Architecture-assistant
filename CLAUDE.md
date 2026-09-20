@@ -43,10 +43,23 @@ commente demandait quatre écrans de défilement.
   un local de 144 m² est un carré de 12 m de côté, et l'aire du rectangle vaut ses m²
   dans ses DEUX côtés — la même convention que les diagrammes du volet Surfaces. Quand
   le règlement impose les deux cotes (salle de sport double, 28 × 32 m), le schéma les
-  lit dans `program.js` au lieu de les redire. L'alignement ne vient pas des dimensions
-  mais de la COLONNE : chaque pôle a un axe, ses locaux s'y centrent, sa largeur est
-  celle de son plus grand local. Un local trop petit pour écrire son nom le range
-  dessous.
+  lit dans `program.js` au lieu de les redire. Un local trop petit pour écrire son nom
+  le range dessous.
+  La disposition, elle, est une **carte heuristique** : elle part du LIEN, parce que le
+  lien est la contrainte. Chaque composante connexe des adjacences est une **grappe** —
+  la notion même que le mixer déplace d'un bloc — ; son centre est son local le plus lié
+  (à égalité, le plus grand), ses voisins rayonnent autour de lui par branches courbes,
+  et les voisins de ceux-là sur le tour suivant. Le rayon d'un local se déduit de
+  l'encombrement de son parent et du sien, son secteur angulaire de ce que sa branche a
+  à loger ; quand le tour ne suffit plus, on écarte tout d'un coup — les secteurs étant
+  en 1/rayon, un seul passage les y ramène. Les liens qui ne sont pas dans l'arbre sont
+  des exigences comme les autres : ils se tracent en travers, infléchis vers le centre.
+  Le trait ne dit toujours qu'une chose, la nature de l'exigence ; la couleur reste
+  celle de la famille d'usage.
+  Chaque grappe porte son compte, sa surface et **les pôles qu'elle traverse** : les
+  colonnes par pôle d'avant alignaient tout et donnaient à lire l'organigramme du
+  programme plutôt que les proximités qu'il exige — on ne voyait pas que la grappe de la
+  salle de sport tient dix-sept locaux et traverse trois pôles.
 
 URL : `#programme/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a
 un regroupement. L'identifiant de l'onglet reste `programme` : les liens qui ont circulé
@@ -270,7 +283,8 @@ convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deu
   règles de niveau et le contrôle en découlent.
 - **Une adjacence** : `src/data/schema.js` seul — le lien, le pôle du nœud, et les postes
   qu'il désigne (`nd.k`). Ni surface ni coordonnée : la surface se lit dans `program.js`
-  par cette table, la géométrie est déduite par la vue. `LIENS_ORPHELINS` signale tout
+  par cette table, la géométrie est déduite par la vue. Le pôle ne place plus rien : il
+  ordonne les branches d'une grappe et nomme ce qu'elle traverse. `LIENS_ORPHELINS` signale tout
   nom de poste qui ne correspond plus.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle.
