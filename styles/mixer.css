@@ -138,17 +138,28 @@
 }
 .mixblk.has-pcs .mixblk__lb b{min-width:0}
 .mixblk.has-pcs{justify-content:flex-start;gap:2px}
+/* Le bloc N'EST PAS une boîte contenant des boîtes : c'est une surface DIVISÉE.
+   Les pièces étaient dessinées en petits rectangles cernés, posés dans le bloc
+   avec un jour entre eux — on lisait dix-huit objets rangés là, au lieu d'un
+   poste découpé. Le trait tireté est le trait de division du plan : il sépare
+   sans clore. La trame va donc d'un bord à l'autre du bloc, ses lignes de
+   rive tombant exactement sur le cadre qui la borde — d'où les marges
+   négatives, que `overflow:hidden` rattrape. */
 .mixblk__pcs{
-  flex:1 1 auto;min-height:0;display:grid;gap:1px;
+  flex:1 1 auto;min-height:0;display:grid;gap:0;
   grid-auto-rows:1fr;align-content:stretch;
+  margin-inline:calc(-1 * var(--s-1));margin-bottom:-2px;
 }
-/* Une cellule = une pièce, à la surface unitaire du poste. Le trait suffit :
-   elle porte déjà l'aplat de famille du bloc qui la contient. */
+/* Une cellule = une pièce, à la surface unitaire du poste. Elle ne porte que
+   ses deux traits de refend : celui de droite et celui du bas. Les quatre côtés
+   auraient doublé chaque séparation, et le tireté d'une surface « à préciser »
+   — même trait, autre sens — s'y serait perdu. */
 .mixpc{
-  border:1px solid currentColor;border-radius:1px;opacity:.38;
+  border-right:1px dashed color-mix(in srgb, currentColor 50%, transparent);
+  border-bottom:1px dashed color-mix(in srgb, currentColor 50%, transparent);
   cursor:grab;touch-action:none;
 }
-.mixpc:hover{opacity:1;background:var(--paper)}
+.mixpc:hover{background:color-mix(in srgb, var(--ink) 14%, transparent)}
 /* Une surface à préciser porte le trait tireté, partout, sur tous les dessins. */
 .mixblk.is-est{border-style:dashed}
 .mixblk.is-sel{outline:2px solid var(--focus);outline-offset:-2px}

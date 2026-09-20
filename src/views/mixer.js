@@ -470,26 +470,37 @@ function paintFloor(host, i){
   }
 }
 
-/* Les pièces d'un bloc, dessinées DANS le bloc. Dix-huit salles de classe
-   posées d'un coup formaient un rectangle muet : on lisait « ×18 » et il
-   fallait un menu pour en détacher six. Ouvert, le bloc montre ses dix-huit
-   cellules, et l'on tire celle qu'on veut ailleurs — la scission est le
+/* La DIVISION d'un bloc en ses pièces. Dix-huit salles de classe posées d'un
+   coup formaient un rectangle muet : on lisait « ×18 » et il fallait un menu
+   pour en détacher six. Divisé, le bloc porte ses dix-huit refends, et l'on
+   tire hors de lui la pièce qu'on veut ailleurs — la scission est le
    déplacement d'une pièce, elle n'a pas à être un geste de plus.
-   Rien n'est dessiné si une cellule devient trop petite pour être visée, ni
-   pour un poste dont le règlement impose les dimensions : il ne se coupe pas. */
+   Le trait est TIRETÉ et va d'un bord à l'autre : c'est un refend de plan, il
+   sépare sans clore. Des rectangles cernés, posés dans le bloc, donnaient à
+   lire dix-huit objets rangés là plutôt qu'un poste découpé.
+   Rien n'est divisé si une pièce devient trop petite pour être visée, ni pour
+   un poste dont le règlement impose les dimensions : il ne se coupe pas. */
 var PC_W = 9, PC_H = 7;
 function pieceGrid(b, r){
   var p = PMAP[b.key];
   if(!pieces || p.solid || b.q < 2) return null;
-  var w = r.w - 4, h = r.h - 16;
+  var w = r.w - 2, h = r.h - 16;
   if(w < 3 * PC_W || h < 2 * PC_H) return null;
-  /* Cellules aussi carrées que le permet le rectangle restant : le nombre de
-     colonnes se déduit de sa forme, il n'est pas un réglage. */
-  var cols = Math.round(Math.sqrt(b.q * w / h));
-  if(!(cols >= 1)) cols = 1;
-  if(cols > b.q) cols = b.q;
+  /* Le nombre de colonnes se déduit de la forme du rectangle : il n'est pas un
+     réglage. On cherche à la fois des pièces carrées ET une trame PLEINE —
+     dix-huit salles sur huit colonnes laissaient six cases vides, et la
+     dernière rangée semblait inachevée. Un partage exact vaut donc un peu
+     d'allongement : d'où le poids donné au reste. */
+  var cols = 1, best = Infinity, c, rw, cw, ch, sc;
+  for(c = 1; c <= b.q; c++){
+    rw = Math.ceil(b.q / c);
+    cw = w / c; ch = h / rw;
+    if(cw < PC_W || ch < PC_H) continue;
+    sc = Math.abs(Math.log(cw / ch)) + 1.2 * (c * rw - b.q) / b.q;
+    if(sc < best){ best = sc; cols = c; }
+  }
+  if(best === Infinity) return null;
   var rows = Math.ceil(b.q / cols);
-  if(w / cols < PC_W || h / rows < PC_H) return null;
   var g = el("div","mixblk__pcs");
   g.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
   for(var i = 0; i < b.q; i++){
