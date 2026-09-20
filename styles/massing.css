@@ -124,8 +124,13 @@
    Un rendu d'architecte : le terrain en traits fins, le bâti en aplat léger,
    le périmètre du concours seul en trait fort. La hiérarchie des traits EST le
    dessin. */
-.plan-ctr{ fill:none; stroke:var(--ink-4); stroke-width:.18; opacity:.5; }
-.plan-ctr.is-maitre{ stroke-width:.32; opacity:.8; }
+/* Trois forces de trait pour les courbes de niveau, comme sur un plan
+   topographique : la demi-courbe, le mètre plein, les cinq mètres. Le relevé
+   les donne tous les 50 cm — c'est la hiérarchie qui les rend lisibles, pas
+   le fait d'en cacher. */
+.plan-ctr{ fill:none; stroke:var(--ink-4); stroke-width:.14; opacity:.42; }
+.plan-ctr.is-maitre{ stroke-width:.26; opacity:.72; }
+.plan-ctr.is-cinq{ stroke-width:.42; opacity:.95; }
 .plan-par{ fill:none; stroke:var(--ink-4); stroke-width:.22; opacity:.7; stroke-dasharray:2.4 1.6; }
 .plan-rou{ fill:none; stroke:var(--ink-4); stroke-width:.45; opacity:.9; }
 .plan-foo{ fill:none; stroke:var(--ink-4); stroke-width:.3; opacity:.6; }

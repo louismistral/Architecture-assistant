@@ -119,7 +119,7 @@ src/
     geometry.js       surfaces → blocs, empilage, proportions admissibles
     treemap.js        pavage squarifié — un bloc vaut sa surface
     rand.js           tirage reproductible à graine (mulberry32)
-    gl.js             WebGL minimal : matrices, programme, tampons, caméra orbitale
+    gl.js             WebGL minimal : matrices, programme, tampons (dont statiques), caméra
   mix/                répartir le programme sur les niveaux
     prog.js           le programme vu comme des parts à poser, adjacences par poste
     niv.js            règles de niveau du règlement, cotes admissibles par poste

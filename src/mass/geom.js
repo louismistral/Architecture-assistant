@@ -30,10 +30,15 @@ export function terrain(x, y){
   var tx = fx - i, ty = fy - j;
   if(tx < 0) tx = 0; if(tx > 1) tx = 1;
   if(ty < 0) ty = 0; if(ty > 1) ty = 1;
-  var a = g.z[i][j], b = g.z[i + 1][j], c = g.z[i][j + 1], d = g.z[i + 1][j + 1];
-  return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty)
-       + c * (1 - tx) * ty + d * tx * ty;
+  return g.zsol + (grille(g, i, j) * (1 - tx) * (1 - ty)
+                 + grille(g, i + 1, j) * tx * (1 - ty)
+                 + grille(g, i, j + 1) * (1 - tx) * ty
+                 + grille(g, i + 1, j + 1) * tx * ty) / 100;
 }
+/* Le relevé garde ses altitudes en centimètres entiers au-dessus de `zsol` :
+   au décimètre, le terrain se terrassait de lui-même — une marche tous les sept
+   mètres sur une pente à 1,5 %, et le maillage les montrait toutes. */
+export function grille(g, i, j){ return g.zc[i][j]; }
 /* L'altitude à laquelle poser un volume : la MOYENNE du terrain sous son
    emprise, et non l'altitude de son centre. Un bâtiment de quarante mètres
    posé sur son centre s'enterre d'un côté et flotte de l'autre. On rend aussi

@@ -71,12 +71,17 @@ export function planDraw(){
      L'ordre est celui d'un plan d'architecte : le terrain d'abord, le bâti
      ensuite, le projet par-dessus tout. */
   var g = svg("g", { "class":"plan__site" });
-  var pasC = VUE.w > 420 ? 2 : VUE.w > 220 ? 1 : .5;
+  /* Le relevé donne une courbe tous les 50 cm. La hiérarchie est celle d'un
+     plan topographique : la demi-courbe au trait le plus faible, le mètre plein
+     au trait courant, les cinq mètres au trait fort. Les demi-courbes ne
+     s'allument qu'en approchant — de loin elles font un aplat. */
+  var pasC = VUE.w > 420 ? 2 : VUE.w > 200 ? 1 : .5;
   (SITE.ctr || []).forEach(function(c){
     if(Math.abs(c[0] / pasC - Math.round(c[0] / pasC)) > .01) return;
-    var maitre = Math.abs(c[0] % 5) < .01;
-    g.appendChild(svg("path", { d: chemin(c[1], false),
-      "class": "plan-ctr" + (maitre ? " is-maitre" : "") }));
+    var cl = "plan-ctr";
+    if(Math.abs(c[0] % 5) < .01) cl += " is-cinq";
+    else if(Math.abs(c[0] % 1) < .01) cl += " is-maitre";
+    g.appendChild(svg("path", { d: chemin(c[1], false), "class": cl }));
   });
   (SITE.par || []).forEach(function(P){
     g.appendChild(svg("path", { d: chemin(P, true), "class":"plan-par" }));
