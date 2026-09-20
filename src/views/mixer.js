@@ -95,11 +95,6 @@ export function mixPanel(){
   g.appendChild(bNiv);
   bar.appendChild(g);
 
-  /* La graine est ce qui rend une proposition retrouvable : sans elle, on tire
-     dix fois et la troisième, qui était la bonne, n'existe plus. */
-  seedEl = el("div","mix-seed");
-  bar.appendChild(seedEl);
-
   /* L'interrupteur garde un libellé fixe et ne dit son état que par
      `aria-pressed` : « Grouper les liés » se lit pareil dans les deux sens. */
   var bGrp = el("button","btn","Grouper les liés");
@@ -139,6 +134,15 @@ export function mixPanel(){
     toTray(); selU = null; drawMix(); saveSoon();
   });
   bar.appendChild(bVide);
+
+  /* La graine est ce qui rend une proposition retrouvable : sans elle, on tire
+     dix fois et la troisième, qui était la bonne, n'existe plus. Elle ferme la
+     rangée : c'est le seul CHAMP parmi des boutons, et elle se tenait entre
+     deux d'entre eux — le « Shuffle » qu'elle sert et l'interrupteur suivant se
+     lisaient de part et d'autre d'une saisie. Les gestes d'abord, ce qui les
+     rejoue ensuite. */
+  seedEl = el("div","mix-seed");
+  bar.appendChild(seedEl);
 
   bar.appendChild(el("span","spacer"));
   var chip = el("span","savechip");
