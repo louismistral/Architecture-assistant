@@ -362,10 +362,18 @@ function floorNode(i){
   pl.appendChild(el("span","mix-fl__u","m² de plateau"));
   bar.appendChild(pl);
 
+  /* Utile, circulation, bâti : l'ADDITION en toutes lettres. Le niveau
+     n'écrivait que ses deux bouts — « 2'236 m² utiles · 2'727 m² bâtis » — et
+     les cinq cents mètres carrés du milieu, qui sont le premier poste du
+     projet après les classes, se déduisaient de tête. */
   var meta = el("span","mix-fl__meta mono");
   meta.appendChild(document.createTextNode(
-    flCount(i) + " pièces · " + fmt(Math.round(net)) + " m² utiles · "
-    + fmt(Math.round(bati)) + " m² bâtis"));
+    flCount(i) + " pièces · " + fmt(Math.round(net)) + " m² utiles"));
+  meta.appendChild(el("span","mix-fl__circ",
+    "+ " + fmt(Math.round(bati - net)) + " m² de circulation ("
+    + Math.round(CIRC * 100) + " %)"));
+  meta.appendChild(document.createTextNode(
+    " = " + fmt(Math.round(bati)) + " m² bâtis"));
   if(hors > 0) meta.appendChild(el("span","mix-fl__hors",
     "+ " + fmt(Math.round(hors)) + " m² hors enveloppe"));
   bar.appendChild(meta);
@@ -411,16 +419,22 @@ function paintFloor(host, i){
   while(host.firstChild) host.removeChild(host.firstChild);
   var W = host.clientWidth || 600;
   var bl = onFloor(i);
-  var cap = usable(i);
   /* Deux bandes, et non une. La cour, la piscine et le chauffage à distance
      sont posés au terrain mais ne pèsent pas sur le plateau : mêlés au reste,
      ils repoussaient la ligne de plateau de 1'400 m² et le dessin ne disait
      plus la même chose que le pourcentage écrit à côté. Ils ont leur bande,
      sous un filet, hors du compte. */
-  var net = flNet(i), hors = horsAt(i);
-  var capH = isFinite(cap) ? cap * AIRE / W : 0;
-  var netH = net * AIRE / W, horsH = hors * AIRE / W;
-  var contentH = netH + horsH;
+  /* La circulation est DESSINÉE, et à l'échelle. Le niveau montrait ses seuls
+     locaux et comparait leur surface utile à un plateau lui-même converti en
+     utile : deux grandeurs justes, mais aucune des deux n'était celle du
+     projet. On voit maintenant le BÂTI — locaux plus circulation — contre le
+     plateau tel qu'on l'a saisi. Le pourcentage ne bouge pas d'un point : les
+     deux termes étaient déjà divisés par le même (1 − part). */
+  var net = flNet(i), hors = horsAt(i), circ = flBuilt(i) - net;
+  var plate = FLOORS[i] && FLOORS[i].plate > 0 ? FLOORS[i].plate : Infinity;
+  var capH = isFinite(plate) ? plate * AIRE / W : 0;
+  var netH = net * AIRE / W, circH = circ * AIRE / W, horsH = hors * AIRE / W;
+  var contentH = netH + circH + horsH;
   var H = Math.max(capH, contentH, 34);
   host.style.height = Math.round(H) + "px";
 
@@ -446,11 +460,23 @@ function paintFloor(host, i){
     });
   }
   bande(bl.filter(function(b){ return !PMAP[b.key].hors; }), { x:0, y:0, w:W, h:netH });
+  /* Hachurée, sans couleur de famille — comme sa ligne de légende au volet
+     Surfaces, et comme le bloc qu'elle y occupe déjà. */
+  if(circH > 0.5){
+    var cb = el("div","mix-circband is-hatched");
+    cb.style.top = netH.toFixed(1) + "px";
+    cb.style.height = circH.toFixed(1) + "px";
+    cb.setAttribute("data-tip", "Circulation|" + fmt(Math.round(circ)) + " m² à ce niveau|"
+      + Math.round(CIRC * 100) + " % du bâti, réglés au cahier des charges");
+    if(circH > 13) cb.appendChild(el("span", null, "circulation · "
+      + fmt(Math.round(circ)) + " m² · " + Math.round(CIRC * 100) + " %"));
+    host.appendChild(cb);
+  }
   if(horsH > 0){
     bande(bl.filter(function(b){ return PMAP[b.key].hors; }),
-          { x:0, y:netH, w:W, h:horsH });
+          { x:0, y:netH + circH, w:W, h:horsH });
     var sep = el("div","mix-hors");
-    sep.style.top = netH.toFixed(1) + "px";
+    sep.style.top = (netH + circH).toFixed(1) + "px";
     sep.appendChild(el("span", null, "hors enveloppe scolaire · "
       + fmt(Math.round(hors)) + " m²"));
     host.appendChild(sep);
@@ -460,16 +486,16 @@ function paintFloor(host, i){
      donc tout repère posé avant lui disparaît sous les blocs. */
   /* Le dépassement se mesure sur la seule bande de l'enveloppe : la bande hors
      enveloppe n'occupe aucun plateau, elle ne peut pas le dépasser. */
-  if(isFinite(cap) && netH > capH + 0.5){
+  if(isFinite(plate) && netH + circH > capH + 0.5){
     var oz = el("div","mix-over");
     oz.style.top = capH.toFixed(1) + "px";
-    oz.style.height = (netH - capH).toFixed(1) + "px";
+    oz.style.height = (netH + circH - capH).toFixed(1) + "px";
     host.appendChild(oz);
   }
-  if(isFinite(cap) && capH > 6){
+  if(isFinite(plate) && capH > 6){
     var cl = el("div","mix-cap");
     cl.style.top = capH.toFixed(1) + "px";
-    cl.appendChild(el("span", null, "plateau · " + fmt(Math.round(cap)) + " m² utiles"));
+    cl.appendChild(el("span", null, "plateau · " + fmt(Math.round(plate)) + " m²"));
     host.appendChild(cl);
   }
 }

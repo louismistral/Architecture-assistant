@@ -298,3 +298,20 @@
 .mixblk.is-flag.is-e{outline-color:var(--danger)}
 .mixblk.is-flag b{color:var(--ink)}
 .mix-fl__del svg{display:block}
+
+/* La circulation, dessinée à l'échelle sous les locaux du niveau. Hachurée et
+   sans couleur de famille : elle n'est d'aucune famille, et c'est exactement
+   ainsi qu'elle se lit au volet Surfaces. Le niveau ne montrait que ses
+   locaux — mille deux cents mètres carrés de couloirs manquaient au dessin
+   alors qu'ils étaient comptés dans le pourcentage écrit à côté. */
+.mix-circband{
+  position:absolute;left:0;right:0;z-index:1;
+  border-block:1px solid var(--ink-4);
+}
+.mix-circband span{
+  position:absolute;left:var(--s-1);top:2px;
+  font-size:var(--t-3xs);color:var(--ink-3);
+  background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
+}
+/* L'addition du niveau : utile + circulation = bâti. */
+.mix-fl__circ{color:var(--ink-3);padding-inline:var(--s-1)}
