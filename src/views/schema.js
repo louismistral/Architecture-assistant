@@ -1,29 +1,52 @@
 /* ============================================================================
    LE SCHÉMA FONCTIONNEL
 
-   L'ancien schéma dessinait chaque local à l'échelle de sa surface, à des
-   coordonnées posées à la main. Deux conséquences : un local de reproduction
-   de 9 m² devenait un carré de trois millimètres, avec son nom rejeté à côté
-   faute de place, et rien n'alignait quoi que ce soit — les fils se croisaient
-   et il fallait les suivre du doigt.
+   Deux choses à lire d'un coup : les RELATIONS que le règlement exige, et ce
+   que pèse chaque local. L'ancien schéma tenait la seconde en laissant tomber
+   la première — chaque local dessiné à l'échelle, largeur ET hauteur libres, à
+   des coordonnées posées à la main : rien n'alignait quoi que ce soit et les
+   fils se croisaient.
 
-   Ici on ne lit pas des surfaces, on lit des RELATIONS. Le dessin le dit :
-   cartes de même taille, rangées en colonnes par pôle, fils orthogonaux routés
-   dans les gouttières. Les surfaces restent écrites sur chaque carte, et se
-   lisent à l'échelle dans le volet Surfaces, qui est fait pour ça.
+   Ici, une seule dimension est libre. Toutes les colonnes ont la même largeur,
+   donc l'aire d'un rectangle est proportionnelle à sa hauteur, donc à ses m² :
+   on reste à l'échelle sans renoncer à l'alignement. Les locaux sont rangés en
+   colonnes par pôle, les fils sont orthogonaux et routés dans les gouttières.
 
    Toute la géométrie est DÉDUITE de `data/schema.js` : ajouter un nœud ou un
-   lien ne demande aucune coordonnée.
+   lien ne demande aucune coordonnée, et l'échelle se recalcule sur les
+   surfaces du jour.
    ========================================================================= */
 import { el, fmt } from "../core/format.js";
 import { FMAP, ITEMBYKEY } from "../core/model.js";
 import { s, wrapText } from "../core/svg.js";
 import { FREE, SLINK, SNODE, SPOLE } from "../data/schema.js";
 
-/* ---------- géométrie, en unités de dessin -------------------------------- */
-var NW = 42, NH = 17, NGAP = 6;      /* carte : largeur, hauteur, écart vertical */
+/* ---------- géométrie, en unités de dessin --------------------------------
+   Les rectangles valent leur surface. Toutes les colonnes ont la MÊME largeur :
+   à largeur constante, l'aire d'un rectangle est proportionnelle à sa hauteur,
+   donc à ses m². C'est ce qui permet d'être à l'échelle sans renoncer à
+   l'alignement — l'ancien schéma, libre de ses deux dimensions, était à
+   l'échelle mais n'alignait rien.
+
+   Un local de 6 m² à cette échelle mesure moins d'une unité : il ne peut pas
+   contenir son nom. Le nom passe alors SOUS le rectangle, dans l'emplacement
+   que le nœud occupe. Le rectangle reste juste, le nom reste lisible. */
+var NW = 42, NGAP = 7;               /* largeur d'un rectangle, écart entre deux emplacements */
+var COLH = 230;                      /* budget de hauteur du pôle le plus lourd */
+var HMIN = 0.7;                      /* filet du seul cas sans surface : le hors bilan */
 var GUT = 26, HEAD = 11, PAD = 3;    /* gouttière entre colonnes, bandeau de pôle */
 var CHAN = 2;                        /* écart entre deux fils d'un même faisceau */
+var FS = 4.2, FSSM = 3.4;            /* corps du nom, corps de la surface */
+var LINEH = FS * 1.1, SUBH = FSSM * 1.35;
+
+/* m² par unité de dessin carrée. Déduite des données : le pôle le plus lourd
+   tient dans son budget, quelle que soit la surface qu'on lui donne. */
+export var UA = 1;
+/* Aucun plancher : la proportion est exacte, du plus petit au plus grand. Le
+   filet de 1,4 px du contour suffit à faire voir un local de 6 m², qui ne fait
+   ici que six dixièmes d'unité — l'arrondir l'aurait rendu plus gros qu'il
+   n'est, et c'est précisément ce que le dessin doit dire. */
+export function hOf(a){ return a / (NW * UA); }
 
 /* La table des nœuds est construite au chargement : `linkList()` la lit pour
    nommer les deux bouts d'un lien, et elle est appelée AVANT le premier dessin.
@@ -47,22 +70,44 @@ export function nodeArea(nd){
 }
 
 function layout(){
-  var x = 0, maxRows = 0;
+  /* 1 · l'échelle, déduite du pôle le plus lourd */
+  var maxA = 0;
   SPOLE.forEach(function(pl){
+    var t = 0;
+    SNODE.forEach(function(nd){ if(nd.p === pl.id) t += nodeArea(nd).a; });
+    pl.area = t;
+    if(t > maxA) maxA = t;
+  });
+  UA = maxA > 0 ? maxA / (NW * COLH) : 1;
+
+  /* 2 · chaque nœud : son rectangle, son nom, l'emplacement qu'il occupe */
+  var x = 0, maxH = 0;
+  SPOLE.forEach(function(pl, ci){
     var rows = SNODE.filter(function(nd){ return nd.p === pl.id; });
     pl.x = x; pl.rows = rows;
+    var y = HEAD;
     rows.forEach(function(nd, i){
-      nd.x = x; nd.y = HEAD + i * (NH + NGAP);
-      nd.w = NW; nd.h = NH;
-      nd.cx = nd.x + NW / 2; nd.cy = nd.y + NH / 2;
-      nd.col = SPOLE.indexOf(pl);
-      nd.row = i;
+      var A = nodeArea(nd);
+      nd.lines = wrapText(nd.n, Math.floor((NW - 3) / (FS * 0.5)), 2);
+      var lab = nd.lines.length * LINEH + SUBH + 2;
+      /* Un local sans surface — mentionné au règlement, hors bilan — n'a pas de
+         proportion à respecter : il prend le filet. */
+      nd.hh = A.hors ? HMIN : hOf(A.a);
+      /* Le nom tient dans le rectangle, ou il se range dessous. */
+      nd.labIn = nd.hh >= lab + 2;
+      nd.slot = nd.labIn ? nd.hh : nd.hh + lab;
+      nd.x = x; nd.y = y; nd.w = NW;
+      nd.cx = x + NW / 2;
+      nd.cy = y + nd.hh / 2;          /* le fil s'accroche au RECTANGLE, pas à l'emplacement */
+      nd.col = ci; nd.row = i;
+      y += nd.slot + NGAP;
     });
-    maxRows = Math.max(maxRows, rows.length);
+    pl.h = y - NGAP;
+    if(pl.h > maxH) maxH = pl.h;
     x += NW + GUT;
   });
   SCH_W = x - GUT;
-  SCH_H = HEAD + maxRows * (NH + NGAP) - NGAP;
+  SCH_H = maxH;
 }
 
 /* ---------- routage des fils ----------------------------------------------
@@ -77,10 +122,12 @@ function routes(){
     if(!A || !B) return;
     if(A.col === B.col){
       var hi = A.row < B.row ? A : B, lo = A.row < B.row ? B : A;
-      if(lo.row - hi.row === 1){
-        /* rangs voisins : le fil passe droit d'un bord à l'autre */
-        out.push({ lk:lk, d:"M " + hi.cx + " " + (hi.y + NH) + " L " + lo.cx + " " + lo.y,
-                   mx:hi.cx, my:(hi.y + NH + lo.y) / 2 });
+      if(lo.row - hi.row === 1 && hi.labIn){
+        /* Rangs voisins et rien entre eux : le fil passe droit d'un bord à
+           l'autre. Un nom rangé sous le rectangle du haut occupe ce vide : le
+           fil part alors dans le canal, plutôt que de traverser le texte. */
+        out.push({ lk:lk, d:"M " + hi.cx + " " + (hi.y + hi.hh) + " L " + lo.cx + " " + lo.y,
+                   mx:hi.cx, my:(hi.y + hi.hh + lo.y) / 2 });
         return;
       }
       /* rangs éloignés : le fil contourne par le canal, à gauche de la colonne */
@@ -116,9 +163,12 @@ export function drawSchema(host){
   while(host.firstChild) host.removeChild(host.firstChild);
   layout();
   var eff = Math.max(host.clientWidth || 900, 900) / (SCH_W + 12);
-  var fs = 4.2, fsSm = 3.4, fsCap = 3.4;
+  var fs = FS, fsSm = FSSM, fsCap = 3.4;
 
-  var svg = s("svg", { viewBox: "-6 -3 " + (SCH_W + 12) + " " + (SCH_H + 8),
+  /* La marge de gauche loge le canal de la première colonne : sans elle, les
+     fils de l'enseignement sortaient du cadre et étaient rognés. */
+  var REF = 100, hRef = hOf(REF), foot = hRef + 12;
+  var svg = s("svg", { viewBox: "-16 -3 " + (SCH_W + 24) + " " + (SCH_H + 8 + foot),
     preserveAspectRatio: "xMinYMin meet", role: "img",
     "aria-label": "Schéma fonctionnel : les locaux rangés par pôle, reliés par les "
       + "adjacences que le règlement exige." });
@@ -126,9 +176,8 @@ export function drawSchema(host){
   /* --- bandeaux de pôle : une colonne dit ce qu'elle regroupe --- */
   var gp = s("g", null);
   SPOLE.forEach(function(pl){
-    var last = pl.rows[pl.rows.length - 1];
     gp.appendChild(s("rect", { x: pl.x - PAD, y: 0, width: NW + 2 * PAD,
-      height: (last ? last.y + NH : HEAD) + PAD, rx: 2,
+      height: pl.h + PAD, rx: 2,
       fill: "var(--rule-soft)", "fill-opacity": ".55", stroke: "none" }));
     var t = s("text", { x: pl.x, y: HEAD - 4.2, "font-size": fsCap,
       fill: "var(--ink-3)", "letter-spacing": ".1" });
@@ -166,25 +215,28 @@ export function drawSchema(host){
     var A = nodeArea(nd);
     var col = nd.f ? "var(" + FMAP[nd.f].c + ")" : "var(--ink-3)";
     var grp = s("g", { "class": "blk", tabindex: "0" });
-    var rc = s("rect", { x: nd.x, y: nd.y, width: NW, height: NH, rx: 1.5,
+    /* Le rayon d'angle suit la hauteur : à 1,5 fixe, un rectangle de trois
+       unités devenait une pastille et ne se comparait plus aux autres. */
+    var rc = s("rect", { x: nd.x, y: nd.y, width: NW, height: nd.hh,
+      rx: Math.min(1.5, nd.hh / 4),
       fill: A.hors ? "var(--panel)" : col,
       "fill-opacity": A.hors ? "1" : "var(--fill-op)",
       stroke: col, "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" });
     if(A.est || A.hors) rc.setAttribute("stroke-dasharray", "4 3");
     grp.appendChild(rc);
 
-    /* Le nom et la surface forment UNE pile, centrée dans la carte : calés
-       séparément, la surface d'un nom sur deux lignes débordait sous le bord. */
-    var lines = wrapText(nd.n, Math.floor((NW - 3) / (fs * 0.5)), 2);
-    var lineH = fs * 1.1, subH = fsSm * 1.35;
-    var top0 = nd.cy - (lines.length * lineH + subH) / 2;
+    /* Le nom et la surface forment UNE pile : centrée dans le rectangle quand
+       il est assez haut, rangée juste dessous sinon. */
+    var lines = nd.lines, blk = lines.length * LINEH + SUBH;
+    var top0 = nd.labIn ? nd.cy - blk / 2 : nd.y + nd.hh + 1.2;
+    var ink = nd.labIn ? "var(--ink)" : "var(--ink)";
     lines.forEach(function(ln, i){
-      var t = s("text", { x: nd.cx, y: top0 + fs * 0.8 + i * lineH, "text-anchor": "middle",
-        "font-size": fs, fill: "var(--ink)", "font-weight": 500 });
+      var t = s("text", { x: nd.cx, y: top0 + fs * 0.8 + i * LINEH, "text-anchor": "middle",
+        "font-size": fs, fill: ink, "font-weight": 500 });
       t.textContent = ln;
       grp.appendChild(t);
     });
-    var v = s("text", { x: nd.cx, y: top0 + lines.length * lineH + fsSm * 0.95,
+    var v = s("text", { x: nd.cx, y: top0 + lines.length * LINEH + fsSm * 0.95,
       "text-anchor": "middle", "font-size": fsSm, fill: "var(--ink-2)",
       "font-family": "'IBM Plex Mono', monospace" });
     v.textContent = A.hors ? "hors bilan" : fmt(A.a) + " m²" + (A.est ? " ?" : "");
@@ -197,6 +249,25 @@ export function drawSchema(host){
     grp.setAttribute("aria-label", nd.n + (A.hors ? ", hors bilan" : ", " + fmt(A.a) + " mètres carrés"));
     svg.appendChild(grp);
   });
+
+  /* --- l'étalon : ce que vaut un rectangle -----------------------------------
+     Les surfaces sont écrites sur chaque carte, mais rien ne calibrait l'œil.
+     Un rectangle de référence, à la même largeur que tous les autres, le fait. */
+  var fy = SCH_H + 12;
+  var gf = s("g", null);
+  gf.appendChild(s("rect", { x: 0, y: fy, width: NW, height: hRef, rx: Math.min(1.5, hRef / 4),
+    fill: "var(--ink-4)", "fill-opacity": ".18", stroke: "var(--ink-3)",
+    "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
+  var ft = s("text", { x: NW + 4, y: fy + hRef / 2 + fsSm * 0.4, "font-size": fsSm,
+    fill: "var(--ink-3)", "font-family": "'IBM Plex Mono', monospace" });
+  ft.textContent = fmt(REF) + " m²";
+  gf.appendChild(ft);
+  var f2 = s("text", { x: NW + 26, y: fy + hRef / 2 + fs * 0.35, "font-size": fs,
+    fill: "var(--ink-3)" });
+  f2.textContent = "à largeur constante, la hauteur d\u2019un rectangle vaut sa surface";
+  gf.appendChild(f2);
+  svg.appendChild(gf);
+
   host.appendChild(svg);
   return eff;
 }

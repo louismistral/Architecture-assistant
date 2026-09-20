@@ -39,6 +39,10 @@ commente demandait quatre écrans de défilement.
   `src/data/schema.js`). Les adjacences ont été un onglet, puis un volet : une proximité
   exigée entre deux locaux n'est pas d'une autre nature qu'une hauteur libre ou une
   distance au voisin. C'est une contrainte, et elle se lit avec les autres.
+  Le schéma est **à l'échelle** : toutes les colonnes ont la même largeur, donc la
+  hauteur d'un rectangle vaut sa surface. Un local trop petit pour porter son nom le
+  range dessous — le rectangle reste juste, le nom reste lisible. L'échelle se déduit
+  des surfaces du jour, pas d'une constante : `UA`, m² par unité de dessin carrée.
 
 URL : `#programme/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a
 un regroupement. L'identifiant de l'onglet reste `programme` : les liens qui ont circulé

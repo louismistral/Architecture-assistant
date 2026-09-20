@@ -313,8 +313,9 @@ function adjacencesSection(){
   p0.appendChild(hd);
   p0.appendChild(el("p","panel-sub",
     "Les locaux que le règlement demande de placer côte à côte, rangés par pôle. "
-    + "Les cartes ont toutes la même taille : ici on lit des relations, pas des "
-    + "surfaces — celles-ci se lisent à l\u2019échelle dans le volet Surfaces."));
+    + "Chaque rectangle vaut sa surface : à largeur constante, sa hauteur est celle "
+    + "de ses m². Un local trop petit pour porter son nom le range dessous — le "
+    + "rectangle reste juste, le nom reste lisible."));
   p0.appendChild(linkKey());
   var sw = el("div","schema-wrap");
   p0.appendChild(sw);

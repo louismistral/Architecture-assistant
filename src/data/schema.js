@@ -8,12 +8,11 @@
    désigne ; la surface se lit dans `program.js` par cette table, et un nœud
    sans poste est hors bilan, ce qui se voit ;
 
-   les POSITIONS. Les nœuds étaient posés à la main en coordonnées, à l'échelle
-   de leur surface : un local de 9 m² y devenait un carré de trois millimètres
-   avec son nom posé à côté, et les fils se croisaient. Un nœud appartient
-   désormais à un PÔLE et prend son rang dans la colonne ; la vue en déduit la
-   géométrie. Le schéma dit les relations — les surfaces, elles, se lisent à
-   l'échelle dans le volet Surfaces, qui est fait pour ça.
+   les POSITIONS. Les nœuds étaient posés à la main en coordonnées, largeur et
+   hauteur libres : rien n'alignait quoi que ce soit et les fils se croisaient.
+   Un nœud appartient désormais à un PÔLE et prend son rang dans la colonne ;
+   la vue en déduit la géométrie, et l'échelle avec — à largeur constante, la
+   hauteur d'un rectangle vaut sa surface.
    ========================================================================= */
 
 /* Les pôles, de gauche à droite. L'ordre n'est pas décoratif : il met côte à
