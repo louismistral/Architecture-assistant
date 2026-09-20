@@ -15,6 +15,7 @@
 import { el } from "../core/format.js";
 import { CIRC, CIRCSET, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
+import { optsOf, setOpts } from "./opts.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
 
@@ -59,6 +60,9 @@ export function saveSoon(){
       /* Les écarts assumés survivent eux aussi : les reprendre un par un à
          chaque ouverture reviendrait à ne jamais pouvoir en assumer un. */
       accepts: acceptList(),
+      /* Les deux interrupteurs du mixer : les retrouver éteints à chaque
+         ouverture revenait à ne jamais pouvoir s'en servir. */
+      opts: optsOf(),
       updatedAt: Date.now()
     };
     try {
@@ -132,6 +136,7 @@ export function initStore(){
       try{ applyStack(o.lvls, o.plates); }catch(_){ lost.push("niveaux"); }
       try{ applyBlocks(o.blocks); }catch(_){ lost.push("répartition"); }
       try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
+      try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
       if(lost.length) badParts = lost;
     }
     localStorage.setItem(LSKEY + ".probe", "1");

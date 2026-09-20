@@ -180,6 +180,7 @@ src/mix/shuffle.js    répartition ordonnée, tirage, proposition de pile
 src/mix/checks.js     contrôle d'une répartition → écarts, avec code et remèdes
 src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
 src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
+src/mix/opts.js       les deux interrupteurs : tirer la pile, grouper les liés
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
 src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le popover
 ```
@@ -205,6 +206,11 @@ qu'un message :
 « Laisser comme ça » n'efface rien : l'écart quitte le verdict, passe dans « laissés tels
 quels » et se reprend d'un clic.
 
+**Un écart ouvert DÉSIGNE ses coupables** dans la pile : le niveau visé prend le filet de
+l'écart, les pièces en cause le portent (`issFocus` dans la vue, `keys` sur l'écart). Lire
+un conflit et devoir ensuite chercher les pièces à la main, c'était tout le travail laissé
+à faire.
+
 **Les contraintes de connexion ne sont jamais dures.** Le tirage les prend comme des
 préférences — un poste va d'abord au niveau où se trouve déjà ce que le règlement lui
 demande de toucher — et le contrôle dit après coup ce qui n'a pas pu tenir.
@@ -214,13 +220,25 @@ morceau de poste posé à un niveau (6 de ces 18 salles au 1ᵉʳ étage). Un po
 sauf ceux dont le règlement impose les dimensions — la salle de sport double, 28 × 32 m,
 ne se coupe pas.
 
-Par défaut la pile n'a qu'un **rez-de-chaussée**. Le nombre d'étages et le nombre de
-sous-sols **se choisissent d'un geste**, sous la pile : deux groupes de boutons, `setStack`
-fait le reste — il ajoute, il retire, il renvoie au bac ce qui tombe hors de la nouvelle
-pile, et il conserve les plateaux réglés niveau par niveau. `stackCost(nsub, nup)` dit
-d'avance combien de pièces une réduction renverrait au bac. **Shuffle** peut aussi proposer
-le nombre de niveaux, déduit de la surface bâtie à loger, du plateau du rez et de ce que le
-règlement admet en sous-sol.
+Par défaut la pile n'a qu'un **rez-de-chaussée**. On l'édite **là où elle se dessine** :
+« + Ajouter un étage » en tête de pile, « + Creuser un sous-sol » au pied, et une corbeille
+sur chaque niveau qui le retire en renvoyant ses pièces au bac (`addFloorTop`,
+`addFloorBottom`, `delFloorAt`). Retirer un niveau du MILIEU est permis : les cotes se
+renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
+
+**Deux interrupteurs**, dans la barre du haut, persistés avec le reste :
+
+- **Shuffle niveaux** — le tirage propose aussi la pile, déduite de la surface bâtie à
+  loger, du plateau du rez et de ce que le règlement admet en sous-sol.
+- **Grouper les liés** — déplacer une pièce emmène toute sa GRAPPE de proximité, la
+  composante connexe des adjacences exigées (`grappeDe` dans `prog.js`, `moveGroupe` dans
+  `floors.js`). Une mutualisation possible n'en fait pas partie : elle est offerte, pas
+  due. La grappe de la salle de sport compte quatorze postes — elle est grande parce que
+  le règlement le dit, et c'est ce que l'interrupteur donne à voir. Éteint, une grappe
+  peut s'éparpiller sur trois étages, et le contrôle le dira.
+
+Le tirage est la seule proposition : « Répartir », son jumeau ordonné, donnait la même
+chose à l'ordre des chapitres près, et la graine rend le tirage aussi rejouable.
 
 Les locaux engins de la salle de gym (180 m²) ne sont pas posés : le règlement les
 convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deux fois.

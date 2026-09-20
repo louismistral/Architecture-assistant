@@ -12,7 +12,7 @@
    ========================================================================= */
 import { CIRC } from "../core/model.js";
 import { RULES } from "../data/rules.js";
-import { PMAP, aOf, posables, qOf } from "./prog.js";
+import { PMAP, aOf, grappeDe, posables, qOf } from "./prog.js";
 
 export var TRAY = -1;
 
@@ -171,13 +171,70 @@ export function place(key, want){
 }
 export function toTray(){ BLOCKS.forEach(function(b){ b.fl = TRAY; }); }
 
+/* Déplacer une part AVEC tout ce que le règlement lui attache : la grappe de
+   proximité, telle que `prog.js` la déduit du schéma fonctionnel. C'est l'autre
+   moitié de l'option « grouper les liés » — sans elle, on pouvait poser la
+   salle de sport au rez et sa scène au 2ᵉ étage sans s'en apercevoir. */
+export function moveGroupe(u, fl){
+  var b = blockOf(u);
+  if(!b) return false;
+  var keys = {}, n = 0;
+  grappeDe(b.key).forEach(function(k){ keys[k] = 1; });
+  BLOCKS.slice().forEach(function(x){
+    if(!keys[x.key]) return;
+    if(x.fl === fl) return;
+    x.fl = fl; n++;
+  });
+  Object.keys(keys).forEach(fuse);
+  return n > 0;
+}
+/* Les parts qu'un déplacement groupé emmènerait, la part elle-même comprise. */
+export function grappeBlocs(u){
+  var b = blockOf(u);
+  if(!b) return [];
+  var keys = {};
+  grappeDe(b.key).forEach(function(k){ keys[k] = 1; });
+  return BLOCKS.filter(function(x){ return keys[x.key]; });
+}
+
 /* ---------- éditer la pile ------------------------------------------------
-   `addFloor` / `delFloor` / `addBasement` / `delBasement` vivaient ici et
-   n'avaient plus qu'un appelant chacun, dans une barre repliée. La pile se
-   choisit désormais d'un geste — tant de sous-sols, tant d'étages — et
-   `setStack` fait tout : ajouter, retirer, et renvoyer au bac ce qui tombe
-   hors de la nouvelle pile. Quatre commandes incrémentales pour une décision
-   qui ne l'est pas, c'était quatre chemins vers le même état. */
+   On ajoute aux deux extrémités — un étage au-dessus, un sous-sol en dessous —
+   et on retire N'IMPORTE QUEL niveau. Retirer au milieu n'est pas un caprice :
+   c'est le geste qu'on fait quand un étage s'avère de trop, et rien n'oblige à
+   ce que ce soit le dernier. Les cotes se renumérotent derrière, la pile reste
+   contiguë, et le rez reste le rez. */
+export function addFloorTop(){
+  FLOORS.push({ lvl: lvlOf(FLOORS.length - 1) + 1,
+                plate: FLOORS[FLOORS.length - 1].plate });
+  return FLOORS.length - 1;
+}
+/* Un sous-sol s'insère SOUS la pile : tous les indices montent d'un cran, les
+   cotes ne bougent pas. Rien n'y descend tout seul. */
+export function addFloorBottom(){
+  FLOORS.unshift({ lvl: lvlOf(0) - 1, plate: FLOORS[0].plate });
+  BLOCKS.forEach(function(b){ if(b.fl !== TRAY) b.fl += 1; });
+  return 0;
+}
+/* Retire le niveau `i`. Ce qu'il portait repart au bac — rien n'est perdu, tout
+   est à reposer — et les niveaux au-dessus descendent d'un cran. */
+export function delFloorAt(i){
+  if(FLOORS.length < 2 || !FLOORS[i]) return false;
+  var g = grade();
+  BLOCKS.forEach(function(b){
+    if(b.fl === i) b.fl = TRAY;
+    else if(b.fl > i) b.fl -= 1;
+  });
+  FLOORS.splice(i, 1);
+  /* La cote du rez est celle du niveau qui prend sa place : retirer un sous-sol
+     ne doit pas faire remonter tout le bâtiment d'un étage. */
+  var ng = (i <= g) ? Math.min(g, FLOORS.length - 1) : g;
+  FLOORS.forEach(function(F, k){ F.lvl = k - ng; });
+  return true;
+}
+/* Ce que coûte le retrait d'un niveau : le nombre de pièces qui repartent au
+   bac. La commande doit pouvoir le dire avant d'être cliquée. */
+export function floorCost(i){ return flCount(i); }
+
 export function setPlate(i, v){
   if(!FLOORS[i]) return false;
   var n = Math.round(v);

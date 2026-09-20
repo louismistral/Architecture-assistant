@@ -239,10 +239,6 @@
   background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
 }
 
-/* Le rang d'édition de la pile n'est plus replié : le nombre d'étages et la
-   présence d'un sous-sol sont deux décisions de projet, elles se voient. */
-.mix-edit__row{align-items:center}
-.mix-edit__note{margin:var(--s-2) 0 0;max-width:74ch}
 
 /* --- un écart se clique, et propose son remède -----------------------------
    La liste ne faisait que dire. Chaque ligne est maintenant une commande : elle
@@ -264,3 +260,25 @@
 .mix-issues__hd--soft{margin-top:var(--s-4)}
 .chip--soft{background:var(--rule);color:var(--ink-2)}
 .mix-reprendre{margin-left:auto}
+
+/* --- ajouter un niveau, là où il apparaîtra --------------------------------
+   Un rang discret en tête et au pied de la pile : le geste est au bord qu'il
+   prolonge, et non dans une barre d'outils à quatre cents pixels de là. */
+.mix-add{display:flex;justify-content:center;padding:var(--s-2) 0}
+.mix-add__b{border-style:dashed;color:var(--ink-3)}
+.mix-add__b:hover{color:var(--ink);border-style:solid}
+
+/* La corbeille d'un niveau : sur le niveau, jamais ailleurs. */
+.mix-fl__del{margin-left:var(--s-2);color:var(--ink-3);font-size:var(--t-md);line-height:1}
+.mix-fl__del:hover{color:var(--danger);border-color:var(--danger)}
+
+/* --- ce que l'écart ouvert désigne -----------------------------------------
+   Le niveau visé prend le filet de l'écart, les pièces en cause le portent.
+   Lire un conflit et devoir ensuite chercher ses coupables dans la pile, c'est
+   tout le travail laissé à faire. */
+.mix-fl.is-flagged{outline:2px solid var(--warn);outline-offset:3px;border-radius:var(--r-md)}
+.mix-fl.is-flagged.is-e{outline-color:var(--danger)}
+.mixblk.is-flag{outline:2px solid var(--warn);outline-offset:-2px;z-index:2}
+.mixblk.is-flag.is-e{outline-color:var(--danger)}
+.mixblk.is-flag b{color:var(--ink)}
+.mix-fl__del svg{display:block}
