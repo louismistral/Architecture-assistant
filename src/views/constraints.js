@@ -2,7 +2,7 @@
    LES CONTRAINTES DU CONCOURS — VOLET DE L'ONGLET PROGRAMME
 
    Elles y sont à leur place : ce sont elles qui pèsent sur les surfaces, et
-   l'onglet Programme est le premier de la chronologie — programme, puis
+   le cahier des charges est le premier de la chronologie — programme, puis
    répartition, puis volumétrie, puis typologie. Chaque valeur est lue dans
    `src/data/rules.js`. Aucune n'est réécrite ici : un chiffre qui change au
    règlement ne se change qu'à un endroit.

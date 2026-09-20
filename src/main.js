@@ -112,7 +112,7 @@ window.addEventListener("hashchange", function(){
 
 /* ---------- démarrage ---------- */
 wireTheme();
-/* Avant tout rendu : une surface peut être modifiée depuis l'onglet Programme,
+/* Avant tout rendu : une surface peut être modifiée depuis le cahier des charges,
    donc avant que le mixer ait jamais été ouvert. */
 initStore();
 verifieQuantites();

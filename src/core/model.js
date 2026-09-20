@@ -89,7 +89,7 @@ export function recompute(){
 }
 recompute();
 
-/* Surface d'un poste « à préciser ». Elle se saisit dans l'onglet Programme et
+/* Surface d'un poste « à préciser ». Elle se saisit dans le cahier des charges et
    ne se recalcule nulle part ailleurs : tout le reste en découle. */
 export function setItemArea(key, v){
   var it = ITEMBYKEY[key];

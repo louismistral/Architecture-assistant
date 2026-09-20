@@ -5,7 +5,7 @@ import { RULES } from "../data/rules.js";
 
 /* Ce module construisait autrefois le contenu d'un en-tête statique haut de
    ~900 px, imposé au-dessus des cinq onglets. Il produit maintenant la section
-   d'introduction de l'onglet Programme — le seul qu'elle décrive — plus les
+   d'introduction du cahier des charges — le seul qu'elle décrive — plus les
    deux chiffres du chrome permanent. */
 
 var onSetArea = null, onSetCirc = null;
@@ -32,7 +32,7 @@ export function renderBar(){
     : "Les huit postes et la part de circulation ont reçu ta valeur";
 }
 
-/* ---------- chapô de l'onglet Programme ----------
+/* ---------- chapô du cahier des charges ----------
    Le titre et le chiffre-clé seulement. Les surfaces à préciser et la légende
    des familles appartiennent à la SECTION des surfaces, plus bas : l'onglet se
    lit maintenant en trois temps — contraintes, surfaces, adjacences. */
@@ -40,7 +40,7 @@ export function introSection(){
   var s = el("section","intro");
 
   var h = el("div","intro__head");
-  h.appendChild(el("h1", null, "Programme"));
+  h.appendChild(el("h1", null, "Cahier des charges"));
   h.appendChild(el("p","intro__lead",
     "Les contraintes du concours, les surfaces dessinées à l’échelle et les adjacences "
     + "exigées. C’est le premier temps : tout ce qui suit s’en sert."));

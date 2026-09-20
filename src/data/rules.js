@@ -56,7 +56,7 @@ export var RULES = {
   /* --- part de circulation ----------------------------------------------- */
   /* Hypothèse de PROJET, pas un chiffre du règlement : la part de la surface
      bâtie qui n'est pas un local du programme — couloirs, escaliers, paliers,
-     sas, gaines. Elle se règle dans l'onglet Programme, parmi les surfaces à
+     sas, gaines. Elle se règle dans le cahier des charges, parmi les surfaces à
      préciser, et c'est de là que tous les onglets suivants la lisent.
      Convention, une seule dans tout le projet : c'est une part de la surface
      BÂTIE, donc bâti = utile / (1 − part). Une part de 0,18 ajoute 22 % à la

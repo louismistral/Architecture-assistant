@@ -13,35 +13,38 @@ le code**.
 ## Les onglets sont une chronologie
 
 ```
-Programme  →  Programme mixer  →  Massing  →  Typologie
-contraintes   répartition du      volumétrie  plans et
-et surfaces   programme sur       sur le site coupes
-              les niveaux
+Cahier des charges  →  Programme mixer  →  Massing  →  Typologie
+surfaces et             répartition du      volumétrie  plans et
+contraintes             programme sur       sur le site coupes
+                        les niveaux
 ```
 
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :
 l'onglet Site venait après le Plan, donc la typologie décidait du volume.
 
-**Aujourd'hui, deux onglets existent** : Programme et Programme mixer. Massing et
+**Aujourd'hui, deux onglets existent** : Cahier des charges et Programme mixer. Massing et
 Typologie sont à construire. Le code 3D et le générateur de volumétrie sont conservés
 **dormants** — `src/core/gl.js`, `src/vol/place.js`, `massing.js`, `checks.js`,
 `scene3d.js` — sans onglet qui les expose ; ils sont la base du futur Massing.
 
-L'onglet Programme porte **trois volets**, dans cet ordre : **Surfaces**,
-**Contraintes**, **Adjacences** (`view.sub`, `SUBS` dans `src/core/viewstate.js`). Ils
-étaient empilés sur une seule page, numérotés 1, 2, 3 : revenir d'une adjacence à la
-surface qu'elle commente demandait quatre écrans de défilement. Ce sont trois lectures du
-même règlement, pas trois étapes — la chronologie du concours, elle, est dans les onglets.
+Le **cahier des charges** porte **deux volets**, dans cet ordre : **Surfaces** et
+**Contraintes** (`view.sub`, `SUBS` dans `src/core/viewstate.js`). Ils étaient trois,
+empilés sur une seule page avant cela : revenir d'une adjacence à la surface qu'elle
+commente demandait quatre écrans de défilement.
 
 - **Surfaces** — le programme à l'échelle, les huit postes « à préciser » et la part de
   circulation. C'est le volet d'ouverture, et le seul où l'on saisit quelque chose.
-- **Contraintes** — `src/views/constraints.js`, lu dans `src/data/rules.js`.
-- **Adjacences** — `src/views/schema.js`.
+- **Contraintes** — `src/views/constraints.js`, lu dans `src/data/rules.js`, puis le
+  **schéma fonctionnel** des adjacences (`src/views/schema.js`, lu dans
+  `src/data/schema.js`). Les adjacences ont été un onglet, puis un volet : une proximité
+  exigée entre deux locaux n'est pas d'une autre nature qu'une hauteur libre ou une
+  distance au voisin. C'est une contrainte, et elle se lit avec les autres.
 
 URL : `#programme/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a
-un regroupement. Les formes qui ont circulé avant — `#adjacences` et `#programme/fam` —
-restent valables. Un volet s'ajoute dans `SUBS` plus une branche dans `render()` ; le
-bouton et le routage par hash suivent tout seuls.
+un regroupement. L'identifiant de l'onglet reste `programme` : les liens qui ont circulé
+— `#adjacences`, `#programme/adjacences`, `#programme/fam` — restent valables et mènent
+au volet qui les a repris. Un volet s'ajoute dans `SUBS` plus une branche dans
+`render()` ; le bouton et le routage par hash suivent tout seuls.
 
 ---
 
@@ -56,7 +59,7 @@ exacte — jamais les m².
 - Proportions admissibles à surface exacte : `src/core/geometry.js` — `validDims`,
   `nearestDims`, `squarest` (grille au demi-mètre, repli au décimètre).
 - Huit postes que le règlement laisse « selon projet » sont **à préciser** : ils sont
-  marqués `est:1` et saisissables dans l'onglet Programme, section Surfaces. Programme
+  marqués `est:1` et saisissables dans le cahier des charges, volet Surfaces. Programme
   chiffré 6'489 m², total vivant 7'025 m².
 
 Totaux par chapitre (m² nets) : école 2'616 · sport 1'751 · UAPE 316 · technique 942 ·
@@ -65,7 +68,7 @@ infrastructures 900 · extérieurs 500. Bâti scolaire = les quatre premiers, 5'
 ## Règle seconde : la circulation est une part de la surface BÂTIE
 
 Elle n'est chiffrée nulle part au règlement : c'est une hypothèse de projet, et elle vaut
-plus de mille mètres carrés. Elle se règle **dans l'onglet Programme, parmi les surfaces à
+plus de mille mètres carrés. Elle se règle **dans le cahier des charges, parmi les surfaces à
 préciser, et là seulement** ; tous les onglets suivants la lisent.
 
 ```
@@ -94,7 +97,7 @@ distance, la cour et son préau n'ont pas de couloirs à nous.
 Extraites du règlement-programme de juillet 2026 (`DOC/1.19.a`) et de la directive
 AEAI DPI 16-15 (`DOC/1.19.d`). **Toute vérification et tout générateur lisent
 `RULES` ; aucune de ces valeurs n'est réécrite ailleurs.** La section Contraintes de
-l'onglet Programme (`src/views/constraints.js`) ne fait que les afficher.
+du cahier des charges (`src/views/constraints.js`) ne fait que les afficher.
 
 ### Site (art. 2.3)
 - Parcelles 5606, 5607, 5608, 5610 à 5614 et 4550 — **11'740 m²** au règlement ; le
@@ -219,8 +222,10 @@ convertit en abri PC, dont les 750 m² les contiennent. Les poser compterait deu
 - **Une surface, un nombre, une famille, une note** : `src/data/program.js` seul.
 - **Une contrainte du concours** : `src/data/rules.js` seul — la section Contraintes, les
   règles de niveau et le contrôle en découlent.
-- **Une adjacence** : `src/data/schema.js` seul. `src/mix/prog.js` ne fait que la table
-  nœud → poste, et signale dans `LIENS_ORPHELINS` tout nom qui ne correspond plus.
+- **Une adjacence** : `src/data/schema.js` seul — le lien, le pôle du nœud, et les postes
+  qu'il désigne (`nd.k`). Ni surface ni coordonnée : la surface se lit dans `program.js`
+  par cette table, la géométrie est déduite par la vue. `LIENS_ORPHELINS` signale tout
+  nom de poste qui ne correspond plus.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js` — mesures seulement, aucune règle.
 - **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait

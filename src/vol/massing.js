@@ -32,7 +32,7 @@ export var PARTIS = [
 /* ---- les réglages ------------------------------------------------------- */
 /* État mutable du générateur : lu partout, écrit par `massSet` seul. */
 /* `circ` n'est PLUS un réglage du générateur. La part de circulation se décide
-   dans l'onglet Programme, parmi les surfaces à préciser, et de là seulement :
+   dans le cahier des charges, parmi les surfaces à préciser, et de là seulement :
    elle vivait ici à 15 % en SUPPLÉMENT de la surface utile pendant qu'elle
    valait 18 % de la surface BÂTIE dans l'outil voisin — même mot, deux
    arithmétiques, 200 m² d'écart. */

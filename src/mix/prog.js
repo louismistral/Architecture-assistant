@@ -1,7 +1,7 @@
 /* ============================================================================
    LE PROGRAMME, VU COMME DES PARTS À POSER
 
-   L'onglet Programme tient les surfaces ; le mixer les répartit sur des
+   Le cahier des charges tient les surfaces ; le mixer les répartit sur des
    niveaux. Il ne les réécrit jamais : ce module ne fait que relire
    `src/data/program.js` et `src/data/schema.js` sous la forme dont la
    répartition a besoin.
@@ -53,7 +53,7 @@ CHAP.forEach(function(ch, ci){
 });
 
 /* Quantité et surface unitaire sont relues à chaque appel : une surface « à
-   préciser » se change dans l'onglet Programme et le mixer suit sans rien
+   préciser » se change dans le cahier des charges et le mixer suit sans rien
    mémoriser. */
 export function qOf(key){ var it = ITEMBYKEY[key]; return it ? it.nb : 0; }
 export function uOf(key){ var it = ITEMBYKEY[key]; return it ? it.u : 0; }
@@ -68,47 +68,23 @@ export function posesDedans(){
 }
 
 /* ---------- adjacences, ramenées aux postes -------------------------------
-   `src/data/schema.js` reste la source unique : on ne fait que dire quel nœud
-   du schéma correspond à quel poste du programme. Un nœud peut en désigner
-   plusieurs (les WC élèves sont deux postes, garçons et filles). */
-var NODE2KEY = {
-  classes:   ["ecole|Salles de classe standard"],
-  vest_cl:   ["ecole|Vestiaires de classe"],
-  wc_el:     ["ecole|WC garçons", "ecole|WC filles"],
-  acm:       ["ecole|Salle ACM"],
-  depot_acm: ["ecole|Dépôt matériel ACM"],
-  maitres:   ["ecole|Salle des maîtres"],
-  repro:     ["ecole|Local reproduction"],
-  bureau:    ["ecole|Bureau direction et admin."],
-  reunion:   ["ecole|Salle de réunion"],
-  pause:     ["uape|Salle de pause"],
-  foyer:     ["sport|Hall d'entrée / foyer"],
-  cuisine:   ["sport|Cuisine"],
-  economat:  ["uape|Économat"],
-  vest_el:   ["sport|Vestiaires élèves"],
-  vest_pr:   ["sport|Vestiaires professeurs"],
-  sport:     ["sport|Salle de sport double"],
-  scene:     ["sport|Scène"],
-  engins:    ["sport|Local engins de sports"],
-  rangement: ["sport|Local de rangement"],
-  abri:      ["tech|Abri PC"],
-  refectoire:["uape|Réfectoire"],
-  activite:  ["uape|Salles d'activité"],
-  hall_uape: ["uape|Hall UAPE"],
-  bur_uape:  ["uape|Bureau de direction"]
-};
-/* Filet de sécurité : si un poste est renommé dans `program.js`, la table ci-
-   dessus le dit tout de suite au lieu de laisser une adjacence disparaître en
-   silence. */
+   `src/data/schema.js` reste la source unique : chaque nœud y dit lui-même
+   quels postes il désigne (`nd.k`). La table vivait ici, en double du schéma :
+   un nœud ajouté là-bas restait muet tant qu'on ne l'inscrivait pas ici. */
+var SMAPK = {}; SNODE.forEach(function(nd){ SMAPK[nd.id] = nd; });
+
+/* Filet de sécurité : si un poste est renommé dans `program.js`, le schéma le
+   dit tout de suite au lieu de laisser une adjacence disparaître en silence.
+   Un nœud sans poste est voulu — il est mentionné au règlement sans surface à
+   lui, et il est hors bilan. */
 export var LIENS_ORPHELINS = [];
 SNODE.forEach(function(nd){
-  var ks = NODE2KEY[nd.id];
-  if(!ks){ LIENS_ORPHELINS.push(nd.id + " (nœud sans poste)"); return; }
-  ks.forEach(function(k){ if(!PMAP[k]) LIENS_ORPHELINS.push(nd.id + " → " + k); });
+  (nd.k || []).forEach(function(k){ if(!PMAP[k]) LIENS_ORPHELINS.push(nd.id + " → " + k); });
 });
 
 function keysOf(node){
-  return (NODE2KEY[node] || []).filter(function(k){ return !!PMAP[k] && !PMAP[k].dedans; });
+  var nd = SMAPK[node];
+  return ((nd && nd.k) || []).filter(function(k){ return !!PMAP[k] && !PMAP[k].dedans; });
 }
 /* PROX : « ces deux postes se tiennent ». Un lien optionnel du schéma (une
    mutualisation possible) reste optionnel ici : on le signale, on ne

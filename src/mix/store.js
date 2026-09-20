@@ -2,10 +2,10 @@
    PERSISTANCE
 
    Trois choses méritent de survivre à un rechargement : les surfaces
-   que l'utilisateur a précisées (elles appartiennent à l'onglet Programme et
+   que l'utilisateur a précisées (elles appartiennent au cahier des charges et
    changent tous les totaux) et la répartition qu'il a composée. Elles sont
    lues AVANT le premier rendu, parce qu'une surface peut être modifiée depuis
-   l'onglet Programme, donc avant que le mixer ait jamais été ouvert. S'y ajoutent
+   le cahier des charges, donc avant que le mixer ait jamais été ouvert. S'y ajoutent
    les écarts qu'on a assumés : les reprendre un par un à chaque ouverture
    reviendrait à ne jamais pouvoir en assumer un.
 
@@ -142,7 +142,7 @@ export function initStore(){
     failChip();
   }
   /* Rien ne doit être écrit avant cette lecture : une surface modifiée depuis
-     l'onglet Programme déclencherait un enregistrement alors que la mémoire ne
+     le cahier des charges déclencherait un enregistrement alors que la mémoire ne
      contient encore que la pile par défaut, et écraserait la composition. */
   storeReady = true;
 }

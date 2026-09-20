@@ -18,7 +18,7 @@ import {
 import { drawSchema, linkKey, linkList } from "./schema.js";
 import { tip } from "./tooltip.js";
 
-/* Une surface saisie dans l'onglet Programme est écrite dans le modèle, puis
+/* Une surface saisie dans le cahier des charges est écrite dans le modèle, puis
    tout ce qui la montre est refait. Le mixer n'a pas besoin d'être ouvert : il
    relit les surfaces à chaque rendu, il n'en garde aucune copie. */
 setAreaHandler(function(key, v){
@@ -101,7 +101,7 @@ function programmeBar(){
   return bar;
 }
 
-/* ---------- volets de l'onglet Programme ----------
+/* ---------- volets du cahier des charges ----------
    Le patron d'onglets du chrome, repris tel quel un cran plus bas parce que
    c'est la même chose : `role="tablist"`, `aria-selected`, un seul arrêt de
    tabulation pour le groupe, flèches pour circuler, et un `role="tabpanel"`
@@ -188,14 +188,13 @@ export function render(){
 
   if(view.sub === "contraintes"){
     host.appendChild(sectHead("2", "Contraintes",
-      "Le cadre : site, hauteurs libres, protection incendie, séisme, mobilité, second temps."));
+      "Le cadre : site, hauteurs libres, protection incendie, séisme, mobilité, second temps, "
+      + "et les proximités exigées entre locaux."));
     host.appendChild(constraintsSection());
-    return;
-  }
-  if(view.sub === "adjacences"){
-    host.appendChild(sectHead("3", "Adjacences",
-      "Les pièces que le règlement demande de placer côte à côte. C'est d'ici que "
-      + "le mixer tire ses préférences : un poste va d'abord au niveau de ce qu'il doit toucher."));
+    /* Les adjacences étaient un volet à part, et un onglet avant cela. Ce sont
+       des contraintes : une proximité exigée entre deux locaux n'est pas d'une
+       autre nature qu'une hauteur libre ou une distance au voisin. Elles
+       ferment donc les contraintes, là où on les cherche. */
     host.appendChild(adjacencesSection());
     return;
   }
@@ -301,15 +300,21 @@ export function render(){
 }
 
 /* ---------- adjacences ----------
-   C'était un onglet de premier rang, à côté du mixer : on n'y va pas décider
-   quelque chose, on y lit ce que le règlement exige, comme dans les deux autres
-   volets. Elle est ici, et l'onglet suivant s'en sert. */
+   C'était un onglet de premier rang, puis un volet. Ce sont des contraintes :
+   une proximité exigée entre deux locaux n'est pas d'une autre nature qu'une
+   hauteur libre ou une distance au voisin. Elles ferment donc les contraintes.
+   L'onglet suivant, le mixer, s'en sert comme de préférences de placement. */
 function adjacencesSection(){
   var p0 = el("section","panel");
   var hd = el("div","panel-head");
-  hd.appendChild(el("h3", null, "Schéma fonctionnel"));
-  hd.appendChild(el("span","pct mono", SLINK.length + " liens · " + SNODE.length + " pièces"));
+  hd.appendChild(el("h3", null, "Adjacences — schéma fonctionnel"));
+  hd.appendChild(el("span","pct mono",
+    SLINK.length + " liens · " + SNODE.length + " locaux"));
   p0.appendChild(hd);
+  p0.appendChild(el("p","panel-sub",
+    "Les locaux que le règlement demande de placer côte à côte, rangés par pôle. "
+    + "Les cartes ont toutes la même taille : ici on lit des relations, pas des "
+    + "surfaces — celles-ci se lisent à l\u2019échelle dans le volet Surfaces."));
   p0.appendChild(linkKey());
   var sw = el("div","schema-wrap");
   p0.appendChild(sw);
@@ -317,8 +322,10 @@ function adjacencesSection(){
   det.appendChild(el("summary", null, SLINK.length + " exigences, citées au règlement"));
   det.appendChild(linkList());
   var fr = el("div","unpriced");
-  fr.appendChild(el("b", null, "Sans contrainte de proximité énoncée — "));
+  fr.appendChild(el("b", null, "Sans proximité exigée — "));
   fr.appendChild(document.createTextNode(FREE.join(" · ")));
+  fr.appendChild(el("span","note", "ces postes ne sont pas oubliés du schéma : "
+    + "le règlement ne leur impose aucun voisin."));
   det.appendChild(fr);
   p0.appendChild(det);
   /* Le schéma se dessine une fois son conteneur mesurable. */
@@ -356,7 +363,7 @@ function totalsSection(){
 
 export function renderTotals(){
   var sec = document.getElementById("totals");
-  if(!sec || !sec.parentNode) return;       /* absent hors de l'onglet Programme */
+  if(!sec || !sec.parentNode) return;       /* absent hors du cahier des charges */
   sec.parentNode.replaceChild(totalsSection(), sec);
 }
 

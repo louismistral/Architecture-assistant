@@ -1,7 +1,7 @@
 /* ============================================================================
    ONGLET « PROGRAMME MIXER »
 
-   Deuxième temps de la chronologie : l'onglet Programme a fixé les surfaces,
+   Deuxième temps de la chronologie : le cahier des charges a fixé les surfaces,
    celui-ci les répartit sur des niveaux. Rien d'autre. Ni plan, ni volume —
    seulement la question « qu'est-ce qui va à quel étage », qui est la première
    décision d'un projet et celle dont tout le reste dépend.
@@ -143,7 +143,7 @@ function proposer(alea){
 }
 
 /* ---------- la part de circulation, en lecture seule -----------------------
-   Elle se règle dans l'onglet Programme et nulle part ailleurs : c'est une
+   Elle se règle dans le cahier des charges et nulle part ailleurs : c'est une
    surface, et les surfaces se décident une fois. Ici on la lit. */
 function circBlock(){
   var s = el("section","mix-circ");
@@ -154,10 +154,12 @@ function circBlock(){
   s.appendChild(el("p","mix-circ__n",
     fmt(Math.round(CIRCA)) + " m² sur le bâti scolaire, déjà comptés dans les "
     + "capacités de plateau ci-contre."));
-  var b = el("button","btn btn--quiet mix-circ__go","Régler dans Programme");
+  var b = el("button","btn btn--quiet mix-circ__go","Régler dans le cahier des charges");
   b.type = "button";
   b.addEventListener("click", function(){
-    location.hash = "#programme/" + view.group;
+    /* La circulation se saisit dans le volet Surfaces : le lien menait au
+       volet retenu de la visite précédente, donc parfois aux contraintes. */
+    location.hash = "#programme/surfaces/" + view.group;
     setTimeout(function(){
       var f = document.getElementById("var-circ");
       if(f){ f.scrollIntoView({ block:"center", behavior:"smooth" }); f.focus({ preventScroll:true }); }
