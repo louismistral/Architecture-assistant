@@ -126,6 +126,7 @@ src/
     checks.js         contrôle d'une répartition → écarts, avec leur code et leurs remèdes
     fix.js            les remèdes : déplacer, vider, agrandir un plateau, poser un WC
     accept.js         les écarts qu'on assume — « laisser comme ça »
+    opts.js           les deux interrupteurs : tirer la pile, grouper les liés
     store.js          persistance : surfaces précisées, circulation, pile, répartition,
                       écarts assumés
   views/

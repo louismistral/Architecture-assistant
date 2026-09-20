@@ -49,7 +49,8 @@ export function mixCheck(){
     if(seen[k]){ seen[k].n++; return seen[k]; }
     var fx = (o.fix == null) ? [] : (o.fix.length === undefined ? [o.fix] : o.fix);
     seen[k] = { sev:sev, msg:msg, ref:ref, ex:ex || "", fl:(fl === undefined ? null : fl), n:1,
-                code:k, note:o.note || "", fixes: fx.filter(function(f){ return !!f; }),
+                code:k, note:o.note || "", keys: o.keys || [],
+                fixes: fx.filter(function(f){ return !!f; }),
                 ok: isAccepted(o.code || null) };
     out.push(seen[k]);
     return seen[k];
@@ -61,7 +62,7 @@ export function mixCheck(){
   if(tn) add("w", tn + " pièce" + (tn > 1 ? "s" : "") + " encore au bac, soit "
     + fmt(Math.round(trayArea())) + " m² sans niveau", "à placer",
     tb.length ? PMAP[tb[0].key].n : "", null,
-    { code:"bac", fix: fixReste() });
+    { code:"bac", fix: fixReste(), keys: tb.map(function(b){ return b.key; }) });
 
   /* --- règles de niveau --------------------------------------------------- */
   BLOCKS.forEach(function(b){
@@ -84,7 +85,7 @@ export function mixCheck(){
       var cible = rl.same ? (nivDe(rl.same)[0] === undefined ? -1 : nivDe(rl.same)[0])
                           : nivCible(p, b.fl);
       add(rl.sev, rl.msg, rl.ref, p.n + " au " + flName(b.fl).toLowerCase(), b.fl,
-        { code: "niv:" + NIV.indexOf(rl) + ":" + p.key, fix: fixDeplacer(p.key, cible),
+        { code: "niv:" + NIV.indexOf(rl) + ":" + p.key, keys: [p.key], fix: fixDeplacer(p.key, cible),
           note: "Le mixer n\u2019offre aucun niveau que cette règle admette."  });
     });
   });
@@ -99,7 +100,7 @@ export function mixCheck(){
     if(p.f === "tec") return;
     add("e", "En sous-sol, seuls les locaux techniques, de stockage et de nettoyage "
       + "se passent de lumière naturelle", "2.10", p.n, b.fl,
-      { code:"jour:" + p.key, fix: fixDeplacer(p.key, nivCible(p, b.fl)) });
+      { code:"jour:" + p.key, keys: [p.key], fix: fixDeplacer(p.key, nivCible(p, b.fl)) });
   });
   if(sub) add("w", "Nappe phréatique relevée à " + RULES.site.nappe[1].toFixed(2).replace(".", ",")
     + " m : la marge sous le terrain naturel va de 1,0 m à l'ouest à 4,5 m à l'est — un sous-sol "
@@ -119,7 +120,7 @@ export function mixCheck(){
       PMAP[l.a].n + " et " + PMAP[l.b].n + " sont séparés de "
         + d + " niveau" + (d > 1 ? "x" : "") + " — « " + l.q + " »",
       "adjacences", PMAP[l.a].n, A[0],
-      { code:"adj:" + l.a + "|" + l.b,
+      { code:"adj:" + l.a + "|" + l.b, keys: [l.a, l.b],
         fix: [fixDeplacer(l.a, B[0]), fixDeplacer(l.b, A[0])] });
   });
 
@@ -139,7 +140,7 @@ export function mixCheck(){
           + " m de hauteur libre : rien ne se pose dessus. Le " + flName(k).toLowerCase()
           + " ne dispose que des " + fmt(Math.round(Math.max(0, reste)))
           + " m² laissés libres à côté d'elle", "2.10", flName(k), k,
-          { code:"gab:" + b.key + ":" + lvlOf(k),
+          { code:"gab:" + b.key + ":" + lvlOf(k), keys: [b.key],
             fix: [fixVider(k), fixDeplacer(b.key, FLOORS.length - 1)] });
       }
     }

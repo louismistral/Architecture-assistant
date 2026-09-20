@@ -12,23 +12,33 @@
    plein ; un dessin le dit avant qu'on ait lu un chiffre.
 
    Trois gestes : glisser un bloc d'un niveau à l'autre, cliquer pour le
-   déplacer ou le scinder au clavier, et demander une proposition — ordonnée
-   ou tirée au sort.
+   déplacer ou le scinder au clavier, et demander une proposition tirée au
+   sort. Deux interrupteurs les gouvernent (`mix/opts.js`) : le tirage
+   propose-t-il aussi la pile, et ce que le règlement veut côte à côte se
+   déplace-t-il ensemble.
+
+   Ce qui agit sur l'ENSEMBLE est dans la barre du haut ; ce qui agit sur UN
+   niveau — son plateau, son retrait — est sur le niveau lui-même ; et l'on
+   ajoute un niveau à l'endroit où il apparaîtra, en tête ou au pied de la
+   pile.
    ========================================================================= */
 import { el, fmt } from "../core/format.js";
 import { CIRC, CIRCA, FMAP } from "../core/model.js";
 import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
+import { s as svg } from "../core/svg.js";
 import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
 import { RULES } from "../data/rules.js";
 import { accept, clearAccepts, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import {
-  FLOORS, PLATE_MAX, PLATE_MIN, SUB_MAX, TRAY,
-  areaOf, blockOf, flArea, flBuilt, flCount, flHeight,
-  flLibre, flName, flNet, horsAt, lvlOf, move, nSub, nUp, onFloor, resetBlocks,
-  setPlate, setStack, split, stackCost, toTray, trayArea, trayBlocks, usable
+  FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
+  addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt,
+  flCount, flHeight, flLibre, flName, flNet, floorCost, grappeBlocs, horsAt,
+  lvlOf, move, moveGroupe, onFloor, setPlate, split, toTray, trayArea,
+  trayBlocks, usable
 } from "../mix/floors.js";
+import { grouper, setGrouper, setTirer, tirerNiveaux } from "../mix/opts.js";
 import { PMAP, aOf, posesDedans, qOf, uOf } from "../mix/prog.js";
 import { rangeOf, repartir } from "../mix/shuffle.js";
 import { saveSoon, setChip } from "../mix/store.js";
@@ -38,33 +48,47 @@ import { saveSoon, setChip } from "../mix/store.js";
 var AIRE = 70;
 var TINY_W = 46, TINY_H = 21;
 
-var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null, editEl = null;
+var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null;
 var popEl = null, ghostEl = null;
-var tirerNiveaux = false, selU = null, drag = null, wired = false;
+var selU = null, drag = null, wired = false;
 /* Le code de l'écart déplié, s'il y en a un. Un seul à la fois : ouvrir le
-   suivant referme le précédent, comme un menu. */
-var openIss = null;
+   suivant referme le précédent, comme un menu. L'écart ouvert désigne aussi
+   ses coupables dans la pile — c'est à quoi sert `issFocus`. */
+var openIss = null, issFocus = null;
 
 /* ---------- construction du panneau --------------------------------------- */
 export function mixPanel(){
   var p = el("section","mix");
 
-  /* --- barre d'outils --- */
+  /* --- barre d'outils ----------------------------------------------------
+     Tout ce qui agit sur l'ensemble est ici, en un seul rang : proposer,
+     grouper, vider. Ce qui agit sur UN niveau — son plateau, son retrait — est
+     sur le niveau lui-même. Les commandes de pile vivaient sous la pile, à
+     quatre cents pixels de ce qu'elles modifiaient. */
   var bar = el("div","controls mix-bar");
 
+  /* Le tirage est la seule proposition : « Répartir », son jumeau ordonné,
+     donnait la même chose à l'ordre des chapitres près, et la graine rend le
+     tirage aussi rejouable qu'un ordre fixe. */
   var g = el("div","btn-group");
   g.setAttribute("role","group");
   g.setAttribute("aria-label","Proposer une répartition");
-  g.appendChild(el("span","segcap","Proposer"));
-  var bOrd = el("button","btn","Répartir");
-  bOrd.type = "button";
-  bOrd.title = "L'ordre des chapitres du règlement, sans hasard";
-  bOrd.addEventListener("click", function(){ proposer(false); });
   var bAle = el("button","btn","Shuffle");
   bAle.type = "button";
-  bAle.title = "Une autre répartition, tirée au sort";
-  bAle.addEventListener("click", function(){ proposer(true); });
-  g.appendChild(bOrd); g.appendChild(bAle);
+  bAle.title = "Une répartition tirée au sort, rejouable par sa graine";
+  bAle.addEventListener("click", function(){ proposer(); });
+  g.appendChild(bAle);
+  var bNiv = el("button","btn","Shuffle niveaux");
+  bNiv.type = "button";
+  bNiv.setAttribute("aria-pressed", String(tirerNiveaux));
+  bNiv.title = "Le tirage déduit aussi la pile : surface bâtie à loger, plateau du rez, "
+             + "et ce que le règlement admet en sous-sol";
+  bNiv.addEventListener("click", function(){
+    setTirer(!tirerNiveaux);
+    bNiv.setAttribute("aria-pressed", String(tirerNiveaux));
+    saveSoon();
+  });
+  g.appendChild(bNiv);
   bar.appendChild(g);
 
   /* La graine est ce qui rend une proposition retrouvable : sans elle, on tire
@@ -72,14 +96,18 @@ export function mixPanel(){
   seedEl = el("div","mix-seed");
   bar.appendChild(seedEl);
 
-  var lab = el("label","mix-opt");
-  var cb = document.createElement("input");
-  cb.type = "checkbox"; cb.checked = tirerNiveaux;
-  cb.addEventListener("change", function(){ tirerNiveaux = cb.checked; });
-  lab.appendChild(cb);
-  lab.appendChild(document.createTextNode("tirer aussi le nombre de niveaux"));
-  lab.title = "Le tirage déduit la pile de la surface bâtie à loger et du plateau du rez";
-  bar.appendChild(lab);
+  /* L'interrupteur garde un libellé fixe et ne dit son état que par
+     `aria-pressed` : « Grouper les liés » se lit pareil dans les deux sens. */
+  var bGrp = el("button","btn","Grouper les liés");
+  bGrp.type = "button";
+  bGrp.setAttribute("aria-pressed", String(grouper));
+  bGrp.title = "Déplacer une pièce emmène tout ce que le règlement lui demande de toucher";
+  bGrp.addEventListener("click", function(){
+    setGrouper(!grouper);
+    bGrp.setAttribute("aria-pressed", String(grouper));
+    drawMix(); saveSoon();
+  });
+  bar.appendChild(bGrp);
 
   var bVide = el("button","btn","Tout au bac");
   bVide.type = "button";
@@ -103,10 +131,6 @@ export function mixPanel(){
   stackEl = el("div","mix-stack");
   main.appendChild(stackEl);
 
-  /* Éditer la pile : un rang à part, sous la pile, jamais mêlé aux niveaux
-     eux-mêmes — ajouter un étage et choisir un étage sont deux intentions. */
-  editEl = el("div","mix-edit-host");
-  main.appendChild(editEl);
   grid.appendChild(main);
 
   var side = el("aside","mix-side");
@@ -134,10 +158,10 @@ export function mixPanel(){
   return p;
 }
 
-function proposer(alea){
-  if(alea) seed(null);
-  repartir({ alea: alea, etages: alea && tirerNiveaux });
-  selU = null;
+function proposer(){
+  seed(null);
+  repartir({ alea: true, etages: tirerNiveaux });
+  selU = null; openIss = null; issFocus = null;
   drawMix();
   saveSoon();
 }
@@ -169,99 +193,14 @@ function circBlock(){
   return s;
 }
 
-/* ---------- éditer la pile ------------------------------------------------
-   La pile se composait à coups d'« Ajouter un étage » / « Retirer l'étage »,
-   quatre commandes repliées sous un `<details>` : pour passer d'un rez seul à
-   un R+3 avec sous-sol il fallait déplier, puis cliquer quatre fois, sans
-   jamais voir la pile qu'on visait. Le nombre d'étages et la présence d'un
-   sous-sol sont deux décisions de projet : elles se CHOISISSENT, d'un geste,
-   et à découvert. */
-var UP_CHOIX = 5;                 /* rez seul, puis R+1 à R+4 */
-
-function pileSeg(caption, n, cur, titre, pick){
-  /* `.btn-group` et `.btn`, comme partout ailleurs : le projet a compté jusqu'à
-     sept groupes de boutons concurrents, et `.zoomseg` n'a plus de feuille. */
-  var g = el("div","btn-group");
-  g.setAttribute("role","group");
-  g.setAttribute("aria-label", caption + " de la pile");
-  g.appendChild(el("span","segcap", caption));
-  for(var v = 0; v < n; v++){
-    (function(v){
-      var b = el("button","btn", String(v));
-      b.type = "button";
-      b.setAttribute("aria-current", String(v === cur));
-      b.title = titre(v);
-      b.addEventListener("click", function(){
-        if(v === cur) return;
-        pick(v);
-        selU = null;
-        drawMix();
-        saveSoon();
-      });
-      g.appendChild(b);
-    })(v);
-  }
-  return g;
-}
-function stackEdit(){
-  var box = el("div","mix-edit");
-  var row = el("div","mix-edit__row");
-  var sub = nSub(), up = nUp();
-
-  row.appendChild(pileSeg("Étages", UP_CHOIX, up, function(v){
-    var c = stackCost(sub, v);
-    return (v === 0 ? "Rez-de-chaussée seul" : "Rez + " + v + " étage" + (v > 1 ? "s" : ""))
-         + (c ? " — " + c + " pièce" + (c > 1 ? "s" : "") + " repartiraient au bac" : "");
-  }, function(v){ setStack(sub, v); }));
-
-  row.appendChild(pileSeg("Sous-sols", SUB_MAX, sub, function(v){
-    var c = stackCost(v, up);
-    return (v === 0 ? "Aucun sous-sol" : v === 1 ? "Un sous-sol"
-           : v + " sous-sols")
-         + (c ? " — " + c + " pièce" + (c > 1 ? "s" : "") + " repartiraient au bac" : "");
-  }, function(v){ setStack(v, up); }));
-
-  var bRaz = el("button","btn btn--quiet mix-act","Repartir du programme");
-  bRaz.type = "button";
-  bRaz.appendChild(el("span","mix-why","tout revient au bac, y compris les parts scindées"));
-  bRaz.addEventListener("click", function(){
-    resetBlocks(); selU = null; drawMix(); saveSoon();
-  });
-  row.appendChild(bRaz);
-  box.appendChild(row);
-
-  /* La conséquence est écrite, pas seulement mise en `title` : réduire la pile
-     défait du travail posé, et cela doit se lire avant le clic. */
-  var perdu = 0, v;
-  for(v = 0; v < UP_CHOIX; v++) perdu = Math.max(perdu, stackCost(sub, v));
-  for(v = 0; v < SUB_MAX; v++) perdu = Math.max(perdu, stackCost(v, up));
-  box.appendChild(el("p","mix-why mix-edit__note",
-    "Le sous-sol est réservé au technique, au stockage, au nettoyage et à l\u2019abri PC. "
-    + (perdu
-      ? "Réduire la pile renvoie au bac les pièces des niveaux retirés — jusqu\u2019à "
-        + perdu + " d\u2019un seul geste."
-      : "Réduire la pile renvoie au bac les pièces des niveaux retirés.")
-    + " Les plateaux réglés niveau par niveau sont conservés."));
-  return box;
-}
-
 /* ---------- rendu --------------------------------------------------------- */
 export function drawMix(){
   if(!stackEl) return;
   drawSeed();
   drawSum();
   drawStack();
-  drawEdit();
   drawIssues();
   drawTray();
-}
-
-/* Les commandes de pile disent leur disponibilité et sa raison : elles se
-   refont donc à chaque rendu, comme le reste. */
-function drawEdit(){
-  if(!editEl) return;
-  while(editEl.firstChild) editEl.removeChild(editEl.firstChild);
-  editEl.appendChild(stackEdit());
 }
 
 function drawSeed(){
@@ -326,14 +265,48 @@ function famList(bl){
   return { by: by, order: order };
 }
 
+/* Une corbeille dessinée plutôt qu'un caractère : le projet n'a pas de fonte
+   d'icônes, et les glyphes de corbeille d'Unicode ne sont pas dessinés partout
+   — ⌫ tombait en carré vide sur la moitié des machines. */
+function corbeille(){
+  var v = svg("svg", { width:13, height:13, viewBox:"0 0 16 16", "aria-hidden":"true",
+    fill:"none", stroke:"currentColor", "stroke-width":1.4, "stroke-linecap":"round" });
+  v.appendChild(svg("path", { d:"M2.5 4.2h11" }));
+  v.appendChild(svg("path", { d:"M6 4.2V2.6h4v1.6" }));
+  v.appendChild(svg("path", { d:"M4 4.2l.8 9h6.4l.8-9" }));
+  v.appendChild(svg("path", { d:"M6.6 6.6v4.4M9.4 6.6v4.4" }));
+  return v;
+}
+
+/* Ajouter un niveau se fait LÀ où il apparaîtra : en tête de pile pour un
+   étage, au pied pour un sous-sol. Deux segments dans une barre d'outils
+   lointaine demandaient de viser un nombre au lieu d'un endroit. */
+function addRow(label, hint, fn){
+  var d = el("div","mix-add");
+  var b = el("button","btn mix-add__b", "+ " + label);
+  b.type = "button";
+  b.title = hint;
+  b.addEventListener("click", function(){
+    fn(); selU = null; drawMix(); saveSoon();
+  });
+  d.appendChild(b);
+  return d;
+}
+
 function drawStack(){
   while(stackEl.firstChild) stackEl.removeChild(stackEl.firstChild);
+  stackEl.appendChild(addRow("Ajouter un étage",
+    "Un niveau de plus au-dessus du dernier. Rien n\u2019y monte tout seul.",
+    addFloorTop));
   /* Le niveau le plus haut en tête, le rez en bas, les sous-sols dessous :
      c'est la convention de coupe, la seule qu'un architecte lise sans
      traduire. */
   for(var i = FLOORS.length - 1; i >= 0; i--) stackEl.appendChild(floorNode(i));
   /* Le sol, pour que la pile se lise comme une coupe et non comme une liste. */
   stackEl.appendChild(el("div","mix-ground"));
+  stackEl.appendChild(addRow("Creuser un sous-sol",
+    "Réservé au technique, au stockage, au nettoyage et à l\u2019abri PC.",
+    addFloorBottom));
   requestAnimationFrame(function(){
     for(var i = 0; i < FLOORS.length; i++){
       var host = stackEl.querySelector('[data-canvas="' + i + '"]');
@@ -349,6 +322,8 @@ function floorNode(i){
   var net = flNet(i), cap = usable(i), bati = flBuilt(i), hors = horsAt(i);
   var over = isFinite(cap) && net > cap + 1;
   if(over) wrap.classList.add("is-over");
+
+  if(issFocus && issFocus.fl === i) wrap.classList.add("is-flagged", "is-" + issFocus.sev);
 
   var bar = el("div","mix-fl__bar");
   bar.appendChild(el("b","mix-fl__n", flName(i)));
@@ -384,6 +359,23 @@ function floorNode(i){
   var tag = el("span", "mix-fl__pct mono" + (over ? " is-over" : ""), pct + " %");
   tag.title = "Part du plateau occupée, circulation comprise";
   bar.appendChild(tag);
+
+  /* Retirer CE niveau, depuis le niveau lui-même. La conséquence est dans le
+     libellé accessible et dans l'infobulle : ce qu'il porte repart au bac. */
+  if(FLOORS.length > 1){
+    var n = floorCost(i);
+    var bDel = el("button","btn btn--icon mix-fl__del");
+    bDel.type = "button";
+    bDel.appendChild(corbeille());
+    var quoi = "Retirer le " + flName(i).toLowerCase()
+      + (n ? " — ses " + n + " pièce" + (n > 1 ? "s repartent" : " repart") + " au bac" : "");
+    bDel.title = quoi;
+    bDel.appendChild(el("span","vh", quoi));
+    bDel.addEventListener("click", function(){
+      if(delFloorAt(i)){ selU = null; openIss = null; issFocus = null; drawMix(); saveSoon(); }
+    });
+    bar.appendChild(bDel);
+  }
   wrap.appendChild(bar);
 
   var canvas = el("div","mix-fl__canvas");
@@ -479,6 +471,10 @@ function blockNode(b, r){
   if(p.f === "tec") d.classList.add("is-hatched");
   if(p.est) d.classList.add("is-est");
   if(b.u === selU) d.classList.add("is-sel");
+  /* L'écart ouvert dans le contrôle désigne ses coupables : les lire dans la
+     liste et devoir ensuite les chercher dans la pile, c'était tout le travail
+     laissé à faire. */
+  if(issFocus && issFocus.keys.indexOf(b.key) >= 0) d.classList.add("is-flag", "is-" + issFocus.sev);
   if(r.w < TINY_W || r.h < TINY_H) d.classList.add("is-tiny");
 
   d.appendChild(el("b", null, p.n + (b.q > 1 ? " ×" + b.q : "")));
@@ -524,7 +520,7 @@ function drawIssues(){
     var bAll = el("button","btn btn--quiet mix-reprendre","Tout reprendre");
     bAll.type = "button";
     bAll.addEventListener("click", function(){
-      clearAccepts(); openIss = null; drawMix(); saveSoon();
+      clearAccepts(); openIss = null; issFocus = null; drawMix(); saveSoon();
     });
     ah.appendChild(bAll);
     issuesEl.appendChild(ah);
@@ -548,10 +544,19 @@ function issList(list, assume){
     t.appendChild(el("span", null, ref));
     bt.appendChild(t);
     bt.addEventListener("click", function(){
-      openIss = (openIss === w.code) ? null : w.code;
+      var ouvre = openIss !== w.code;
+      openIss = ouvre ? w.code : null;
+      issFocus = ouvre ? { fl: w.fl, keys: w.keys || [], sev: w.sev } : null;
       drawIssues();
+      drawStack();
       var again = issuesEl.querySelector("li.is-open .mix-iss");
       if(again) again.focus({ preventScroll:true });
+      /* Le niveau visé remonte sous les yeux : il peut être à deux écrans. */
+      if(ouvre){
+        var cible = issuesEl.ownerDocument.querySelector(
+          ".mix-fl.is-flagged, .mixblk.is-flag");
+        if(cible) cible.scrollIntoView({ block:"nearest", behavior:"smooth" });
+      }
     });
     li.appendChild(bt);
 
@@ -576,7 +581,7 @@ function issPanel(w, assume){
     if(f.hint) b.appendChild(el("span","mix-why", f.hint));
     b.addEventListener("click", function(){
       if(f.run() === false) return;
-      openIss = null; selU = null;
+      openIss = null; issFocus = null; selU = null;
       drawMix(); saveSoon();
     });
     box.appendChild(b);
@@ -591,7 +596,7 @@ function issPanel(w, assume){
     : "il quitte le verdict et passe dans « laissés tels quels »"));
   bo.addEventListener("click", function(){
     if(assume) unaccept(w.code); else accept(w.code);
-    openIss = null;
+    openIss = null; issFocus = null;
     drawMix(); saveSoon();
   });
   box.appendChild(bo);
@@ -660,6 +665,21 @@ function drawTray(){
   }
 }
 
+/* Déplacer, avec ou sans sa grappe. Un seul point de passage : le glisser, le
+   popover et le clavier doivent obéir à l'interrupteur de la même façon. */
+function bouger(u, fl){
+  return grouper ? moveGroupe(u, fl) : move(u, fl);
+}
+/* Ce qu'un déplacement groupé emmènerait en plus — pour le dire avant. */
+function combien(u){
+  if(!grouper) return 0;
+  var b = blockOf(u);
+  if(!b) return 0;
+  var n = 0;
+  grappeBlocs(u).forEach(function(x){ if(x.u !== u && x.fl !== b.fl) n += x.q; });
+  return n;
+}
+
 /* ---------- popover : déplacer, scinder -----------------------------------
    Le clavier et le doigt ont le même accès que la souris : le glisser n'est
    jamais le seul chemin. */
@@ -674,7 +694,11 @@ function openPop(u, anchor){
     fmt(Math.round(areaOf(b))) + " m² · " + FMAP[p.f].name));
 
   var cand = rangeOf(p);
-  popEl.appendChild(el("div","mix-pop__l","Déplacer vers"));
+  /* Quand l'interrupteur est enclenché, le popover dit ce qu'il emmène : sinon
+     on déplace quinze pièces en croyant en déplacer une. */
+  var suite = combien(u);
+  popEl.appendChild(el("div","mix-pop__l",
+    "Déplacer vers" + (suite ? " — avec " + suite + " pièce" + (suite > 1 ? "s liées" : " liée") : "")));
   var row = el("div","mix-pop__r");
   for(var i = FLOORS.length - 1; i >= 0; i--){
     (function(i){
@@ -685,7 +709,7 @@ function openPop(u, anchor){
          empêché. Il est seulement marqué, et le contrôle le dira. */
       if(cand.indexOf(i) < 0) bt.classList.add("is-warn");
       bt.addEventListener("click", function(){
-        move(u, i); closePop(); drawMix(); saveSoon();
+        bouger(u, i); closePop(); drawMix(); saveSoon();
       });
       row.appendChild(bt);
     })(i);
@@ -693,7 +717,7 @@ function openPop(u, anchor){
   var bt0 = el("button","btn","Au bac");
   bt0.type = "button";
   bt0.disabled = (b.fl === TRAY);
-  bt0.addEventListener("click", function(){ move(u, TRAY); closePop(); drawMix(); saveSoon(); });
+  bt0.addEventListener("click", function(){ bouger(u, TRAY); closePop(); drawMix(); saveSoon(); });
   row.appendChild(bt0);
   popEl.appendChild(row);
 
@@ -767,8 +791,10 @@ function wireMix(){
       var b = blockOf(drag.u);
       if(b){
         while(ghostEl.firstChild) ghostEl.removeChild(ghostEl.firstChild);
+        var suite = combien(drag.u);
         ghostEl.appendChild(document.createTextNode(
-          PMAP[b.key].n + (b.q > 1 ? " ×" + b.q : "") + " · " + fmt(Math.round(areaOf(b))) + " m²"));
+          PMAP[b.key].n + (b.q > 1 ? " ×" + b.q : "") + " · " + fmt(Math.round(areaOf(b))) + " m²"
+          + (suite ? "  + " + suite + " liée" + (suite > 1 ? "s" : "") : "")));
       }
       ghostEl.hidden = false;
       drag.el.classList.add("is-dragging");
@@ -795,8 +821,8 @@ function wireMix(){
     var over = document.elementFromPoint(e.clientX, e.clientY);
     var fl = over && over.closest ? over.closest(".mix-fl") : null;
     var tr = over && over.closest ? over.closest(".mix-tray") : null;
-    if(fl){ move(u, parseInt(fl.dataset.floor, 10)); drawMix(); saveSoon(); }
-    else if(tr){ move(u, TRAY); drawMix(); saveSoon(); }
+    if(fl){ bouger(u, parseInt(fl.dataset.floor, 10)); drawMix(); saveSoon(); }
+    else if(tr){ bouger(u, TRAY); drawMix(); saveSoon(); }
   });
 
   document.addEventListener("keydown", function(e){

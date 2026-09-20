@@ -99,6 +99,41 @@ SLINK.forEach(function(lk){
   });
 });
 
+/* ---------- grappes de proximité -------------------------------------------
+   Deux postes que le règlement veut côte à côte, et de proche en proche : la
+   composante connexe des adjacences EXIGÉES. Une mutualisation possible n'en
+   fait pas partie — elle est offerte, pas due.
+
+   C'est ce qui permet de déplacer ensemble tout ce qui se tient : la salle de
+   sport entraîne sa scène, ses engins, son rangement, son nettoyage, ses
+   vestiaires, et, par le foyer et la cuisine, le réfectoire et l'UAPE. La
+   grappe est grande parce que le règlement le dit ; c'est précisément ce que
+   l'option donne à voir. */
+var GRAPPE = {};
+(function(){
+  var adj = {};
+  PROX.forEach(function(l){
+    if(l.opt) return;
+    (adj[l.a] = adj[l.a] || []).push(l.b);
+    (adj[l.b] = adj[l.b] || []).push(l.a);
+  });
+  var vu = {};
+  Object.keys(adj).forEach(function(k){
+    if(vu[k]) return;
+    var pile = [k], comp = [];
+    vu[k] = 1;
+    while(pile.length){
+      var x = pile.pop();
+      comp.push(x);
+      (adj[x] || []).forEach(function(y){ if(!vu[y]){ vu[y] = 1; pile.push(y); } });
+    }
+    comp.forEach(function(x){ GRAPPE[x] = comp; });
+  });
+})();
+/* La grappe d'un poste — lui seul s'il n'est accroché à rien. */
+export function grappeDe(key){ return GRAPPE[key] || [key]; }
+export function grappeTaille(key){ return grappeDe(key).length; }
+
 /* Surface utile totale du programme posable, et sa part bâtie. */
 export function netTotal(){
   var t = 0;
