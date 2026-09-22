@@ -3,6 +3,9 @@ import { render } from "./views/render.js";
 import { resizeMix } from "./views/mixer.js";
 import { resizeMass } from "./views/massing.js";
 import { initStore, verifieQuantites } from "./mix/store.js";
+import { initCompte } from "./net/compte.js";
+import { initReglages } from "./net/reglages.js";
+import { basculer, initVariantes, setApresCharge } from "./views/variantes.js";
 
 /* ---------- thème ----------
    `[data-theme]` était prévu dans la feuille de tokens mais aucune ligne du
@@ -113,8 +116,17 @@ window.addEventListener("hashchange", function(){
   if(readHash()) apply();
 });
 
+/* ---------- les variantes ----------
+   Le bouton vit à côté du compte, pas dans le groupe d'onglets : une variante
+   n'est pas une étape de la chronologie, elle la rejoue en entier. */
+document.getElementById("varBtn").addEventListener("click", function(){ basculer(); });
+
 /* ---------- démarrage ---------- */
 wireTheme();
+/* Le retour du lien de connexion arrive DANS LE FRAGMENT, et le fragment porte
+   la vue : il faut le consommer avant `readHash()`, sinon l'application
+   démarre sur `#access_token=…`, qui n'est l'onglet de personne. */
+initCompte();
 /* Avant tout rendu : une surface peut être modifiée depuis le cahier des charges,
    donc avant que le mixer ait jamais été ouvert. */
 initStore();
@@ -125,6 +137,12 @@ document.body.dataset.kind = isTool() ? "tool" : "doc";
 paintTabs();
 writeHash();
 render();
+
+/* Charger une variante remet les trois onglets en place : c'est donc un rendu
+   complet, pas un redimensionnement. */
+setApresCharge(function(){ render(); });
+initReglages();
+initVariantes();
 
 var rt;
 window.addEventListener("resize", function(){

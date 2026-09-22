@@ -124,6 +124,7 @@ styles/
   mixer.css           le mixer : pile, canevas d'un niveau, blocs, pièces, bac
   massing.css         le massing : rail, plan et 3D, alertes
   doctrine.css        le volet Contraintes des outils : règles repliées, note, scripts
+  variantes.css       le panneau des variantes et le modal de leurs informations
 src/
   data/               données pures, sans logique
     families.js       familles d'usage (id, couleur, libellé)        ← source unique
@@ -133,6 +134,7 @@ src/
     site.js           périmètre du concours, terrain, nappe phréatique — relevé seul
     rules.js          contraintes du concours : distances, hauteurs libres, feu,
                       nappe, stationnement, circulation, second temps ← source unique
+    supabase.js       l'adresse de la base et sa clé PUBLIABLE      ← source unique
     doctrine.js       LA DOCTRINE DE PROJET — tout ce que le règlement NE dit pas et
                       que les deux générateurs appliquent : seuils, plafonds, poids,
                       rangs de dureté, inventaire des scripts   ← source unique
@@ -145,6 +147,7 @@ src/
     geometry.js       surfaces → blocs, empilage, proportions admissibles
     treemap.js        pavage squarifié — un bloc vaut sa surface
     rand.js           tirage reproductible à graine (mulberry32)
+    empreinte.js      l'empreinte des fichiers du dépôt — dit qu'une variante a vieilli
     gl.js             WebGL minimal : matrices, programme, tampons (dont statiques), caméra
   mix/                répartir le programme sur les niveaux
     prog.js           le programme vu comme des parts à poser, adjacences par poste
@@ -163,6 +166,11 @@ src/
     gen.js            le générateur : parti → figure → réparation → note
     checks.js         contrôle d'une volumétrie → alertes info / à vérifier / erreur
     etat.js           ce que le massing enregistre (lu par mix/store.js)
+  net/                le partage — `fetch` seul, aucune dépendance
+    supa.js           jeton, session, requêtes REST
+    compte.js         l'identité, l'équipe, ses membres
+    reglages.js       les décisions de projet partagées au groupe
+    variantes.js      poser, lister, charger, supprimer une variante
   views/
     render.js         aiguillage par onglet, cahier des charges, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
@@ -176,6 +184,7 @@ src/
     massing.js        l'onglet Massing : rail de commandes, plan et 3D côte à côte
     plan.js           la vue en plan : relevé, volumes, sélection, déplacement, rotation
     vue3d.js          la vue 3D : terrain maillé, courbes drapées, existant, volumes
+    variantes.js      le panneau des variantes, et le modal de leurs informations
     tooltip.js        infobulle
   main.js             thème, onglets, routage, premier rendu
 Design-1.2.0-v38/     le plugin « Design » d'Anthropic, déposé ici pour servir de grille

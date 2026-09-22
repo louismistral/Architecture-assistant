@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="styles/mixer.css">
 <link rel="stylesheet" href="styles/massing.css">
 <link rel="stylesheet" href="styles/doctrine.css">
+<link rel="stylesheet" href="styles/variantes.css">
 </head>
 <body>
 <a class="skip" href="#panels">Aller au contenu</a>
@@ -48,6 +49,14 @@
     <button class="btn" type="button" id="tabMassing" role="tab"
             aria-selected="false" aria-controls="panels" tabindex="-1">Massing</button>
   </nav>
+
+  <!-- Les variantes ne sont PAS un onglet : les onglets sont la chronologie du
+       concours, et une variante les traverse tous les trois. Elle vit donc à
+       côté du compte, hors du groupe de destinations. -->
+  <button class="btn appbar__var" type="button" id="varBtn"
+          aria-expanded="false" aria-controls="vpanel">
+    Variantes<span class="vb-cnt" hidden></span>
+  </button>
 
   <button class="btn btn--icon appbar__theme" type="button" id="themeBtn"
           title="Thème : automatique">
