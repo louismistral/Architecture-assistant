@@ -229,3 +229,29 @@
   .vm-sec--plan{grid-column:auto}
   .vp{inline-size:100vw}
 }
+
+/* ---------- connexion par mot de passe ----------
+   Les mêmes champs pour entrer et pour s'inscrire : deux réponses à une seule
+   question, distinguées par le bouton et non par un écran de plus. */
+.vp-conn__t{margin:0 0 var(--s-1);font-size:var(--t-sm);font-weight:600;letter-spacing:-.01em}
+.vp-conn input[type="email"],
+.vp-conn input[type="password"],
+.vp-conn input[type="text"]{inline-size:100%;box-sizing:border-box}
+.vp-mdp{position:relative;display:block}
+.vp-mdp__oeil{
+  position:absolute;inset-inline-end:var(--s-1);inset-block-start:50%;
+  transform:translateY(-50%);
+  font:inherit;font-size:var(--t-2xs);color:var(--ink-3);
+  background:transparent;border:0;border-radius:var(--r-md);
+  padding:var(--s-1) var(--s-2);cursor:pointer;
+}
+.vp-mdp__oeil:hover{color:var(--ink)}
+.vp-conn__row{align-items:stretch}
+.vp-conn__row .btn{flex:1}
+.vp-conn__bas{display:flex}
+.vp-lien{
+  font:inherit;font-size:var(--t-2xs);color:var(--ink-3);
+  background:transparent;border:0;padding:0;cursor:pointer;
+  text-decoration:underline;text-underline-offset:2px;
+}
+.vp-lien:hover{color:var(--ink)}

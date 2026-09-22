@@ -46,6 +46,32 @@ function entetes(avecJeton){
   return h;
 }
 
+/* GoTrue répond en anglais, et ses messages sont les seuls que l'utilisateur
+   verra quand ça coince. Un message d'échec doit dire sa cause ET son remède —
+   c'est la règle du projet, elle ne s'arrête pas à la frontière du réseau. */
+var DITS = [
+  [/invalid login credentials/i,        "Adresse ou mot de passe incorrect."],
+  [/email not confirmed/i,              "Adresse pas encore confirmée : ouvre le lien reçu par courriel."],
+  [/user already registered|already been registered/i,
+                                        "Cette adresse a déjà un compte — connecte-toi, ou demande un nouveau mot de passe."],
+  [/password should be at least (\d+)/i, "Le mot de passe doit faire au moins $1 caractères."],
+  [/weak password|password is too weak/i, "Mot de passe trop faible."],
+  [/for security purposes|rate limit|too many requests/i,
+                                        "Trop de tentatives. Attends une minute."],
+  [/signups? (is |are )?(not allowed|disabled)/i,
+                                        "La création de compte est fermée sur ce projet."],
+  [/unable to validate email|invalid email/i, "Cette adresse ne ressemble pas à une adresse de courriel."],
+  [/same as the old password/i,         "C'est déjà le mot de passe en cours."]
+];
+export function traduire(msg){
+  var t = String(msg || "");
+  for(var i = 0; i < DITS.length; i++){
+    var m = t.match(DITS[i][0]);
+    if(m) return DITS[i][1].replace("$1", m[1] || "");
+  }
+  return t;
+}
+
 async function auth(chemin, corps, avecJeton){
   var r = await fetch(SUPA.url + "/auth/v1/" + chemin, {
     method: "POST", headers: entetes(avecJeton),
@@ -53,7 +79,7 @@ async function auth(chemin, corps, avecJeton){
   });
   var t = await r.text();
   var o = t ? JSON.parse(t) : {};
-  if(!r.ok) throw new Error(o.error_description || o.msg || o.message || ("erreur " + r.status));
+  if(!r.ok) throw new Error(traduire(o.error_description || o.msg || o.message || ("erreur " + r.status)));
   return o;
 }
 
@@ -68,25 +94,62 @@ function pose(o){
   });
 }
 
-/* ---------- le lien par courriel ----------
-   On mémorise l'endroit où l'on était : le lien revient sur la page nue, et
-   retomber sur la couverture après avoir cliqué dans sa boîte est une petite
-   punition pour s'être connecté. */
-export async function envoyerLien(email){
-  try{ localStorage.setItem(RKEY, location.hash || ""); }catch(_){}
-  var retour = location.origin + location.pathname;
-  await auth("otp?redirect_to=" + encodeURIComponent(retour), { email: email, create_user: true });
+/* ---------- mot de passe ----------
+   Le lien magique a été la première façon d'entrer, et il coûtait un courriel
+   PAR OUVERTURE DE SESSION : à deux, en une après-midi d'essais, on épuise le
+   quota d'envoi du projet et plus personne n'entre. Un mot de passe n'envoie
+   rien ; seule sa réinitialisation, qui est rare, passe encore par la boîte. */
+export async function connexionMdp(email, mdp){
+  var o = await auth("token?grant_type=password", { email: String(email).trim(), password: mdp });
+  pose(o);
+  return o;
 }
 
-/* Le retour du lien arrive DANS LE FRAGMENT — et le fragment, ici, porte la
-   vue. On le consomme et on rend la main à la route : sans cela l'application
-   démarrerait sur `#access_token=…`, qui n'est l'onglet de personne. */
+/* La création rend une session quand le projet n'exige pas de confirmation,
+   et rien quand il l'exige. Les deux existent, et l'appelant doit pouvoir les
+   distinguer : on rend la session, ou `null`. */
+export async function inscription(email, mdp){
+  var retour = location.origin + location.pathname;
+  var o = await auth("signup?redirect_to=" + encodeURIComponent(retour),
+                     { email: String(email).trim(), password: mdp });
+  if(o && o.access_token){ pose(o); return o; }
+  return null;
+}
+
+export async function oubli(email){
+  try{ localStorage.setItem(RKEY, location.hash || ""); }catch(_){}
+  var retour = location.origin + location.pathname;
+  await auth("recover?redirect_to=" + encodeURIComponent(retour), { email: String(email).trim() });
+}
+
+export async function changerMotDePasse(mdp){
+  if(!(await jetonValide())) throw new Error("session expirée");
+  var r = await fetch(SUPA.url + "/auth/v1/user", {
+    method: "PUT", headers: entetes(true), body: JSON.stringify({ password: mdp })
+  });
+  var t = await r.text(), o = t ? JSON.parse(t) : {};
+  if(!r.ok) throw new Error(traduire(o.error_description || o.msg || o.message || ("erreur " + r.status)));
+  recup = false;
+  return o;
+}
+
+/* Le retour d'un lien de réinitialisation arrive DANS LE FRAGMENT — et le
+   fragment, ici, porte la vue. On le consomme et on rend la main à la route :
+   sans cela l'application démarrerait sur `#access_token=…`, qui n'est
+   l'onglet de personne. */
+var recup = false;
+export function enRecuperation(){ return recup; }
+export function finRecuperation(){ recup = false; }
+
 export function consommeRetour(){
   var h = location.hash || "";
   if(h.indexOf("access_token=") < 0) return false;
   var q = new URLSearchParams(h.replace(/^#/, ""));
   var at = q.get("access_token");
   if(!at) return false;
+  /* `type=recovery` : le jeton ouvre bien une session, mais la seule chose
+     qu'on veuille en faire est poser un nouveau mot de passe. */
+  recup = q.get("type") === "recovery";
   ecrire({
     access_token: at,
     refresh_token: q.get("refresh_token"),

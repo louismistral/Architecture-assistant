@@ -10,11 +10,14 @@
    pas cette page.
    ========================================================================= */
 import { SUPA } from "../data/supabase.js";
-import { connecte, deconnecter, envoyerLien, initSupa, insertApi, moi,
-         onAuth, patchApi, deleteApi, selectApi, supaOn, upsertApi } from "./supa.js";
+import { changerMotDePasse, connecte, connexionMdp, deconnecter, enRecuperation,
+         finRecuperation, initSupa, inscription, insertApi, moi, onAuth, oubli,
+         patchApi, deleteApi, selectApi, supaOn, upsertApi } from "./supa.js";
 
-/* `hors` pas de base ou pas connecté · `attente` lien envoyé · `charge` en
-   cours · `dedans` on a une équipe · `panne` la base a dit non */
+/* `hors` pas de base ou pas connecté · `charge` en cours · `dedans` on a une
+   équipe · `verif` compte créé, adresse à confirmer · `recup` on revient d'un
+   lien de réinitialisation, il reste à poser le mot de passe · `panne` la base
+   a dit non */
 export var CPT = { statut:"hors", profil:null, equipe:null, membres:[], invites:[], err:"" };
 
 var abonnes = [];
@@ -79,11 +82,41 @@ export function estProprietaire(){
   return !!(CPT.equipe && CPT.profil && CPT.equipe.owner_id === CPT.profil.id);
 }
 
-/* ---------- les gestes ---------- */
-export async function connexion(email){
+/* ---------- les gestes ----------
+   Connexion et création portent les MÊMES champs et se distinguent par le
+   bouton : ce sont deux réponses à la même question — « qui es-tu ? » —, et
+   demander de choisir avant de taper quoi que ce soit ne sert personne. */
+export async function connexion(email, mdp){
   etat("charge");
-  try{ await envoyerLien(email); etat("attente"); }
+  try{ await connexionMdp(email, mdp); await chargerCompte(); }
   catch(e){ etat("hors", e.message); }
+}
+
+export async function creerCompte(email, mdp){
+  etat("charge");
+  try{
+    var o = await inscription(email, mdp);
+    /* Sans session en retour, le projet exige une confirmation par courriel :
+       on le DIT, plutôt que de rester sur un écran qui ne bouge pas. */
+    if(!o){ etat("verif"); return; }
+    await chargerCompte();
+  }catch(e){ etat("hors", e.message); }
+}
+
+export async function motDePasseOublie(email){
+  try{ await oubli(email); etat("hors", "Un lien de réinitialisation vient de partir. Ouvre-le sur cet appareil."); }
+  catch(e){ etat("hors", e.message); }
+}
+
+/* On arrive ici par le lien de réinitialisation : la session est ouverte, mais
+   la seule chose qu'on veuille en faire est poser un nouveau mot de passe. */
+export async function poserMotDePasse(mdp){
+  etat("charge");
+  try{
+    await changerMotDePasse(mdp);
+    finRecuperation();
+    await chargerCompte();
+  }catch(e){ CPT.statut = "recup"; etat("recup", e.message); }
 }
 /* L'état tombe AVANT de couper la session, et pas après : `deconnecter()`
    prévient ses abonnés, dont le gardien ci-dessous, qui aurait rappelé
@@ -123,6 +156,11 @@ export function initCompte(){
   if(!supaOn()){ etat("hors"); return; }
   initSupa();
   onAuth(function(){ if(!connecte() && CPT.statut === "dedans") sortir(); });
+  /* Revenu d'un lien de réinitialisation : on ne charge PAS le compte, on
+     s'arrête sur le champ du nouveau mot de passe. Charger d'abord ferait
+     entrer dans l'application quelqu'un qui vient justement de dire qu'il ne
+     sait plus entrer. */
+  if(enRecuperation()){ etat("recup"); return; }
   if(connecte()) chargerCompte();
 }
 
