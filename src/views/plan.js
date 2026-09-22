@@ -20,6 +20,7 @@ import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { MASS, cellules, famCol, volRect } from "../mass/model.js";
+import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 
 var host = null, root = null, gVol = null, wired = false;
@@ -272,14 +273,16 @@ function wirePlan(){
     if(poi && MASS.sel){
       var v0 = volDe(MASS.sel);
       drag = { mode:"tourne", v:v0, a0:v0.a,
-               th0:Math.atan2(w.y - v0.y, w.x - v0.x) };
+               th0:Math.atan2(w.y - v0.y, w.x - v0.x),
+               libre: admissible(v0, MASS.vol) ? 0 : 1 };
       e.preventDefault();
       return;
     }
     var v = volAu(w.x, w.y);
     if(v){
       MASS.sel = v.id;
-      drag = { mode:"bouge", v:v, dx:v.x - w.x, dy:v.y - w.y, live:false };
+      drag = { mode:"bouge", v:v, dx:v.x - w.x, dy:v.y - w.y, live:false,
+               libre: admissible(v, MASS.vol) ? 0 : 1 };
       planDraw(); change("sel");
       e.preventDefault();
       return;
@@ -301,15 +304,34 @@ function wirePlan(){
     var w = monde(e);
     if(!w) return;
     if(drag.mode === "bouge"){
-      drag.v.x = Math.round((w.x + drag.dx) * 10) / 10;
-      drag.v.y = Math.round((w.y + drag.dy) * 10) / 10;
+      var nx = Math.round((w.x + drag.dx) * 10) / 10;
+      var ny = Math.round((w.y + drag.dy) * 10) / 10;
+      /* Un bâtiment ne sort pas du périmètre du concours, et la souris n'y
+         change rien : la position visée est essayée, et si elle ne tient pas on
+         essaie chaque axe SÉPARÉMENT. Le corps glisse alors le long de la
+         limite au lieu de s'y arrêter net — c'est le geste qu'on attend d'un
+         plan, et il n'y a rien à corriger après coup. */
+      if(drag.libre){
+        /* Un corps DÉJÀ dehors — une composition qui ne tient pas sur ce
+           terrain, ou relue d'un enregistrement plus ancien — se déplace
+           librement tant qu'il n'est pas rentré : le bloquer où il est aurait
+           rendu impossible de le ramener à la main. Dès qu'il tient, la règle
+           reprend. */
+        drag.v.x = nx; drag.v.y = ny;
+        if(admissible(drag.v, MASS.vol)) drag.libre = 0;
+      }
+      else if(admissible(drag.v, MASS.vol, nx, ny, drag.v.a)){ drag.v.x = nx; drag.v.y = ny; }
+      else if(admissible(drag.v, MASS.vol, nx, drag.v.y, drag.v.a)) drag.v.x = nx;
+      else if(admissible(drag.v, MASS.vol, drag.v.x, ny, drag.v.a)) drag.v.y = ny;
     } else {
       var th = Math.atan2(w.y - drag.v.y, w.x - drag.v.x);
       var a = drag.a0 + (th - drag.th0);
       /* Maj : on tourne au quart de degré près, sinon par pas de cinq degrés —
          un massing s'aligne, il ne se règle pas au centième. */
       if(!e.shiftKey) a = Math.round(a / (Math.PI / 36)) * (Math.PI / 36);
-      drag.v.a = a;
+      /* Tourner peut faire sortir autant que déplacer : l'angle qui ne tient
+         pas n'est simplement pas pris. */
+      if(drag.libre || admissible(drag.v, MASS.vol, drag.v.x, drag.v.y, a)) drag.v.a = a;
     }
     drag.live = true;
     planDraw(); change("geo");

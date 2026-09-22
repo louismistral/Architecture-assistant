@@ -28,9 +28,9 @@ import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
 import { repartir } from "../mix/shuffle.js";
 import { saveSoon } from "../mix/store.js";
-import { setTirer, tirerNiveaux } from "../mix/opts.js";
+import { tirerNiveaux } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
-import { genMass, rectSol } from "../mass/gen.js";
+import { admissible, genMass, rectSol } from "../mass/gen.js";
 import {
   MASS, PARTIS, bilan, bilanTotal, horsEnveloppe, massPar, massSet,
   massVols, niveaux, partiOf, volHaut, volNiv
@@ -198,22 +198,6 @@ function blocTirage(){
   r.appendChild(bm);
   b.appendChild(r);
 
-  /* L'interrupteur du mixer, pas une copie : `mix/opts.js` le tient, les deux
-     onglets le lisent. Il est ici parce que c'est lui qui décide si le tirage
-     propose aussi la PILE — et donc si le programme tient sur un seul plateau
-     de six mille mètres carrés ou sur trois niveaux. */
-  var bn = el("button", "btn", "Shuffle niveaux");
-  bn.type = "button";
-  bn.setAttribute("aria-pressed", String(tirerNiveaux));
-  bn.title = "Le tirage du programme déduit aussi le nombre de niveaux — "
-           + "c’est l’interrupteur du mixer, et c’est le même.";
-  bn.addEventListener("click", function(){
-    setTirer(!tirerNiveaux);
-    bn.setAttribute("aria-pressed", String(tirerNiveaux));
-    saveSoon();
-  });
-  b.appendChild(bn);
-
   var n = el("p", "mass-note");
   n.appendChild(el("b", null, "Shuffle programme "));
   n.appendChild(document.createTextNode("change ce qui est à quel étage. "));
@@ -371,6 +355,32 @@ function blocSel(){
       + "programme s’écrit ci-dessous, il n’est pas corrigé en douce."));
   }
 
+  /* Le PORTE-À-FAUX se règle, il ne s'obtient pas par accident. Un étage
+     supérieur peut déborder de celui du dessous : le règlement ne l'interdit
+     pas, la 3D le dessine et le marque, et le contrôle le chiffre. Il fallait
+     pouvoir en faire un — sans quoi « autorisé » ne voulait rien dire. */
+  if(volNiv(v) > 1){
+    var pfl = el("label", "mass-par");
+    pfl.appendChild(el("span", "mass-par__n", "Porte-à-faux du dernier étage"));
+    var pfi = document.createElement("input");
+    pfi.type = "number"; pfi.className = "mono";
+    pfi.min = "-20"; pfi.max = "20"; pfi.step = "0.5";
+    pfi.value = String(hautDe(v).dy || 0);
+    pfi.addEventListener("change", function(){
+      var x = parseFloat(String(pfi.value).replace(",", "."));
+      if(!isFinite(x)){ pfi.value = String(hautDe(v).dy || 0); return; }
+      var e0 = hautDe(v), av = e0.dy || 0;
+      e0.dy = Math.round(x * 10) / 10;
+      /* Un porte-à-faux ne fait pas sortir de la parcelle : s'il franchit la
+         limite, il n'est pas pris. Le débord est permis, pas le hors-parcelle. */
+      if(!admissible(v, MASS.vol)){ e0.dy = av; pfi.value = String(av); }
+      redessine();
+    });
+    pfl.appendChild(pfi);
+    pfl.appendChild(el("span", "mass-par__u", "m"));
+    b.appendChild(pfl);
+  }
+
   var e = el("div", "mass-deux");
   var moins = el("button", "btn", "− un étage");
   moins.type = "button";
@@ -410,6 +420,15 @@ function cote(host, lb, v, k){
   l.appendChild(i);
   l.appendChild(el("span", "mass-par__u", "m"));
   host.appendChild(l);
+}
+/* Le dernier étage hors sol — celui qui peut déborder. */
+function hautDe(v){
+  var e = null;
+  v.lv.forEach(function(x){
+    if(lvlOf(x.i) < 0) return;
+    if(!e || x.i > e.i) e = x;
+  });
+  return e || v.lv[v.lv.length - 1];
 }
 function basDe(v){
   var e = null;

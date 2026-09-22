@@ -24,14 +24,14 @@ import { fmt, dec } from "../core/format.js";
 import { NAPPE, PER } from "../data/site.js";
 import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
-import { assise, ecart, ecartPoly, margeAu } from "./geom.js";
-import { obstacles, rectSol } from "./gen.js";
+import { airePosable, assise, ecart, ecartPoly, margeAu } from "./geom.js";
+import { obstaclesPres, rectSol } from "./gen.js";
 import { MASS, bilan, niveaux } from "./model.js";
 
 function nom(v, k){ return v.fix ? "Salle de sport double" : "Volume " + (k + 1); }
 
 export function massCheck(){
-  var out = [], V = MASS.vol, N = niveaux(), OB = obstacles(), i, j;
+  var out = [], V = MASS.vol, N = niveaux(), i, j;
   function dit(sev, code, msg, ref, ex, vol){
     out.push({ sev:sev, code:code, msg:msg, ref:ref || "", ex:ex || "", vol:vol == null ? -1 : vol });
   }
@@ -41,22 +41,51 @@ export function massCheck(){
     return out;
   }
 
+  /* --- ce que la parcelle peut PORTER ------------------------------------
+     La question d'avant toutes les autres : ce programme tient-il seulement sur
+     ce terrain ? Le générateur en est le juge — il a essayé douze figures, de
+     un à sept corps, jusqu'à quarante-six mètres de profondeur. Quand aucune ne
+     rentre, ce n'est pas une implantation à corriger d'un glisser : c'est que
+     le niveau demande plus d'emprise que la parcelle n'en offre, et la réponse
+     est au MIXER, en ajoutant un étage. Un seuil de surface ne l'aurait pas dit
+     : la parcelle a la forme d'un L, et l'aire disponible n'est pas l'aire
+     posable en rectangles séparés de six mètres. */
+  if(MASS.vol.impossible){
+    /* `nom` est déjà la fonction qui nomme un volume : la variable locale la
+       masquait et tout le contrôle tombait. */
+    var pire = 0, pireNom = "";
+    niveaux().forEach(function(n){
+      if(n.lvl >= 0 && n.A > pire){ pire = n.A; pireNom = n.nom; }
+    });
+    dit("e", "tient", "Aucune implantation ne tient : " + pireNom.toLowerCase() + " demande "
+      + fmt(Math.round(pire)) + " m² d'emprise, et le périmètre du concours n'en offre "
+      + "que " + fmt(Math.round(MASS.vol.posable || 0)) + " au plus — recul de "
+      + dec(RULES.dist.retrait) + " m déduit, et avant les six mètres entre bâtiments, "
+      + "la cour et les accès. Le générateur a essayé les douze partis, de un à sept "
+      + "corps, jusqu’à 46 m de profondeur. C’est au mixer qu’il faut ajouter un étage.",
+      "2.3", pireNom, -1);
+  }
+
   for(i = 0; i < V.length; i++){
     var v = V[i], rc = rectSol(v), nm = nom(v, i);
 
-    /* --- la parcelle ---------------------------------------------------- */
+    /* --- la parcelle -------------------------------------------------------
+       Le périmètre et le recul ne sont plus des avertissements : ni le
+       générateur ni le glisser ne posent un corps dehors (`admissible` dans
+       `gen.js`). Ce qui suit est un FILET — une composition relue d'un
+       enregistrement plus ancien, ou un réglage de distance resserré après
+       coup, peuvent encore le déclencher. */
     var m = margeAu(PER, rc);
     if(m < 0){
       dit("e", "hors:" + v.id, nm + " sort du périmètre du concours de "
         + dec(-m) + " m.", "2.3", nm, i);
     } else if(m < RULES.dist.retrait - .05){
-      dit("w", "recul:" + v.id, nm + " est à " + dec(m) + " m de la limite : le recul "
-        + "de travail est de " + RULES.dist.retrait + " m. La zone A ne fixe aucune "
-        + "distance aux limites — c'est une règle de projet, faute d'alignement "
-        + "routier numérisé.", "2.3", nm, i);
+      dit("e", "recul:" + v.id, nm + " est à " + dec(m) + " m de la limite, où le "
+        + "recul de travail est de " + RULES.dist.retrait + " m.", "2.3", nm, i);
     }
 
     /* --- l'existant ------------------------------------------------------ */
+    var OB = obstaclesPres(rc, RULES.dist.entre + 2);
     for(j = 0; j < OB.length; j++){
       var eb = ecartPoly(rc, OB[j]);
       if(eb < 0){
@@ -108,10 +137,14 @@ export function massCheck(){
     /* --- porte-à-faux ------------------------------------------------------
        Autorisé, et c'est voulu : un étage peut dépasser. Mais il se paie en
        structure, et il doit se voir. */
+    /* Le porte-à-faux est AUTORISÉ — un étage peut dépasser, et la 3D le montre
+       tel quel. Il est toujours signalé : il se paie en structure, et ce n'est
+       pas au dessin de le taire. */
     var pf = porteAFaux(v);
     if(pf > .3){
-      dit(pf > 3 ? "w" : "i", "pf:" + v.id, "Porte-à-faux sur " + nm.toLowerCase()
-        + " — dépassement maximum " + dec(pf) + " m.", "", nm, i);
+      dit("w", "pf:" + v.id, "Porte-à-faux sur " + nm.toLowerCase()
+        + " — dépassement maximum " + dec(pf) + " m. Il est permis ; il se paie "
+        + "en structure.", "", nm, i);
     }
 
     /* --- le terrain -------------------------------------------------------- */
@@ -185,6 +218,15 @@ export function massCheck(){
 
 /* Le dépassement d'un étage sur celui du dessous, mesuré dans le repère du
    volume : c'est la seule mesure qui a un sens pour une structure. */
+/* Ce qu'un étage dépasse de celui du dessous, mesuré dans le repère du volume.
+   Positif = porte-à-faux, négatif = retrait. La 3D s'en sert pour marquer
+   l'étage qui déborde, le contrôle pour le chiffrer : une seule mesure, et les
+   deux disent donc la même chose. */
+export function debord(bas, haut){
+  var dx = (haut.dx || 0) - (bas.dx || 0), dy = (haut.dy || 0) - (bas.dy || 0);
+  return Math.max(Math.abs(dx) + (haut.w - bas.w) / 2,
+                  Math.abs(dy) + (haut.d - bas.d) / 2);
+}
 export function porteAFaux(v){
   var max = 0, i;
   /* Hors sol SEULEMENT. Un rez plus large que son sous-sol n'est pas un
@@ -193,13 +235,7 @@ export function porteAFaux(v){
      avaient aucun. */
   var lv = v.lv.filter(function(x){ return lvlOf(x.i) >= 0; })
                .sort(function(a, b){ return a.i - b.i; });
-  for(i = 1; i < lv.length; i++){
-    var bas = lv[i - 1], h = lv[i];
-    var dx = (h.dx || 0) - (bas.dx || 0), dy = (h.dy || 0) - (bas.dy || 0);
-    var ox = Math.abs(dx) + (h.w - bas.w) / 2;
-    var oy = Math.abs(dy) + (h.d - bas.d) / 2;
-    max = Math.max(max, ox, oy);
-  }
+  for(i = 1; i < lv.length; i++) max = Math.max(max, debord(lv[i - 1], lv[i]));
   return max;
 }
 

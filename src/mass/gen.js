@@ -29,8 +29,8 @@ import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { areaOf, lvlOf, onFloor } from "../mix/floors.js";
 import {
-  alignement, assise, attracteurs, axePer, bbox, dedans,
-  ecart, ecartPoly, margeAu
+  alignement, assise, attracteurs, axePer, bbox, bordDist, dedans,
+  airePosable, ecart, ecartPoly, margeAu
 } from "./geom.js";
 import { MASS, horsSol, sousSol } from "./model.js";
 
@@ -78,10 +78,32 @@ function versSite(C, u, v){
    Les bâtiments existants qui touchent le périmètre : ce sont eux que l'on ne
    peut pas percuter, et dont l'AEAI veut qu'on s'écarte. Ceux du coteau, à
    cent mètres, ne gênent personne. */
+/* Les emprises existantes ne changent jamais : on les filtre une fois, et l'on
+   garde pour chacune son CERCLE ENGLOBANT. Le test d'admissibilité les
+   parcourait toutes à chaque position essayée — vingt-neuf polygones, quatre
+   coins et autant d'intersections de segments — alors qu'une comparaison de
+   deux rayons écarte les vingt-huit qui sont à cent mètres. */
+var OBS = null;
 function obstacles(){
-  return (SITE.bat || []).filter(function(P){
+  if(OBS) return OBS;
+  OBS = (SITE.bat || []).filter(function(P){
     return P.some(function(p){ return margePoint(p) > -35; });
+  }).map(function(P){
+    var c = centre(P), r = 0;
+    P.forEach(function(p){ r = Math.max(r, Math.hypot(p[0] - c[0], p[1] - c[1])); });
+    return { P:P, cx:c[0], cy:c[1], r:r };
   });
+  return OBS;
+}
+/* Ce qui peut toucher ce rectangle, et rien d'autre. */
+export function obstaclesPres(rc, marge){
+  var OB = obstacles(), out = [], i;
+  var port = Math.hypot(rc.w, rc.d) / 2 + marge;
+  for(i = 0; i < OB.length; i++){
+    var d = Math.hypot(OB[i].cx - rc.x, OB[i].cy - rc.y);
+    if(d <= OB[i].r + port) out.push(OB[i].P);
+  }
+  return out;
 }
 function margePoint(p){
   var best = Infinity, i;
@@ -201,28 +223,116 @@ function monter(corps, N, imp, par, r){
   var A = N.map(function(n, k){
     return n.A - (imp && k === 0 ? imp.aire : 0);
   });
-  corps.forEach(function(c){ c.lv = []; });
-  N.forEach(function(n, k){
+  var k, i;
+  corps.forEach(function(c){ c.lv = []; c.aire = []; });
+
+  /* Avant de partager : QUI monte. Le parti propose une silhouette — les
+     pavillons bas, l'aile principale haute —, mais le programme a le dernier
+     mot. Quand le premier étage demande autant de surface que le rez, il ne
+     peut pas tenir sur trois corps quand le rez en compte cinq : les porteurs
+     seraient deux fois plus larges en haut qu'en bas, et l'on obtenait un
+     porte-à-faux de quinze mètres qui n'était qu'un défaut de répartition. On
+     promeut donc, du plus gros au plus petit, jusqu'à ce que les porteurs du
+     niveau pèsent au moins ce que ce niveau demande. */
+  for(k = 1; k < N.length; k++){
+    if(A[k] <= 0 || A[k - 1] <= 0) continue;
+    var tot = 0, sur = 0;
+    corps.forEach(function(c){
+      tot += c.poids;
+      if(c.haut > k) sur += c.poids;
+    });
+    var manque = (A[k] / A[k - 1]) * tot - sur;
+    if(manque <= .01) continue;
+    corps.filter(function(c){ return c.haut <= k; })
+         .sort(function(a2, b2){ return b2.poids - a2.poids; })
+         .forEach(function(c){
+           if(manque <= .01) return;
+           c.haut = k + 1;
+           manque -= c.poids;
+         });
+  }
+
+  /* Le partage se fait DU BAS VERS LE HAUT, et le rez est la référence : c'est
+     lui qui touche le terrain, lui qui ne peut pas déborder. Chaque corps y
+     prend sa part de poids ; en montant, il ne peut pas dépasser l'aire qu'il a
+     au niveau du dessous — son PLAFOND —, et ce qui ne tient pas repasse aux
+     corps qui ont encore de la marge.
+
+     Partager chaque niveau indépendamment donnait vingt, quarante, soixante-dix
+     mètres de porte-à-faux qu'aucun parti n'avait demandés : un corps qui porte
+     un sixième du rez et un tiers du premier devenait simplement plus large en
+     montant.
+
+     Il reste un cas où le débord est RÉEL et non un artefact : quand le mixer
+     pose plus de programme à un étage qu'à celui du dessous, et que tous les
+     porteurs sont déjà à leur plafond. Le surplus se répartit alors au prorata,
+     et le contrôle le chiffre. C'est un porte-à-faux, il est permis, et il se
+     voit. */
+  for(k = 0; k < N.length; k++){
     var port = corps.filter(function(c){ return c.haut > k; });
     if(!port.length) port = [corps[0]];
     var som = 0;
     port.forEach(function(c){ som += c.poids; });
-    port.forEach(function(c){
-      var a = Math.max(0, A[k]) * c.poids / som;
-      /* Les terrasses retirent l'étage sur celui du dessous : le programme ne
-         change pas, la forme descend en gradins. */
-      var g = c.grad ? 1 - c.grad * k * .22 : 1;
-      var q = cotes(a, c.prof, c.grad ? Math.max(.6, g) : 1);
-      c.lv.push({ i:n.i, w:q.w, d:q.d, dx:0, dy:0, a:a });
-    });
-  });
+    port.forEach(function(c, i2){ c.aire[k] = Math.max(0, A[k]) * c.poids / som; });
+    if(k === 0) continue;
+    var pass;
+    for(pass = 0; pass < 4; pass++){
+      var surplus = 0, marge = 0;
+      port.forEach(function(c){
+        var pla = c.aire[k - 1];
+        if(pla == null) return;
+        if(c.aire[k] > pla){ surplus += c.aire[k] - pla; c.aire[k] = pla; }
+        else marge += pla - c.aire[k];
+      });
+      if(surplus < .5) break;
+      if(marge < .5){
+        port.forEach(function(c){ c.aire[k] += surplus / port.length; });
+        break;
+      }
+      port.forEach(function(c){
+        var pla = c.aire[k - 1];
+        if(pla == null) return;
+        var m = pla - c.aire[k];
+        if(m > 0) c.aire[k] += surplus * (m / marge);
+      });
+    }
+  }
+
+  /* Les cotes, du bas vers le haut : le rez fixe la PROFONDEUR du corps, une
+     fois pour toutes, et la largeur suit la surface. À profondeur constante,
+     une aire plus petite donne une largeur plus petite — l'étage ne déborde pas
+     et ne perd pas un mètre carré. */
+  for(k = 0; k < N.length; k++){
+    for(i = 0; i < corps.length; i++){
+      var c = corps[i];
+      /* `aire[k]` fait foi, et non `haut` : quand aucun corps ne monte jusqu'à
+         un niveau, le partage le donne au premier — et le sauter ici perdait
+         cent soixante mètres carrés de programme sans rien dire. */
+      if(c.aire[k] == null) continue;
+      var a = c.aire[k], q;
+      if(!c.lv.length){
+        q = cotes(a, c.prof, 1);
+        c.d0 = q.d;
+      } else if(c.grad){
+        /* Une terrasse se retire dans les DEUX sens : l'étage garde la forme de
+           celui du dessous, en plus petit, et se décale vers l'arrière. */
+        var bas = c.lv[c.lv.length - 1];
+        var g = Math.sqrt(Math.max(.15, a / Math.max(1, bas.w * bas.d)));
+        q = { w: d1(bas.w * g), d: d1(bas.d * g) };
+      } else {
+        q = { w: d1(a / c.d0), d: c.d0 };
+      }
+      c.lv.push({ i:N[k].i, w:q.w, d:q.d, dx:0, dy:0, a:a });
+    }
+  }
+
   /* Le décalage des terrasses : l'étage se retire vers l'arrière, jamais au
      hasard — un gradin qui saute d'un côté puis de l'autre n'est pas un gradin. */
   corps.forEach(function(c){
     if(!c.grad || c.lv.length < 2) return;
     var d0 = c.lv[0].d;
-    c.lv.forEach(function(e, k){
-      if(k === 0) return;
+    c.lv.forEach(function(e, kk){
+      if(kk === 0) return;
       e.dy = d1(-(d0 - e.d) / 2);
     });
   });
@@ -267,11 +377,52 @@ function poser(corps, C, imp, par, r, atts){
   return vols;
 }
 
-/* Ramener ce qui dépasse. Vingt-cinq passes suffisent : au-delà, c'est que la
-   figure ne tient pas sur ce site, et le générateur doit la jeter plutôt que
-   la tordre. */
+/* ---------- la règle d'implantation, en UN seul endroit ----------------------
+   Un bâtiment ne sort pas du périmètre du concours. Ce n'est pas un
+   avertissement mais une condition : ni le générateur ni le glisser à la souris
+   ne posent un corps dehors. Trois conditions, et elles tiennent ensemble :
+
+     — TOUS les étages dedans, recul de 5 m compris. Tous, et pas seulement
+       l'emprise au sol : un porte-à-faux qui franchit la limite est du bâti
+       hors parcelle ;
+     — 6 m entre bâtiments, l'AEAI ;
+     — rien sur un bâtiment existant, ni à moins de 6 m de lui.
+
+   Le reste — profondeur, proportions, écart au programme, porte-à-faux — reste
+   du domaine de l'avertissement : ce sont des choix de projet, et l'on doit
+   pouvoir les prendre. */
+export function admissible(v, vols, x, y, a){
+  var X = x == null ? v.x : x, Y = y == null ? v.y : y, A = a == null ? v.a : a;
+  var ok = true, i, j;
+  v.lv.forEach(function(e){
+    if(!ok) return;
+    var rc = { x:X + (e.dx || 0), y:Y + (e.dy || 0), w:e.w, d:e.d, a:A };
+    if(margeAu(PER, rc) < RULES.dist.retrait - .01) ok = false;
+  });
+  if(!ok) return false;
+  var sol = { x:X, y:Y, w:rectSol(v).w, d:rectSol(v).d, a:A };
+  for(i = 0; i < vols.length; i++){
+    if(vols[i] === v) continue;
+    if(ecart(sol, rectSol(vols[i])) < MASS.par.dmin - .01) return false;
+  }
+  var OB = obstaclesPres(sol, MASS.par.dmin);
+  for(j = 0; j < OB.length; j++)
+    if(ecartPoly(sol, OB[j]) < MASS.par.dmin - .01) return false;
+  return true;
+}
+/* La composition entière tient-elle ? C'est ce que le générateur doit obtenir
+   avant de rendre quoi que ce soit. */
+export function toutDedans(vols){
+  var i;
+  for(i = 0; i < vols.length; i++) if(!admissible(vols[i], vols)) return false;
+  return true;
+}
+
+/* Ramener ce qui dépasse. Soixante passes : au-delà, c'est que la figure ne
+   tient pas sur ce site, et le générateur doit la reprendre autrement plutôt
+   que la tordre. */
 function reparer(vols, par){
-  var OB = obstacles(), pas, i, j;
+  var pas, i, j;
   var B = bbox(PER);
   /* On vise un peu PLUS que la distance exigée. Viser juste laissait un reste
      de dix centimètres à chaque passe, et le contrôle annonçait « 5,91 m où
@@ -281,7 +432,15 @@ function reparer(vols, par){
     var bouge = 0;
     for(i = 0; i < vols.length; i++){
       var v = vols[i], rc = rectSol(v), dx = 0, dy = 0;
-      var m = margeAu(PER, rc) - RULES.dist.retrait;
+      /* Le pire de TOUS les étages : un porte-à-faux qui franchit la limite est
+         du bâti hors parcelle, et c'est lui qu'il faut rentrer. */
+      var pire = Infinity;
+      v.lv.forEach(function(e){
+        var q = { x:v.x + (e.dx || 0), y:v.y + (e.dy || 0), w:e.w, d:e.d, a:v.a };
+        var mm = margeAu(PER, q);
+        if(mm < pire) pire = mm;
+      });
+      var m = pire - RULES.dist.retrait - .3;
       if(m < 0){
         var k = Math.min(3, -m) * .55;
         var lx = B.cx - v.x, ly = B.cy - v.y, l = Math.hypot(lx, ly) || 1;
@@ -297,6 +456,7 @@ function reparer(vols, par){
           dx += ox / ol * push; dy += oy / ol * push;
         }
       }
+      var OB = obstaclesPres(rc, cible);
       for(j = 0; j < OB.length; j++){
         var eb = ecartPoly(rc, OB[j]);
         if(eb < cible){
@@ -311,6 +471,45 @@ function reparer(vols, par){
       }
     }
     if(!bouge) break;
+  }
+}
+/* Le repêchage. Repousser un corps vers le cœur du site ne suffit pas toujours :
+   une aile posée dans un angle peut n'avoir AUCUNE issue par petits pas, alors
+   qu'une place l'attend vingt mètres plus loin. On balaie donc la parcelle et
+   l'on prend la position admissible la PLUS PROCHE de celle qu'il occupait — le
+   parti garde sa figure, le corps trouve sa place. Le quart de tour est essayé
+   aussi : une aile qui ne tient pas en travers tient parfois dans la longueur.
+
+   Le balayage est filtré par le centre avant tout calcul sérieux : sans ce
+   filtre, deux mille cinq cents positions par corps coûtaient une seconde. */
+function repecher(vols, par){
+  var B = bbox(PER), i, k;
+  for(i = 0; i < vols.length; i++){
+    var v = vols[i];
+    if(admissible(v, vols)) continue;
+    var rc = rectSol(v), demi = Math.min(rc.w, rc.d) / 2;
+    var angles = [v.a, v.a + Math.PI / 2, axePer(), axePer() + Math.PI / 2];
+    /* Les positions sont TRIÉES par distance avant d'être essayées : la plus
+       proche qui tient est la bonne, et l'on s'arrête là. Les essayer toutes
+       pour garder la meilleure coûtait deux mille cinq cents tests par corps,
+       soit une seconde par tirage. */
+    var cand = [], cx, cy;
+    for(cx = B.x0; cx <= B.x1; cx += 3){
+      for(cy = B.y0; cy <= B.y1; cy += 3){
+        if(bordDist(PER, cx, cy) < RULES.dist.retrait + demi * .3) continue;
+        cand.push([cx, cy, (cx - v.x) * (cx - v.x) + (cy - v.y) * (cy - v.y)]);
+      }
+    }
+    cand.sort(function(a, b){ return a[2] - b[2]; });
+    var pose = 0;
+    for(k = 0; k < angles.length && !pose; k++){
+      for(var q = 0; q < cand.length; q++){
+        if(!admissible(v, vols, cand[q][0], cand[q][1], angles[k])) continue;
+        v.x = d1(cand[q][0]); v.y = d1(cand[q][1]); v.a = angles[k];
+        pose = 1;
+        break;
+      }
+    }
   }
 }
 function centre(P){
@@ -337,7 +536,7 @@ function rectSol(v){
    veut. Elle sert seulement à choisir, parmi trente compositions, celle qui
    demande le moins de rattrapage. */
 function noter(vols, par, atts){
-  var OB = obstacles(), p = 0, i, j;
+  var p = 0, i, j;
   for(i = 0; i < vols.length; i++){
     var v = vols[i], rc = rectSol(v);
     var m = margeAu(PER, rc);
@@ -349,6 +548,7 @@ function noter(vols, par, atts){
       else if(e < par.dmin) p += (par.dmin - e) * 30;
       else if(e > 55) p += (e - 55) * .6;                 /* éparpillé sans raison */
     }
+    var OB = obstaclesPres(rc, par.dmin + 2);
     for(j = 0; j < OB.length; j++){
       var eb = ecartPoly(rc, OB[j]);
       if(eb < 0) p += 600;
@@ -405,20 +605,57 @@ export function genMass(graine){
   var atts = attracteurs();
   var imp = corpsImpose(N[0].i);
   if(imp) imp.i = N[0].i;
-  var partis = MASS.parti === "auto"
-    ? PARTIS_LIBRES : [MASS.parti];
-  var best = null, bp = Infinity, t;
-  for(t = 0; t < 30; t++){
-    var pid = partis[t % partis.length];
-    var C = cadre(cap + entre(r, -1, 1) * (1 - par.regul) * .28);
-    var corps = figure(pid, r, C, N, par);
-    monter(corps, N, imp, par, r);
-    var vols = poser(corps, C, imp, par, r, atts);
-    enterrer(vols, par);
-    var p = noter(vols, par, atts);
-    if(p < bp){ bp = p; best = vols; best.parti = pid; }
+  var partis = MASS.parti === "auto" ? PARTIS_LIBRES : [MASS.parti];
+
+  /* Une figure qui ne tient pas dans le périmètre n'est pas une figure à
+     avertir : c'est une figure à REPRENDRE. Un corps de six mille mètres carrés
+     à dix-huit de profondeur fait trois cent trente mètres de long, et la
+     parcelle en fait cent soixante-seize — on ne peut pas raccourcir la
+     surface, elle est au règlement ; on épaissit donc le corps. Le générateur
+     rejoue sa recherche avec des corps de plus en plus profonds, et rend la
+     première composition qui tient tout entière dans la parcelle. */
+  var profs = [par.prof, par.prof * 1.35, par.prof * 1.8, par.prof * 2.4, 46];
+  var repli = null, rp = Infinity, e, t;
+  for(e = 0; e < profs.length; e++){
+    var P2 = copiePar(par, Math.min(46, Math.round(profs[e] * 10) / 10));
+    var best = null, bp = Infinity;
+    for(t = 0; t < 30; t++){
+      var pid = partis[t % partis.length];
+      var C = cadre(cap + entre(r, -1, 1) * (1 - P2.regul) * .28);
+      var corps = figure(pid, r, C, N, P2);
+      monter(corps, N, imp, P2, r);
+      var vols = poser(corps, C, imp, P2, r, atts);
+      enterrer(vols, P2);
+      var p = noter(vols, P2, atts);
+      if(p < bp){ bp = p; best = vols; best.parti = pid; best.prof = P2.prof; }
+    }
+    /* Le repêchage ne tourne que sur la MEILLEURE des trente : le balayage
+       coûte trop cher pour être payé trente fois, et une composition déjà
+       mauvaise ne mérite pas qu'on la sauve. */
+    if(best){
+      repecher(best, P2);
+      bp = noter(best, P2, atts);
+      if(toutDedans(best)) return best;
+    }
+    if(best && bp < rp){ rp = bp; repli = best; }
   }
-  return best || [];
+  /* Rien ne tient — ni en un corps, ni en sept, ni à quarante-six mètres de
+     profondeur. Ce n'est plus une implantation à corriger : c'est que le
+     programme demandé à ce niveau ne TIENT PAS sur ce terrain, et la réponse
+     n'est pas ici. On rend la meilleure tentative, marquée comme telle, et le
+     contrôle dit pourquoi et où aller la corriger — au mixer, en ajoutant un
+     étage. Mieux vaut un dessin qu'on comprend qu'un écran vide. */
+  if(repli){
+    repli.impossible = 1;
+    repli.posable = airePosable(RULES.dist.retrait);
+  }
+  return repli || [];
+}
+function copiePar(par, prof){
+  var o = {}, k;
+  for(k in par) o[k] = par[k];
+  o.prof = prof;
+  return o;
 }
 var PARTIS_LIBRES = ["compact","barre","barres","L","U","cour","pavillons",
                      "hameau","terrasses","peigne","libre"];
@@ -448,4 +685,4 @@ function enterrer(vols, par){
   big.lv.sort(function(a, b){ return a.i - b.i; });
 }
 
-export { cadre, rectSol, obstacles };
+export { cadre, rectSol };

@@ -317,8 +317,9 @@ sont les classes ; en « monochrome », la forme seule.
 ### DEUX TIRAGES, et ils ne se confondent jamais
 
 - **Shuffle programme** — celui du mixer, appelé d'ici : il rebat la répartition dans les
-  étages, et la volumétrie s'y adapte. L'interrupteur « Shuffle niveaux » est le même objet
-  que dans le mixer (`mix/opts.js`), pas une copie.
+  étages, et la volumétrie s'y adapte. Il obéit à l'interrupteur « Shuffle niveaux » du
+  mixer, qui se règle au mixer et nulle part ailleurs — le doubler dans le rail du massing
+  mettait deux boutons pour un seul réglage.
 - **Shuffle massing** — il ne touche PAS au programme. Mêmes postes, mêmes surfaces, mêmes
   niveaux, même répartition ; seule la solution architecturale change : nombre de corps,
   position, orientation, proportions, forme, hauteurs, retraits, terrasses.
@@ -348,13 +349,51 @@ Douze partis, chacun composant vraiment différemment : auto, bloc compact, barr
 parallèles, L, U, cour, pavillons, hameau, terrasses, peigne, composition libre. « Auto »
 les essaie tous et garde celui qui tient le mieux sur ce site avec ce programme.
 
-### Le contrôle ne refuse rien, il chiffre
+### L'implantation est une RÈGLE ; le reste s'avertit
 
-Trois niveaux : **erreur** pour une règle écrite (règlement, AEAI) ou une géométrie
-impossible ; **à vérifier** pour une règle de projet ou une marge qui se discute ; **info**
-pour ce qu'il faut savoir sans corriger. Les porte-à-faux sont autorisés et signalés, avec
-leur dépassement maximum. Le bilan de surface est donné niveau par niveau — demandé, posé,
-écart — parce que c'est la question à laquelle l'outil doit répondre à tout moment.
+Un bâtiment ne sort pas du périmètre du concours. `admissible()` dans `gen.js` en est le
+seul juge, et les deux chemins y passent : le générateur ne rend que des compositions qui
+tiennent, et le glisser à la souris refuse la position qui n'en est pas une — il essaie
+alors chaque axe séparément, si bien que le corps LONGE la limite au lieu de s'y arrêter
+net. Trois conditions, et elles tiennent ensemble : tous les étages dedans avec le recul
+de 5 m — tous, car un porte-à-faux qui franchit la limite est du bâti hors parcelle —,
+6 m entre bâtiments (AEAI), rien sur l'existant ni à moins de 6 m de lui.
+
+Quand une figure ne tient pas, elle est REPRISE, pas avertie. On ne peut pas raccourcir la
+surface, elle est au règlement : le générateur rejoue donc sa recherche avec des corps de
+plus en plus profonds — 18, 24, 32, 43, 46 m —, et REPÊCHE les corps restés dehors en
+balayant la parcelle pour la position admissible la plus proche, quart de tour compris.
+Quand rien ne tient malgré les douze partis, de un à sept corps et jusqu'à 46 m, ce n'est
+plus une implantation à corriger : le niveau demande plus d'emprise que la parcelle n'en
+offre, la composition est marquée `impossible`, et le contrôle dit d'aller ajouter un
+étage AU MIXER. Un seuil de surface ne l'aurait pas dit : la parcelle a la forme d'un L,
+et l'aire disponible (10'528 m², recul déduit) n'est pas l'aire posable en rectangles
+séparés de six mètres.
+
+Tout le reste s'avertit et ne se refuse pas, en trois niveaux : **erreur** pour une règle
+écrite (règlement, AEAI) ou une géométrie impossible ; **à vérifier** pour une règle de
+projet ou une marge qui se discute ; **info** pour ce qu'il faut savoir sans corriger. Le
+bilan de surface est donné niveau par niveau — demandé, posé, écart —, parce que c'est la
+question à laquelle l'outil doit répondre à tout moment.
+
+### Le porte-à-faux est permis, et il se voit
+
+Un étage peut déborder de celui du dessous. La 3D le dessine tel quel et lui donne
+l'ARÊTE D'AVERTISSEMENT — un dépassement qu'on ne lit que dans une liste n'est pas un
+dépassement qu'on corrige —, le contrôle le chiffre au centimètre, et le volume choisi
+porte un champ « porte-à-faux du dernier étage » pour en faire un à la main. Il ne fait
+pas sortir de la parcelle : le débord est permis, le hors-parcelle non.
+
+Ce que le générateur produit, lui, n'est jamais un porte-à-faux d'artefact. Les parts se
+partageaient niveau par niveau, indépendamment : un corps portant un sixième du rez et un
+tiers du premier devenait plus large en montant, et l'on lisait jusqu'à soixante-dix
+mètres de débord que personne n'avait demandés. Trois choses l'en empêchent — un corps
+garde sa PROFONDEUR du rez au faîte, donc une aire plus petite donne une largeur plus
+petite ; le partage monte du bas avec un PLAFOND, l'aire du niveau du dessous ; et les
+corps sont PROMUS d'office quand un étage demande plus que ses porteurs ne pèsent en bas.
+Reste le débord RÉEL — la salle de sport occupe 896 m² du rez sans monter, donc les autres
+corps sont forcément plus grands à l'étage. Celui-là est vrai, il s'affiche, et il se
+discute.
 
 ### Le plan et la 3D sont le même modèle
 
