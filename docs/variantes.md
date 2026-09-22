@@ -105,6 +105,29 @@ l'écran diffère du dernier enregistrement, le panneau propose « Enregistrer
 d'abord », « Charger quand même » ou « Annuler ». La comparaison est faite sur
 l'instantané, pas sur un drapeau : un avertissement permanent ne serait plus lu.
 
+## La connexion : un mot de passe, pas un lien
+
+Le lien magique a été la première façon d'entrer, et il coûtait **un courriel
+par ouverture de session**. À deux, en une après-midi d'essais, on épuise le
+quota d'envoi du projet et plus personne n'entre — y compris celui qui n'a rien
+demandé. Le mot de passe n'envoie rien.
+
+Les **mêmes champs** servent à entrer et à s'inscrire, et deux boutons les
+distinguent : « Se connecter » et « Créer un compte ». Ce sont deux réponses à
+la même question — qui es-tu ? —, et faire choisir avant d'avoir tapé quoi que
+ce soit n'aide personne.
+
+Un courriel part encore dans un seul cas, rare : **« Mot de passe oublié ? »**.
+Le lien revient dans le fragment, comme le faisait le lien magique ; on le
+reconnaît à son `type=recovery`, et l'on s'arrête alors sur le champ du nouveau
+mot de passe **sans charger le compte** — faire entrer dans l'application
+quelqu'un qui vient justement de dire qu'il ne sait plus entrer serait étrange.
+
+GoTrue répond en anglais, et ses messages sont les seuls qu'on verra quand ça
+coince : `traduire()` dans `net/supa.js` les rend en français. Un message
+d'échec doit dire sa cause ET son remède — la règle du projet ne s'arrête pas à
+la frontière du réseau.
+
 ## Sans compte, rien ne change
 
 L'application marche exactement comme avant : le travail va dans `localStorage`,
@@ -132,14 +155,25 @@ JAMAIS figurer dans le dépôt.
 
 ## Ce qu'il faut régler à la main, une fois
 
-Dans le tableau de bord Supabase, **Authentication → URL Configuration** :
+Deux réglages, dans le tableau de bord Supabase. Ce sont les seuls qui ne
+peuvent pas vivre dans le dépôt.
+
+**Authentication → URL Configuration**
 
 - *Site URL* : l'adresse GitHub Pages du projet ;
 - *Redirect URLs* : la même, plus `http://localhost:8000/**` pour travailler en
   local.
 
-Sans cela le lien de connexion revient sur l'adresse par défaut et la session ne
-s'ouvre jamais. C'est le seul réglage qui ne soit pas dans le dépôt.
+Sans cela le lien de réinitialisation revient sur l'adresse par défaut et le
+mot de passe ne se change jamais.
+
+**Authentication → Sign In / Providers → Email → Confirm email**
+
+Laissé ENCLENCHÉ, « Créer un compte » n'ouvre pas de session : il faut d'abord
+ouvrir un lien reçu par courriel — donc le quota d'envoi qu'on voulait
+justement éviter. Le code gère les deux cas et le dit (« Compte créé. Ouvre le
+lien… »), mais sur un projet à deux personnes qui se connaissent, l'éteindre
+fait entrer tout de suite.
 
 ## Vérifier
 

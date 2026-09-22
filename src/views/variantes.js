@@ -22,8 +22,9 @@ import { el, fmt } from "../core/format.js";
 import { perime } from "../core/empreinte.js";
 import { SITE } from "../data/site.js";
 import { snapshot } from "../mix/store.js";
-import { CPT, connexion, estProprietaire, initialesDe, inviter, membreDe,
-         onCompte, renommerEquipe, retirer, sortir } from "../net/compte.js";
+import { CPT, connexion, creerCompte, estProprietaire, initialesDe, inviter,
+         membreDe, motDePasseOublie, onCompte, poserMotDePasse, renommerEquipe,
+         retirer, sortir } from "../net/compte.js";
 import { REG, tirerReglages } from "../net/reglages.js";
 import { VARIANTES, charger, chargerVariantes, enregistrer, nomPropose,
          onVariantes, renommer, supprimer } from "../net/variantes.js";
@@ -49,6 +50,27 @@ function btn(cls, txt, fn){
   if(fn) b.addEventListener("click", fn);
   return b;
 }
+/* Un mot de passe qu'on ne peut pas relire se retape trois fois. L'œil est un
+   VRAI bouton, pas une icône posée sur un div : au clavier il faut pouvoir
+   l'atteindre. */
+function champMdp(id, auto){
+  var w = el("span", "vp-mdp");
+  var i = el("input");
+  i.id = id; i.type = "password"; i.required = true;
+  i.autocomplete = auto; i.minLength = 6;
+  var b = btn("vp-mdp__oeil", "Afficher", function(){
+    var vu = i.type === "password";
+    i.type = vu ? "text" : "password";
+    b.textContent = vu ? "Masquer" : "Afficher";
+  });
+  b.tabIndex = 0;
+  w.appendChild(i); w.appendChild(b);
+  /* L'appelant veut le CHAMP, pas l'emballage : on lui rend l'un en gardant
+     l'autre accessible pour l'insertion. */
+  w.champ = i;
+  return w;
+}
+
 function depuis(iso){
   if(!iso) return "";
   var s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -198,31 +220,70 @@ function blocCompte(){
     d.appendChild(el("p", "vp-note", "La base n'est pas configurée : les variantes restent sur cet appareil."));
     return d;
   }
-  if(CPT.statut === "attente"){
-    d.appendChild(el("p", "vp-note", "Un lien vient de partir par courriel. Ouvre-le sur cet appareil."));
-    return d;
-  }
-  if(CPT.statut === "charge"){ d.appendChild(el("p", "vp-note", "Connexion…")); return d; }
+  if(CPT.statut === "charge"){ d.appendChild(el("p", "vp-note", "Un instant…")); return d; }
   if(CPT.statut === "panne"){
     d.appendChild(el("p", "vp-note is-bad", "La base a répondu : " + CPT.err));
     return d;
   }
+  if(CPT.statut === "verif"){
+    d.appendChild(el("p", "vp-note", "Compte créé. Ouvre le lien reçu par courriel pour confirmer l'adresse, puis reviens te connecter."));
+    return d;
+  }
+
+  /* Revenu d'un lien de réinitialisation : un seul champ, et rien d'autre. */
+  if(CPT.statut === "recup"){
+    var fr = el("form", "vp-conn");
+    fr.appendChild(el("h3", "vp-conn__t", "Choisis un nouveau mot de passe"));
+    var lr = el("label", null, "Nouveau mot de passe"); lr.htmlFor = "vpNeuf";
+    var ir = champMdp("vpNeuf", "new-password");
+    var br = btn("btn btn--primary", "Enregistrer"); br.type = "submit";
+    fr.appendChild(lr);
+    var rr = el("div", "vp-conn__row"); rr.appendChild(ir); rr.appendChild(br);
+    fr.appendChild(rr);
+    if(CPT.err) fr.appendChild(el("p", "vp-note is-bad", CPT.err));
+    fr.addEventListener("submit", function(e){ e.preventDefault(); poserMotDePasse(ir.champ.value); });
+    d.appendChild(fr);
+    return d;
+  }
+
   if(CPT.statut !== "dedans"){
+    /* Les MÊMES champs pour entrer et pour s'inscrire, et deux boutons : ce
+       sont deux réponses à la même question, et faire choisir avant d'avoir
+       tapé quoi que ce soit n'aide personne. Le lien par courriel a disparu —
+       il coûtait un envoi par ouverture de session, et le quota du projet
+       s'épuise en une après-midi d'essais à deux. */
     var f = el("form", "vp-conn");
-    var lab = el("label", null, "Se connecter pour partager");
-    lab.htmlFor = "vpMail";
-    var i = el("input");
-    i.id = "vpMail"; i.type = "email"; i.required = true;
-    i.placeholder = "prenom.nom@exemple.ch";
-    var b = btn("btn btn--primary", "Recevoir un lien");
-    b.type = "submit";
-    f.appendChild(lab);
-    var r = el("div", "vp-conn__row");
-    r.appendChild(i); r.appendChild(b);
-    f.appendChild(r);
+    f.appendChild(el("h3", "vp-conn__t", "Se connecter pour partager"));
+
+    var lm = el("label", null, "Adresse de courriel"); lm.htmlFor = "vpMail";
+    var im = el("input");
+    im.id = "vpMail"; im.type = "email"; im.required = true;
+    im.autocomplete = "email"; im.placeholder = "prenom.nom@exemple.ch";
+    f.appendChild(lm); f.appendChild(im);
+
+    var lp = el("label", null, "Mot de passe"); lp.htmlFor = "vpMdp";
+    var ip = champMdp("vpMdp", "current-password");
+    f.appendChild(lp); f.appendChild(ip);
+
+    var ligne = el("div", "vp-conn__row");
+    var go = btn("btn btn--primary", "Se connecter"); go.type = "submit";
+    ligne.appendChild(go);
+    ligne.appendChild(btn("btn", "Créer un compte", function(){
+      if(!f.reportValidity()) return;
+      creerCompte(im.value, ip.champ.value);
+    }));
+    f.appendChild(ligne);
+
+    var bas = el("div", "vp-conn__bas");
+    bas.appendChild(btn("vp-lien", "Mot de passe oublié ?", function(){
+      if(!im.value){ im.focus(); dit("Tape d'abord ton adresse."); return; }
+      motDePasseOublie(im.value);
+    }));
+    f.appendChild(bas);
+
     f.appendChild(el("p", "vp-note", "Sans compte, le travail reste enregistré sur cet appareil, comme aujourd'hui."));
     if(CPT.err) f.appendChild(el("p", "vp-note is-bad", CPT.err));
-    f.addEventListener("submit", function(e){ e.preventDefault(); connexion(i.value); });
+    f.addEventListener("submit", function(e){ e.preventDefault(); connexion(im.value, ip.champ.value); });
     d.appendChild(f);
     return d;
   }
