@@ -27,8 +27,8 @@ import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4pro
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
-import { debord } from "../mass/checks.js";
-import { MASS, cellules, famTok, niveaux, volRect } from "../mass/model.js";
+import { MASS, cellules, debord, famTok, filtreDe, niveaux, volRect }
+  from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
@@ -210,7 +210,12 @@ function boiteLibre(M, P, z0, z1, c, a, edge){
 function volMesh(){
   var M = Mesh(), N = niveaux();
   var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus"), cPF = cssRGB("--warn");
-  var cMono = teinte("--site-emprise", .8), cEnt = teinte("--ink-4", .5);
+  /* Le monochrome est BLANC, et blanc pur : c'est la maquette de concours, où
+     la masse se lit à l'ombre et à l'arête, jamais à la teinte. Un vert délavé
+     restait une couleur, et l'on cherchait ce qu'il voulait dire. L'existant
+     reste gris : c'est le contexte, il ne doit pas se disputer le regard avec
+     le projet. */
+  var cMono = cssRGB("--site-mono"), cEnt = teinte("--ink-4", .5);
   MASS.vol.forEach(function(v, k){
     var as = assise(rectBas(v)).z - ZBAS;
     var sel = MASS.sel === v.id;
@@ -238,7 +243,7 @@ function volMesh(){
       if(MASS.mono || n.lvl < 0){
         boite(M, q, z0, z0 + h - .12, n.lvl < 0 ? cEnt : cMono, 1, edge);
       } else {
-        cellules(e.i, rc.w, rc.d, filtre(v)).forEach(function(c){
+        cellules(e.i, rc.w, rc.d, filtreDe(v, e)).forEach(function(c){
           var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
           var sub = { x: rc.x + cx * Math.cos(rc.a) - cy * Math.sin(rc.a),
                       y: rc.y + cx * Math.sin(rc.a) + cy * Math.cos(rc.a),
@@ -250,16 +255,6 @@ function volMesh(){
     });
   });
   return M;
-}
-/* Ce que le pavage d'un corps doit montrer. Un corps aux cotes imposées ne
-   porte que SON poste ; les autres ne portent pas le sien. Sans cela on
-   dessinait des salles de classe dans la salle de sport, et la salle de sport
-   dans chaque bâtiment. */
-function filtre(v){
-  if(v.key) return { seul:[v.key] };
-  var sans = [];
-  MASS.vol.forEach(function(x){ if(x.key) sans.push(x.key); });
-  return { sans:sans };
 }
 function rectBas(v){
   var e = null;

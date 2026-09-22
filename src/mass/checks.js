@@ -26,7 +26,7 @@ import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
 import { airePosable, assise, ecart, ecartPoly, margeAu } from "./geom.js";
 import { obstaclesPres, rectSol } from "./gen.js";
-import { MASS, bilan, niveaux } from "./model.js";
+import { MASS, bilan, niveaux, porteAFaux, profMax } from "./model.js";
 
 function nom(v, k){ return v.fix ? "Salle de sport double" : "Volume " + (k + 1); }
 
@@ -64,6 +64,21 @@ export function massCheck(){
       + "la cour et les accès. Le générateur a essayé les douze partis, de un à sept "
       + "corps, jusqu’à 46 m de profondeur. C’est au mixer qu’il faut ajouter un étage.",
       "2.3", pireNom, -1);
+  }
+
+  /* --- l'étage au-dessus de la salle de sport -----------------------------
+     Il se voit dans la 3D, il surprend, et il a une raison : la salle prend
+     896 m² du rez sans monter, donc sans lui les autres corps seraient plus
+     larges à l'étage qu'au sol. Le dire vaut mieux que laisser chercher. */
+  for(i = 0; i < V.length; i++){
+    if(!V[i].key) continue;
+    var niv = 0;
+    V[i].lv.forEach(function(e){ if(lvlOf(e.i) >= 0) niv++; });
+    if(niv < 2) continue;
+    dit("i", "surspo", "Un étage est posé sur la salle de sport. C’est ce qui tient le "
+      + "reste d’aplomb : la salle occupe son emprise au rez sans monter, et sans cet "
+      + "étage les autres volumes seraient plus larges en haut qu’au sol. La portée de "
+      + "28 m est à vérifier en structure.", "2.10", nom(V[i], i), i);
   }
 
   for(i = 0; i < V.length; i++){
@@ -119,10 +134,10 @@ export function massCheck(){
     /* --- proportions ------------------------------------------------------ */
     if(!v.fix){
       var pt = Math.min(rc.w, rc.d), lg = Math.max(rc.w, rc.d);
-      if(rc.d > MASS.par.prof + .5){
+      if(rc.d > profMax() + .5){
         dit("w", "prof:" + v.id, nm + " a " + dec(rc.d) + " m de profondeur, au-delà des "
-          + dec(MASS.par.prof) + " m retenus : les locaux du milieu perdent le jour.",
-          "2.9", nm, i);
+          + dec(profMax()) + " m du local le plus profond du programme : les locaux du "
+          + "milieu perdent le jour.", "2.9", nm, i);
       }
       if(pt < 9){
         dit("w", "etroit:" + v.id, nm + " ne fait que " + dec(pt) + " m de large : "
@@ -135,14 +150,16 @@ export function massCheck(){
     }
 
     /* --- porte-à-faux ------------------------------------------------------
-       Autorisé, et c'est voulu : un étage peut dépasser. Mais il se paie en
-       structure, et il doit se voir. */
-    /* Le porte-à-faux est AUTORISÉ — un étage peut dépasser, et la 3D le montre
-       tel quel. Il est toujours signalé : il se paie en structure, et ce n'est
-       pas au dessin de le taire. */
+       Une INFORMATION, et non un avertissement. Un étage qui déborde n'enfreint
+       aucune règle écrite et ne demande aucune correction : il demande une
+       structure, et c'est au projet d'en décider. Le classer « à vérifier »
+       mettait une pastille ambre sur toutes les compositions à la fois, et une
+       alerte qu'on voit partout ne se lit plus nulle part. Le générateur, lui,
+       préfère désormais l'aplomb : le porte-à-faux vient du programme quand il
+       ne peut pas faire autrement, ou de la main qui l'a voulu. */
     var pf = porteAFaux(v);
     if(pf > .3){
-      dit("w", "pf:" + v.id, "Porte-à-faux sur " + nm.toLowerCase()
+      dit("i", "pf:" + v.id, "Porte-à-faux sur " + nm.toLowerCase()
         + " — dépassement maximum " + dec(pf) + " m. Il est permis ; il se paie "
         + "en structure.", "", nm, i);
     }
@@ -214,29 +231,6 @@ export function massCheck(){
       + fmt(besoin) + ".", "2.4", "", -1);
   }
   return out;
-}
-
-/* Le dépassement d'un étage sur celui du dessous, mesuré dans le repère du
-   volume : c'est la seule mesure qui a un sens pour une structure. */
-/* Ce qu'un étage dépasse de celui du dessous, mesuré dans le repère du volume.
-   Positif = porte-à-faux, négatif = retrait. La 3D s'en sert pour marquer
-   l'étage qui déborde, le contrôle pour le chiffrer : une seule mesure, et les
-   deux disent donc la même chose. */
-export function debord(bas, haut){
-  var dx = (haut.dx || 0) - (bas.dx || 0), dy = (haut.dy || 0) - (bas.dy || 0);
-  return Math.max(Math.abs(dx) + (haut.w - bas.w) / 2,
-                  Math.abs(dy) + (haut.d - bas.d) / 2);
-}
-export function porteAFaux(v){
-  var max = 0, i;
-  /* Hors sol SEULEMENT. Un rez plus large que son sous-sol n'est pas un
-     porte-à-faux : le terrain le porte. Compter la marche entre le sous-sol et
-     le rez annonçait trente mètres de dépassement sur des volumes qui n'en
-     avaient aucun. */
-  var lv = v.lv.filter(function(x){ return lvlOf(x.i) >= 0; })
-               .sort(function(a, b){ return a.i - b.i; });
-  for(i = 1; i < lv.length; i++) max = Math.max(max, debord(lv[i - 1], lv[i]));
-  return max;
 }
 
 export function massVerdict(list){

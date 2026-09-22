@@ -23,7 +23,7 @@
    et ne cherche qu'une autre solution architecturale. Ils ont donc deux graines
    distinctes : celle du mixer vit dans `core/rand.js`, celle du massing ici.
    ========================================================================= */
-import { FMAP } from "../core/model.js";
+import { CIRC, FMAP, ITEMS } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
 import { RULES } from "../data/rules.js";
 import { FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
@@ -63,14 +63,9 @@ export var MASS = {
   parti: "auto",
   graine: 1,
   par: {
-    nb: 0,          /* nombre de corps · 0 = au parti d'en décider */
+    nb: 0,          /* nombre de volumes · 0 = au parti d'en décider */
     dmin: RULES.dist.entre,
-    prof: 18,       /* profondeur maximale d'un corps, en m */
-    cap: null,      /* orientation générale · null = l'axe du périmètre */
-    align: .7,      /* force d'alignement · 0 libre, 1 tout aligné */
-    compact: .5,    /* 0 fragmenté ←→ 1 compact */
-    regul: .6,      /* 0 libre ←→ 1 régulier */
-    grad: .4        /* intensité des terrasses */
+    cap: null       /* orientation générale · null = l'axe du périmètre */
   },
   vol: [],
   mono: false,      /* affichage : couleurs du programme, ou masse seule */
@@ -80,6 +75,64 @@ export var MASS = {
 export function massSet(k, v){ MASS[k] = v; }
 export function massPar(k, v){ MASS.par[k] = v; }
 export function massVols(list){ MASS.vol = list || []; MASS.sel = null; }
+
+/* ---------- la profondeur, DONNÉE et non réglée ------------------------------
+   C'était un champ à saisir, 18 m par défaut : un chiffre de projet sans
+   source, qu'on pouvait mettre à 9 ou à 46 sans que rien ne le contredise. Or
+   la profondeur d'un corps n'est pas un goût, elle est donnée — par le plan
+   d'affectation communal, ou par le programme.
+
+     — le PACom de Saxon range le site en zone de constructions et
+       d'installations publiques A : AUCUNE contrainte de gabarit, de hauteur
+       ni de distance aux limites (art. 2.3). Il n'impose donc pas de
+       profondeur, et il faut le dire plutôt que d'inventer un chiffre ;
+     — le programme, lui, en impose deux. La COURANTE est celle d'un corps de
+       classes : deux rangées de salles, prises à leur surface BÂTIE — le
+       couloir est dans la part de circulation, il ne s'ajoute pas par-dessus.
+       Le MAXIMUM est celui du local le plus profond qu'on ait à loger, la
+       salle de sport double, 28 m dans sa petite cote. Au-delà, on bâtit de la
+       profondeur que personne n'a demandée, et sans jour. */
+export function profUsuel(){
+  var u = 0;
+  ITEMS.forEach(function(it){
+    if(it.f !== "cla") return;
+    if(!u || it.nb > u.nb) u = it;
+  });
+  if(!u) return 18;
+  return Math.round(2 * Math.sqrt(u.u / (1 - CIRC)) * 10) / 10;
+}
+export function profMax(){
+  var p = 0;
+  ITEMS.forEach(function(it){
+    if(!it.w || !it.h) return;
+    p = Math.max(p, Math.min(it.w, it.h));
+  });
+  return p || profUsuel();
+}
+
+/* ---------- le porte-à-faux --------------------------------------------------
+   Ce qu'un étage dépasse de celui du dessous, mesuré dans le repère du volume.
+   Positif = porte-à-faux, négatif = retrait. Le générateur s'en sert pour
+   PRÉFÉRER les compositions d'aplomb, la 3D pour marquer l'étage qui déborde,
+   le contrôle pour le chiffrer : une seule mesure, et les trois disent donc la
+   même chose. Elle vivait dans `checks.js`, où le générateur ne pouvait pas
+   l'atteindre sans se mordre la queue. */
+export function debord(bas, haut){
+  var dx = (haut.dx || 0) - (bas.dx || 0), dy = (haut.dy || 0) - (bas.dy || 0);
+  return Math.max(Math.abs(dx) + (haut.w - bas.w) / 2,
+                  Math.abs(dy) + (haut.d - bas.d) / 2);
+}
+export function porteAFaux(v){
+  var max = 0, i;
+  /* Hors sol SEULEMENT. Un rez plus large que son sous-sol n'est pas un
+     porte-à-faux : le terrain le porte. Compter la marche entre le sous-sol et
+     le rez annonçait trente mètres de dépassement sur des volumes qui n'en
+     avaient aucun. */
+  var lv = v.lv.filter(function(x){ return lvlOf(x.i) >= 0; })
+               .sort(function(a, b){ return a.i - b.i; });
+  for(i = 1; i < lv.length; i++) max = Math.max(max, debord(lv[i - 1], lv[i]));
+  return max;
+}
 
 /* ---------- le programme, tel que le mixer l'a laissé -----------------------
    Relu à chaque appel, jamais mis en cache : c'est ce qui fait que le massing
@@ -254,6 +307,21 @@ export { aire };
    on lit OÙ sont les classes, pas seulement qu'il y a un bâtiment. Les
    coordonnées rendues sont LOCALES au rectangle, centre en (0, 0) : la vue en
    plan et la 3D les tournent chacune à sa façon. */
+/* Ce qu'un étage doit montrer quand on le pave. Un étage aux cotes imposées ne
+   porte que SON poste — la salle de sport n'a pas de salles de classe dedans —
+   et les autres ne portent pas le sien : sa surface est sortie du partage avant
+   qu'il commence. C'est l'ÉTAGE qui décide, et non le volume : depuis que la
+   salle de sport peut en porter un au-dessus d'elle, celui-là loge du programme
+   ordinaire. Le plan et la 3D en tenaient chacun leur copie.  */
+export function filtreDe(v, e){
+  if(e && e.key) return { seul:[e.key] };
+  var sans = [];
+  MASS.vol.forEach(function(x){
+    x.lv.forEach(function(q){ if(q.key) sans.push(q.key); });
+  });
+  return { sans:sans };
+}
+
 export function cellules(i, w, d, o){
   var P = postesDe(i), tot = 0;
   /* Un corps dont le règlement impose les cotes ne porte QUE son poste — la
