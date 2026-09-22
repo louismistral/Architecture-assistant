@@ -152,6 +152,24 @@ export function niveaux(){
   }
   return out;
 }
+/* L'EMPREINTE DE LA PILE : de quoi savoir qu'elle a changé.
+
+   Un volume désigne ses niveaux par leur INDICE dans `FLOORS`. Quand le mixer
+   ajoute, retire ou renumérote un niveau, ces indices ne veulent plus rien dire
+   — un corps porte alors un étage qui n'existe plus, ou en manque un. Rien ne
+   le voyait : `drawMass()` ne régénérait que si AUCUN volume n'était posé, si
+   bien qu'après un « Shuffle » au mixer on revenait au massing sur une
+   implantation qui répondait à la pile PRÉCÉDENTE, et la note comme le bilan
+   portaient sur un programme qui n'existait plus.
+
+   On ne compare que la FORME de la pile — ses cotes —, et non les surfaces :
+   un poste déplacé d'un étage à l'autre change les aires, et `bilan()` le dit
+   déjà, niveau par niveau. Défaire une implantation composée à la main pour un
+   poste déplacé serait pire que le mal. */
+export function empreintePile(){
+  return FLOORS.map(function(F){ return F.lvl; }).join(",");
+}
+
 /* Les niveaux hors sol et ceux qui s'enterrent : ils ne se composent pas de la
    même façon, un sous-sol n'ayant ni façade ni silhouette. */
 export function horsSol(){ return niveaux().filter(function(n){ return n.lvl >= 0; }); }

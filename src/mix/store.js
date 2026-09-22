@@ -1,7 +1,7 @@
 /* ============================================================================
    PERSISTANCE
 
-   Quatre choses méritent de survivre à un rechargement : les surfaces
+   Cinq choses méritent de survivre à un rechargement : les surfaces
    que l'utilisateur a précisées (elles appartiennent au cahier des charges et
    changent tous les totaux) et la répartition qu'il a composée. Elles sont
    lues AVANT le premier rendu, parce qu'une surface peut être modifiée depuis
@@ -9,7 +9,10 @@
    les écarts qu'on a assumés — les reprendre un par un à chaque ouverture
    reviendrait à ne jamais pouvoir en assumer un —, et le MASSING : volumes
    posés, positions, rotations, parti et réglages. Aller au mixer et revenir ne
-   doit pas défaire une implantation qu'on vient de composer.
+   doit pas défaire une implantation qu'on vient de composer. S'y ajoute enfin
+   la DOCTRINE — les contraintes de projet qu'on a réglées dans l'un ou l'autre
+   volet « Contraintes » —, et d'elle on n'enregistre que les ÉCARTS au défaut :
+   tout enregistrer figerait dans ce navigateur les valeurs du jour.
 
    Chaque section est restaurée indépendamment : perdre la pile vaut mieux que
    perdre aussi les surfaces.
@@ -18,6 +21,7 @@ import { el } from "../core/format.js";
 import { CIRC, CIRCSET, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
 import { optsOf, setOpts } from "./opts.js";
+import { docOf, setDocs } from "../data/doctrine.js";
 import { massOf, setMass } from "../mass/etat.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
@@ -70,6 +74,11 @@ export function saveSoon(){
          parti et les réglages. Aller au mixer et revenir ne doit pas défaire
          une implantation qu'on a passé un quart d'heure à régler. */
       mass: massOf(),
+      /* LA DOCTRINE, et seulement ce qui s'écarte du défaut. Enregistrer l'objet
+         entier figerait dans ce navigateur les valeurs du jour, et une valeur
+         corrigée dans `data/doctrine.js` ne parviendrait jamais à qui a déjà
+         ouvert l'application. */
+      doc: docOf(),
       updatedAt: Date.now()
     };
     try {
@@ -145,6 +154,7 @@ export function initStore(){
       try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
       try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
       try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
+      try{ setDocs(o.doc); }catch(_){ lost.push("contraintes"); }
       if(lost.length) badParts = lost;
     }
     localStorage.setItem(LSKEY + ".probe", "1");

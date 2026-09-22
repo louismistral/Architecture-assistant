@@ -12,8 +12,15 @@
    d'avoir choisi le Site, donc la typologie décidait du volume. Seule la
    typologie reste à construire.
 
+   CHAQUE ONGLET A SES VOLETS, et chacun garde le sien. Le cahier des charges
+   avait seul des volets ; les deux outils en ont désormais deux — ce qu'ils
+   FONT, et les CONTRAINTES qui gouvernent ce qu'ils font. Un volet unique et
+   partagé aurait fait qu'en quittant les contraintes du programme on serait
+   tombé sur celles du mixer : ce ne sont pas les mêmes, et l'on ne les visite
+   pas au même moment.
+
    `view.tab`   quelle vue est à l'écran        → pilote body[data-view]
-   `view.sub`   volet du cahier des charges      → surfaces, contraintes, adjacences
+   `view.subs`  le volet retenu, PAR onglet
    `view.group` regroupement dans Surfaces       → chapitres ou familles
    `view.mode`  niveau de détail des diagrammes → groupé ou détaillé
 */
@@ -24,42 +31,69 @@ export var TABS = [
   { id:"massing",   label:"Massing", kind:"tool" }
 ];
 
-/* Les DEUX volets du cahier des charges. Ils étaient trois, empilés sur une
-   seule page avant cela, numérotés 1, 2, 3 : quatre écrans de défilement pour
-   revenir d'une adjacence à la surface qu'elle commente.
+/* Les volets, onglet par onglet. Ils étaient trois pour le seul cahier des
+   charges, empilés sur une seule page avant cela : quatre écrans de défilement
+   pour revenir d'une adjacence à la surface qu'elle commente.
 
-   Les adjacences ne sont plus un volet : une proximité exigée entre deux
-   locaux n'est pas d'une autre nature qu'une hauteur libre ou une distance au
-   voisin. C'est une contrainte, et elle se lit avec les autres.
+   Les adjacences ne sont plus un volet du programme : une proximité exigée
+   entre deux locaux n'est pas d'une autre nature qu'une hauteur libre ou une
+   distance au voisin. C'est une contrainte, et elle se lit avec les autres.
 
-   Les surfaces d'abord : c'est ce qu'on ouvre, et c'est le seul volet où l'on
-   saisit quelque chose. */
-export var SUBS = [
-  { id:"surfaces",    label:"Surfaces"    },
-  { id:"contraintes", label:"Contraintes" }
-];
+   Le volet « Contraintes » d'un OUTIL est d'une autre nature que celui du
+   cahier des charges : là on lit ce que le règlement impose, ici on lit — et
+   l'on règle — ce que NOUS avons arbitré pour que le générateur produise
+   quelque chose. Rien n'y est opposable, tout s'y discute. */
+export var SUBS_BY = {
+  programme: [
+    { id:"surfaces",    label:"Surfaces"    },
+    { id:"contraintes", label:"Contraintes" }
+  ],
+  mixer: [
+    { id:"repartition", label:"Répartition" },
+    { id:"contraintes", label:"Contraintes" }
+  ],
+  massing: [
+    { id:"volumetrie",  label:"Volumétrie"  },
+    { id:"contraintes", label:"Contraintes" }
+  ]
+};
 /* Un volet qui a disparu mène à celui qui l'a repris : les liens ont circulé,
    ils restent valables. */
 var SALIAS = { adjacences:"contraintes" };
 
 export var view = {
   tab: "programme",
-  sub: "surfaces",    /* "surfaces" | "contraintes" */
+  subs: { programme:"surfaces", mixer:"repartition", massing:"volumetrie" },
   group: "chap",      /* "chap" | "fam" */
   mode: "agg"         /* "agg" (groupé) | "unit" (détaillé) */
 };
-export function subOf(id){
-  for(var i = 0; i < SUBS.length; i++) if(SUBS[i].id === (id || view.sub)) return SUBS[i];
-  return SUBS[0];
+
+export function subsOf(tab){ return SUBS_BY[tab || view.tab] || []; }
+export function curSub(tab){
+  var t = tab || view.tab;
+  return view.subs[t] || (SUBS_BY[t] ? SUBS_BY[t][0].id : "");
 }
-export function isSub(id){
-  for(var i = 0; i < SUBS.length; i++) if(SUBS[i].id === id) return true;
-  return !!SALIAS[id];
+export function subOf(id, tab){
+  var L = subsOf(tab), want = id || curSub(tab), i;
+  for(i = 0; i < L.length; i++) if(L[i].id === want) return L[i];
+  return L[0] || { id:"", label:"" };
 }
-function subId(id){ return SALIAS[id] || id; }
+export function isSub(id, tab){
+  var L = subsOf(tab), want = SALIAS[id] || id, i;
+  for(i = 0; i < L.length; i++) if(L[i].id === want) return true;
+  return false;
+}
 /* Le volet appartient à `viewstate` : les autres modules passent par ici pour
    en changer, comme pour l'onglet. */
-export function setSub(id){ if(isSub(id)) view.sub = subId(id); }
+export function setSub(id, tab){
+  var t = tab || view.tab, want = SALIAS[id] || id;
+  if(isSub(want, t)) view.subs[t] = want;
+}
+/* L'identifiant du bouton d'un volet, pour `aria-labelledby` : il doit être
+   unique d'un onglet à l'autre, deux onglets ayant un volet « contraintes ». */
+export function subBtnId(tab, id){
+  return "sub-" + (tab || view.tab) + "-" + id;
+}
 
 export function tabOf(id){
   for(var i = 0; i < TABS.length; i++) if(TABS[i].id === id) return TABS[i];
@@ -77,26 +111,26 @@ export function readHash(){
   var t = seg[0], known = false, named = false, i;
   /* `#adjacences` a circulé comme lien du temps où c'était un onglet : il reste
      valable et mène au volet. */
-  if(t === "adjacences"){ view.tab = "programme"; view.sub = "contraintes"; return true; }
+  if(t === "adjacences"){ view.tab = "programme"; view.subs.programme = "contraintes"; return true; }
   for(i = 0; i < TABS.length; i++) if(TABS[i].id === t) known = true;
   if(known) view.tab = t;
   /* `#programme/fam` a circulé lui aussi, sans volet : le segment peut être un
      volet ou un regroupement, on accepte les deux à la même place. Un lien vers
-     Programme qui ne nomme aucun volet mène aux surfaces — sinon le volet
+     un onglet qui ne nomme aucun volet mène à son PREMIER volet — sinon le volet
      retenu de la visite précédente décidait à sa place. */
   for(i = 1; i < seg.length; i++){
-    if(isSub(seg[i])){ view.sub = subId(seg[i]); named = true; }
+    if(isSub(seg[i])){ setSub(seg[i]); named = true; }
     else if(seg[i] === "chap" || seg[i] === "fam") view.group = seg[i];
   }
-  if(view.tab === "programme" && !named) view.sub = "surfaces";
+  if(!named && subsOf().length) view.subs[view.tab] = subsOf()[0].id;
   return known;
 }
 export function writeHash(){
-  var h = "#" + view.tab;
-  if(view.tab === "programme"){
-    h += "/" + view.sub + (view.sub === "surfaces" ? "/" + view.group : "");
+  var h = "#" + view.tab, s = curSub();
+  if(subsOf().length > 1){
+    h += "/" + s;
+    if(view.tab === "programme" && s === "surfaces") h += "/" + view.group;
   }
   if(location.hash !== h) history.replaceState(null, "", h);
-  document.title = "Saxon — " + (view.tab === "programme"
-    ? subOf().label.toLowerCase() : tabOf(view.tab).label.toLowerCase());
+  document.title = "Saxon — " + (subOf().label || tabOf(view.tab).label).toLowerCase();
 }

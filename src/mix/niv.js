@@ -87,6 +87,12 @@ export var WCRE  = /^(WC |Toilette)/;
 export var WCG   = /^WC garçons/;
 export var WCF   = /^WC filles/;
 export var CLSRE = /^(Salles? de classe|Salle de dédoublement|Salle ACM|Salles d'appui)/;
+/* L'UNITÉ PÉDAGOGIQUE ne compte que les vraies salles de classe — les standard
+   et celles de réserve. `CLSRE` ratisse plus large : il sert à savoir où sont
+   les élèves, pour les sanitaires et pour le bruit. Compter le dédoublement,
+   l'ACM et l'appui dans l'unité portait le contingent à vingt-neuf salles, donc
+   à quatre niveaux de classes là où le règlement n'en admet que trois. */
+export var UNITE = /^Salles? de classe/;
 export var VESTC = /^Vestiaires de classe/;
 
 /* Le nom du chapitre, pour les messages. */

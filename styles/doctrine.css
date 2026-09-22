@@ -1,0 +1,105 @@
+/* ============================================================================
+   LE VOLET « CONTRAINTES » DES DEUX OUTILS
+
+   Une liste de règles rangées de la plus dure à la plus molle, chacune repliée
+   sur son pourquoi. Le repli est essentiel : quarante règles dépliées font huit
+   écrans, et l'on ne trouve plus celle qu'on cherche. Ce qu'on voit fermé est
+   ce qu'on vient vérifier — son nom et sa valeur ; ce qu'on déplie est ce qu'on
+   vient discuter.
+   ========================================================================= */
+
+.doc-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2);
+  margin:var(--s-4) 0 var(--s-5);padding-bottom:var(--s-4);
+  border-bottom:1px solid var(--rule);
+}
+.doc-bar .spacer{flex:1 1 var(--s-4)}
+
+/* --- le rang : un chapitre, et ce qu'il veut dire ------------------------- */
+.doc-sec{margin:var(--s-6) 0 0}
+.doc-rang{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-2);margin-bottom:var(--s-2)}
+.doc-rang__n{font-size:var(--t-2xs);color:var(--ink-3)}
+.doc-rang__d{
+  flex:1 0 100%;margin:0;font-size:var(--t-xs);color:var(--ink-2);
+  line-height:var(--lh-snug);max-width:72ch;
+}
+
+/* --- une règle ------------------------------------------------------------ */
+.doc-r{border-top:1px solid var(--rule-soft)}
+.doc-r:last-child{border-bottom:1px solid var(--rule-soft)}
+.doc-r__h{
+  display:flex;align-items:baseline;gap:var(--s-3);
+  padding:var(--s-2) 0 var(--s-2) var(--s-4);
+  cursor:pointer;list-style:none;position:relative;
+}
+.doc-r__h::-webkit-details-marker{display:none}
+.doc-r__h::before{
+  content:"›";position:absolute;left:2px;top:var(--s-2);
+  color:var(--ink-4);transition:transform .12s ease;
+}
+.doc-r[open]>.doc-r__h::before{transform:rotate(90deg) translateX(1px)}
+.doc-r__h:hover{background:var(--panel)}
+.doc-r__t{font-weight:500;font-size:var(--t-sm)}
+.doc-r__v{
+  margin-left:auto;font-size:var(--t-xs);color:var(--ink-2);
+  text-align:right;max-width:46%;
+}
+/* Une valeur écartée du défaut doit se voir SANS déplier : sinon on ne sait
+   plus ce qu'on a bougé, et « Rétablir » devient le seul recours. */
+.doc-r.is-off>.doc-r__h{box-shadow:inset 2px 0 0 var(--warn-fill)}
+.doc-r.is-off .doc-r__v{color:var(--warn)}
+
+.doc-r__b{padding:0 0 var(--s-4) var(--s-4);max-width:78ch}
+.doc-r__set{display:flex;align-items:center;gap:var(--s-2);margin-bottom:var(--s-1)}
+.doc-r__lab{font-size:var(--t-2xs);text-transform:uppercase;letter-spacing:var(--track-caps);color:var(--ink-3)}
+.doc-r__set input{
+  width:8ch;padding:3px var(--s-2);font-size:var(--t-xs);
+  border:1px solid var(--rule);border-radius:var(--r-sm);
+  background:var(--panel);color:var(--ink);
+}
+.doc-r__u{font-size:var(--t-2xs);color:var(--ink-3)}
+.doc-r__def{margin:0 0 var(--s-2);font-size:var(--t-3xs);color:var(--ink-4)}
+.doc-r__w{margin:0 0 var(--s-2);font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-base)}
+.doc-r__m{
+  margin:0;display:grid;grid-template-columns:max-content 1fr;
+  gap:2px var(--s-3);font-size:var(--t-2xs);
+}
+.doc-r__m dt{color:var(--ink-3);text-transform:uppercase;letter-spacing:var(--track-caps);font-size:var(--t-3xs);padding-top:1px}
+.doc-r__m dd{margin:0;color:var(--ink-2)}
+
+/* --- la note de la composition, et les piles admissibles ------------------ */
+.doc-note{margin:0 0 var(--s-5);padding:var(--s-4);background:var(--panel);border-radius:var(--r-sm)}
+.doc-note h4{margin:0 0 var(--s-1)}
+.doc-note__i{margin:0 0 var(--s-3);font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-base);max-width:72ch}
+.doc-crit{width:100%;border-collapse:collapse;font-size:var(--t-xs)}
+.doc-crit td,.doc-crit th{padding:3px var(--s-2);border-bottom:1px solid var(--rule-soft);text-align:left}
+.doc-crit th{font-size:var(--t-3xs);text-transform:uppercase;letter-spacing:var(--track-caps);color:var(--ink-3);font-weight:400}
+.doc-crit .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.doc-crit__t td,.doc-crit__t th{border-bottom:0;border-top:1px solid var(--rule);font-weight:500}
+.doc-crit__b{width:42%}
+.doc-crit__b i{display:block;height:7px;border-radius:var(--r-sm);min-width:1px}
+.doc-crit__b .is-cout{background:var(--warn-fill)}
+.doc-crit__b .is-bon{background:var(--ok-fill)}
+
+/* --- l'inventaire des scripts --------------------------------------------- */
+.doc-scr{width:100%;border-collapse:collapse;font-size:var(--t-2xs);margin-top:var(--s-2)}
+.doc-scr th,.doc-scr td{
+  padding:var(--s-2);border-bottom:1px solid var(--rule-soft);
+  text-align:left;vertical-align:top;line-height:var(--lh-snug);color:var(--ink-2);
+}
+.doc-scr thead th{
+  font-size:var(--t-3xs);text-transform:uppercase;letter-spacing:var(--track-caps);
+  color:var(--ink-3);font-weight:400;border-bottom:1px solid var(--rule);
+}
+.doc-scr tbody th{color:var(--ink);font-weight:500;width:18%}
+.doc-scr__f{display:block;font-size:var(--t-3xs);color:var(--ink-3);font-weight:400;margin-top:2px}
+.doc-scr__h{color:var(--ink-3);width:14%}
+
+.doc-tir{margin:var(--s-2) 0 0;padding-left:var(--s-4);font-size:var(--t-xs);color:var(--ink-2)}
+.doc-tir li{margin-bottom:var(--s-2);line-height:var(--lh-base)}
+.doc-tir b{color:var(--ink);font-weight:500}
+
+@media (max-width:720px){
+  .doc-scr{display:block;overflow-x:auto}
+  .doc-r__v{max-width:100%;margin-left:0;flex:1 0 100%}
+}

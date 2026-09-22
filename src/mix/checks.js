@@ -17,6 +17,7 @@
    ========================================================================= */
 import { fmt } from "../core/format.js";
 import { CIRC } from "../core/model.js";
+import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import {
   BLOCKS, FLOORS, TRAY, flCount, flName, flNet, lvlOf, trayArea, trayBlocks, usable
@@ -25,7 +26,7 @@ import { isAccepted } from "./accept.js";
 import {
   fixCombler, fixDeplacer, fixPlateau, fixEtage, fixReste, fixVider, fixWC, nivCible
 } from "./fix.js";
-import { NIV, WCRE, nivHit } from "./niv.js";
+import { CLSRE, NIV, UNITE, WCRE, nivHit } from "./niv.js";
 import { PMAP, PROX, aOf } from "./prog.js";
 
 /* Niveaux occupés par un poste. */
@@ -176,6 +177,31 @@ export function mixCheck(){
     if(!wc) add("w", "Aucun WC au " + flName(k).toLowerCase()
       + " : tout niveau occupé doit avoir ses sanitaires", "2.10", "", k,
       { code:"wc:" + F.lvl, fix: fixWC(k) });
+  });
+
+  /* --- l'unité pédagogique -------------------------------------------------
+     Un degré tient sur un niveau, avec ses dégagements : au-delà, on fait un
+     couloir d'hôpital. Le tirage le respecte, mais il ne refuse rien — quand
+     un niveau est plein, le reste des classes se pose quand même au mieux
+     noté, et il fallait le DIRE. Le seuil est une règle de projet, il se
+     règle dans le volet « Contraintes » du mixer. */
+  FLOORS.forEach(function(F, k){
+    var n = 0, keys = [];
+    BLOCKS.forEach(function(b){
+      if(b.fl !== k) return;
+      if(!UNITE.test(PMAP[b.key].n)) return;
+      n += b.q;
+      if(keys.indexOf(b.key) < 0) keys.push(b.key);
+    });
+    var max = Math.max(1, Math.round(DOC.clsParNiveau));
+    if(n <= max) return;
+    add("w", n + " salles de classe au " + flName(k).toLowerCase()
+      + ", où l'unité pédagogique retenue en compte " + max
+      + " au plus : au-delà, le dégagement devient un couloir d'hôpital",
+      "projet", "", k,
+      { code:"unite:" + F.lvl, keys: keys, fix: fixEtage(),
+        note: "Aucun article ne l’écrit : c’est une règle de projet, et elle se "
+          + "règle dans le volet « Contraintes »." });
   });
 
   /* --- art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage ------ */

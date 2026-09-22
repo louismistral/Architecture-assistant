@@ -21,14 +21,28 @@
    autres.
    ========================================================================= */
 import { fmt, dec } from "../core/format.js";
+import { ITEMS } from "../core/model.js";
 import { NAPPE, PER } from "../data/site.js";
 import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
-import { airePosable, assise, ecart, ecartPoly, margeAu } from "./geom.js";
+import { DOC } from "../data/doctrine.js";
+import { airePoly, airePosable, assise, coins, ecart, ecartPoly, enveloppe,
+  margeAu, visAVis } from "./geom.js";
 import { obstaclesPres, rectSol } from "./gen.js";
-import { MASS, bilan, niveaux, porteAFaux, profMax } from "./model.js";
+import { MASS, bilan, niveaux, porteAFaux, profMax, volHaut } from "./model.js";
 
 function nom(v, k){ return v.fix ? "Salle de sport double" : "Volume " + (k + 1); }
+
+/* La cour et son préau viennent du PROGRAMME — `data/program.js`, chapitre
+   Extérieurs —, et non d'un nombre réécrit ici. Le contrôle en écrivait deux :
+   500 d'un côté, 12783 de l'autre, dans un projet dont toute la règle est qu'un
+   chiffre n'a qu'une source. */
+function courProgramme(){
+  var a = 0;
+  ITEMS.forEach(function(it){ if(it.f === "ext") a += it.nb * it.u; });
+  return Math.round(a) || 500;
+}
+var COUR = courProgramme();
 
 export function massCheck(){
   var out = [], V = MASS.vol, N = niveaux(), i, j;
@@ -129,6 +143,28 @@ export function massCheck(){
           + " sont à " + dec(e) + " m : la distance incendie est tenue de justesse.",
           "AEAI 2.4", nm + " · " + n2, i);
       }
+      /* --- LE JOUR ENTRE LES CORPS -------------------------------------
+         Les six mètres de l'AEAI sont une distance d'INCENDIE. Deux barres de
+         quatre niveaux à six mètres l'une de l'autre sont conformes et
+         inhabitables : l'écart utile se mesure à la HAUTEUR du plus haut des
+         deux. Aucun contrôle ne le disait, et le générateur ne le notait pas
+         davantage — c'est la contrainte qui manquait le plus. */
+      if(e >= 0 && DOC.ombreK > 0 && visAVis(rc, rectSol(V[j])) > 8){
+        var req = Math.max(volHaut(v), volHaut(V[j])) * DOC.ombreK;
+        if(req > RULES.dist.entre && e < req - .05){
+          /* Gradué, et c'est important. Le programme demande 3'500 m² d'emprise
+             sur 10'528 m² posables en L : tenir partout 1,1 fois la hauteur est
+             hors d'atteinte sur ce site, et le dire en ambre à chaque paire de
+             corps reviendrait à ne plus rien dire du tout. Un manque de moins
+             d'un quart est une information ; au-delà, c'est à vérifier. */
+          var manque = (req - e) / req;
+          dit(manque > .25 ? "w" : "i", "jour:" + v.id + "|" + V[j].id,
+            nm + " et " + n2.toLowerCase() + " sont à " + dec(e) + " m pour "
+            + dec(req) + " m d'écart utile — " + dec(DOC.ombreK) + " fois la hauteur "
+            + "du plus haut. En deçà, les façades qui se font face perdent le jour du "
+            + "matin et du soir.", "2.9", nm + " · " + n2, i);
+        }
+      }
     }
 
     /* --- proportions ------------------------------------------------------ */
@@ -220,15 +256,44 @@ export function massCheck(){
     }
   });
 
-  /* --- ce qui reste de terrain ------------------------------------------- */
+  /* --- ce qui reste de terrain -------------------------------------------
+     L'aire de référence était écrite 12783 EN DUR, à côté d'un projet dont
+     toute la règle est qu'un chiffre n'a qu'une source. C'est l'aire POSABLE
+     qu'il faut comparer, du reste : le recul de cinq mètres n'accueille ni une
+     place de parc ni un préau. */
   var emp = 0;
   MASS.vol.forEach(function(v){ var r = rectSol(v); emp += r.w * r.d; });
-  var libre = 12783 - emp;
-  var besoin = 500 + 70 * 25;     /* cour au règlement + 70 places de parc */
+  var posable = airePosable(RULES.dist.retrait);
+  var libre = posable - emp;
+  var besoin = COUR + RULES.ext.voitures * RULES.ext.mPlace;
   if(libre < besoin){
-    dit("w", "terrain", "Il reste " + fmt(Math.round(libre)) + " m² de terrain libre : la "
-      + "cour de 500 m² et les 70 places de parc en demandent environ "
+    dit("w", "terrain", "Il reste " + fmt(Math.round(libre)) + " m² de terrain libre sur les "
+      + fmt(Math.round(posable)) + " m² posables : la cour de " + fmt(COUR) + " m² et les "
+      + RULES.ext.voitures + " places de parc en demandent environ "
       + fmt(besoin) + ".", "2.4", "", -1);
+  }
+
+  /* --- LA COUR, ET LE FAIT QU'ELLE SOIT TENUE ----------------------------
+     Le règlement demande 500 m² de cour et 120 m² de préau couvert. Ce n'est pas
+     une surface résiduelle : c'est un vide QUALIFIÉ, tenu par les bâtiments. On
+     mesure donc le vide que la figure enferme — l'aire de son enveloppe convexe
+     moins les emprises —, qui est exactement ce que le générateur note. Rien ne
+     le disait : la cour était une ligne de bilan, hors enveloppe. */
+  var pts = [], e0 = 0;
+  V.forEach(function(v){
+    var r = rectSol(v);
+    coins(r).forEach(function(q){ pts.push(q); });
+    e0 += r.w * r.d;
+  });
+  var vide = V.length > 1 ? Math.max(0, airePoly(enveloppe(pts)) - e0) : 0;
+  if(vide < COUR){
+    dit("w", "cour", "La figure ne tient que " + fmt(Math.round(vide)) + " m² de vide entre "
+      + "ses corps, où la cour et son préau en demandent " + fmt(COUR) + ". Le terrain "
+      + "restant existe, mais il n'est pas TENU par les bâtiments : c'est un reste, pas une "
+      + "cour d'école.", "2.10", "", -1);
+  } else {
+    dit("i", "cour", "La figure tient " + fmt(Math.round(vide)) + " m² de vide entre ses "
+      + "corps — la cour et son préau en demandent " + fmt(COUR) + ".", "2.10", "", -1);
   }
   return out;
 }
