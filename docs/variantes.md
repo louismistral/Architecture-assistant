@@ -10,7 +10,7 @@ src/net/compte.js      l'identité, l'équipe, ses membres
 src/net/reglages.js    les décisions de projet partagées
 src/net/variantes.js   poser, lister, charger, supprimer
 src/core/empreinte.js  l'empreinte des fichiers du dépôt
-src/views/variantes.js le panneau et le modal
+src/views/variantes.js le panneau, les modaux, le profil
 styles/variantes.css   leur dessin
 ```
 
@@ -23,10 +23,58 @@ ce qu'on faisait. Il ne repousse rien : le plan et la 3D garderaient sinon un
 cadrage différent selon qu'il est ouvert, et l'on comparerait deux implantations
 à deux échelles.
 
+## Le badge du compte, et le panneau
+
+Deux choses, deux endroits. Le **badge** à côté du thème porte l'identité : les
+groupes dont on fait partie, les invitations reçues, le mot de passe, la
+sortie. Le **panneau** porte les variantes. Les mêler aurait confondu « où je
+travaille » et « ce que j'ai fait ».
+
+Le badge montre les initiales quand on est connecté, une silhouette sinon —
+cliquer ouvre alors le panneau, sur le formulaire, car il n'y a qu'un seul
+endroit où l'on entre. Une pastille dessus signale une invitation en attente.
+
+## Plusieurs groupes
+
+Un groupe par concours, et l'on peut être dans plusieurs. Le panneau porte
+**un onglet par groupe**, avec les pastilles de qui est dedans. Ils ne
+paraissent qu'à partir de deux : un seul onglet n'est pas un choix, c'est un
+titre — et le nom du groupe est déjà en tête du panneau.
+
+Changer d'onglet change le périmètre de TOUT : les variantes ET les réglages de
+projet. Le groupe actif est retenu sur l'appareil (`saxon.equipe`).
+
+| geste | qui |
+|---|---|
+| renommer le groupe | n'importe quel membre |
+| inviter, retirer, transmettre | le propriétaire |
+| rejoindre, refuser une invitation | l'invité |
+| quitter | chacun, mais le propriétaire transmet d'abord |
+
+**Le propriétaire ne part pas en laissant le groupe orphelin** : un groupe sans
+propriétaire ne peut plus inviter personne, et ne se répare pas. La règle est
+dans la base — un déclencheur sur la suppression d'une appartenance —, pas
+seulement à l'écran.
+
+**Transmettre est un seul appel**, `transferer_propriete`. En trois appels
+depuis le navigateur l'ordre décidait de tout : dès que `owner_id` a changé,
+l'ancien propriétaire n'a plus le droit de toucher aux rôles, et sa mise à jour
+ne touche AUCUNE ligne **sans rien dire** — une politique UPDATE filtre, elle
+ne crie pas. On obtenait un groupe dont le propriétaire n'a pas le rôle
+« propriétaire ».
+
+**Une invitation vise une ADRESSE**, pas un compte : c'est le seul lien
+possible avec quelqu'un qui n'existe pas encore. Elle est ramassée à
+l'inscription par un déclencheur ; pour un compte qui existe déjà, elle
+apparaît dans son profil et il l'accepte. Ce second cas manquait : inviter
+quelqu'un d'inscrit ne faisait rien, en silence.
+
 ## Deux niveaux, et c'est tout le dessin
 
 - La **carte** porte ce qu'il faut pour RECONNAÎTRE une variante et la CHARGER :
-  miniature, nom, auteur, note, deux boutons. Rien d'autre.
+  une miniature CARRÉE à gauche, le nom et la note en grand, les deux gestes,
+  et le reste en petit dessous. Elle a été haute comme une affiche : trois
+  variantes remplissaient le panneau, et comparer demandait de défiler.
 - Le **modal** porte tout le reste — la note critère par critère, les graines,
   les surfaces, les contrôles — et le seul geste qui détruit, « Supprimer », qui
   n'a rien à faire sur une carte de liste.
@@ -74,6 +122,18 @@ modal dit LAQUELLE des cinq a bougé.
 
 Une variante sans empreinte — d'avant cette version — n'est pas déclarée
 périmée : on ne sait pas, et accuser à tort est pire que se taire.
+
+**L'empreinte ne hache pas `CHAP` tel quel**, et c'est tout le sujet :
+`recompute()` écrit sur ses objets mêmes — `total`, `circ`, `gross`, `key` —,
+`applyAreas` remplace le `u` des huit postes « à préciser », et le tri des
+postes par surface décroissante CHANGE L'ORDRE du tableau. L'empreinte variait
+donc entre deux chargements de la même page, et toute variante se déclarait
+périmée dès qu'on avait précisé une surface. On ne garde que ce que le fichier
+écrit, rangé par nom — et pas la surface des postes « à préciser », qui est une
+décision de nous, partagée au groupe et enregistrée avec chaque variante.
+
+(`u0` n'est pas la valeur du fichier : `recompute()` le réécrit à chaque
+passage, donc il vaut « u au dernier calcul ».)
 
 ## Ce qui se partage, et ce qui ne se partage pas
 

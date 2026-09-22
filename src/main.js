@@ -5,7 +5,7 @@ import { resizeMass } from "./views/massing.js";
 import { initStore, verifieQuantites } from "./mix/store.js";
 import { initCompte } from "./net/compte.js";
 import { initReglages } from "./net/reglages.js";
-import { basculer, initVariantes, setApresCharge } from "./views/variantes.js";
+import { basculer, initVariantes, ouvrirProfil, setApresCharge } from "./views/variantes.js";
 
 /* ---------- thème ----------
    `[data-theme]` était prévu dans la feuille de tokens mais aucune ligne du
@@ -120,6 +120,11 @@ window.addEventListener("hashchange", function(){
    Le bouton vit à côté du compte, pas dans le groupe d'onglets : une variante
    n'est pas une étape de la chronologie, elle la rejoue en entier. */
 document.getElementById("varBtn").addEventListener("click", function(){ basculer(); });
+
+/* Le badge du compte, à côté du thème : où je suis, comment j'entre, comment
+   je sors. Ce ne sont pas des variantes — les mettre dans le même panneau
+   aurait mêlé « où je travaille » et « ce que j'ai fait ». */
+document.getElementById("profBtn").addEventListener("click", function(){ ouvrirProfil(); });
 
 /* ---------- démarrage ---------- */
 wireTheme();
