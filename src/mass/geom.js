@@ -148,6 +148,21 @@ export function margeAu(poly, rc){
   return best;
 }
 
+/* Ce que la parcelle peut PORTER : l'aire où un point est à plus du recul de
+   la limite. Ce n'est pas l'aire du périmètre — 12'781 m² —, et c'est cette
+   différence qui dit si un niveau tient. Échantillonnée au pas de deux mètres,
+   calculée une fois. */
+var POSABLE = 0;
+export function airePosable(recul){
+  if(POSABLE) return POSABLE;
+  var B = bbox(PER), n = 0, x, y, PAS = 2;
+  for(x = B.x0; x <= B.x1; x += PAS)
+    for(y = B.y0; y <= B.y1; y += PAS)
+      if(bordDist(PER, x, y) >= recul) n++;
+  POSABLE = n * PAS * PAS;
+  return POSABLE;
+}
+
 /* ---------- séparation de deux rectangles ----------------------------------
    Axe séparateur (SAT) : la distance entre deux rectangles tournés, négative
    quand ils se recouvrent. C'est la mesure que demandent les 6 m de l'AEAI, et

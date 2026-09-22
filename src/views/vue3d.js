@@ -27,6 +27,7 @@ import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4pro
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
+import { debord } from "../mass/checks.js";
 import { MASS, cellules, famTok, niveaux, volRect } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
@@ -105,6 +106,19 @@ function boite(M, q, z0, z1, c, a, edge){
       push(M.l, [A[0], A[1], z0], n, edge, 1); push(M.l, [B[0], B[1], z0], n, edge, 1);
       push(M.l, [A[0], A[1], z0], n, edge, 1); push(M.l, [A[0], A[1], z1], n, edge, 1);
     }
+  }
+}
+/* Les seules ARÊTES d'une boîte, sans ses faces. Dessiner la boîte
+   d'enveloppe en alpha nul par-dessus les cellules du programme laissait ses
+   triangles ÉCRIRE LA PROFONDEUR : ils se disputaient le pixel avec les
+   cellules qu'ils recouvrent exactement, et les façades se criblaient de noir. */
+function aretes(M, q, z0, z1, c){
+  var n = [0, 0, 0], i, A, B;
+  for(i = 0; i < 4; i++){
+    A = q[i]; B = q[(i + 1) % 4];
+    push(M.l, [A[0], A[1], z1], n, c, 1); push(M.l, [B[0], B[1], z1], n, c, 1);
+    push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [B[0], B[1], z0], n, c, 1);
+    push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [A[0], A[1], z1], n, c, 1);
   }
 }
 function zT(p){ return terrain(p[0], p[1]) - ZBAS; }
@@ -195,13 +209,13 @@ function boiteLibre(M, P, z0, z1, c, a, edge){
 /* ---------- les volumes, refaits à chaque image ----------------------------- */
 function volMesh(){
   var M = Mesh(), N = niveaux();
-  var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus");
+  var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus"), cPF = cssRGB("--warn");
   var cMono = teinte("--site-emprise", .8), cEnt = teinte("--ink-4", .5);
   MASS.vol.forEach(function(v, k){
     var as = assise(rectBas(v)).z - ZBAS;
     var sel = MASS.sel === v.id;
     var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
-    var z = as, m;
+    var z = as, bas = null;
     /* Les sous-sols descendent sous l'assise, les étages montent depuis elle. */
     var sous = 0;
     lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
@@ -212,9 +226,15 @@ function volMesh(){
       var h = n.h;
       var vis = MASS.etage < 0 || MASS.etage === e.i;
       var z0 = z; z += h;
+      /* Le PORTE-À-FAUX est autorisé, et la 3D le dessine tel quel — mais elle
+         le dit : l'étage qui déborde de celui du dessous prend l'arête
+         d'avertissement. Un dépassement qu'on ne voit que dans une liste n'est
+         pas un dépassement qu'on corrige. */
+      var pf = n.lvl >= 0 && bas ? debord(bas, e) : 0;
+      if(n.lvl >= 0) bas = e;
       if(!vis) return;
       var rc = volRect(v, e), q = coins(rc);
-      var edge = sel ? cSel : cEdge;
+      var edge = sel ? cSel : (pf > .3 ? cPF : cEdge);
       if(MASS.mono || n.lvl < 0){
         boite(M, q, z0, z0 + h - .12, n.lvl < 0 ? cEnt : cMono, 1, edge);
       } else {
@@ -225,7 +245,7 @@ function volMesh(){
                       w: c.w, d: c.d, a: rc.a };
           boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f)), 1, null);
         });
-        boite(M, q, z0, z0 + h - .12, cMono, 0, edge);
+        aretes(M, q, z0, z0 + h - .12, edge);
       }
     });
   });
