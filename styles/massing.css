@@ -63,14 +63,10 @@
   padding-inline:var(--s-2); font-size:var(--t-xs);
 }
 .mass-par__u{ width:1.6em; color:var(--ink-3); font-size:var(--t-3xs); }
-.mass-cur{ display:block; margin-top:var(--s-3); font-size:var(--t-2xs); }
-.mass-cur__h{ display:flex; align-items:baseline; gap:var(--s-2); }
-.mass-cur__h .mono{ margin-left:auto; color:var(--ink-3); font-size:var(--t-3xs); }
-.mass-cur input[type="range"]{ width:100%; margin-top:2px; accent-color:var(--focus); }
-.mass-cur__p{
-  display:flex; justify-content:space-between;
-  font-size:var(--t-3xs); color:var(--ink-3);
-}
+/* Une valeur DONNÉE se lit à la même place qu'un réglage, mais sans champ :
+   c'est ce qui dit qu'elle ne se saisit pas. */
+.mass-par--lu{ margin:var(--s-2) 0 0; }
+.mass-par--lu b{ color:var(--ink); font-size:var(--t-xs); }
 .mass-sel__l{ margin:0; font-size:var(--t-2xs); color:var(--ink-2); }
 
 /* Le bilan : demandé, posé, écart. Trois colonnes de chiffres alignés — c'est

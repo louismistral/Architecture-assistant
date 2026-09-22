@@ -19,7 +19,7 @@ import { fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, cellules, famCol, volRect } from "../mass/model.js";
+import { MASS, cellules, famCol, filtreDe, volRect } from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 
@@ -148,7 +148,7 @@ function dessineVol(g, v, k){
     } else {
       /* Le programme, pavé dans le rectangle : on lit OÙ sont les classes, pas
          seulement qu'il y a un bâtiment. */
-      cellules(plein.i, rc.w, rc.d, filtre(v)).forEach(function(c){
+      cellules(plein.i, rc.w, rc.d, filtreDe(v, plein)).forEach(function(c){
         var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
         var sub = { x: rc.x + cx * Math.cos(rc.a) - cy * Math.sin(rc.a),
                     y: rc.y + cx * Math.sin(rc.a) + cy * Math.cos(rc.a),
@@ -180,12 +180,6 @@ function dessineVol(g, v, k){
    porte que SON poste ; les autres ne portent pas le sien. Sans cela on
    dessinait des salles de classe dans la salle de sport, et la salle de sport
    dans chaque bâtiment. */
-function filtre(v){
-  if(v.key) return { seul:[v.key] };
-  var sans = [];
-  MASS.vol.forEach(function(x){ if(x.key) sans.push(x.key); });
-  return { sans:sans };
-}
 function bas(v){
   var e = null;
   v.lv.forEach(function(x){

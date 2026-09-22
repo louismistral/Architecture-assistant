@@ -32,7 +32,8 @@ import {
   alignement, assise, attracteurs, axePer, bbox, bordDist, dedans,
   airePosable, ecart, ecartPoly, margeAu
 } from "./geom.js";
-import { MASS, horsSol, sousSol } from "./model.js";
+import { MASS, horsSol, porteAFaux, profMax, profUsuel, sousSol }
+  from "./model.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
    Une graine propre : celle du mixer rejoue une RÉPARTITION, celle-ci rejoue
@@ -48,6 +49,23 @@ function alea(g){
   };
 }
 function entre(r, a, b){ return a + r() * (b - a); }
+
+/* ---------- ce qui ne se règle plus -----------------------------------------
+   Quatre curseurs commandaient ici la force d'alignement, la compacité, la
+   régularité et l'intensité des terrasses. Ils réglaient la MÊME chose que le
+   parti — un peigne est fragmenté, un bloc compact l'est par définition —, et
+   l'on n'a jamais su quoi répondre à « compacité 0,35 ». Ce sont donc des
+   constantes de composition, écrites là où elles agissent :
+
+     ALIGN  l'alignement reste une PRÉFÉRENCE, toujours cherchée, jamais due ;
+     JEU    le jeu d'orientation autour de l'axe du périmètre — sans lui, les
+            trente compositions d'un même parti seraient la même ;
+     GRAD   le retrait d'un gradin sur celui du dessous, pour le seul parti
+            « terrasses », qui est le seul à en vouloir.
+
+   La compacité, elle, a simplement disparu : sa valeur neutre ne changeait
+   rien, et le parti dit déjà si l'on cherche un bloc ou un éclat. */
+var ALIGN = .7, JEU = .11, GRAD = .4;
 function pioche(r, list){ return list[Math.floor(r() * list.length) % list.length]; }
 function d1(v){ return Math.round(v * 10) / 10; }
 
@@ -191,7 +209,7 @@ function figure(parti, r, C, N, par){
     n = nb || (r() < .45 ? 2 : 1);
     for(i = 0; i < n; i++)
       C1({ poids:1, prof: Math.min(prof * 1.5, 30), v: i, haut: nMax,
-           grad: Math.max(.15, par.grad) });
+           grad: GRAD });
   } else if(parti === "peigne"){
     n = nb || Math.round(entre(r, 3, 5));
     C1({ poids:1.1, prof: Math.min(prof, 15), u:0, v:-1, ang:0, haut:nMax });
@@ -218,13 +236,40 @@ function cotes(a, prof, gradk){
   if(a / d > 120) d = Math.min(prof * 1.6, a / 120);
   return { w: d1(Math.max(6, a / d)), d: d1(d) };
 }
-function monter(corps, N, imp, par, r){
+function monter(corps, N, imp, par, r, sur){
   /* La surface imposée sort du partage avant qu'il commence. */
   var A = N.map(function(n, k){
     return n.A - (imp && k === 0 ? imp.aire : 0);
   });
   var k, i;
   corps.forEach(function(c){ c.lv = []; c.aire = []; });
+
+  /* UN ÉTAGE AU-DESSUS DE LA SALLE DE SPORT — c'est ce qui décide s'il y aura
+     un porte-à-faux, et c'est une décision d'architecture, pas un effet de
+     bord. La salle prend 896 m² du rez sans monter : les autres corps ont donc
+     moins d'emprise au sol qu'à l'étage, et à profondeur constante ils y sont
+     plus larges. Le débord était STRUCTUREL, on le lisait sur tous les partis
+     et sur tous les tirages à la fois.
+
+     Il n'y a qu'une façon honnête de le supprimer : poser l'étage manquant sur
+     la salle elle-même. Le programme y gagne l'emprise qui lui manquait, la
+     salle garde ses cotes du règlement, et l'étage ne déborde de rien puisqu'il
+     tient dans les 28 × 32 m du dessous. Le générateur essaie les deux — avec
+     et sans — et `noter()` préfère l'aplomb : le porte-à-faux reste possible,
+     il n'est plus la règle. */
+  if(imp) imp.sur = [];
+  if(imp && sur){
+    var pied = imp.w * imp.d;
+    for(k = 1; k < N.length; k++){
+      var pris = Math.min(pied, Math.max(0, A[k] - A[k - 1]));
+      /* Un étage de trente mètres carrés sur une salle de sport n'est pas un
+         étage : c'est une superstructure. On s'arrête là. */
+      if(pris < 40) break;
+      imp.sur.push({ i:N[k].i, a:pris });
+      A[k] -= pris;
+      pied = pris;
+    }
+  }
 
   /* Avant de partager : QUI monte. Le parti propose une silhouette — les
      pavillons bas, l'aile principale haute —, mais le programme a le dernier
@@ -351,7 +396,7 @@ function poser(corps, C, imp, par, r, atts){
     /* L'alignement est une préférence : on s'approche de l'attracteur le plus
        proche d'autant que le réglage le demande, sans jamais s'y clouer. */
     var al = alignement(ang, atts);
-    ang = ang - al.ecart * par.align * entre(r, .6, 1);
+    ang = ang - al.ecart * ALIGN * entre(r, .6, 1);
     var span = c.ang ? e0.d : e0.w;
     var ecar = c.ang ? e0.w : e0.d;
     var u = C.cu + c.u * (C.L / 2 - span / 2) * entre(r, .5, .92);
@@ -368,10 +413,16 @@ function poser(corps, C, imp, par, r, atts){
     /* Le corps imposé cherche sa place comme les autres, mais ses cotes ne
        bougent pas d'un centimètre. */
     var p2 = versSite(C, C.cu + entre(r, -.35, .35) * C.L, C.cv + entre(r, -.35, .35) * C.P);
+    var lvi = [{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, key:imp.key }];
+    /* Ce qui monte sur la salle tient DANS son emprise : la largeur suit la
+       surface, la profondeur ne bouge pas, et l'étage reste centré. */
+    (imp.sur || []).forEach(function(x){
+      lvi.push({ i:x.i, w:d1(Math.min(imp.w, x.a / imp.d)), d:imp.d,
+                 dx:0, dy:0, a:x.a });
+    });
     vols.push({ id:"vsport", x:d1(p2.x), y:d1(p2.y),
                 a: C.cap + (r() < .5 ? 0 : Math.PI / 2),
-                lv:[{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire }],
-                fix:1, key:imp.key, prof:imp.d, grad:0 });
+                lv:lvi, fix:1, key:imp.key, prof:imp.d, grad:0 });
   }
   reparer(vols, par);
   return vols;
@@ -560,13 +611,18 @@ function noter(vols, par, atts){
     if(el > 9) p += (el - 9) * 14;
     if(rc.d > par.prof && !v.fix) p += (rc.d - par.prof) * 6;
     if(Math.min(rc.w, rc.d) < 9 && !v.fix) p += (9 - Math.min(rc.w, rc.d)) * 18;
+    /* D'APLOMB, de préférence. Le porte-à-faux est permis et il se paie en
+       structure : entre deux compositions qui logent le même programme, celle
+       qui tient d'aplomb vaut mieux. C'est une préférence chiffrée, pas une
+       règle — une figure qui n'a pas d'autre issue le fera quand même. */
+    p += porteAFaux(v) * 9;
     /* Le terrain : un corps posé en travers de la pente demande un terrassement
        qu'on ne veut pas ignorer. */
     var as = assise(rc);
     p += Math.max(0, as.d - 1.6) * 16;
     /* Alignement : préférence, donc bonus — jamais une condition. */
     var al = alignement(v.a, atts);
-    p -= (1 - Math.min(1, al.ecart / .35)) * al.att.w * 26 * par.align;
+    p -= (1 - Math.min(1, al.ecart / .35)) * al.att.w * 26 * ALIGN;
     /* Orientation : une longue façade au sud vaut mieux qu'au nord. */
     var sud = Math.abs(Math.cos(v.a));
     p -= sud * 10;
@@ -581,15 +637,7 @@ function noter(vols, par, atts){
       if(manque > 0) p += manque * 90;
     }
   }
-  /* Compacité : le réglage dit si l'on cherche un bloc ou un éclat. */
-  var cvx = emprise(vols);
-  p += (par.compact * 2 - 1) * (cvx / 400);
   return p;
-}
-function emprise(vols){
-  var a = 0;
-  vols.forEach(function(v){ var r = rectSol(v); a += r.w * r.d; });
-  return a;
 }
 
 /* ---------- le tirage massing ------------------------------------------------
@@ -614,16 +662,25 @@ export function genMass(graine){
      surface, elle est au règlement ; on épaissit donc le corps. Le générateur
      rejoue sa recherche avec des corps de plus en plus profonds, et rend la
      première composition qui tient tout entière dans la parcelle. */
-  var profs = [par.prof, par.prof * 1.35, par.prof * 1.8, par.prof * 2.4, 46];
+  /* La profondeur de départ est celle d'un corps de classes, et le plafond
+     celui du local le plus profond du programme : ni l'une ni l'autre ne se
+     saisit plus (voir `profUsuel` / `profMax`). Le dernier cran passe outre —
+     quand rien ne tient sous le plafond, le choix n'est pas entre une bonne et
+     une mauvaise profondeur, il est entre un corps trop épais, que le contrôle
+     avertit, et pas de composition du tout. */
+  var pu = profUsuel(), pm = profMax();
+  var profs = [pu, pu * 1.35, Math.max(pu * 1.8, pm), pm * 1.4, 46];
   var repli = null, rp = Infinity, e, t;
   for(e = 0; e < profs.length; e++){
     var P2 = copiePar(par, Math.min(46, Math.round(profs[e] * 10) / 10));
     var best = null, bp = Infinity;
     for(t = 0; t < 30; t++){
       var pid = partis[t % partis.length];
-      var C = cadre(cap + entre(r, -1, 1) * (1 - P2.regul) * .28);
+      var C = cadre(cap + entre(r, -1, 1) * JEU);
       var corps = figure(pid, r, C, N, P2);
-      monter(corps, N, imp, P2, r);
+      /* Avec et sans étage au-dessus de la salle de sport : une composition sur
+         deux essaie l'aplomb, et la note tranche. */
+      monter(corps, N, imp, P2, r, t % 2);
       var vols = poser(corps, C, imp, P2, r, atts);
       enterrer(vols, P2);
       var p = noter(vols, P2, atts);

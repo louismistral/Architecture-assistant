@@ -33,7 +33,7 @@ import { massCheck, massVerdict } from "../mass/checks.js";
 import { admissible, genMass, rectSol } from "../mass/gen.js";
 import {
   MASS, PARTIS, bilan, bilanTotal, horsEnveloppe, massPar, massSet,
-  massVols, niveaux, partiOf, volHaut, volNiv
+  massVols, niveaux, partiOf, profMax, profUsuel, volHaut, volNiv
 } from "../mass/model.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
@@ -203,7 +203,7 @@ function blocTirage(){
   n.appendChild(document.createTextNode("change ce qui est à quel étage. "));
   n.appendChild(el("b", null, "Shuffle massing "));
   n.appendChild(document.createTextNode("garde tout cela et ne change que la forme "
-    + "bâtie : nombre de corps, position, orientation, proportions, hauteurs, retraits."));
+    + "bâtie : nombre de volumes, position, orientation, proportions, hauteurs, retraits."));
   b.appendChild(n);
   return b;
 }
@@ -251,37 +251,38 @@ function blocParams(){
     if(suf) l.appendChild(el("span", "mass-par__u", suf));
     b.appendChild(l);
   }
-  function cur(lb, k, gauche, droite){
-    var l = el("label", "mass-cur");
-    var h = el("span", "mass-cur__h");
-    h.appendChild(el("span", "mass-par__n", lb));
-    h.appendChild(el("span", "mono", Math.round(MASS.par[k] * 100) + " %"));
-    l.appendChild(h);
-    var i = document.createElement("input");
-    i.type = "range"; i.min = "0"; i.max = "100"; i.step = "5";
-    i.value = String(Math.round(MASS.par[k] * 100));
-    i.addEventListener("change", function(){
-      massPar(k, parseInt(i.value, 10) / 100);
-      regenere(); redessine();
-    });
-    l.appendChild(i);
-    var p = el("span", "mass-cur__p");
-    p.appendChild(el("span", null, gauche));
-    p.appendChild(el("span", null, droite));
-    l.appendChild(p);
+  /* Une valeur DONNÉE se lit, elle ne se saisit pas. Quatre curseurs — force
+     d'alignement, compacité, régularité, intensité des terrasses — réglaient
+     ici ce que le parti dit déjà, et la profondeur maximale était un champ
+     libre sans source : on pouvait y écrire 9 ou 46 sans que rien ne le
+     contredise. Le parti commande la composition ; le programme donne la
+     profondeur ; il reste trois choses à régler. */
+  function lit(lb, val, note){
+    var l = el("p", "mass-par mass-par--lu");
+    l.appendChild(el("span", "mass-par__n", lb));
+    l.appendChild(el("b", "mono", val));
     b.appendChild(l);
+    if(note) b.appendChild(el("p", "mass-note", note));
   }
-  num("Nombre de corps · 0 = au parti", "nb", 0, 9, 1, "");
-  num("Profondeur maximale", "prof", 9, 46, 1, "m");
-  num("Distance entre corps", "dmin", RULES.dist.entre, 30, 1, "m");
-  cur("Force d’alignement", "align", "libre", "aligné");
-  cur("Compacité", "compact", "fragmenté", "compact");
-  cur("Régularité", "regul", "libre", "régulier");
-  cur("Intensité des terrasses", "grad", "plat", "gradins");
-  b.appendChild(el("p", "mass-note", "La distance entre corps ne descend pas sous les "
-    + RULES.dist.entre + " m de l’AEAI : c’est une règle écrite, pas un réglage. "
-    + "Les alignements, eux, sont des préférences — le générateur les cherche, il ne "
-    + "s’y soumet pas."));
+  num("Nombre de volumes", "nb", 0, 9, 1, "");
+  num("Distance entre volumes", "dmin", RULES.dist.entre, 30, 1, "m");
+  lit("Profondeur d’un volume", dec(profUsuel()) + " → " + dec(profMax()) + " m");
+  b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. "
+    + "La distance ne descend pas sous les " + RULES.dist.entre + " m de l’AEAI : "
+    + "c’est une règle écrite, pas un réglage."));
+  var pn = el("p", "mass-note");
+  pn.appendChild(document.createTextNode("La profondeur ne se règle pas : elle est "
+    + "donnée. Le PACom range le site en zone de constructions publiques A, "
+    + "SANS gabarit ni hauteur — il n’en impose donc aucune. Le programme, lui, en "
+    + "impose deux : "));
+  pn.appendChild(el("b", null, dec(profUsuel()) + " m"));
+  pn.appendChild(document.createTextNode(", deux rangées de salles de classe prises à "
+    + "leur surface bâtie — le couloir est déjà dans la circulation —, et "));
+  pn.appendChild(el("b", null, dec(profMax()) + " m"));
+  pn.appendChild(document.createTextNode(" au plus, la petite cote de la salle de sport "
+    + "double. Au-delà, on bâtit de la profondeur que personne n’a demandée, et sans "
+    + "jour."));
+  b.appendChild(pn);
   return b;
 }
 
@@ -555,10 +556,11 @@ function blocAlertes(){
     });
   });
   b.appendChild(ul);
-  b.appendChild(el("p", "mass-note", "Le massing ne refuse rien : on doit pouvoir poser "
-    + "un corps à cheval sur la limite pour voir ce que ça donne. Une erreur est une "
-    + "règle écrite — le règlement, l’AEAI — ou une géométrie impossible ; un « à "
-    + "vérifier » est une règle de projet ou une marge qui se discute."));
+  b.appendChild(el("p", "mass-note", "Une "
+    + "erreur est une règle écrite — le règlement, l’AEAI — ou une géométrie "
+    + "impossible ; un « à vérifier » est une règle de projet ou une marge qui se "
+    + "discute ; une « info » n’attend aucune correction — un porte-à-faux, un "
+    + "gradin, une cage d’escalier à prévoir —, elle est là pour qu’on le sache."));
   return b;
 }
 

@@ -56,6 +56,10 @@
      sens pour un même vert dans le même onglet. */
   --site-perimetre:#6D3BD4;
   --site-emprise:#2E7D46;
+  /* La masse en monochrome : blanc de maquette, dans les deux thèmes. Elle ne
+     porte AUCUNE information — c'est le mode où l'on ne regarde que la forme,
+     et une masse teintée laissait chercher ce que la teinte voulait dire. */
+  --site-mono:#FFFFFF;
 
   /* --- familles d'usage --------------------------------------------------
      Huit familles. Chaque couleur passe ≥ 3:1 sur --panel dans les deux

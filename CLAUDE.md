@@ -312,7 +312,9 @@ retraits, les terrasses et les porte-à-faux sans ajouter le moindre réglage.
 rectangle d'un niveau avec les postes qui s'y trouvent, au prorata de la part que ce corps
 en porte — le même pavage squarifié que le mixer, la même règle « un bloc vaut sa
 surface », les mêmes couleurs de famille. En mode « couleurs programme » on lit donc OÙ
-sont les classes ; en « monochrome », la forme seule.
+sont les classes ; en « monochrome », la forme seule — en BLANC de maquette dans la 3D
+(`--site-mono`), où la masse se lit à l'ombre et à l'arête et où une teinte, même délavée,
+laisse chercher ce qu'elle voudrait dire.
 
 ### DEUX TIRAGES, et ils ne se confondent jamais
 
@@ -376,24 +378,70 @@ projet ou une marge qui se discute ; **info** pour ce qu'il faut savoir sans cor
 bilan de surface est donné niveau par niveau — demandé, posé, écart —, parce que c'est la
 question à laquelle l'outil doit répondre à tout moment.
 
-### Le porte-à-faux est permis, et il se voit
+### Le porte-à-faux est permis, mais il n'est pas la règle
 
-Un étage peut déborder de celui du dessous. La 3D le dessine tel quel et lui donne
-l'ARÊTE D'AVERTISSEMENT — un dépassement qu'on ne lit que dans une liste n'est pas un
-dépassement qu'on corrige —, le contrôle le chiffre au centimètre, et le volume choisi
-porte un champ « porte-à-faux du dernier étage » pour en faire un à la main. Il ne fait
-pas sortir de la parcelle : le débord est permis, le hors-parcelle non.
+Un étage peut déborder de celui du dessous. Il ne franchit aucune règle écrite et
+n'attend aucune correction : le contrôle le classe donc en **info** et le chiffre au
+centimètre. La 3D lui laisse l'ARÊTE D'AVERTISSEMENT — c'est la seule chose qui le fasse
+trouver d'un coup d'œil, et un débord qu'on ne lit que dans une liste n'est pas un
+débord qu'on corrige. Le volume choisi porte un champ « porte-à-faux du dernier étage »
+pour en faire un à la main. Il ne fait pas sortir de la parcelle : le débord est permis,
+le hors-parcelle non.
 
-Ce que le générateur produit, lui, n'est jamais un porte-à-faux d'artefact. Les parts se
-partageaient niveau par niveau, indépendamment : un corps portant un sixième du rez et un
-tiers du premier devenait plus large en montant, et l'on lisait jusqu'à soixante-dix
-mètres de débord que personne n'avait demandés. Trois choses l'en empêchent — un corps
-garde sa PROFONDEUR du rez au faîte, donc une aire plus petite donne une largeur plus
-petite ; le partage monte du bas avec un PLAFOND, l'aire du niveau du dessous ; et les
-corps sont PROMUS d'office quand un étage demande plus que ses porteurs ne pèsent en bas.
-Reste le débord RÉEL — la salle de sport occupe 896 m² du rez sans monter, donc les autres
-corps sont forcément plus grands à l'étage. Celui-là est vrai, il s'affiche, et il se
-discute.
+Le générateur, lui, PRÉFÈRE L'APLOMB : `noter()` fait payer chaque mètre de débord, si
+bien qu'entre deux compositions qui logent le même programme, celle qui tient d'aplomb
+gagne. Auparavant les douze partis en portaient tous, sur tous les tirages — de quatre à
+dix-huit mètres —, et une alerte qu'on voit partout ne se lit plus nulle part.
+
+Deux causes, et deux réponses différentes :
+
+- **L'artefact.** Les parts se partageaient niveau par niveau, indépendamment : un corps
+  portant un sixième du rez et un tiers du premier devenait plus large en montant, et
+  l'on lisait jusqu'à soixante-dix mètres de débord que personne n'avait demandés. Trois
+  choses l'en empêchent — un corps garde sa PROFONDEUR du rez au faîte, donc une aire
+  plus petite donne une largeur plus petite ; le partage monte du bas avec un PLAFOND,
+  l'aire du niveau du dessous ; et les corps sont PROMUS d'office quand un étage demande
+  plus que ses porteurs ne pèsent en bas.
+- **Le débord STRUCTUREL.** La salle de sport prend 896 m² du rez sans monter : les autres
+  corps ont donc moins d'emprise au sol qu'à l'étage, et à profondeur constante ils y
+  sont plus larges. Aucun partage entre corps n'y change rien — c'est une soustraction.
+  Il n'y a qu'une façon honnête de le supprimer : **poser l'étage manquant sur la salle
+  elle-même**. Elle garde ses cotes du règlement, l'étage tient dans ses 28 × 32 m et ne
+  déborde de rien, et le programme y trouve l'emprise qui lui manquait. `monter()`
+  compose les deux — avec et sans —, la note tranche, et le contrôle dit en info
+  pourquoi cet étage est là et que la portée de 28 m est à vérifier en structure.
+  C'est aussi pourquoi la CLÉ d'un poste imposé est portée par l'ÉTAGE et non par le
+  volume (`filtreDe`) : l'étage du dessus loge du programme ordinaire.
+
+Reste le porte-à-faux voulu : celui qu'on fait à la main, et celui que le programme
+impose quand la salle de sport ne peut pas absorber le surplus. Ceux-là sont vrais, ils
+s'affichent, et ils se discutent.
+
+### La profondeur est DONNÉE, elle ne se règle pas
+
+Elle était un champ à saisir, 18 m par défaut : un chiffre de projet sans source, qu'on
+pouvait mettre à 9 ou à 46 sans que rien ne le contredise. Deux sources la donnent, et
+elles vivent dans `mass/model.js` :
+
+- le **PACom de Saxon** range le site en zone de constructions et d'installations
+  publiques A — aucune contrainte de gabarit, de hauteur ni de distance aux limites
+  (art. 2.3). Il n'impose donc AUCUNE profondeur, et il faut le dire plutôt qu'inventer ;
+- le **programme** en impose deux. `profUsuel()` — deux rangées de salles de classe
+  prises à leur surface BÂTIE, le couloir étant déjà dans la part de circulation : 18,7 m.
+  `profMax()` — la petite cote du local le plus profond à loger, la salle de sport
+  double : 28 m. Au-delà, on bâtit de la profondeur que personne n'a demandée, et sans
+  jour ; le contrôle l'avertit. Le générateur part de la première et n'épaissit que
+  lorsque la composition ne tient pas dans la parcelle — le dernier cran passe outre, le
+  choix étant alors entre un corps trop épais, averti, et pas de composition du tout.
+
+Quatre curseurs ont disparu avec elle — force d'alignement, compacité, régularité,
+intensité des terrasses. Ils réglaient ce que le PARTI dit déjà (un peigne est fragmenté,
+un bloc compact l'est par définition), et personne ne savait quoi répondre à
+« compacité 0,35 ». Ce sont des constantes de composition, écrites là où elles agissent
+(`ALIGN`, `JEU`, `GRAD` dans `gen.js`) ; la compacité, dont la valeur neutre ne changeait
+rien, n'a pas été remplacée. Il reste trois réglages : le nombre de VOLUMES — le rail dit
+volume, comme le reste de l'interface, là où le générateur dit corps —, la distance entre
+eux, et l'orientation générale.
 
 ### Le plan et la 3D sont le même modèle
 
