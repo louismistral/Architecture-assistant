@@ -43,4 +43,8 @@ export function setAccepts(list){
   if(!list || !list.length) return;
   list.forEach(function(k){ if(typeof k === "string" && k.length < 200) ACCEPTS[k] = { at:0 }; });
 }
+/* Tout reprendre, d'un coup. Les deux onglets, eux, ne reprennent que LEURS
+   écarts — un code de massing porte le préfixe « m: » —, et ils le font en les
+   défaisant un à un : reprendre ceux d'un onglet ne doit pas défaire ceux de
+   l'autre. */
 export function clearAccepts(){ ACCEPTS = {}; }

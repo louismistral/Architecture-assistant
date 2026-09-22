@@ -126,7 +126,11 @@ export function planDraw(){
    forme au sol ET la silhouette qui la surmonte. */
 function dessineVol(g, v, k){
   var sel = MASS.sel === v.id;
-  var gv = svg("g", { "class":"plan-vol" + (sel ? " is-sel" : ""),
+  /* Un ouvrage du SECOND TEMPS se dessine en pointillé — c'est ce que le
+     règlement demande au plan de situation 1:500, et c'est aussi ce qui dit
+     d'un coup d'œil qu'il ne sera pas bâti avec l'école. */
+  var gv = svg("g", { "class":"plan-vol" + (sel ? " is-sel" : "")
+                        + (v.ph ? " is-ph" : ""),
                       "data-vol": v.id, tabindex:"0" });
   var montres = v.lv.filter(function(e){
     return MASS.etage < 0 ? true : e.i === MASS.etage;
@@ -168,7 +172,7 @@ function dessineVol(g, v, k){
       "class":"plan-vol__n", "text-anchor":"middle",
       transform: "rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " "
                + rc.x.toFixed(2) + " " + Y(rc.y).toFixed(2) + ")" });
-    t.textContent = (v.fix ? "Sport" : "V" + (k + 1))
+    t.textContent = (v.nom ? v.nom : v.fix ? "Sport" : "V" + (k + 1))
       + " · " + fmt(Math.round(rc.w * rc.d)) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);

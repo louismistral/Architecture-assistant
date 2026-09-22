@@ -387,7 +387,8 @@ src/data/site.js      le relevé, engendré du fichier Rhino    ← SOURCE UNIQU
 src/mass/geom.js      terrain interpolé, rectangles tournés, distances, alignements
 src/mass/model.js     l'état, les niveaux RELUS du mixer, le bilan de surface
 src/mass/gen.js       le générateur : parti → figure → réparation → note
-src/mass/checks.js    alertes info / à vérifier / erreur
+src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
+src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
 src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
 src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation
@@ -582,33 +583,100 @@ Reste le porte-à-faux voulu : celui qu'on fait à la main, et celui que le prog
 impose quand la salle de sport ne peut pas absorber le surplus. Ceux-là sont vrais, ils
 s'affichent, et ils se discutent.
 
-### La profondeur est DONNÉE, elle ne se règle pas
+### La profondeur se CHOISIT ; son plafond est donné
 
-Elle était un champ à saisir, 18 m par défaut : un chiffre de projet sans source, qu'on
-pouvait mettre à 9 ou à 46 sans que rien ne le contredise. Deux sources la donnent, et
-elles vivent dans `mass/model.js` :
+Elle a été un champ à saisir, 18 m par défaut — un chiffre de projet sans source, qu'on
+pouvait mettre à 9 ou à 46 sans que rien ne le contredise —, puis une valeur figée, qui ne
+laissait plus rien essayer alors que la profondeur est le premier choix d'un projet
+d'école. C'est aujourd'hui **un curseur borné**, et les deux bornes viennent d'ailleurs
+que de nous (`mass/model.js`) :
 
 - le **PACom de Saxon** range le site en zone de constructions et d'installations
   publiques A — aucune contrainte de gabarit, de hauteur ni de distance aux limites
   (art. 2.3). Il n'impose donc AUCUNE profondeur, et il faut le dire plutôt qu'inventer ;
-- le **programme** en impose deux. `profUsuel()` — deux rangées de salles de classe
-  prises à leur surface BÂTIE, le couloir étant déjà dans la part de circulation : 18,7 m.
-  `profMax()` — la petite cote du local le plus profond à loger, la salle de sport
-  double : 28 m. Au-delà, on bâtit de la profondeur que personne n'a demandée, et sans
-  jour ; le contrôle l'avertit. Le générateur part de la première et n'épaissit que
-  lorsque la composition ne tient pas dans la parcelle — le dernier cran passe outre, le
-  choix étant alors entre un corps trop épais, averti, et pas de composition du tout.
+- le **programme** donne le PLAFOND : `profMax()`, la petite cote du local le plus profond
+  à loger — la salle de sport double, 28 m. **Aucun volume ne le franchit**, ni le
+  générateur ni la main : l'épaississement de la recherche s'y arrête, quitte à rendre la
+  composition impossible et à renvoyer au mixer, et la poignée de redimensionnement y est
+  bornée. Au-delà, on bâtirait de la profondeur que personne n'a demandée, et sans jour ;
+- le **programme** donne aussi le point de départ : `profUsuel()`, deux rangées de salles
+  de classe prises à leur surface BÂTIE — le couloir est dans la part de circulation, il
+  ne s'ajoute pas par-dessus —, arrondi au demi-mètre comme toutes les cotes du projet,
+  soit 18,5 m. Le plancher du curseur, lui, est la largeur d'une classe et de son couloir.
 
-Quatre curseurs ont disparu avec elle — force d'alignement, compacité, régularité,
+Quatre curseurs ont disparu en chemin — force d'alignement, compacité, régularité,
 intensité des terrasses. Ils réglaient ce que le PARTI dit déjà (un peigne est fragmenté,
 un bloc compact l'est par définition), et personne ne savait quoi répondre à
 « compacité 0,35 ». Ce sont des constantes de composition, écrites là où elles agissent
 (`JEU` et `GRAD` dans `gen.js`, `DOC.alignForce` et `DOC.alignPoids` dans la doctrine —
 ce que le générateur TOURNE un corps vers son attracteur et ce que la note lui RAPPORTE
 sont deux choses, et un seul nombre faisait les deux) ; la compacité, dont la valeur neutre
-ne changeait rien, a été remplacée par une vraie mesure de façade développée. Il reste trois réglages : le nombre de VOLUMES — le rail dit
-volume, comme le reste de l'interface, là où le générateur dit corps —, la distance entre
-eux, et l'orientation générale.
+ne changeait rien, a été remplacée par une vraie mesure de façade développée. Il reste
+quatre réglages au rail : le nombre de VOLUMES — le rail dit volume, comme le reste de
+l'interface, là où le générateur dit corps —, la distance entre eux, la profondeur, et
+l'orientation générale.
+
+### Le second temps occupe du terrain, donc il se dessine
+
+La piscine (500 m²) et le local de chauffage à distance (400 m²) sont des ouvrages
+**indépendants des bâtiments scolaires et réalisés plus tard** (art. 2.2) : ils ne pèsent
+sur aucun plateau, ne comptent dans aucun niveau du bilan, et le plan de situation les
+veut en pointillé. On n'en dessinait donc rien — et l'implantation promettait 900 m² de
+terrain qu'elle n'avait pas, soit le quart d'un rez d'école, que la cour et le
+stationnement croyaient disponibles.
+
+Ce sont des BÂTIMENTS, et `secondTemps()` les reconnaît à ce qui les distingue de la
+cour : une **hauteur libre**. Ce qui n'a pas de hauteur n'est pas un volume, et c'est le
+programme qui le dit — pas une liste de noms réécrite dans le code. Ils portent donc leur
+propre hauteur (`e.h`, via `hauteurEtage()`) : une piscine indépendante ne prend pas les
+7,45 m que la salle de sport impose au rez de l'école.
+
+Trois façons de les prendre, et les trois se défendent — **deux volumes** séparés, qui est
+la lecture littérale du règlement et le défaut ; **un seul** volume commun, la piscine et
+le chauffage à distance partageant volontiers leurs machines et leur accès camion ;
+**aucun**, pour ne regarder que l'école.
+
+Ils se posent **après** que l'école est composée, sur la composition retenue, et prennent
+les MARGES du site : `poserSecond()` balaie la parcelle du bord vers le cœur et prend la
+première position admissible — mêmes limites, même recul, mêmes six mètres. Les faire
+concourir avec les corps d'école doublait le coût d'un tirage et écartait des figures
+d'école valables pour loger une piscine qu'on ne bâtira pas avant dix ans. Quand aucune
+place ne tient, l'ouvrage **n'est pas posé** et le contrôle le dit, avec les gestes qui
+le résoudraient : mieux vaut l'absence que le mensonge.
+
+Ils sont hors de tout ce qui mesure l'ÉCOLE : le bilan de surface, la compacité, la cour
+tenue, l'adresse, la part de classes et le jour entre corps les ignorent — exiger seize
+mètres entre une piscine basse et un corps de classes était une alerte que rien ne pouvait
+corriger. Ils ne sont hors de rien de ce qui tient au TERRAIN : périmètre, recul, six
+mètres, existant, pente.
+
+### Une alerte se clique : le geste, ou l'assumer
+
+Le massing disait, et laissait tout le travail à faire. On lisait « volume 2 sort du
+périmètre de 7,49 m » et l'on allait le tirer à la souris, au pixel près, jusqu'à ce que
+le message disparaisse. C'est exactement l'interaction que le mixer avait depuis le début,
+et elle est maintenant la même ici : une alerte s'ouvre sur **les gestes qui la
+résoudraient** et sur **« laisser comme ça »**.
+
+- Les remèdes vivent dans `src/mass/fix.js`, à côté de la règle qu'ils réparent. La
+  MÉCANIQUE, elle, reste dans `gen.js` — recaler, écarter, replacer un sous-sol, reposer
+  les ouvrages du second temps sont ce que le générateur sait déjà faire : le contrôle et
+  le générateur doivent réparer de la même façon, sans quoi ils se contrediraient à chaque
+  clic.
+- Aucun remède ne s'applique tout seul, et **aucun n'en crée un autre** : tout geste qui
+  déplace ou redimensionne repasse par `admissible()`, et rend `false` en remettant en
+  place quand il ne tient pas. Ce qui change une forme le fait **à surface exacte** — c'est
+  la règle première du projet ; sans cela, réparer une proportion aurait créé un écart au
+  bilan.
+- Un remède qui n'existe pas n'est pas proposé : on n'élargit pas un corps dont le
+  règlement fixe les cotes, et on ne remet pas d'aplomb un porte-à-faux qui vient des
+  surfaces — il faudrait changer les mètres carrés, et ils sont au règlement. L'alerte
+  porte alors une `note` qui le dit.
+- « Laisser comme ça » n'efface rien : l'alerte quitte le verdict, passe dans « laissés
+  tels quels » et se reprend d'un clic. Les codes sont ceux du mixer, préfixés **`m:`** —
+  « je laisse comme ça » est une seule décision de projet et n'a pas à s'enregistrer à
+  deux endroits, mais un code de niveau et un code de volume ne doivent jamais se
+  rencontrer, et chaque onglet ne reprend que les siens.
 
 ### Le plan et la 3D sont le même modèle
 
@@ -631,6 +699,8 @@ quoi ce programme ressemblerait-il, physiquement, sur ce site ?
 - **Une surface, un nombre, une famille, une note** : `src/data/program.js` seul.
 - **Une contrainte du concours** : `src/data/rules.js` seul — la section Contraintes, les
   règles de niveau et le contrôle en découlent.
+- **Un remède d'alerte du massing** : `src/mass/fix.js` seul, nommé dans `checks.js` à
+  côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Un seuil, un plafond, un poids de génération** : `src/data/doctrine.js` seul. Les deux
   générateurs le lisent, les deux volets « Contraintes » l'affichent et le règlent. Une
   règle nouvelle s'ajoute dans `DOC` (la valeur) plus `REGLES` (sa ligne : rang, source,

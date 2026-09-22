@@ -63,10 +63,19 @@
   padding-inline:var(--s-2); font-size:var(--t-xs);
 }
 .mass-par__u{ width:1.6em; color:var(--ink-3); font-size:var(--t-3xs); }
-/* Une valeur DONNÉE se lit à la même place qu'un réglage, mais sans champ :
-   c'est ce qui dit qu'elle ne se saisit pas. */
-.mass-par--lu{ margin:var(--s-2) 0 0; }
-.mass-par--lu b{ color:var(--ink); font-size:var(--t-xs); }
+/* Un curseur porte son CHIFFRE et ses deux bornes : sans elles on ne sait pas
+   ce qu'on règle, et sans lui on tâtonne. */
+.mass-cur{ display:block; margin-top:var(--s-3); font-size:var(--t-2xs); }
+.mass-cur__h{ display:flex; align-items:baseline; gap:var(--s-2); }
+.mass-cur__h .mono{ margin-left:auto; color:var(--ink); font-size:var(--t-xs); }
+.mass-cur input[type="range"]{ width:100%; margin-top:2px; accent-color:var(--focus); }
+.mass-cur__p{
+  display:flex; justify-content:space-between; gap:var(--s-2);
+  font-size:var(--t-3xs); color:var(--ink-3);
+}
+.mass-sous{ margin:var(--s-4) 0 var(--s-2); }
+.mass-bloc__h--soft{ margin-top:var(--s-3); }
+.mass-bloc__h--soft .btn{ margin-left:auto; }
 .mass-sel__l{ margin:0; font-size:var(--t-2xs); color:var(--ink-2); }
 
 /* Le bilan : demandé, posé, écart. Trois colonnes de chiffres alignés — c'est
@@ -91,6 +100,29 @@
   font:inherit; font-size:var(--t-2xs); line-height:var(--lh-normal); color:var(--ink-2);
 }
 .mass-al__b:hover{ background:var(--rule-soft); }
+.mass-al__i.is-open > .mass-al__b{ background:var(--rule-soft); }
+
+/* Le panneau d'une alerte : ce qui la résoudrait, et « laisser comme ça ». Les
+   deux se présentent de la même façon, parce qu'assumer un écart est une
+   décision de projet et non un renoncement. */
+.mass-al__p{
+  margin:2px 0 var(--s-2) var(--s-2);
+  padding-left:var(--s-2); border-left:2px solid var(--rule);
+  display:grid; gap:2px;
+}
+.mass-al__w{
+  margin:0 0 var(--s-1); font-size:var(--t-3xs); line-height:var(--lh-normal);
+  color:var(--ink-3);
+}
+.mass-act{
+  display:block; width:100%; text-align:left; height:auto;
+  padding:var(--s-1) var(--s-2); font-size:var(--t-2xs);
+}
+.mass-why{
+  display:block; margin-top:1px;
+  font-size:var(--t-3xs); font-weight:400; color:var(--ink-3);
+  white-space:normal;
+}
 .mass-al__b .chip{ margin-right:var(--s-2); vertical-align:1px; }
 .mass-al__r{ color:var(--ink-3); font-size:var(--t-3xs); }
 
@@ -148,6 +180,11 @@
 .plan-vol__c{ fill:none; stroke:var(--ink); stroke-width:.55; stroke-linejoin:round; }
 .plan-vol.is-sel .plan-vol__c,
 .plan-vol.is-sel .plan-vol__p{ stroke:var(--focus); stroke-width:.9; }
+/* Le second temps, en pointillé : la piscine et le chauffage à distance sont
+   des ouvrages indépendants, réalisés plus tard — art. 2.2. */
+.plan-vol.is-ph .plan-vol__c,
+.plan-vol.is-ph .plan-vol__p{ stroke-dasharray:2.4 1.8; }
+.plan-vol.is-ph .plan-cel{ fill-opacity:calc(var(--fill-op) * .55); }
 .plan-vol__n{
   font-size:2.6px; fill:var(--ink); font-weight:600; paint-order:stroke;
   stroke:var(--panel); stroke-width:.7; stroke-linejoin:round;

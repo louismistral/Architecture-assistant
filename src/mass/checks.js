@@ -29,9 +29,17 @@ import { DOC } from "../data/doctrine.js";
 import { airePoly, airePosable, assise, coins, ecart, ecartPoly, enveloppe,
   margeAu, visAVis } from "./geom.js";
 import { obstaclesPres, rectSol } from "./gen.js";
-import { MASS, bilan, niveaux, porteAFaux, profMax, volHaut } from "./model.js";
+import { isAccepted } from "../mix/accept.js";
+import {
+  fixAire, fixAplomb, fixCarrer, fixEcarter, fixElargir, fixPile, fixProfondeur,
+  fixRecaler, fixRelancer, fixReposerSecond, fixSecond, fixSousSol
+} from "./fix.js";
+import { MASS, bilan, niveaux, porteAFaux, profDe, profMax, secondTemps,
+  volHaut } from "./model.js";
 
-function nom(v, k){ return v.fix ? "Salle de sport double" : "Volume " + (k + 1); }
+function nom(v, k){
+  return v.nom || (v.fix ? "Salle de sport double" : "Volume " + (k + 1));
+}
 
 /* La cour et son préau viennent du PROGRAMME — `data/program.js`, chapitre
    Extérieurs —, et non d'un nombre réécrit ici. Le contrôle en écrivait deux :
@@ -46,8 +54,22 @@ var COUR = courProgramme();
 
 export function massCheck(){
   var out = [], V = MASS.vol, N = niveaux(), i, j;
-  function dit(sev, code, msg, ref, ex, vol){
-    out.push({ sev:sev, code:code, msg:msg, ref:ref || "", ex:ex || "", vol:vol == null ? -1 : vol });
+  /* Le CODE est préfixé « m: » : les écarts assumés du mixer et ceux du massing
+     vivent dans la même liste — c'est une seule décision de projet, « je laisse
+     comme ça », et elle n'a pas à s'enregistrer à deux endroits —, mais un
+     code de niveau et un code de volume ne doivent jamais se rencontrer.
+
+     `more` porte les REMÈDES : `{ fix, note }`, `fix` étant un geste ou une
+     liste. Les gestes nuls — recaler un volume qui n'a pas bougé, élargir un
+     corps dont le règlement fixe les cotes — sont écartés ici, pour que la vue
+     n'ait jamais à proposer l'impossible. */
+  function dit(sev, code, msg, ref, ex, vol, more){
+    var o = more || {}, c = "m:" + code;
+    var fx = (o.fix == null) ? [] : (o.fix.length === undefined ? [o.fix] : o.fix);
+    out.push({ sev:sev, code:c, msg:msg, ref:ref || "", ex:ex || "",
+               vol: vol == null ? -1 : vol, note: o.note || "",
+               fixes: fx.filter(function(f){ return !!f; }),
+               ok: isAccepted(c) });
   }
   if(!V.length){
     dit("i", "vide", "Aucun volume posé. « Shuffle massing » en propose un jeu à partir "
@@ -76,8 +98,9 @@ export function massCheck(){
       + "que " + fmt(Math.round(MASS.vol.posable || 0)) + " au plus — recul de "
       + dec(RULES.dist.retrait) + " m déduit, et avant les six mètres entre bâtiments, "
       + "la cour et les accès. Le générateur a essayé les douze partis, de un à sept "
-      + "corps, jusqu’à 46 m de profondeur. C’est au mixer qu’il faut ajouter un étage.",
-      "2.3", pireNom, -1);
+      + "corps, jusqu’à " + dec(profMax()) + " m de profondeur. C’est au mixer qu’il faut "
+      + "ajouter un étage.",
+      "2.3", pireNom, -1, { fix: fixPile() });
   }
 
   /* --- l'étage au-dessus de la salle de sport -----------------------------
@@ -107,10 +130,11 @@ export function massCheck(){
     var m = margeAu(PER, rc);
     if(m < 0){
       dit("e", "hors:" + v.id, nm + " sort du périmètre du concours de "
-        + dec(-m) + " m.", "2.3", nm, i);
+        + dec(-m) + " m.", "2.3", nm, i, { fix:[fixRecaler(i), fixEcarter()] });
     } else if(m < RULES.dist.retrait - .05){
       dit("e", "recul:" + v.id, nm + " est à " + dec(m) + " m de la limite, où le "
-        + "recul de travail est de " + RULES.dist.retrait + " m.", "2.3", nm, i);
+        + "recul de travail est de " + RULES.dist.retrait + " m.", "2.3", nm, i,
+        { fix:[fixRecaler(i), fixEcarter()] });
     }
 
     /* --- l'existant ------------------------------------------------------ */
@@ -118,12 +142,14 @@ export function massCheck(){
     for(j = 0; j < OB.length; j++){
       var eb = ecartPoly(rc, OB[j]);
       if(eb < 0){
-        dit("e", "choc:" + v.id, nm + " recouvre un bâtiment existant.", "2.3", nm, i);
+        dit("e", "choc:" + v.id, nm + " recouvre un bâtiment existant.", "2.3", nm, i,
+          { fix:[fixRecaler(i), fixEcarter()] });
         break;
       }
       if(eb < RULES.dist.entre){
         dit("e", "aeai:" + v.id + ":ex", nm + " est à " + dec(eb) + " m d'un bâtiment "
-          + "existant : l'AEAI en demande " + RULES.dist.entre + ".", "AEAI 2.4", nm, i);
+          + "existant : l'AEAI en demande " + RULES.dist.entre + ".", "AEAI 2.4", nm, i,
+          { fix:[fixRecaler(i), fixEcarter()] });
         break;
       }
     }
@@ -133,15 +159,17 @@ export function massCheck(){
       var e = ecart(rc, rectSol(V[j])), n2 = nom(V[j], j);
       if(e < 0){
         dit("e", "sur:" + v.id + "|" + V[j].id, nm + " et " + n2.toLowerCase()
-          + " s'interpénètrent sur " + dec(-e) + " m.", "", nm + " · " + n2, i);
+          + " s'interpénètrent sur " + dec(-e) + " m.", "", nm + " · " + n2, i,
+          { fix: fixEcarter() });
       } else if(e < RULES.dist.entre - .05){
         dit("e", "aeai:" + v.id + "|" + V[j].id, nm + " et " + n2.toLowerCase()
           + " sont à " + dec(e) + " m : l'AEAI demande " + RULES.dist.entre
-          + " m entre bâtiments.", "AEAI 2.4", nm + " · " + n2, i);
+          + " m entre bâtiments.", "AEAI 2.4", nm + " · " + n2, i,
+          { fix: fixEcarter() });
       } else if(e < RULES.dist.entre + 1.5){
         dit("i", "serre:" + v.id + "|" + V[j].id, nm + " et " + n2.toLowerCase()
           + " sont à " + dec(e) + " m : la distance incendie est tenue de justesse.",
-          "AEAI 2.4", nm + " · " + n2, i);
+          "AEAI 2.4", nm + " · " + n2, i, { fix: fixEcarter() });
       }
       /* --- LE JOUR ENTRE LES CORPS -------------------------------------
          Les six mètres de l'AEAI sont une distance d'INCENDIE. Deux barres de
@@ -149,7 +177,12 @@ export function massCheck(){
          inhabitables : l'écart utile se mesure à la HAUTEUR du plus haut des
          deux. Aucun contrôle ne le disait, et le générateur ne le notait pas
          davantage — c'est la contrainte qui manquait le plus. */
-      if(e >= 0 && DOC.ombreK > 0 && visAVis(rc, rectSol(V[j])) > 8){
+      /* Entre bâtiments d'ÉCOLE seulement. Un ouvrage du second temps n'a pas
+         de salle à éclairer, et il ne sera pas là quand l'école ouvrira :
+         exiger seize mètres entre une piscine basse et un corps de classes
+         était une alerte que rien ne pouvait corriger. */
+      if(e >= 0 && DOC.ombreK > 0 && !v.ph && !V[j].ph
+         && visAVis(rc, rectSol(V[j])) > 8){
         var req = Math.max(volHaut(v), volHaut(V[j])) * DOC.ombreK;
         if(req > RULES.dist.entre && e < req - .05){
           /* Gradué, et c'est important. Le programme demande 3'500 m² d'emprise
@@ -162,7 +195,10 @@ export function massCheck(){
             nm + " et " + n2.toLowerCase() + " sont à " + dec(e) + " m pour "
             + dec(req) + " m d'écart utile — " + dec(DOC.ombreK) + " fois la hauteur "
             + "du plus haut. En deçà, les façades qui se font face perdent le jour du "
-            + "matin et du soir.", "2.9", nm + " · " + n2, i);
+            + "matin et du soir.", "2.9", nm + " · " + n2, i,
+            { fix:[fixEcarter(), fixRelancer()],
+              note:"Sur ce site, l'écart utile n'est pas tenable partout : "
+                + "3'500 m² d'emprise dans un L de 10'528 m² posables." });
         }
       }
     }
@@ -173,15 +209,18 @@ export function massCheck(){
       if(rc.d > profMax() + .5){
         dit("w", "prof:" + v.id, nm + " a " + dec(rc.d) + " m de profondeur, au-delà des "
           + dec(profMax()) + " m du local le plus profond du programme : les locaux du "
-          + "milieu perdent le jour.", "2.9", nm, i);
+          + "milieu perdent le jour.", "2.9", nm, i,
+          { fix:[fixProfondeur(i), fixRelancer()] });
       }
       if(pt < 9){
         dit("w", "etroit:" + v.id, nm + " ne fait que " + dec(pt) + " m de large : "
-          + "une salle de classe en demande neuf avec son couloir.", "", nm, i);
+          + "une salle de classe en demande neuf avec son couloir.", "", nm, i,
+          { fix:[fixElargir(i, 9), fixRelancer()] });
       }
       if(lg / Math.max(1, pt) > 9){
         dit("w", "elan:" + v.id, nm + " est " + Math.round(lg / pt) + " fois plus long "
-          + "que large — " + dec(lg) + " × " + dec(pt) + " m.", "2.9", nm, i);
+          + "que large — " + dec(lg) + " × " + dec(pt) + " m.", "2.9", nm, i,
+          { fix:[fixCarrer(i), fixRelancer()] });
       }
     }
 
@@ -197,14 +236,18 @@ export function massCheck(){
     if(pf > .3){
       dit("i", "pf:" + v.id, "Porte-à-faux sur " + nm.toLowerCase()
         + " — dépassement maximum " + dec(pf) + " m. Il est permis ; il se paie "
-        + "en structure.", "", nm, i);
+        + "en structure.", "", nm, i,
+        { fix: fixAplomb(i),
+          note:"Le débord qui vient des surfaces ne se défait pas d'un clic : il "
+            + "faudrait changer les mètres carrés, et ils sont au règlement." });
     }
 
     /* --- le terrain -------------------------------------------------------- */
     var as = assise(rc);
     if(as.d > 2){
       dit("w", "pente:" + v.id, nm + " est posé sur " + dec(as.d) + " m de dénivelé : "
-        + "il faudra terrasser, ou décrocher le niveau.", "2.3", nm, i);
+        + "il faudra terrasser, ou décrocher le niveau.", "2.3", nm, i,
+        { fix: fixRelancer() });
     } else if(as.d > 1){
       dit("i", "pente:" + v.id, nm + " couvre " + dec(as.d) + " m de dénivelé — "
         + dec(as.lo) + " à " + dec(as.hi) + " m sur mer.", "2.3", nm, i);
@@ -224,7 +267,8 @@ export function massCheck(){
           + dec(as.z) + " m et la nappe à " + dec(NAPPE) + " : "
           + dec(couv) + " m de couverture, où le règlement en demande "
           + dec(RULES.dist.couverture) + ". Un sous-sol excavé n'est tenable "
-          + "qu'au tiers est du site.", "2.3", nm, i);
+          + "qu'au tiers est du site.", "2.3", nm, i,
+          { fix:[fixSousSol(), fixRelancer()] });
       } else {
         dit("i", "nappe:" + v.id, "Sous " + nm.toLowerCase() + ", "
           + dec(couv) + " m de couverture sur la nappe : le sous-sol tient.",
@@ -243,6 +287,51 @@ export function massCheck(){
     });
   }
 
+  /* --- LES OUVRAGES DU SECOND TEMPS --------------------------------------
+     Le règlement les veut indépendants et réalisés plus tard, donc hors
+     enveloppe et en pointillé au plan de situation. Ils n'en occupent pas moins
+     900 m² de terrain, et une implantation qui ne les pose pas promet une
+     parcelle qu'elle n'a pas. Quand ils ne tiennent pas, c'est une information
+     de projet — pas une faute d'implantation : il reste à les grouper, à
+     rejouer la composition, ou à ne pas les représenter. */
+  var S2 = secondTemps();
+  if(S2.length && MASS.second !== "non"){
+    var pose2 = {}, aire2 = {};
+    V.forEach(function(v){
+      if(!v.ph) return;
+      var e2 = v.lv[0];
+      (e2.keys || []).forEach(function(k){ pose2[k] = 1; });
+      aire2[v.id] = { v:v, pose:e2.w * e2.d, dem:e2.a };
+    });
+    var manque2 = S2.filter(function(x){ return !pose2[x.key]; });
+    if(manque2.length){
+      dit("w", "second", manque2.map(function(x){ return x.n; }).join(" et ")
+        + " ne trouve" + (manque2.length > 1 ? "nt" : "") + " pas de place : "
+        + fmt(Math.round(manque2.reduce(function(a, x){ return a + x.a; }, 0)))
+        + " m² à poser à six mètres de tout, dans ce que l’école laisse. Le second "
+        + "temps reste au programme et au bilan ; il n’est simplement pas dessiné.",
+        "2.2", manque2[0].n, -1,
+        { fix:[fixReposerSecond(),
+               fixSecond("un", "Grouper les ouvrages du second temps",
+                 "la piscine et le local CAD en un seul volume : une emprise au lieu de deux"),
+               fixSecond("sep", "Séparer les deux ouvrages",
+                 "deux volumes plus petits trouvent parfois deux places là où un seul n’en trouve aucune"),
+               fixRelancer(),
+               fixSecond("non", "Ne pas les représenter",
+                 "l’implantation ne montre plus que l’école")] });
+    }
+    var id2;
+    for(id2 in aire2){
+      var q2 = aire2[id2];
+      if(Math.abs(q2.pose - q2.dem) > Math.max(10, q2.dem * .03)){
+        dit("w", "aire2:" + id2, (q2.v.nom || "L’ouvrage du second temps")
+          + " fait " + fmt(Math.round(q2.pose)) + " m² pour "
+          + fmt(Math.round(q2.dem)) + " m² au programme.", "2.2", q2.v.nom || "", -1,
+          { fix: fixReposerSecond() });
+      }
+    }
+  }
+
   /* --- la surface, niveau par niveau -------------------------------------
      La question que le massing doit savoir répondre à tout moment. Une
      différence n'est pas une faute : c'est un chiffre, et on le donne. */
@@ -252,7 +341,7 @@ export function massCheck(){
       dit("w", "aire:" + b.i, b.nom + " — surface demandée " + fmt(Math.round(b.demande))
         + " m², surface posée " + fmt(Math.round(b.pose)) + " m², différence "
         + (b.ecart > 0 ? "+" : "−") + fmt(Math.round(Math.abs(b.ecart))) + " m².",
-        "2.7", b.nom, -1);
+        "2.7", b.nom, -1, { fix: fixAire() });
     }
   });
 
@@ -270,7 +359,12 @@ export function massCheck(){
     dit("w", "terrain", "Il reste " + fmt(Math.round(libre)) + " m² de terrain libre sur les "
       + fmt(Math.round(posable)) + " m² posables : la cour de " + fmt(COUR) + " m² et les "
       + RULES.ext.voitures + " places de parc en demandent environ "
-      + fmt(besoin) + ".", "2.4", "", -1);
+      + fmt(besoin) + ".", "2.4", "", -1,
+      { fix:[fixSecond("un", "Grouper les ouvrages du second temps",
+               "la piscine et le local CAD en un seul volume : une emprise au lieu de deux"),
+             fixSecond("non", "Ne pas représenter le second temps",
+               "ils restent au programme et au bilan, mais ne sont plus posés"),
+             fixRelancer()] });
   }
 
   /* --- LA COUR, ET LE FAIT QU'ELLE SOIT TENUE ----------------------------
@@ -290,7 +384,7 @@ export function massCheck(){
     dit("w", "cour", "La figure ne tient que " + fmt(Math.round(vide)) + " m² de vide entre "
       + "ses corps, où la cour et son préau en demandent " + fmt(COUR) + ". Le terrain "
       + "restant existe, mais il n'est pas TENU par les bâtiments : c'est un reste, pas une "
-      + "cour d'école.", "2.10", "", -1);
+      + "cour d'école.", "2.10", "", -1, { fix: fixRelancer() });
   } else {
     dit("i", "cour", "La figure tient " + fmt(Math.round(vide)) + " m² de vide entre ses "
       + "corps — la cour et son préau en demandent " + fmt(COUR) + ".", "2.10", "", -1);
@@ -299,11 +393,12 @@ export function massCheck(){
 }
 
 export function massVerdict(list){
-  var e = 0, w = 0, n = 0;
+  var e = 0, w = 0, n = 0, ok = 0;
   (list || []).forEach(function(x){
-    if(x.sev === "e") e++;
+    if(x.ok) ok++;
+    else if(x.sev === "e") e++;
     else if(x.sev === "w") w++;
     else n++;
   });
-  return { e:e, w:w, i:n, sev: e ? "e" : w ? "w" : "ok" };
+  return { e:e, w:w, i:n, ok:ok, sev: e ? "e" : w ? "w" : "ok" };
 }

@@ -30,10 +30,14 @@ import { repartir } from "../mix/shuffle.js";
 import { saveSoon } from "../mix/store.js";
 import { tirerNiveaux } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
-import { admissible, genMass, noteCourante, rectSol } from "../mass/gen.js";
+import { accept, unaccept } from "../mix/accept.js";
+import { requilibre } from "../mass/fix.js";
+import { admissible, genMass, noteCourante, poserSecondTemps, rectSol }
+  from "../mass/gen.js";
 import {
-  MASS, PARTIS, bilan, bilanTotal, empreintePile, horsEnveloppe, massPar, massSet,
-  massVols, niveaux, partiOf, profMax, profUsuel, volHaut, volNiv
+  MASS, PARTIS, PROF_MIN, bilan, bilanTotal, empreintePile, horsEnveloppe,
+  massPar, massSet, massVols, niveaux, partiOf, profDe, profMax, profUsuel,
+  secondTemps, volHaut, volNiv
 } from "../mass/model.js";
 import { doctrineSection, noteBloc } from "./doctrine.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
@@ -41,6 +45,9 @@ import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChang
   vue3dPick } from "./vue3d.js";
 
 var railEl = null, planEl = null, troisEl = null, camEl = null, monte = false;
+/* L'alerte ouverte, s'il y en a une. Une seule à la fois : deux panneaux
+   ouverts, et l'on ne sait plus lequel désigne le volume sélectionné. */
+var openAl = null;
 
 /* ---------- le panneau ------------------------------------------------------ */
 export function massPanel(){
@@ -260,38 +267,85 @@ function blocParams(){
     if(suf) l.appendChild(el("span", "mass-par__u", suf));
     b.appendChild(l);
   }
-  /* Une valeur DONNÉE se lit, elle ne se saisit pas. Quatre curseurs — force
-     d'alignement, compacité, régularité, intensité des terrasses — réglaient
-     ici ce que le parti dit déjà, et la profondeur maximale était un champ
-     libre sans source : on pouvait y écrire 9 ou 46 sans que rien ne le
-     contredise. Le parti commande la composition ; le programme donne la
-     profondeur ; il reste trois choses à régler. */
-  function lit(lb, val, note){
-    var l = el("p", "mass-par mass-par--lu");
-    l.appendChild(el("span", "mass-par__n", lb));
-    l.appendChild(el("b", "mono", val));
+  /* LA PROFONDEUR SE CHOISIT, SON PLAFOND NON. Un curseur, borné : en bas la
+     largeur d'une salle de classe et de son couloir, en haut la petite cote de
+     la salle de sport double — le local le plus profond que le règlement nous
+     donne à loger. Aucun volume ne franchit ce plafond, ni le générateur ni la
+     main. Le champ libre d'avant laissait écrire 46 ; la valeur figée qui l'a
+     remplacé ne laissait plus rien essayer, alors que la profondeur est le
+     premier choix d'un projet d'école. */
+  function cur(lb, k, min, max, val, suf, fin){
+    var l = el("label", "mass-cur");
+    var h = el("span", "mass-cur__h");
+    h.appendChild(el("span", "mass-par__n", lb));
+    var chiffre = el("span", "mono", dec(val) + " " + suf);
+    h.appendChild(chiffre);
+    l.appendChild(h);
+    var i = document.createElement("input");
+    i.type = "range";
+    i.min = String(min); i.max = String(max); i.step = "0.5";
+    i.value = String(val);
+    /* Le chiffre suit le doigt, la composition ne se rejoue qu'au relâcher :
+       trente tirages par glissement rendaient le curseur inutilisable. */
+    i.addEventListener("input", function(){
+      chiffre.textContent = dec(parseFloat(i.value)) + " " + suf;
+    });
+    i.addEventListener("change", function(){ fin(parseFloat(i.value)); });
+    l.appendChild(i);
+    var pp = el("span", "mass-cur__p");
+    pp.appendChild(el("span", null, dec(min) + " m · une classe et son couloir"));
+    pp.appendChild(el("span", null, dec(max) + " m · la salle de sport"));
+    l.appendChild(pp);
     b.appendChild(l);
-    if(note) b.appendChild(el("p", "mass-note", note));
   }
   num("Nombre de volumes", "nb", 0, 9, 1, "");
   num("Distance entre volumes", "dmin", RULES.dist.entre, 30, 1, "m");
-  lit("Profondeur d’un volume", dec(profUsuel()) + " → " + dec(profMax()) + " m");
+  cur("Profondeur d’un volume", "prof", PROF_MIN, profMax(), profDe(), "m",
+    function(x){ massPar("prof", x); regenere(); redessine(); });
   b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. "
     + "La distance ne descend pas sous les " + RULES.dist.entre + " m de l’AEAI : "
     + "c’est une règle écrite, pas un réglage."));
   var pn = el("p", "mass-note");
-  pn.appendChild(document.createTextNode("La profondeur ne se règle pas : elle est "
-    + "donnée. Le PACom range le site en zone de constructions publiques A, "
-    + "SANS gabarit ni hauteur — il n’en impose donc aucune. Le programme, lui, en "
-    + "impose deux : "));
+  pn.appendChild(document.createTextNode("La PROFONDEUR MAXIMALE est donnée, elle ne "
+    + "se règle pas : le PACom range le site en zone de constructions publiques A, "
+    + "SANS gabarit ni hauteur — il n’en impose donc aucune —, et le programme la "
+    + "fixe à "));
+  pn.appendChild(el("b", null, dec(profMax()) + " m"));
+  pn.appendChild(document.createTextNode(", la petite cote de la salle de sport double. "
+    + "Au-delà, on bâtirait de la profondeur que personne n’a demandée, et sans jour : "
+    + "aucun volume ne la franchit. En deçà, le curseur est à vous ; il part de "));
   pn.appendChild(el("b", null, dec(profUsuel()) + " m"));
   pn.appendChild(document.createTextNode(", deux rangées de salles de classe prises à "
-    + "leur surface bâtie — le couloir est déjà dans la circulation —, et "));
-  pn.appendChild(el("b", null, dec(profMax()) + " m"));
-  pn.appendChild(document.createTextNode(" au plus, la petite cote de la salle de sport "
-    + "double. Au-delà, on bâtit de la profondeur que personne n’a demandée, et sans "
-    + "jour."));
+    + "leur surface bâtie — le couloir est déjà dans la circulation."));
   b.appendChild(pn);
+
+  /* --- LE SECOND TEMPS ---
+     La piscine et le local de chauffage à distance ne sont pas de l'école. Ne
+     rien en dessiner laissait croire que les 900 m² qu'ils prennent sont
+     disponibles pour la cour et le stationnement. */
+  b.appendChild(el("h4", "label mass-sous", "Second temps"));
+  var g2 = el("div", "btn-group");
+  g2.setAttribute("role", "group");
+  g2.setAttribute("aria-label", "Piscine et local de chauffage à distance");
+  [["Deux volumes", "sep"], ["Un seul", "un"], ["Non posés", "non"]].forEach(function(o){
+    var t = el("button", "btn", o[0]);
+    t.type = "button";
+    t.setAttribute("aria-current", String(MASS.second === o[1]));
+    t.addEventListener("click", function(){
+      massSet("second", o[1]);
+      poserSecondTemps(MASS.vol);
+      redessine();
+    });
+    g2.appendChild(t);
+  });
+  b.appendChild(g2);
+  var S2 = secondTemps();
+  b.appendChild(el("p", "mass-note", S2.map(function(x){
+      return x.n + " " + fmt(Math.round(x.a)) + " m², " + dec(x.h) + " m de haut";
+    }).join(" · ") + ". Le règlement les veut indépendants des bâtiments scolaires "
+    + "et réalisés plus tard : ils ne pèsent sur aucun plateau et ne comptent pas au "
+    + "bilan, mais ils occupent le terrain — et ils se dessinent en pointillé, comme "
+    + "au plan de situation. Ils se posent APRÈS l’école, dans les marges du site."));
   return b;
 }
 
@@ -338,7 +392,8 @@ function court(l){
    se saisissent, parce qu'un demi-mètre ne se tire pas à la souris. */
 function blocSel(){
   var v = MASS.sel ? volDe(MASS.sel) : null;
-  var b = bloc("Volume", v ? el("i", "chip chip--soft", v.fix ? "cotes imposées" : v.id) : null);
+  var b = bloc("Volume", v ? el("i", "chip chip--soft",
+    v.ph ? "second temps" : v.fix ? "cotes imposées" : v.id) : null);
   if(!v){
     b.appendChild(el("p", "mass-note", "Aucun volume choisi. Clique un volume dans le "
       + "plan ou dans la 3D : tu pourras le déplacer en le tirant, et le tourner par "
@@ -352,6 +407,13 @@ function blocSel(){
     + (volNiv(v) > 1 ? "x" : "") + " · " + dec(volHaut(v)) + " m de haut";
   b.appendChild(l);
 
+  if(v.ph){
+    b.appendChild(el("p", "mass-note", "Ouvrage du SECOND TEMPS — le règlement le veut "
+      + "indépendant des bâtiments scolaires et réalisé plus tard. Il se déplace et se "
+      + "tourne comme les autres, aux mêmes distances ; sa surface est au programme, et "
+      + "le contrôle dit l’écart si on la change. Il ne porte aucun niveau de la pile : "
+      + "sa hauteur est la sienne, " + dec(volHaut(v)) + " m."));
+  }
   if(v.fix){
     b.appendChild(el("p", "mass-note", "La salle de sport double tient ses deux cotes du "
       + "règlement — 28 × 32 m, 7,00 m libres sous structure. Elle se déplace et se "
@@ -394,12 +456,13 @@ function blocSel(){
   var e = el("div", "mass-deux");
   var moins = el("button", "btn", "− un étage");
   moins.type = "button";
-  moins.disabled = volNiv(v) <= 1;
+  moins.disabled = v.ph || volNiv(v) <= 1;
   moins.addEventListener("click", function(){ etage(v, -1); });
   e.appendChild(moins);
   var plus = el("button", "btn", "+ un étage");
   plus.type = "button";
-  plus.disabled = volNiv(v) >= niveaux().filter(function(n){ return n.lvl >= 0; }).length;
+  plus.disabled = v.ph
+    || volNiv(v) >= niveaux().filter(function(n){ return n.lvl >= 0; }).length;
   plus.addEventListener("click", function(){ etage(v, 1); });
   e.appendChild(plus);
   b.appendChild(e);
@@ -416,11 +479,15 @@ function cote(host, lb, v, k){
   var e0 = basDe(v);
   var i = document.createElement("input");
   i.type = "number"; i.className = "mono";
-  i.min = "5"; i.max = "160"; i.step = "0.5";
+  /* La profondeur est PLAFONNÉE ici aussi. Le générateur ne la franchit pas ;
+     la main ne doit pas pouvoir la franchir non plus, sans quoi la règle ne
+     serait qu'une préférence du tirage. */
+  i.min = "5"; i.max = String(k === "d" ? profMax() : 160); i.step = "0.5";
   i.value = String(e0[k]);
   i.addEventListener("change", function(){
     var x = parseFloat(String(i.value).replace(",", "."));
     if(!isFinite(x) || x < 5){ i.value = String(e0[k]); return; }
+    if(k === "d" && x > profMax()){ x = profMax(); i.value = String(x); }
     /* Toute la pile suit la cote du rez : un massing dont chaque étage aurait
        sa propre largeur ne serait plus un volume, mais une pile d'objets. */
     var f = x / e0[k];
@@ -469,32 +536,6 @@ function etage(v, d){
   requilibre();
   redessine();
 }
-/* Après une modification manuelle du nombre d'étages, chaque niveau se
-   repartage entre les corps qui le portent : la SOMME doit rester la surface
-   bâtie que le mixer demande. Les cotes changent, les mètres carrés non. */
-function requilibre(){
-  niveaux().forEach(function(n){
-    var port = MASS.vol.filter(function(v){
-      var ok = false;
-      v.lv.forEach(function(e){ if(e.i === n.i) ok = true; });
-      return ok;
-    });
-    if(!port.length) return;
-    var som = 0;
-    port.forEach(function(v){
-      v.lv.forEach(function(e){ if(e.i === n.i) som += e.w * e.d; });
-    });
-    if(som <= 0) return;
-    var k = Math.sqrt(n.A / som);
-    port.forEach(function(v){
-      v.lv.forEach(function(e){
-        if(e.i !== n.i) return;
-        e.w = Math.round(e.w * k * 10) / 10;
-        e.d = Math.round(e.d * k * 10) / 10;
-      });
-    });
-  });
-}
 
 /* --- le bilan : la question à laquelle l'outil doit répondre --- */
 function blocBilan(){
@@ -529,7 +570,13 @@ function blocBilan(){
     n.appendChild(document.createTextNode(H.map(function(h){
       return h.n + " (" + fmt(Math.round(h.a)) + " m²)";
     }).join(" · ") + ". Le règlement les veut indépendants des bâtiments scolaires "
-      + "et réalisés au second temps : ils ne comptent pas dans les volumes."));
+      + "et réalisés au second temps : ils ne comptent dans aucun niveau du bilan. "
+      + (MASS.second === "non"
+         ? "La piscine et le local CAD ne sont pas posés — ils occupent pourtant du "
+           + "terrain, et le réglage « Second temps » les fait apparaître."
+         : "La piscine et le local CAD sont posés à part, en pointillé, parce qu’ils "
+           + "occupent du terrain que la cour et le stationnement n’auront pas. "
+           + "La cour, elle, n’est pas un volume : elle est le vide que la figure tient.")));
     b.appendChild(n);
   }
   return b;
@@ -542,37 +589,117 @@ function blocAlertes(){
     v.e ? v.e + " erreur" + (v.e > 1 ? "s" : "")
         : v.w ? v.w + " à vérifier" : "rien à signaler");
   var b = bloc("Alertes", chip);
-  var ul = el("ul", "mass-al");
-  ["e", "w", "i"].forEach(function(sev){
-    list.filter(function(x){ return x.sev === sev; }).forEach(function(x){
-      var li = el("li", "mass-al__i is-" + sev);
-      var bt = el("button", "mass-al__b");
-      bt.type = "button";
-      bt.appendChild(el("i", "chip chip--"
-        + (sev === "e" ? "danger" : sev === "w" ? "warn" : "soft"),
-        sev === "e" ? "erreur" : sev === "w" ? "à vérifier" : "info"));
-      bt.appendChild(el("span", null, x.msg));
-      if(x.ref) bt.appendChild(el("span", "mass-al__r", "— art. " + x.ref));
-      bt.addEventListener("click", function(){
-        if(x.vol >= 0 && MASS.vol[x.vol]){
-          MASS.sel = MASS.vol[x.vol].id;
-          camVers(MASS.vol[x.vol]);
-          planDraw(); vue3dDraw(); dessineRail();
-        }
-      });
-      li.appendChild(bt);
-      ul.appendChild(li);
+
+  var vifs = list.filter(function(x){ return !x.ok; });
+  var assumes = list.filter(function(x){ return x.ok; });
+  b.appendChild(alListe(vifs, false));
+
+  /* « Laisser comme ça » n'efface rien : l'alerte change de rang, va dans une
+     liste à part, et se reprend d'un clic. */
+  if(assumes.length){
+    var ah = el("div", "mass-bloc__h mass-bloc__h--soft");
+    ah.appendChild(el("h4", "label", "Laissés tels quels"));
+    ah.appendChild(el("i", "chip chip--soft", String(assumes.length)));
+    var bAll = el("button", "btn btn--quiet", "Tout reprendre");
+    bAll.type = "button";
+    bAll.addEventListener("click", function(){
+      assumes.forEach(function(x){ unaccept(x.code); });
+      openAl = null; redessine();
     });
-  });
-  b.appendChild(ul);
+    ah.appendChild(bAll);
+    b.appendChild(ah);
+    b.appendChild(alListe(assumes, true));
+  }
+
   b.appendChild(el("p", "mass-note", "Une "
     + "erreur est une règle écrite — le règlement, l’AEAI — ou une géométrie "
     + "impossible ; un « à vérifier » est une règle de projet ou une marge qui se "
     + "discute ; une « info » n’attend aucune correction — un porte-à-faux, un "
-    + "gradin, une cage d’escalier à prévoir —, elle est là pour qu’on le sache."));
+    + "gradin, une cage d’escalier à prévoir —, elle est là pour qu’on le sache. "
+    + "Une alerte se CLIQUE : elle s’ouvre sur le geste qui la résoudrait, ou sur "
+    + "« laisser comme ça »."));
   return b;
 }
 
+/* La liste, et le panneau qu'une alerte ouvre. C'est exactement l'interaction du
+   mixer, et ce n'est pas un hasard : un écart s'y lit, s'y répare ou s'y assume
+   depuis le début, et le massing se contentait de dire. On lisait « volume 2 sort
+   du périmètre de 7,49 m » et l'on allait le tirer à la souris jusqu'à ce que le
+   message disparaisse. */
+function alListe(list, assume){
+  var ul = el("ul", "mass-al");
+  ["e", "w", "i"].forEach(function(sev){
+    list.filter(function(x){ return x.sev === sev; }).forEach(function(x){
+      var li = el("li", "mass-al__i is-" + (assume ? "ok" : sev)
+        + (openAl === x.code ? " is-open" : ""));
+      var bt = el("button", "mass-al__b");
+      bt.type = "button";
+      bt.setAttribute("aria-expanded", String(openAl === x.code));
+      bt.appendChild(el("i", "chip chip--"
+        + (assume ? "soft" : sev === "e" ? "danger" : sev === "w" ? "warn" : "soft"),
+        assume ? "assumé" : sev === "e" ? "erreur" : sev === "w" ? "à vérifier" : "info"));
+      bt.appendChild(el("span", null, x.msg));
+      if(x.ref) bt.appendChild(el("span", "mass-al__r", "— art. " + x.ref));
+      bt.addEventListener("click", function(){
+        openAl = openAl === x.code ? null : x.code;
+        /* Le volume en cause se désigne : lire un conflit et devoir ensuite
+           chercher le corps à la main, c'était tout le travail laissé à faire. */
+        if(openAl && x.vol >= 0 && MASS.vol[x.vol]){
+          MASS.sel = MASS.vol[x.vol].id;
+          camVers(MASS.vol[x.vol]);
+        }
+        planDraw(); vue3dDraw(); dessineRail();
+      });
+      li.appendChild(bt);
+      if(openAl === x.code) li.appendChild(alPanneau(x, assume));
+      ul.appendChild(li);
+    });
+  });
+  return ul;
+}
+
+function alPanneau(x, assume){
+  var box = el("div", "mass-al__p");
+  if(!x.fixes.length){
+    box.appendChild(el("p", "mass-al__w", x.note
+      || "Aucun geste du massing ne le résout : cela se joue plus loin, au dessin."));
+  } else if(x.note){
+    box.appendChild(el("p", "mass-al__w", x.note));
+  }
+  x.fixes.forEach(function(f){
+    var t = el("button", "btn mass-act", f.label);
+    t.type = "button";
+    if(f.hint) t.appendChild(el("span", "mass-why", f.hint));
+    t.addEventListener("click", function(){
+      /* Un remède qui échoue ne laisse pas la composition entamée : `fix.js`
+         remet en place et rend `false`. On le dit plutôt que de faire croire à
+         un geste sans effet. */
+      if(f.run() === false){
+        t.appendChild(el("span", "mass-why", "— sans effet : rien d’admissible à "
+          + "cette place. Essayez un autre geste."));
+        return;
+      }
+      openAl = null;
+      camFit();
+      redessine();
+      return;
+    });
+    box.appendChild(t);
+  });
+  var bo = el("button", "btn btn--quiet mass-act",
+    assume ? "Reprendre cette alerte" : "Laisser comme ça");
+  bo.type = "button";
+  bo.appendChild(el("span", "mass-why", assume
+    ? "elle revient au contrôle et recompte dans le verdict"
+    : "elle quitte le verdict et passe dans « laissés tels quels »"));
+  bo.addEventListener("click", function(){
+    if(assume) unaccept(x.code); else accept(x.code);
+    openAl = null;
+    redessine();
+  });
+  box.appendChild(bo);
+  return box;
+}
 
 /* ---------- le volet « Contraintes » ----------------------------------------
    Le massing POSE une volumétrie ; ce volet dit ce qui la gouverne, et le

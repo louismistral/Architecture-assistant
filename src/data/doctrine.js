@@ -386,6 +386,40 @@ export var REGLES = [
     agit:"À 0, « Shuffle » rend toujours la même chose. À 1, il pose presque n'importe où." },
 
   /* ===== VOLUMÉTRIE ====================================================== */
+  { id:"prof-max", dom:"mass", rang:"dure", titre:"Profondeur maximale d'un volume",
+    val:"28 m — la petite cote de la salle de sport double",
+    source:"règlement art. 2.10", lu:"src/mass/model.js — profMax(), profDe()",
+    pourquoi:"Le PACom range le site en zone de constructions et d'installations "
+      + "publiques A : aucun gabarit, aucune hauteur, aucune distance aux limites. Il "
+      + "n'impose donc pas de profondeur, et il faut le dire plutôt qu'inventer un "
+      + "chiffre. Le programme, lui, en impose une : au-delà du local le plus profond "
+      + "qu'on ait à loger, on bâtit de la profondeur que personne n'a demandée, et "
+      + "sans jour.",
+    agit:"Plafonne le curseur du rail et l'épaississement du générateur. Aucun volume "
+      + "ne la franchit — le dernier cran de la recherche s'y arrête, quitte à rendre "
+      + "la composition impossible et à renvoyer au mixer." },
+
+  { id:"prof-us", dom:"mass", rang:"pref", titre:"Profondeur de départ d'un corps de classes",
+    val:"deux rangées de salles prises à leur surface bâtie, soit 18,5 m",
+    source:"projet", lu:"src/mass/model.js — profUsuel()",
+    pourquoi:"Le couloir est déjà dans la part de circulation : il ne s'ajoute pas "
+      + "par-dessus les deux rangées. C'est le point de départ du curseur, pas une "
+      + "limite — la profondeur est le premier choix d'un projet d'école, et l'outil "
+      + "doit laisser l'essayer.",
+    agit:"Donne la valeur du curseur tant qu'on n'y a pas touché." },
+
+  { id:"second", dom:"mass", rang:"ferme", titre:"Ouvrages du second temps",
+    val:"piscine 500 m² et local CAD 400 m², posés séparément par défaut",
+    source:"règlement art. 2.2", lu:"src/mass/gen.js — poserSecond()",
+    pourquoi:"Le règlement les veut indépendants des bâtiments scolaires et réalisés "
+      + "plus tard : ils ne pèsent sur aucun plateau, ne comptent pas au bilan et se "
+      + "dessinent en pointillé. Mais ils occupent 900 m² de terrain, et ne rien en "
+      + "dessiner laissait croire que cette emprise est disponible pour la cour et le "
+      + "stationnement.",
+    agit:"Posés APRÈS l'école, dans les marges du site, aux mêmes distances que tout "
+      + "le reste. Groupés ou séparés au choix ; quand ils ne tiennent pas, le "
+      + "contrôle le dit et propose de les grouper." },
+
   { id:"perim", dom:"mass", rang:"dure", titre:"Rester dans le périmètre du concours",
     val:"tous les étages, y compris les porte-à-faux",
     source:"règlement art. 2.3 — parcelles du concours",

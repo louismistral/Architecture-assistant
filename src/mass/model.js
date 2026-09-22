@@ -65,8 +65,10 @@ export var MASS = {
   par: {
     nb: 0,          /* nombre de volumes · 0 = au parti d'en décider */
     dmin: RULES.dist.entre,
+    prof: null,     /* profondeur d'un volume · null = celle du programme */
     cap: null       /* orientation générale · null = l'axe du périmètre */
   },
+  second: "sep",    /* second temps : "sep" deux volumes · "un" groupés · "non" */
   vol: [],
   mono: false,      /* affichage : couleurs du programme, ou masse seule */
   etage: -1,        /* niveau montré · -1 = tous */
@@ -99,8 +101,23 @@ export function profUsuel(){
     if(!u || it.nb > u.nb) u = it;
   });
   if(!u) return 18;
-  return Math.round(2 * Math.sqrt(u.u / (1 - CIRC)) * 10) / 10;
+  /* Au demi-mètre, comme toutes les cotes du projet (`core/geometry.js`) : le
+     curseur du rail s'y pose exactement, et un chiffre affiché qui ne
+     correspond pas à la position du curseur est un chiffre qu'on ne croit
+     plus. */
+  return Math.round(2 * Math.sqrt(u.u / (1 - CIRC)) * 2) / 2;
 }
+/* CE QU'ON CHOISIT, ENTRE LE MINIMUM ET LE PLAFOND. La profondeur usuelle est
+   une proposition, pas une fatalité : un concours se joue aussi sur des corps
+   plus minces ou plus épais, et l'outil doit laisser essayer. Ce qui ne se
+   choisit pas est le PLAFOND — `profMax()` —, et aucun volume ne le franchit. */
+export function profDe(){
+  var p = MASS.par.prof;
+  if(p == null || !isFinite(p)) p = profUsuel();
+  return Math.max(PROF_MIN, Math.min(profMax(), p));
+}
+export var PROF_MIN = 9;   /* une salle de classe et son couloir — voir checks.js */
+
 export function profMax(){
   var p = 0;
   ITEMS.forEach(function(it){
@@ -191,18 +208,44 @@ export function horsEnveloppe(){
   return out;
 }
 
+/* LES OUVRAGES DU SECOND TEMPS. Le règlement les veut INDÉPENDANTS des
+   bâtiments scolaires et réalisés plus tard (art. 2.2) : ils ne se mêlent pas à
+   l'enveloppe, ne pèsent sur aucun plateau, et ne se dessinent au plan de
+   situation qu'en pointillé. Ils n'en sont pas moins des BÂTIMENTS — une
+   piscine de 500 m² sous 4,00 m libres, un local de chauffage à distance de
+   400 m² sous 5,20 m avec accès camion de plain-pied —, et ne rien en dessiner
+   laissait croire que le terrain qu'ils occupent est disponible.
+
+   Ce qui les distingue de la cour, elle aussi hors enveloppe : une HAUTEUR
+   LIBRE. Ce qui n'a pas de hauteur n'est pas un volume, et c'est le programme
+   qui le dit — pas une liste de noms réécrite ici. */
+export function secondTemps(){
+  var out = [], i;
+  for(i = 0; i < FLOORS.length; i++){
+    onFloor(i).forEach(function(b){
+      var p = PMAP[b.key];
+      if(!p.hors || !p.hlibre) return;
+      out.push({ key:b.key, n:p.n, f:p.f, i:i, a:areaOf(b),
+                 h: p.hlibre + RULES.haut.dalle + RULES.haut.acrotere });
+    });
+  }
+  return out;
+}
+
 /* Les postes présents à un niveau, en parts de surface BÂTIE — la circulation
    comprise, au prorata. C'est ce qui permet de colorer un volume par son
    programme : un corps qui porte un tiers du niveau porte un tiers de chaque
    poste, et la couleur dit vrai. */
-export function postesDe(i){
-  var bl = onFloor(i).filter(function(b){ return !PMAP[b.key].hors; });
+export function postesDe(i, avecHors){
+  var bl = onFloor(i).filter(function(b){ return avecHors || !PMAP[b.key].hors; });
   var net = flNet(i);
-  if(!net) return [];
-  var k = flBuilt(i) / net;
+  if(!net && !avecHors) return [];
+  /* La circulation ne porte que sur le bâti SCOLAIRE : un ouvrage du second
+     temps n'a pas de couloirs à nous, et sa surface est déjà sa surface. */
+  var k = net ? flBuilt(i) / net : 1;
   return bl.map(function(b){
     var p = PMAP[b.key];
-    return { key:b.key, n:p.n, f:p.f, q:b.q, a:areaOf(b) * k };
+    return { key:b.key, n:p.n, f:p.f, q:b.q, a:areaOf(b) * (p.hors ? 1 : k) };
   }).sort(function(a, b){ return b.a - a.a; });
 }
 
@@ -249,9 +292,16 @@ export function volHaut(v){
   var N = niveaux(), h = 0;
   v.lv.forEach(function(e){
     var n = N[e.i];
-    if(n && n.lvl >= 0) h += n.h;
+    if(n && n.lvl >= 0) h += hauteurEtage(e, n);
   });
-  return h > 0 ? h + RULES.haut.acrotere : 0;
+  return h > 0 ? h + (v.ph ? 0 : RULES.haut.acrotere) : 0;
+}
+/* La hauteur d'un étage est celle du NIVEAU que le mixer a déduit du programme
+   qu'il porte — sauf pour un ouvrage du second temps, qui n'est pas dans la
+   pile : une piscine indépendante ne prend pas les 7,45 m que la salle de sport
+   impose au rez de l'école. Elle porte donc sa propre hauteur. */
+export function hauteurEtage(e, n){
+  return (e && e.h) ? e.h : (n ? n.h : 0);
 }
 export function volNiv(v){
   var n = 0;
@@ -287,6 +337,10 @@ export function bilan(){
   for(i = 0; i < N.length; i++){
     var dem = N[i].A, po = 0;
     MASS.vol.forEach(function(v){
+      /* Un ouvrage du second temps n'est pas de l'enveloppe scolaire : il ne
+         pèse sur aucun plateau, et le compter ici ferait croire à un excédent
+         de cinq cents mètres carrés au rez. */
+      if(v.ph) return;
       var e = volEtage(v, i);
       if(e) po += e.w * e.d;
     });
@@ -332,16 +386,22 @@ export { aire };
    salle de sport peut en porter un au-dessus d'elle, celui-là loge du programme
    ordinaire. Le plan et la 3D en tenaient chacun leur copie.  */
 export function filtreDe(v, e){
-  if(e && e.key) return { seul:[e.key] };
+  /* Un étage peut porter PLUSIEURS postes imposés — la piscine et le local CAD
+     réunis en un seul ouvrage du second temps —, d'où une liste et non une clé.
+     `hors` ouvre le pavage aux postes hors enveloppe, qui n'y entrent jamais
+     autrement : c'est ce qui donne sa couleur à un volume du second temps. */
+  if(e && e.keys && e.keys.length) return { seul:e.keys, hors:1 };
   var sans = [];
   MASS.vol.forEach(function(x){
-    x.lv.forEach(function(q){ if(q.key) sans.push(q.key); });
+    x.lv.forEach(function(q){
+      if(q.keys) q.keys.forEach(function(k){ sans.push(k); });
+    });
   });
   return { sans:sans };
 }
 
 export function cellules(i, w, d, o){
-  var P = postesDe(i), tot = 0;
+  var P = postesDe(i, o && o.hors), tot = 0;
   /* Un corps dont le règlement impose les cotes ne porte QUE son poste — la
      salle de sport double n'a pas de salles de classe dedans. Et les autres ne
      portent pas le sien : sa surface est sortie du partage avant qu'il

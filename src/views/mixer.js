@@ -34,7 +34,7 @@ import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
 import { doctrineSection, pilesBloc } from "./doctrine.js";
 import { RULES } from "../data/rules.js";
-import { accept, clearAccepts, unaccept } from "../mix/accept.js";
+import { accept, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import {
   FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
@@ -621,7 +621,12 @@ function drawIssues(){
     var bAll = el("button","btn btn--quiet mix-reprendre","Tout reprendre");
     bAll.type = "button";
     bAll.addEventListener("click", function(){
-      clearAccepts(); openIss = null; issFocus = null; drawMix(); saveSoon();
+      /* Les SIENS seulement : la liste des écarts assumés est commune au mixer
+         et au massing — « je laisse comme ça » est une seule décision de projet
+         et n'a pas à s'enregistrer à deux endroits —, mais reprendre les écarts
+         d'un onglet ne doit pas défaire ceux de l'autre. */
+      assumes.forEach(function(x){ unaccept(x.code); });
+      openIss = null; issFocus = null; drawMix(); saveSoon();
     });
     ah.appendChild(bAll);
     issuesEl.appendChild(ah);

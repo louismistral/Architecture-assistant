@@ -17,7 +17,9 @@ export function massOf(){
   return {
     parti: MASS.parti,
     graine: MASS.graine,
-    par: { nb: MASS.par.nb, dmin: MASS.par.dmin, cap: MASS.par.cap },
+    par: { nb: MASS.par.nb, dmin: MASS.par.dmin, prof: MASS.par.prof,
+           cap: MASS.par.cap },
+    second: MASS.second,
     mono: MASS.mono ? 1 : 0,
     /* La pile pour laquelle ces volumes ont été composés : une solution relue
        alors que le mixer a changé de nombre de niveaux ne veut plus rien dire. */
@@ -25,12 +27,13 @@ export function massOf(){
     etage: MASS.etage,
     vol: MASS.vol.map(function(v){
       return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
+               ph:v.ph || 0, nom:v.nom || null,
                /* `key` sur l'ÉTAGE et non sur le seul volume : la salle de
                   sport peut en porter un au-dessus d'elle, et celui-là loge du
                   programme ordinaire. C'est lui qui dit ce qu'on y pave. */
                lv: v.lv.map(function(e){
                  return { i:e.i, w:e.w, d:e.d, dx:e.dx || 0, dy:e.dy || 0,
-                          key:e.key || null };
+                          h:e.h || 0, keys:e.keys || null };
                }) };
     })
   };
@@ -45,18 +48,20 @@ export function setMass(o){
       MASS.par[k] = o.par[k];
   }
   MASS.mono = !!o.mono;
+  if(o.second) MASS.second = o.second;
   if(o.etage !== undefined) MASS.etage = o.etage;
   MASS.pile = o.pile || null;
   if(o.vol && o.vol.length){
     MASS.vol = o.vol.filter(function(v){ return v && v.lv && v.lv.length; });
-    /* Une solution enregistrée avant que la clé descende sur l'étage : le
-       volume la portait seul. On la remet au plus bas de ses étages, qui est
-       celui que le règlement dimensionne. */
+    /* Une solution enregistrée avant que la clé descende sur l'étage — ou du
+       temps où l'étage n'en portait qu'une. On la remet au plus bas de ses
+       étages, qui est celui que le règlement dimensionne. */
     MASS.vol.forEach(function(v){
-      if(!v.key || v.lv.some(function(e){ return e.key; })) return;
+      v.lv.forEach(function(e){ if(e.key && !e.keys) e.keys = [e.key]; });
+      if(!v.key || v.lv.some(function(e){ return e.keys; })) return;
       var bas = v.lv[0];
       v.lv.forEach(function(e){ if(e.i < bas.i) bas = e; });
-      bas.key = v.key;
+      bas.keys = [v.key];
     });
     MASS.sel = null;
   }

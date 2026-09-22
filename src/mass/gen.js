@@ -33,8 +33,8 @@ import {
   airePoly, alignement, assise, attracteurs, axePer, bbox, bordDist, coins,
   dedans, distRoute, enveloppe, airePosable, ecart, ecartPoly, margeAu, visAVis
 } from "./geom.js";
-import { MASS, horsSol, porteAFaux, postesDe, profMax, profUsuel, sousSol }
-  from "./model.js";
+import { MASS, horsSol, porteAFaux, postesDe, profDe, profMax, profUsuel,
+  secondTemps, sousSol } from "./model.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
    Une graine propre : celle du mixer rejoue une RÉPARTITION, celle-ci rejoue
@@ -425,12 +425,87 @@ function poser(corps, C, imp, par, r, atts){
   return vols;
 }
 
+/* ---------- les ouvrages du second temps -------------------------------------
+   La piscine et le local de chauffage à distance ne sont pas de l'école : le
+   règlement les veut INDÉPENDANTS des bâtiments scolaires et réalisés plus tard
+   (art. 2.2). Ils n'en occupent pas moins du terrain, et une implantation qui
+   les oublie promet une parcelle qu'elle n'a pas — 900 m² d'emprise, soit le
+   quart d'un rez d'école, qu'on croyait libres pour la cour et le
+   stationnement.
+
+   On les compose donc comme les autres — mêmes limites, même distance entre
+   bâtiments, même réparation — mais À PART : ils ne portent aucun niveau de la
+   pile, ils ne pèsent sur aucun plateau, et ils portent leur propre hauteur.
+
+   Trois façons de les prendre, et les trois se défendent : DEUX ouvrages
+   séparés, qui est la lecture littérale du règlement ; UN seul ouvrage commun,
+   la piscine et le chauffage à distance partageant volontiers leurs machines et
+   leur accès camion ; ou AUCUN, pour ne regarder que l'école. */
+/* Ils se posent APRÈS que l'école est composée, et sur la composition retenue :
+   ils ne sont pas du même temps, ils n'ont pas à peser sur la recherche. Les
+   faire concourir avec les corps d'école doublait le coût d'un tirage et
+   écartait des figures d'école valables pour loger une piscine qu'on ne bâtira
+   pas avant dix ans.
+
+   Ils prennent les MARGES du site : un ouvrage servant ne s'installe pas au
+   milieu d'une cour d'école. On balaie donc la parcelle du bord vers le cœur et
+   l'on prend la première position admissible — mêmes limites, même recul, mêmes
+   six mètres que tout le reste. Si aucune ne l'est, l'ouvrage n'est pas posé et
+   le contrôle le dit : mieux vaut l'absence que le mensonge. */
+function poserSecond(vols, par){
+  if(MASS.second === "non") return;
+  var S = secondTemps();
+  if(!S.length) return;
+  var lots = MASS.second === "un" ? [S] : S.map(function(x){ return [x]; });
+  lots.forEach(function(lot, k){
+    var a = 0, h = 0, keys = [], noms = [];
+    lot.forEach(function(x){
+      a += x.a; h = Math.max(h, x.h); keys.push(x.key); noms.push(x.n);
+    });
+    /* Un ouvrage bas et large : il n'a qu'un niveau, et l'allonger comme un
+       corps de classes n'aurait aucun sens — il n'a pas de couloir à éclairer. */
+    var q = cotes(a, Math.min(par.prof, 24));
+    var v = { id:"ph" + (k + 1), x:0, y:0, a:axePer(),
+              lv:[{ i:lot[0].i, w:q.w, d:q.d, dx:0, dy:0, a:a, h:h, keys:keys }],
+              fix:0, ph:2, nom: noms.join(" et "), prof:q.d, grad:0 };
+    vols.push(v);
+    if(!auBord(v, vols, par)) vols.pop();
+  });
+}
+/* La position admissible la plus proche du BORD de la parcelle. Le balayage est
+   trié avant d'être essayé : la première qui tient est la bonne, et l'on
+   s'arrête là. */
+function auBord(v, vols, par){
+  var B = bbox(PER), demi = Math.min(v.lv[0].w, v.lv[0].d) / 2;
+  var cand = [], cx, cy, k;
+  /* Un pas de deux mètres, et non de trois : ce qui reste à un ouvrage du
+     second temps est un interstice, et il s'y pose au mètre près ou pas du
+     tout. */
+  for(cx = B.x0; cx <= B.x1; cx += 2){
+    for(cy = B.y0; cy <= B.y1; cy += 2){
+      var d = bordDist(PER, cx, cy);
+      if(d < RULES.dist.retrait + demi * .3) continue;
+      cand.push([cx, cy, d]);
+    }
+  }
+  cand.sort(function(p, q2){ return p[2] - q2[2]; });
+  var angles = [v.a, v.a + Math.PI / 2, v.a + Math.PI / 4, v.a - Math.PI / 4];
+  for(k = 0; k < angles.length; k++){
+    for(var i = 0; i < cand.length; i++){
+      if(!admissible(v, vols, cand[i][0], cand[i][1], angles[k])) continue;
+      v.x = d1(cand[i][0]); v.y = d1(cand[i][1]); v.a = angles[k];
+      return true;
+    }
+  }
+  return false;
+}
+
 /* L'ANCRE. Ses cotes ne bougent pas d'un centimètre — le règlement les donne —,
    seules sa position et son quart de tour se cherchent. Le critère est le BAS du
    terrain : le site tombe de 3,40 m d'est en ouest, et sept mètres de hauteur
    libre se logent d'autant mieux qu'on part bas. */
 function ancrer(imp, C, par, r){
-  var lvi = [{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, key:imp.key }];
+  var lvi = [{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, keys:[imp.key] }];
   /* Ce qui monte sur la salle tient DANS son emprise : la largeur suit la
      surface, la profondeur ne bouge pas, et l'étage reste centré. */
   (imp.sur || []).forEach(function(x){
@@ -588,34 +663,38 @@ function reparer(vols, par){
    Le balayage est filtré par le centre avant tout calcul sérieux : sans ce
    filtre, deux mille cinq cents positions par corps coûtaient une seconde. */
 function repecher(vols, par){
-  var B = bbox(PER), i, k;
-  for(i = 0; i < vols.length; i++){
-    var v = vols[i];
-    if(admissible(v, vols)) continue;
-    var rc = rectSol(v), demi = Math.min(rc.w, rc.d) / 2;
-    var angles = [v.a, v.a + Math.PI / 2, axePer(), axePer() + Math.PI / 2];
-    /* Les positions sont TRIÉES par distance avant d'être essayées : la plus
-       proche qui tient est la bonne, et l'on s'arrête là. Les essayer toutes
-       pour garder la meilleure coûtait deux mille cinq cents tests par corps,
-       soit une seconde par tirage. */
-    var cand = [], cx, cy;
-    for(cx = B.x0; cx <= B.x1; cx += 3){
-      for(cy = B.y0; cy <= B.y1; cy += 3){
-        if(bordDist(PER, cx, cy) < RULES.dist.retrait + demi * .3) continue;
-        cand.push([cx, cy, (cx - v.x) * (cx - v.x) + (cy - v.y) * (cy - v.y)]);
-      }
-    }
-    cand.sort(function(a, b){ return a[2] - b[2]; });
-    var pose = 0;
-    for(k = 0; k < angles.length && !pose; k++){
-      for(var q = 0; q < cand.length; q++){
-        if(!admissible(v, vols, cand[q][0], cand[q][1], angles[k])) continue;
-        v.x = d1(cand[q][0]); v.y = d1(cand[q][1]); v.a = angles[k];
-        pose = 1;
-        break;
-      }
+  var i;
+  for(i = 0; i < vols.length; i++) recaler(vols[i], vols);
+}
+/* UN corps ramené à la place admissible la plus proche. C'est aussi le remède
+   qu'on propose quand un volume déplacé à la main se retrouve dehors : le
+   contrôle et le générateur réparent alors de la même façon, ce qui est la
+   seule manière de ne pas se contredire. */
+export function recaler(v, vols){
+  if(!v || admissible(v, vols)) return false;
+  var B = bbox(PER), k;
+  var rc = rectSol(v), demi = Math.min(rc.w, rc.d) / 2;
+  var angles = [v.a, v.a + Math.PI / 2, axePer(), axePer() + Math.PI / 2];
+  /* Les positions sont TRIÉES par distance avant d'être essayées : la plus
+     proche qui tient est la bonne, et l'on s'arrête là. Les essayer toutes
+     pour garder la meilleure coûtait deux mille cinq cents tests par corps,
+     soit une seconde par tirage. */
+  var cand = [], cx, cy;
+  for(cx = B.x0; cx <= B.x1; cx += 3){
+    for(cy = B.y0; cy <= B.y1; cy += 3){
+      if(bordDist(PER, cx, cy) < RULES.dist.retrait + demi * .3) continue;
+      cand.push([cx, cy, (cx - v.x) * (cx - v.x) + (cy - v.y) * (cy - v.y)]);
     }
   }
+  cand.sort(function(a, b){ return a[2] - b[2]; });
+  for(k = 0; k < angles.length; k++){
+    for(var q = 0; q < cand.length; q++){
+      if(!admissible(v, vols, cand[q][0], cand[q][1], angles[k])) continue;
+      v.x = d1(cand[q][0]); v.y = d1(cand[q][1]); v.a = angles[k];
+      return true;
+    }
+  }
+  return false;
 }
 function centre(P){
   var x = 0, y = 0;
@@ -689,6 +768,9 @@ function partClaNiv(i, N){
   return PARTCLA[i];
 }
 function partCla(v, N){
+  /* Un ouvrage du second temps ne loge aucune classe : lui compter la part du
+     rez lui donnerait le jour et le sud d'une école qu'il n'est pas. */
+  if(v.ph) return 0;
   var a = 0, c = 0;
   v.lv.forEach(function(e){
     if(lvlOf(e.i) < 0) return;
@@ -703,6 +785,9 @@ function partCla(v, N){
    beaucoup. C'est le plus simple des indicateurs qui distingue un extérieur
    COMPOSÉ d'un reste de terrain. */
 function videTenu(vols){
+  /* La cour est tenue par l'ÉCOLE. Un ouvrage du second temps n'existera pas
+     quand elle s'ouvrira, et lui faire fermer la cour serait la promettre. */
+  vols = vols.filter(function(v){ return !v.ph; });
   if(vols.length < 2) return 0;
   var pts = [], emp = 0;
   vols.forEach(function(v){
@@ -748,13 +833,17 @@ export function noterDetail(vols, par, atts){
   N.forEach(function(n){ HN[n.i] = n.h; });
   function hautDe(v){
     var h = 0;
-    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += HN[e.i]; });
-    return h > 0 ? h + RULES.haut.acrotere : 0;
+    v.lv.forEach(function(e){
+      if(e.h) h += e.h;
+      else if(HN[e.i] !== undefined) h += HN[e.i];
+    });
+    return h > 0 ? h + (v.ph ? 0 : RULES.haut.acrotere) : 0;
   }
 
   var pu = profUsuel(), i, j;
   var grand = null, ga = -1;
   vols.forEach(function(v){
+    if(v.ph) return;          /* l'adresse est celle de l'ÉCOLE */
     var rc = rectSol(v), a = rc.w * rc.d;
     if(a > ga){ ga = a; grand = v; }
   });
@@ -778,7 +867,9 @@ export function noterDetail(vols, par, atts){
          l'écart utile se mesure à la hauteur du plus haut des deux corps. C'est
          la contrainte qui manquait le plus, et celle qui change le plus
          l'allure d'un résultat. */
-      if(e >= 0){
+      /* Entre bâtiments d'ÉCOLE seulement : un ouvrage du second temps n'a
+         pas de salle à éclairer, et il n'existera pas avant dix ans. */
+      if(e >= 0 && !v.ph && !vols[j].ph){
         var hh = Math.max(hautDe(v), hautDe(vols[j]));
         var req = hh * DOC.ombreK;
         /* Seules les façades qui se FONT FACE : deux corps en quinconce sont à
@@ -858,6 +949,7 @@ export function noterDetail(vols, par, atts){
      niveaux ; au-delà, on paie de la façade. */
   var fac = 0, bat = 0;
   vols.forEach(function(v){
+    if(v.ph) return;          /* la compacité est celle du bâti SCOLAIRE */
     v.lv.forEach(function(e){
       var n = null;
       N.forEach(function(x){ if(x.i === e.i) n = x; });
@@ -908,8 +1000,8 @@ export function genMass(graine){
      quand rien ne tient sous le plafond, le choix n'est pas entre une bonne et
      une mauvaise profondeur, il est entre un corps trop épais, que le contrôle
      avertit, et pas de composition du tout. */
-  var pu = profUsuel(), pm = profMax();
-  var profs = [pu, pu * 1.35, Math.max(pu * 1.8, pm), pm * 1.4, 46];
+  var pu = profDe(), pm = profMax();
+  var profs = [pu, Math.min(pu * 1.35, pm), Math.min(pu * 1.8, pm), pm];
 
   /* UN ESSAI : une figure, montée, posée, enterrée, notée. C'est l'unité de la
      recherche, et elle est la même en reconnaissance et en recherche. */
@@ -926,7 +1018,7 @@ export function genMass(graine){
 
   var repli = null, rp = Infinity, e, t;
   for(e = 0; e < profs.length; e++){
-    var P2 = copiePar(par, Math.min(46, Math.round(profs[e] * 10) / 10));
+    var P2 = copiePar(par, Math.min(pm, Math.round(profs[e] * 10) / 10));
     var best = null, bp = Infinity;
 
     /* EN AUTO, ON RECONNAÎT AVANT DE CHERCHER. Les onze partis se relayaient à
@@ -964,7 +1056,7 @@ export function genMass(graine){
       desenterrer(best);
       enterrer(best, P2);
       bp = noter(best, P2, atts);
-      if(toutDedans(best)) return best;
+      if(toutDedans(best)){ poserSecond(best, P2); return best; }
     }
     if(best && bp < rp){ rp = bp; repli = best; }
   }
@@ -977,6 +1069,7 @@ export function genMass(graine){
   if(repli){
     repli.impossible = 1;
     repli.posable = airePosable(RULES.dist.retrait);
+    poserSecond(repli, copiePar(par, pm));
   }
   return repli || [];
 }
@@ -1010,7 +1103,7 @@ function enterrer(vols, par){
   /* Pas sous la salle de sport : sept mètres de hauteur libre plus trois mètres
      de couverture sur la nappe font une fouille qu'aucun projet ne creuse sous
      une dalle de 28 × 32 m. On n'y revient que s'il n'y a pas d'autre corps. */
-  var cand = vols.filter(function(v){ return !v.fix; });
+  var cand = vols.filter(function(v){ return !v.fix && !v.ph; });
   if(!cand.length) cand = vols;
   var big = cand[0], bz = assise(rectSol(cand[0])).z, i;
   for(i = 1; i < cand.length; i++){
@@ -1025,6 +1118,28 @@ function enterrer(vols, par){
     big.lv.unshift({ i:n.i, w:q.w, d:q.d, dx:0, dy:0, a:n.A });
   });
   big.lv.sort(function(a, b){ return a.i - b.i; });
+}
+
+/* ---------- ce que les remèdes rejouent --------------------------------------
+   Le contrôle propose des gestes (`mass/fix.js`) ; ils n'ont pas à réinventer
+   ce que le générateur sait faire. Écarter, replacer un sous-sol, poser les
+   ouvrages du second temps : la mécanique reste ici, une seule fois. */
+export function ecarter(vols){
+  reparer(vols, copiePar(MASS.par, profDe()));
+  vols.forEach(function(v){ recaler(v, vols); });
+  return true;
+}
+export function replacerSousSol(vols){
+  if(!sousSol().length) return false;
+  desenterrer(vols);
+  enterrer(vols, copiePar(MASS.par, profDe()));
+  return true;
+}
+export function poserSecondTemps(vols){
+  var i;
+  for(i = vols.length - 1; i >= 0; i--) if(vols[i].ph) vols.splice(i, 1);
+  poserSecond(vols, copiePar(MASS.par, profDe()));
+  return true;
 }
 
 export { cadre, rectSol };

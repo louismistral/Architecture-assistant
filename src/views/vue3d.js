@@ -27,8 +27,8 @@ import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4pro
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
-import { MASS, cellules, debord, famTok, filtreDe, niveaux, volRect }
-  from "../mass/model.js";
+import { MASS, cellules, debord, famTok, filtreDe, hauteurEtage, niveaux,
+  volRect } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
@@ -228,7 +228,9 @@ function volMesh(){
     lv.forEach(function(e){
       var n = N[e.i];
       if(!n) return;
-      var h = n.h;
+      /* Un ouvrage du second temps porte SA hauteur : une piscine indépendante
+         ne prend pas les 7,45 m que la salle de sport impose au rez de l'école. */
+      var h = hauteurEtage(e, n);
       var vis = MASS.etage < 0 || MASS.etage === e.i;
       var z0 = z; z += h;
       /* Le PORTE-À-FAUX est autorisé, et la 3D le dessine tel quel — mais elle
@@ -240,15 +242,23 @@ function volMesh(){
       if(!vis) return;
       var rc = volRect(v, e), q = coins(rc);
       var edge = sel ? cSel : (pf > .3 ? cPF : cEdge);
+      /* Un ouvrage du SECOND TEMPS se lit PÂLE : il occupe le terrain, mais il
+         ne sera pas bâti avec l'école. Le plan le dit en pointillé, comme le
+         veut le plan de situation ; la 3D n'a pas de pointillé, elle a la
+         teinte. On ne le rend pas translucide : une face transparente écrit
+         quand même sa profondeur, et l'on retrouverait le moucheté noir que la
+         boîte-enveloppe donnait déjà. */
+      var op = v.ph ? .40 : undefined;
       if(MASS.mono || n.lvl < 0){
-        boite(M, q, z0, z0 + h - .12, n.lvl < 0 ? cEnt : cMono, 1, edge);
+        boite(M, q, z0, z0 + h - .12,
+          n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono), 1, edge);
       } else {
         cellules(e.i, rc.w, rc.d, filtreDe(v, e)).forEach(function(c){
           var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
           var sub = { x: rc.x + cx * Math.cos(rc.a) - cy * Math.sin(rc.a),
                       y: rc.y + cx * Math.sin(rc.a) + cy * Math.cos(rc.a),
                       w: c.w, d: c.d, a: rc.a };
-          boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f)), 1, null);
+          boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f), op), 1, null);
         });
         aretes(M, q, z0, z0 + h - .12, edge);
       }
