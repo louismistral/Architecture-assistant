@@ -32,8 +32,35 @@ function fnv(s){
 
 /* Les cinq sources, NOMMÉES : on ne veut pas seulement savoir QUE quelque
    chose a bougé, on veut pouvoir dire QUOI. */
+/* Le programme, tel que le FICHIER le déclare.
+   `CHAP` ne peut pas être haché tel quel : `recompute()` écrit sur ses objets
+   mêmes — `total`, `circ`, `gross`, `key`, `tot` — et `applyAreas` remplace le
+   `u` des huit postes « à préciser » par la valeur saisie. L'empreinte
+   changeait donc entre deux chargements de la même page, et TOUTE variante se
+   déclarait périmée dès qu'on avait précisé une surface ou touché à la
+   circulation. On ne garde donc que ce que le fichier écrit.
+
+   Et la surface des huit postes « à préciser » n'en fait PAS partie : c'est
+   une décision de projet, saisie par nous, partagée au groupe et enregistrée
+   avec chaque variante. Ce que `program.js` en dit n'est qu'un point de
+   départ. (`u0` n'aurait pas aidé : `recompute()` le réécrit à chaque passage,
+   donc il vaut « u au dernier calcul », pas « u du fichier ».) */
+/* L'ordre ne fait pas partie de la déclaration : `recompute()` RETRIE les
+   postes par surface décroissante, donc préciser une surface changeait leur
+   place dans le tableau — et l'empreinte avec, sans qu'un seul nombre du
+   fichier ait bougé. On range par nom avant de hacher. */
+function trie(a){ return a.slice().sort(); }
+function programmeDeclare(){
+  return trie(CHAP.map(function(c){
+    return JSON.stringify([c.id, c.name, c.short, c.sub, c.off,
+      trie(c.items.map(function(i){
+        return JSON.stringify([i.n, i.nb, i.est ? "à préciser" : i.u, i.f, i.note]);
+      }))]);
+  }));
+}
+
 var SOURCES = [
-  { k:"p", nom:"les surfaces du programme",      de:function(){ return CHAP; } },
+  { k:"p", nom:"les surfaces du programme",      de:programmeDeclare },
   { k:"r", nom:"le règlement du concours",       de:function(){ return RULES; } },
   { k:"s", nom:"les adjacences exigées",         de:function(){ return [SPOLE, SNODE, SLINK]; } },
   { k:"t", nom:"le relevé du terrain",           de:function(){ return SITE; } },

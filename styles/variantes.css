@@ -80,37 +80,48 @@
 .vp-alerte__a{display:flex;flex-wrap:wrap;gap:var(--s-2)}
 
 /* ---------- les cartes ---------- */
-.vp-liste{display:flex;flex-direction:column;gap:var(--s-3)}
+/* ---------- la carte ----------
+   Horizontale et courte. Celle d'avant était haute comme une affiche : trois
+   variantes remplissaient le panneau, et comparer demandait de défiler. La
+   miniature tient dans un CARRÉ à gauche ; le nom et la note, qui sont ce
+   qu'on lit en premier, prennent la largeur. */
+.vp-liste{display:flex;flex-direction:column;gap:var(--s-2)}
 .vc{
-  padding:var(--s-3);border-radius:var(--r-lg);
+  display:flex;gap:var(--s-3);align-items:stretch;
+  padding:var(--s-2);border-radius:var(--r-lg);
   background:var(--panel);border:1px solid var(--rule);
 }
 .vc.is-perime{border-style:dashed}
 .vc__vig{
-  position:relative;block-size:104px;margin-block-end:var(--s-3);
+  position:relative;flex:none;inline-size:var(--s-8);block-size:var(--s-8);
   border-radius:var(--r-sm);border:1px solid var(--rule-soft);
   background:var(--paper);overflow:hidden;
 }
 .vc__vig svg{inline-size:100%;block-size:100%;display:block}
 .vc__perime{
-  position:absolute;inset-block-start:var(--s-2);inset-inline-start:var(--s-2);
-  font-size:var(--t-3xs);font-weight:600;color:var(--warn);
-  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-full);
-  padding:2px var(--s-2);
+  position:absolute;inset-block-start:2px;inset-inline-start:2px;
+  inline-size:var(--s-4);block-size:var(--s-4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--t-3xs);font-weight:700;color:var(--on-fill);
+  background:var(--warn-fill);border-radius:var(--r-full);
 }
-.vc__t{display:flex;align-items:flex-start;gap:var(--s-3)}
-.vc__g{flex:1;min-width:0}
-.vc__nom{margin:0;font-size:var(--t-sm);font-weight:600;letter-spacing:-.01em;line-height:var(--lh-snug)}
-.vc__meta{
-  margin:var(--s-1) 0 0;display:flex;align-items:center;gap:var(--s-2);
-  font-size:var(--t-2xs);color:var(--ink-3);
+.vc__d{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--s-2)}
+.vc__t{display:flex;align-items:baseline;gap:var(--s-3)}
+.vc__nom{
+  flex:1;min-width:0;margin:0;
+  font-size:var(--t-md);font-weight:600;letter-spacing:-.012em;line-height:var(--lh-tight);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.vc__meta .vp-av{inline-size:var(--s-4);block-size:var(--s-4);font-size:8px}
-.vc__note{font-size:var(--t-num-md);font-weight:500;line-height:var(--lh-tight);color:var(--ink-2)}
+.vc__note{flex:none;font-size:var(--t-num-md);font-weight:500;line-height:1;color:var(--ink-2)}
 .vc__note.is-haut{color:var(--ok)}
-.vc__note.is-bas{color:var(--ink-2)}
-.vc__a{display:flex;gap:var(--s-2);margin-block-start:var(--s-3)}
+.vc__a{display:flex;gap:var(--s-2)}
 .vc__load{flex:1}
+.vc__info{flex:none}
+.vc__meta{
+  margin:0;display:flex;align-items:center;gap:var(--s-2);
+  font-size:var(--t-2xs);color:var(--ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 
 /* la miniature : le périmètre du relevé, les corps de la variante */
 .vp-per{fill:var(--panel);stroke:var(--site-perimetre);stroke-width:1.3;stroke-linejoin:round}
@@ -255,3 +266,55 @@
   text-decoration:underline;text-underline-offset:2px;
 }
 .vp-lien:hover{color:var(--ink)}
+
+/* ---------- le badge du compte ----------
+   À côté du thème, hors du groupe d'onglets : c'est une identité, pas une
+   destination. */
+.appbar__prof{flex:none;padding-inline:var(--s-1);position:relative}
+.appbar__prof .vp-av{inline-size:var(--s-5);block-size:var(--s-5)}
+.appbar__prof.is-invite::after{
+  content:"";position:absolute;inset-block-start:2px;inset-inline-end:2px;
+  inline-size:var(--s-2);block-size:var(--s-2);border-radius:var(--r-full);
+  background:var(--focus-fill);border:1.5px solid var(--paper);
+}
+
+/* ---------- les onglets de groupe ----------
+   Ils ne paraissent qu'à partir de deux : un seul onglet n'est pas un choix,
+   c'est un titre — et le nom du groupe est déjà en tête du panneau. */
+.vg{
+  display:flex;gap:var(--s-1);overflow-x:auto;
+  padding-block-end:var(--s-1);scrollbar-width:none;
+}
+.vg::-webkit-scrollbar{display:none}
+.vg__t{
+  flex:0 0 auto;display:flex;align-items:center;gap:var(--s-2);
+  padding:var(--s-2) var(--s-3);cursor:pointer;
+  font:inherit;font-size:var(--t-xs);color:var(--ink-2);
+  background:transparent;border:1px solid var(--rule);border-radius:var(--r-full);
+}
+.vg__t:hover{color:var(--ink);border-color:var(--rule-strong)}
+.vg__t.is-on{color:var(--ink);font-weight:600;background:var(--rule-soft);border-color:var(--rule-strong)}
+.vg__n{max-inline-size:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vg__av{display:flex}
+.vg__av .vp-av+.vp-av{margin-inline-start:-6px}
+.vp-av--mini{
+  inline-size:var(--s-4);block-size:var(--s-4);font-size:8px;
+  border:1.5px solid var(--panel);box-sizing:content-box;
+}
+
+/* ---------- le profil et les groupes, dans le modal ---------- */
+.vm__titre{margin:0;font-size:var(--t-lg);font-weight:600;letter-spacing:-.018em}
+.vm__body--un{grid-template-columns:minmax(0,1fr)}
+.vm-grp{display:flex;align-items:center;gap:var(--s-3);padding-block:var(--s-2)}
+.vm-grp+.vm-grp{border-block-start:1px solid var(--rule-soft)}
+.vm-grp__n{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--s-1)}
+.vm-grp__n b{font-size:var(--t-sm);font-weight:600}
+.vm-grp__qui{display:flex;align-items:center;gap:var(--s-2);font-size:var(--t-2xs);color:var(--ink-3)}
+.vm-grp.is-on .vm-grp__n b{color:var(--ink)}
+.vm-ligne{display:flex;gap:var(--s-2);margin-block-start:var(--s-3)}
+.vm-ligne>input,.vm-ligne>.vp-mdp{flex:1;min-width:0}
+.vm-ligne .vp-mdp input{inline-size:100%;box-sizing:border-box}
+
+/* Le profil et un groupe tiennent sur UNE colonne : la boîte large de la
+   variante y étirait des lignes de trois mots sur neuf cents pixels. */
+.vm__box--etroit{inline-size:min(620px,94vw)}
