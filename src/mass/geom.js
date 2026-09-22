@@ -152,15 +152,19 @@ export function margeAu(poly, rc){
    la limite. Ce n'est pas l'aire du périmètre — 12'781 m² —, et c'est cette
    différence qui dit si un niveau tient. Échantillonnée au pas de deux mètres,
    calculée une fois. */
-var POSABLE = 0;
+/* Mise en cache PAR RECUL, et non une fois pour toutes : la valeur était gardée
+   au premier appel quel que soit l'argument, si bien qu'un recul différent
+   rendait l'aire du précédent. Personne ne s'en apercevait tant qu'un seul
+   appelant existait ; le mixer en est un second. */
+var POSABLE = {};
 export function airePosable(recul){
-  if(POSABLE) return POSABLE;
+  if(POSABLE[recul] !== undefined) return POSABLE[recul];
   var B = bbox(PER), n = 0, x, y, PAS = 2;
   for(x = B.x0; x <= B.x1; x += PAS)
     for(y = B.y0; y <= B.y1; y += PAS)
       if(bordDist(PER, x, y) >= recul) n++;
-  POSABLE = n * PAS * PAS;
-  return POSABLE;
+  POSABLE[recul] = n * PAS * PAS;
+  return POSABLE[recul];
 }
 
 /* ---------- séparation de deux rectangles ----------------------------------
@@ -290,4 +294,99 @@ export function ecartAngle(a, b){
   if(d > Math.PI / 2) d -= Math.PI;
   if(d < -Math.PI / 2) d += Math.PI;
   return d;
+}
+
+/* ---------- l'enveloppe convexe d'une composition ----------------------------
+   Elle sert à mesurer le VIDE QUE LA FIGURE TIENT : l'aire de l'enveloppe moins
+   les emprises. Un corps seul n'en tient aucun ; un L en tient un ; une cour en
+   tient beaucoup. C'est le plus simple des indicateurs qui distingue un espace
+   extérieur COMPOSÉ d'un reste de terrain — et le règlement demande 500 m² de
+   cour et 120 m² de préau, pas un reste de terrain.
+
+   Chaîne monotone d'Andrew : tri lexicographique, deux passes. */
+export function enveloppe(pts){
+  if(pts.length < 3) return pts.slice();
+  var P = pts.slice().sort(function(a, b){ return (a[0] - b[0]) || (a[1] - b[1]); });
+  function cross(o, a, b){
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  }
+  var bas = [], haut = [], i;
+  for(i = 0; i < P.length; i++){
+    while(bas.length >= 2 && cross(bas[bas.length - 2], bas[bas.length - 1], P[i]) <= 0) bas.pop();
+    bas.push(P[i]);
+  }
+  for(i = P.length - 1; i >= 0; i--){
+    while(haut.length >= 2 && cross(haut[haut.length - 2], haut[haut.length - 1], P[i]) <= 0) haut.pop();
+    haut.push(P[i]);
+  }
+  bas.pop(); haut.pop();
+  return bas.concat(haut);
+}
+
+/* ---------- les accès --------------------------------------------------------
+   Le règlement dit par où l'on arrive : deux dépose-bus rue du Casino, quatre
+   dépose-minute, la mobilité douce depuis le chemin du Petit Mont. Les routes
+   du relevé ne servaient que d'attracteurs d'ANGLE — rien ne demandait qu'un
+   bâtiment soit JOIGNABLE. Cette distance-ci le demande.
+
+   Les segments sont extraits une fois : le relevé ne bouge pas. */
+/* Seules les VOIES : le calque des routes du relevé contient aussi les bords de
+   place, les entrées de garage et les cheminements, si bien que tout point de
+   la parcelle se trouvait à moins de quarante-quatre mètres d'une « route » et
+   que le critère d'accès ne départageait rien. On ne garde que les polylignes
+   d'au moins soixante mètres développés — ce sont les rues. */
+var ROUTE = null, VOIE_MIN = 60;
+function routeSegs(){
+  if(ROUTE) return ROUTE;
+  ROUTE = [];
+  (SITE.rou || []).forEach(function(R){
+    var L = 0, k;
+    for(k = 0; k < R.length - 1; k++)
+      L += Math.hypot(R[k + 1][0] - R[k][0], R[k + 1][1] - R[k][1]);
+    if(L < VOIE_MIN) return;
+    for(k = 0; k < R.length - 1; k++) ROUTE.push([R[k], R[k + 1]]);
+  });
+  return ROUTE;
+}
+/* La distance du rectangle à la route la plus proche : le minimum sur ses
+   quatre coins. Zéro quand il la touche. */
+export function distRoute(rc){
+  var S = routeSegs();
+  if(!S.length) return Infinity;
+  var q = coins(rc), best = Infinity, i, k;
+  for(i = 0; i < 4; i++){
+    for(k = 0; k < S.length; k++){
+      var d = segDist(q[i][0], q[i][1], S[k][0][0], S[k][0][1], S[k][1][0], S[k][1][1]);
+      if(d < best) best = d;
+    }
+  }
+  return best;
+}
+
+/* ---------- le vis-à-vis -----------------------------------------------------
+   Deux corps ne se font de l'ombre que par les façades qui SE FONT FACE. La
+   distance `ecart()` est celle de deux rectangles, coin à coin compris : deux
+   corps posés en quinconce sont à six mètres par leurs angles sans qu'aucune
+   fenêtre ne regarde l'autre. Appliquer la règle d'ombre à ces paires-là
+   produisait des avertissements que rien ne pouvait corriger.
+
+   On mesure donc la LONGUEUR de façade réellement en regard : les deux
+   rectangles sont projetés sur l'axe perpendiculaire à la ligne de leurs
+   centres, et l'on rend le recouvrement des deux intervalles. Zéro = ils ne se
+   voient pas. */
+export function visAVis(r1, r2){
+  var vx = r2.x - r1.x, vy = r2.y - r1.y, l = Math.hypot(vx, vy);
+  if(l < 1e-6) return Math.min(r1.w, r1.d);
+  var px = -vy / l, py = vx / l;
+  function inter(rc){
+    var q = coins(rc), lo = Infinity, hi = -Infinity, i;
+    for(i = 0; i < 4; i++){
+      var t = q[i][0] * px + q[i][1] * py;
+      if(t < lo) lo = t;
+      if(t > hi) hi = t;
+    }
+    return [lo, hi];
+  }
+  var a = inter(r1), b = inter(r2);
+  return Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0]));
 }

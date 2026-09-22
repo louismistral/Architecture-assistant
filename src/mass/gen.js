@@ -25,14 +25,15 @@
    ========================================================================= */
 import { ITEMBYKEY } from "../core/model.js";
 import { NAPPE, PER, SITE } from "../data/site.js";
+import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { areaOf, lvlOf, onFloor } from "../mix/floors.js";
 import {
-  alignement, assise, attracteurs, axePer, bbox, bordDist, dedans,
-  airePosable, ecart, ecartPoly, margeAu
+  airePoly, alignement, assise, attracteurs, axePer, bbox, bordDist, coins,
+  dedans, distRoute, enveloppe, airePosable, ecart, ecartPoly, margeAu, visAVis
 } from "./geom.js";
-import { MASS, horsSol, porteAFaux, profMax, profUsuel, sousSol }
+import { MASS, horsSol, porteAFaux, postesDe, profMax, profUsuel, sousSol }
   from "./model.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
@@ -65,8 +66,7 @@ function entre(r, a, b){ return a + r() * (b - a); }
 
    La compacité, elle, a simplement disparu : sa valeur neutre ne changeait
    rien, et le parti dit déjà si l'on cherche un bloc ou un éclat. */
-var ALIGN = .7, JEU = .11, GRAD = .4;
-function pioche(r, list){ return list[Math.floor(r() * list.length) % list.length]; }
+var JEU = .11, GRAD = .4;
 function d1(v){ return Math.round(v * 10) / 10; }
 
 /* ---------- le cadre constructible ------------------------------------------
@@ -390,13 +390,25 @@ function monter(corps, N, imp, par, r, sur){
    qu'un corps sort, touche ou percute, on le ramène vers le cœur du site. */
 function poser(corps, C, imp, par, r, atts){
   var vols = [];
+  /* LA SALLE DE SPORT D'ABORD. C'est l'objet le plus contraignant du programme :
+     896 m² qui ne montent pas, deux cotes données par le règlement, sept mètres
+     libres sous structure. Elle était posée EN DERNIER et au hasard, puis
+     réparée — donc elle SUBISSAIT la composition au lieu de la fonder, et une
+     figure se refermait autour d'un vide qu'elle venait ensuite occuper. Dans un
+     projet réel elle s'implante la première, et l'école se compose autour.
+
+     Sa position n'est plus un tirage unique : on en essaie quelques-unes et l'on
+     garde la plus BASSE du terrain qui soit admissible. Un gymnase à demi
+     enterré sur la partie basse est la réponse ordinaire à un site en pente,
+     et c'est la seule que le générateur ne savait pas trouver. */
+  if(imp) vols.push(ancrer(imp, C, par, r));
   corps.forEach(function(c, k){
     var e0 = c.lv[0] || { w:12, d:12 };
     var ang = C.cap + c.ang;
     /* L'alignement est une préférence : on s'approche de l'attracteur le plus
        proche d'autant que le réglage le demande, sans jamais s'y clouer. */
     var al = alignement(ang, atts);
-    ang = ang - al.ecart * ALIGN * entre(r, .6, 1);
+    ang = ang - al.ecart * DOC.alignForce * entre(r, .6, 1);
     var span = c.ang ? e0.d : e0.w;
     var ecar = c.ang ? e0.w : e0.d;
     var u = C.cu + c.u * (C.L / 2 - span / 2) * entre(r, .5, .92);
@@ -409,23 +421,34 @@ function poser(corps, C, imp, par, r, atts){
     vols.push({ id:"v" + (k + 1), x:d1(p.x), y:d1(p.y), a:ang, lv:c.lv,
                 fix:0, prof:c.prof, grad:c.grad });
   });
-  if(imp){
-    /* Le corps imposé cherche sa place comme les autres, mais ses cotes ne
-       bougent pas d'un centimètre. */
-    var p2 = versSite(C, C.cu + entre(r, -.35, .35) * C.L, C.cv + entre(r, -.35, .35) * C.P);
-    var lvi = [{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, key:imp.key }];
-    /* Ce qui monte sur la salle tient DANS son emprise : la largeur suit la
-       surface, la profondeur ne bouge pas, et l'étage reste centré. */
-    (imp.sur || []).forEach(function(x){
-      lvi.push({ i:x.i, w:d1(Math.min(imp.w, x.a / imp.d)), d:imp.d,
-                 dx:0, dy:0, a:x.a });
-    });
-    vols.push({ id:"vsport", x:d1(p2.x), y:d1(p2.y),
-                a: C.cap + (r() < .5 ? 0 : Math.PI / 2),
-                lv:lvi, fix:1, key:imp.key, prof:imp.d, grad:0 });
-  }
   reparer(vols, par);
   return vols;
+}
+
+/* L'ANCRE. Ses cotes ne bougent pas d'un centimètre — le règlement les donne —,
+   seules sa position et son quart de tour se cherchent. Le critère est le BAS du
+   terrain : le site tombe de 3,40 m d'est en ouest, et sept mètres de hauteur
+   libre se logent d'autant mieux qu'on part bas. */
+function ancrer(imp, C, par, r){
+  var lvi = [{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, key:imp.key }];
+  /* Ce qui monte sur la salle tient DANS son emprise : la largeur suit la
+     surface, la profondeur ne bouge pas, et l'étage reste centré. */
+  (imp.sur || []).forEach(function(x){
+    lvi.push({ i:x.i, w:d1(Math.min(imp.w, x.a / imp.d)), d:imp.d, dx:0, dy:0, a:x.a });
+  });
+  var best = null, bz = Infinity, t;
+  for(t = 0; t < 8; t++){
+    var u = C.cu + entre(r, -.42, .42) * C.L, v = C.cv + entre(r, -.42, .42) * C.P;
+    var pp = versSite(C, u, v);
+    var ang = C.cap + (r() < .5 ? 0 : Math.PI / 2);
+    var rc = { x:d1(pp.x), y:d1(pp.y), w:imp.w, d:imp.d, a:ang };
+    var dedansOk = margeAu(PER, rc) >= RULES.dist.retrait;
+    var z = assise(rc).z + (dedansOk ? 0 : 100);
+    if(z < bz){ bz = z; best = rc; }
+  }
+  if(!best) best = { x:C.cu, y:C.cv, w:imp.w, d:imp.d, a:C.cap };
+  return { id:"vsport", x:best.x, y:best.y, a:best.a, lv:lvi,
+           fix:1, ancre:1, key:imp.key, prof:imp.d, grad:0 };
 }
 
 /* ---------- la règle d'implantation, en UN seul endroit ----------------------
@@ -479,6 +502,26 @@ function reparer(vols, par){
      de dix centimètres à chaque passe, et le contrôle annonçait « 5,91 m où
      l'AEAI en demande 6 » sur toutes les compositions à la fois. */
   var cible = par.dmin + .35;
+
+  /* ET ON VISE LE JOUR, pas seulement l'incendie. La réparation ramenait tous
+     les corps à 6,35 m les uns des autres — la distance AEAI — puis la note
+     pénalisait ces mêmes 6,35 m au nom de l'ombre portée. Les deux se battaient,
+     et la réparation gagnait toujours, parce que c'est elle qui fixe les
+     positions. Elle vise donc maintenant l'écart utile, d'une poussée plus
+     douce : la distance d'incendie reste due, le jour reste cherché. */
+  var N = horsSol(), HN = {};
+  N.forEach(function(n){ HN[n.i] = n.h; });
+  function haut(v){
+    var h = 0;
+    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += HN[e.i]; });
+    return h;
+  }
+  var HV = vols.map(haut);
+  /* On vise un peu au-delà de l'écart utile, comme on vise au-delà des six
+     mètres de l'AEAI : viser juste laissait un reste d'un mètre à chaque passe,
+     et le contrôle annonçait « 11,5 m où il en faudrait 12,4 » sur toutes les
+     compositions à la fois. */
+  var DOUX = .45, MARGE_JOUR = .4;
   for(pas = 0; pas < 60; pas++){
     var bouge = 0;
     for(i = 0; i < vols.length; i++){
@@ -501,9 +544,16 @@ function reparer(vols, par){
         if(j === i) continue;
         var o = rectSol(vols[j]);
         var e = ecart(rc, o);
-        if(e < cible){
+        var jour = visAVis(rc, o) > 8 ? Math.max(HV[i], HV[j]) * DOC.ombreK : 0;
+        var vise = Math.max(cible, Math.min(jour + MARGE_JOUR, cible + 14));
+        if(e < vise){
           var ox = v.x - vols[j].x, oy = v.y - vols[j].y, ol = Math.hypot(ox, oy) || 1;
-          var push = Math.min(3, (cible - e)) * .5;
+          /* Pleine poussée jusqu'à la distance d'incendie, douce au-delà : le
+             jour est une préférence, il ne doit pas faire sortir un corps de la
+             parcelle pour gagner deux mètres d'écart. */
+          var dur = Math.max(0, Math.min(cible, vise) - e);
+          var mou = Math.max(0, vise - Math.max(e, cible));
+          var push = Math.min(3, dur * .5 + mou * DOUX * .5);
           dx += ox / ol * push; dy += oy / ol * push;
         }
       }
@@ -517,6 +567,10 @@ function reparer(vols, par){
           dx += bx / bl * pb; dy += by / bl * pb;
         }
       }
+      /* L'ancre cède moins que les autres : elle fonde la figure, ce sont donc
+         les autres corps qui lui font de la place. Elle reste réparable — un
+         corps qu'on ne peut pas ramener sort de la parcelle. */
+      if(v.ancre){ dx *= .35; dy *= .35; }
       if(Math.abs(dx) + Math.abs(dy) > .02){
         v.x = d1(v.x + dx); v.y = d1(v.y + dy); bouge++;
       }
@@ -582,64 +636,250 @@ function rectSol(v){
 }
 
 /* ---------- noter -----------------------------------------------------------
-   Les écarts coûtent, les relations rapportent. Une note n'est pas un verdict :
-   le contrôle, lui, dira ce qui ne va pas, et l'utilisateur gardera ce qu'il
-   veut. Elle sert seulement à choisir, parmi trente compositions, celle qui
-   demande le moins de rattrapage. */
-function noter(vols, par, atts){
-  var p = 0, i, j;
+   UNE NOTE PAR CRITÈRE, ET CHAQUE CRITÈRE A UN NOM. Les écarts coûtent, les
+   qualités rapportent ; la somme départage les N compositions d'un tirage.
+
+   La note n'est pas un verdict — `checks.js` dit ce qui ne va pas, et
+   l'utilisateur garde ce qu'il veut. Elle sert à CHOISIR, et c'est pour cela
+   qu'elle doit être lisible : `noterDetail()` rend le détail, le volet
+   « Contraintes » du massing l'affiche, et l'on sait enfin POURQUOI une
+   composition a gagné.
+
+   CE QUI A CHANGÉ, ET POURQUOI :
+
+     — la note ignorait totalement LE PROGRAMME. Elle ne connaissait que des
+       rectangles : une salle de classe pouvait atterrir au nord, au cœur d'un
+       bloc de quarante-six mètres de profondeur, sans qu'un seul point ne soit
+       compté. Les critères « profondeur » et « sud » lisent maintenant la part
+       de classes que chaque corps porte ;
+     — le seul écartement entre corps était les six mètres de l'AEAI, qui sont
+       une distance d'INCENDIE. Deux barres de quatre niveaux à six mètres l'une
+       de l'autre sont conformes et inhabitables. Le critère « jour » mesure
+       l'écart à la HAUTEUR ;
+     — l'orientation pesait 10 quand l'alignement pesait 26 : l'outil rangeait
+       les bâtiments sur des lignes plutôt que de les tourner au soleil ;
+     — la cour de 500 m² et son préau étaient une ligne de bilan, hors
+       enveloppe. Rien ne les composait. Le critère « cour » mesure le vide que
+       la figure TIENT, et c'est ce qui distingue une école d'un groupe de
+       bureaux ;
+     — la compacité sommait les emprises, quantité quasi constante d'une
+       composition à l'autre : elle ne départageait rien. Elle se mesure
+       maintenant en façade développée par mètre carré bâti.
+
+   Tous les poids sont dans `src/data/doctrine.js`, et se règlent dans le volet
+   « Contraintes » du massing. C'est là qu'on corrige un mauvais massing. */
+
+/* La part de CLASSES que porte un corps : ce qui rend la note sensible au
+   programme. Elle se lit dans `postesDe()`, c'est-à-dire dans le mixer, et donc
+   jamais dans une copie. */
+var PARTCLA = null, PARTCLA_N = -1;
+function partClaNiv(i, N){
+  /* Un cache par pile, invalidé dès qu'elle change : `postesDe()` filtre et trie
+     tous les blocs du niveau, et la note l'appelait pour chaque corps de chaque
+     composition — trois cents compositions par tirage. */
+  if(!PARTCLA || PARTCLA_N !== N.length){ PARTCLA = {}; PARTCLA_N = N.length; }
+  if(PARTCLA[i] !== undefined) return PARTCLA[i];
+  var tot = 0, cla = 0;
+  postesDe(i).forEach(function(q){
+    tot += q.a;
+    /* Ce qui a besoin de jour et de calme : les salles de classe et l'UAPE. */
+    if(q.f === "cla" || q.f === "uap") cla += q.a;
+  });
+  PARTCLA[i] = tot > 0 ? cla / tot : 0;
+  return PARTCLA[i];
+}
+function partCla(v, N){
+  var a = 0, c = 0;
+  v.lv.forEach(function(e){
+    if(lvlOf(e.i) < 0) return;
+    var s = e.w * e.d;
+    a += s; c += s * partClaNiv(e.i, N);
+  });
+  return a > 0 ? c / a : 0;
+}
+
+/* Le vide que la figure TIENT : l'aire de son enveloppe convexe moins les
+   emprises. Un corps seul n'en tient aucun, un L en tient un, une cour en tient
+   beaucoup. C'est le plus simple des indicateurs qui distingue un extérieur
+   COMPOSÉ d'un reste de terrain. */
+function videTenu(vols){
+  if(vols.length < 2) return 0;
+  var pts = [], emp = 0;
+  vols.forEach(function(v){
+    var rc = rectSol(v);
+    coins(rc).forEach(function(q){ pts.push(q); });
+    emp += rc.w * rc.d;
+  });
+  var H = enveloppe(pts);
+  if(H.length < 3) return 0;
+  return Math.max(0, airePoly(H) - emp);
+}
+
+/* La note, en détail. `noter()` n'en est que la somme. */
+export function noterDetail(vols, par, atts){
+  var C = [], IX = {};
+  function add(id, n, p){
+    if(IX[id] === undefined){ IX[id] = C.length; C.push({ id:id, n:n, pts:0 }); }
+    C[IX[id]].pts += p;
+  }
+  /* Les critères sont déclarés dans l'ordre où on les lit, même à zéro : une
+     liste dont les lignes apparaissent et disparaissent ne se compare pas d'un
+     tirage à l'autre. */
+  add("limite", "Périmètre et recul", 0);
+  add("entre", "Distance entre corps — AEAI", 0);
+  add("existant", "Bâtiments existants", 0);
+  add("jour", "Jour entre les corps", 0);
+  add("prof", "Profondeur des corps de classes", 0);
+  add("sud", "Orientation des façades", 0);
+  add("cour", "Cour tenue par les bâtiments", 0);
+  add("adresse", "Adresse du corps principal", 0);
+  add("align", "Alignement sur le site", 0);
+  add("compa", "Compacité", 0);
+  add("pente", "Terrassement", 0);
+  add("aplomb", "Aplomb des étages", 0);
+  add("nappe", "Couverture du sous-sol sur la nappe", 0);
+  add("propor", "Proportions des corps", 0);
+  add("epar", "Éparpillement", 0);
+
+  /* La pile est lue UNE fois pour toute la note : `niveaux()` reparcourt tous les
+     blocs à chaque appel, et `volHaut()` l'appelait pour chaque paire de corps.
+     Un tirage y passait plus de temps qu'à composer. */
+  var N = horsSol(), HN = {};
+  N.forEach(function(n){ HN[n.i] = n.h; });
+  function hautDe(v){
+    var h = 0;
+    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += HN[e.i]; });
+    return h > 0 ? h + RULES.haut.acrotere : 0;
+  }
+
+  var pu = profUsuel(), i, j;
+  var grand = null, ga = -1;
+  vols.forEach(function(v){
+    var rc = rectSol(v), a = rc.w * rc.d;
+    if(a > ga){ ga = a; grand = v; }
+  });
+
   for(i = 0; i < vols.length; i++){
-    var v = vols[i], rc = rectSol(v);
+    var v = vols[i], rc = rectSol(v), pc = partCla(v, N);
+
+    /* --- ce qui est dur : le périmètre, les voisins, l'existant ------------ */
     var m = margeAu(PER, rc);
-    if(m < 0) p += 400 + (-m) * 40;                       /* hors parcelle */
-    else if(m < RULES.dist.retrait) p += (RULES.dist.retrait - m) * 22;
+    if(m < 0) add("limite", "", 400 + (-m) * 40);
+    else if(m < RULES.dist.retrait) add("limite", "", (RULES.dist.retrait - m) * 22);
+
     for(j = i + 1; j < vols.length; j++){
-      var e = ecart(rc, rectSol(vols[j]));
-      if(e < 0) p += 500 + (-e) * 30;                     /* deux corps se percutent */
-      else if(e < par.dmin) p += (par.dmin - e) * 30;
-      else if(e > 55) p += (e - 55) * .6;                 /* éparpillé sans raison */
+      var o = rectSol(vols[j]);
+      var e = ecart(rc, o);
+      if(e < 0) add("entre", "", 500 + (-e) * 30);
+      else if(e < par.dmin) add("entre", "", (par.dmin - e) * 30);
+      else if(e > DOC.eparSeuil) add("epar", "", (e - DOC.eparSeuil) * DOC.eparPoids);
+
+      /* --- LE JOUR. Les six mètres de l'AEAI sont une distance d'incendie :
+         l'écart utile se mesure à la hauteur du plus haut des deux corps. C'est
+         la contrainte qui manquait le plus, et celle qui change le plus
+         l'allure d'un résultat. */
+      if(e >= 0){
+        var hh = Math.max(hautDe(v), hautDe(vols[j]));
+        var req = hh * DOC.ombreK;
+        /* Seules les façades qui se FONT FACE : deux corps en quinconce sont à
+           six mètres par leurs angles sans qu'une fenêtre regarde l'autre. */
+        var vav = visAVis(rc, o);
+        if(req > par.dmin && e < req && vav > 8)
+          add("jour", "", DOC.ombrePoids * (req - e) / req * Math.min(1, vav / 20));
+      }
     }
     var OB = obstaclesPres(rc, par.dmin + 2);
     for(j = 0; j < OB.length; j++){
       var eb = ecartPoly(rc, OB[j]);
-      if(eb < 0) p += 600;
-      else if(eb < par.dmin) p += (par.dmin - eb) * 28;
+      if(eb < 0) add("existant", "", 600);
+      else if(eb < par.dmin) add("existant", "", (par.dmin - eb) * 28);
     }
-    /* Proportions : une lame de six mètres de profondeur n'est pas une école,
-       un bloc de quarante non plus. */
-    var el = Math.max(rc.w, rc.d) / Math.max(1, Math.min(rc.w, rc.d));
-    if(el > 9) p += (el - 9) * 14;
-    if(rc.d > par.prof && !v.fix) p += (rc.d - par.prof) * 6;
-    if(Math.min(rc.w, rc.d) < 9 && !v.fix) p += (9 - Math.min(rc.w, rc.d)) * 18;
-    /* D'APLOMB, de préférence. Le porte-à-faux est permis et il se paie en
-       structure : entre deux compositions qui logent le même programme, celle
-       qui tient d'aplomb vaut mieux. C'est une préférence chiffrée, pas une
-       règle — une figure qui n'a pas d'autre issue le fera quand même. */
-    p += porteAFaux(v) * 9;
-    /* Le terrain : un corps posé en travers de la pente demande un terrassement
-       qu'on ne veut pas ignorer. */
+
+    /* --- LA PROFONDEUR ET LE JOUR DES CLASSES ----------------------------- */
+    if(!v.fix && rc.d > pu + .5)
+      add("prof", "", DOC.profPoids * (rc.d - pu) / 3 * (0.15 + 0.85 * pc));
+
+    /* --- PROPORTIONS ------------------------------------------------------- */
+    var elan = Math.max(rc.w, rc.d) / Math.max(1, Math.min(rc.w, rc.d));
+    if(elan > DOC.elanceMax) add("propor", "", (elan - DOC.elanceMax) * DOC.elancePoids);
+    if(Math.min(rc.w, rc.d) < DOC.largeurMin && !v.fix)
+      add("propor", "", (DOC.largeurMin - Math.min(rc.w, rc.d)) * DOC.etroitPoids);
+
+    /* --- APLOMB : permis, et il se paie en structure ----------------------- */
+    add("aplomb", "", porteAFaux(v) * DOC.aplombPoids);
+
+    /* --- LE TERRAIN -------------------------------------------------------- */
     var as = assise(rc);
-    p += Math.max(0, as.d - 1.6) * 16;
-    /* Alignement : préférence, donc bonus — jamais une condition. */
+    add("pente", "", Math.max(0, as.d - DOC.penteLibre) * DOC.pentePoids);
+
+    /* --- ALIGNEMENT : préférence, donc bonus — jamais une condition -------- */
     var al = alignement(v.a, atts);
-    p -= (1 - Math.min(1, al.ecart / .35)) * al.att.w * 26 * ALIGN;
-    /* Orientation : une longue façade au sud vaut mieux qu'au nord. */
+    add("align", "", -(1 - Math.min(1, al.ecart / .35)) * al.att.w * DOC.alignPoids);
+
+    /* --- ORIENTATION. Pondérée par la longueur de la façade, le nombre
+       d'étages et la part de classes : une façade sud de dépôt ne vaut pas
+       celle d'un corps de classes. */
     var sud = Math.abs(Math.cos(v.a));
-    p -= sud * 10;
-    /* Un sous-sol ne se creuse pas n'importe où : la nappe est à 462,25 m et le
-       règlement veut trois mètres de couverture. Le générateur cherche donc le
-       haut du site pour ce qu'il enterre, au lieu de laisser le contrôle
-       répéter le même conflit à chaque tirage. */
+    var lg = rc.w / Math.max(1, rc.w + rc.d);
+    add("sud", "", -DOC.sudPoids * sud * lg * (0.3 + 0.7 * pc));
+
+    /* --- LE SOUS-SOL ET LA NAPPE ------------------------------------------ */
     var creuse = 0;
-    v.lv.forEach(function(e){ if(lvlOf(e.i) < 0) creuse = 1; });
+    v.lv.forEach(function(e2){ if(lvlOf(e2.i) < 0) creuse = 1; });
     if(creuse){
       var manque = (NAPPE + RULES.dist.couverture) - as.z;
-      if(manque > 0) p += manque * 90;
+      if(manque > 0) add("nappe", "", DOC.nappePoids * (1.6 + manque));
+    }
+
+    /* --- L'ADRESSE : le PLUS GRAND corps, et lui seul. « Au moins un corps
+       près d'une rue » était vrai de toute composition, le site étant bordé de
+       rues sur trois côtés. */
+    if(v === grand){
+      var dr = distRoute(rc);
+      if(dr < DOC.entreeMin) add("adresse", "", (DOC.entreeMin - dr) * DOC.entreePoids / 8);
+      else if(dr > DOC.entreeMax)
+        add("adresse", "", DOC.entreePoids * Math.min(1.5, (dr - DOC.entreeMax) / DOC.entreeMax));
+      else add("adresse", "", -DOC.entreePoids * 0.5);
     }
   }
-  return p;
-}
 
+  /* --- LA COUR : un vide tenu par les bâtiments, pas un reste de terrain --- */
+  var vide = videTenu(vols);
+  if(DOC.courMin > 0){
+    if(vide < DOC.courMin) add("cour", "", DOC.courPoids * (1 - vide / DOC.courMin));
+    else if(vide > DOC.courMax)
+      add("cour", "", DOC.courPoids * Math.min(1.5, (vide - DOC.courMax) / DOC.courMax));
+    else add("cour", "", -DOC.courPoids * 0.6);
+  }
+
+  /* --- LA COMPACITÉ : façade développée par mètre carré bâti. Le règlement la
+     nomme (art. 2.9, Minergie A ou P), et c'est la vraie mesure d'un projet
+     économe. La référence de 0,30 est celle d'un bloc compact de trois
+     niveaux ; au-delà, on paie de la façade. */
+  var fac = 0, bat = 0;
+  vols.forEach(function(v){
+    v.lv.forEach(function(e){
+      var n = null;
+      N.forEach(function(x){ if(x.i === e.i) n = x; });
+      if(!n) return;
+      fac += 2 * (e.w + e.d) * n.h;
+      bat += e.w * e.d;
+    });
+  });
+  if(bat > 0) add("compa", "", DOC.compaPoids * ((fac / bat) / 0.30));
+
+  var tot = 0;
+  C.forEach(function(c){ tot += c.pts; });
+  return { total: tot, crit: C };
+}
+function noter(vols, par, atts){ return noterDetail(vols, par, atts).total; }
+
+/* Le détail de la composition POSÉE, pour le volet « Contraintes » : la même
+   fonction, les mêmes poids, lus au même endroit. */
+export function noteCourante(){
+  if(!MASS.vol.length) return null;
+  return noterDetail(MASS.vol, MASS.par, attracteurs());
+}
 /* ---------- le tirage massing ------------------------------------------------
    Trente compositions, la meilleure gagne. En « Auto », chaque parti a sa
    chance : c'est le site et le programme du jour qui décident, pas nous. */
@@ -670,27 +910,59 @@ export function genMass(graine){
      avertit, et pas de composition du tout. */
   var pu = profUsuel(), pm = profMax();
   var profs = [pu, pu * 1.35, Math.max(pu * 1.8, pm), pm * 1.4, 46];
+
+  /* UN ESSAI : une figure, montée, posée, enterrée, notée. C'est l'unité de la
+     recherche, et elle est la même en reconnaissance et en recherche. */
+  function essai(pid, P2, aplomb){
+    var C = cadre(cap + entre(r, -1, 1) * JEU);
+    var corps = figure(pid, r, C, N, P2);
+    /* Avec et sans étage au-dessus de la salle de sport : une composition sur
+       deux essaie l'aplomb, et la note tranche. */
+    monter(corps, N, imp, P2, r, aplomb);
+    var vols = poser(corps, C, imp, P2, r, atts);
+    enterrer(vols, P2);
+    return { vols: vols, p: noter(vols, P2, atts), pid: pid };
+  }
+
   var repli = null, rp = Infinity, e, t;
   for(e = 0; e < profs.length; e++){
     var P2 = copiePar(par, Math.min(46, Math.round(profs[e] * 10) / 10));
     var best = null, bp = Infinity;
-    for(t = 0; t < 30; t++){
-      var pid = partis[t % partis.length];
-      var C = cadre(cap + entre(r, -1, 1) * JEU);
-      var corps = figure(pid, r, C, N, P2);
-      /* Avec et sans étage au-dessus de la salle de sport : une composition sur
-         deux essaie l'aplomb, et la note tranche. */
-      monter(corps, N, imp, P2, r, t % 2);
-      var vols = poser(corps, C, imp, P2, r, atts);
-      enterrer(vols, P2);
-      var p = noter(vols, P2, atts);
-      if(p < bp){ bp = p; best = vols; best.parti = pid; best.prof = P2.prof; }
+
+    /* EN AUTO, ON RECONNAÎT AVANT DE CHERCHER. Les onze partis se relayaient à
+       tour de rôle sur trente essais : deux ou trois tirages chacun, donc un
+       bon parti éliminé par malchance et un mauvais retenu par chance. On donne
+       maintenant à chacun quelques essais de reconnaissance, on garde les
+       meilleurs, et toute la recherche se concentre sur eux. */
+    var lot = partis, k;
+    if(partis.length > 1){
+      var rec = partis.map(function(pid){
+        var b = Infinity;
+        for(k = 0; k < Math.max(1, Math.round(DOC.essaisParti)); k++){
+          var q = essai(pid, P2, k % 2);
+          if(q.p < b) b = q.p;
+          if(q.p < bp){ bp = q.p; best = q.vols; best.parti = pid; best.prof = P2.prof; }
+        }
+        return { pid:pid, p:b };
+      }).sort(function(a, b2){ return a.p - b2.p; });
+      lot = rec.slice(0, Math.max(1, Math.round(DOC.finalistes)))
+               .map(function(x){ return x.pid; });
+    }
+    for(t = 0; t < Math.max(1, Math.round(DOC.essais)); t++){
+      var q2 = essai(lot[t % lot.length], P2, t % 2);
+      if(q2.p < bp){ bp = q2.p; best = q2.vols; best.parti = q2.pid; best.prof = P2.prof; }
     }
     /* Le repêchage ne tourne que sur la MEILLEURE des trente : le balayage
        coûte trop cher pour être payé trente fois, et une composition déjà
        mauvaise ne mérite pas qu'on la sauve. */
     if(best){
       repecher(best, P2);
+      /* Les sous-sols se replacent APRÈS le repêchage : il déplace les corps, et
+         le sous-sol doit suivre le terrain le plus haut de la position FINALE.
+         Sans cela, une composition repêchée annonçait un manque de couverture
+         que le générateur n'avait plus aucun moyen de voir. */
+      desenterrer(best);
+      enterrer(best, P2);
       bp = noter(best, P2, atts);
       if(toutDedans(best)) return best;
     }
@@ -720,6 +992,14 @@ var PARTIS_LIBRES = ["compact","barre","barres","L","U","cour","pavillons",
 /* Les sous-sols vont sous le plus grand corps : un sous-sol n'a ni façade ni
    silhouette, il n'a qu'une emprise — et le règlement ne l'admet qu'au tiers
    est du site, là où la couverture sur la nappe suffit. Le contrôle le dira. */
+/* Retirer les sous-sols d'une composition, pour les replacer après réparation :
+   le repêchage déplace les corps, et le sous-sol doit suivre le terrain, pas la
+   position qu'un corps occupait avant qu'on le déplace. */
+function desenterrer(vols){
+  vols.forEach(function(v){
+    v.lv = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; });
+  });
+}
 function enterrer(vols, par){
   var S = sousSol();
   if(!S.length || !vols.length) return;
@@ -727,12 +1007,17 @@ function enterrer(vols, par){
      de 463 m à l'ouest à 467 m à l'est, et trois mètres de couverture sur la
      nappe ne se trouvent qu'au tiers est. Creuser sous le plus grand, où qu'il
      soit, faisait que tous les tirages annonçaient le même conflit. */
-  var big = vols[0], bz = assise(rectSol(vols[0])).z, i;
-  for(i = 1; i < vols.length; i++){
-    var z = assise(rectSol(vols[i])).z;
+  /* Pas sous la salle de sport : sept mètres de hauteur libre plus trois mètres
+     de couverture sur la nappe font une fouille qu'aucun projet ne creuse sous
+     une dalle de 28 × 32 m. On n'y revient que s'il n'y a pas d'autre corps. */
+  var cand = vols.filter(function(v){ return !v.fix; });
+  if(!cand.length) cand = vols;
+  var big = cand[0], bz = assise(rectSol(cand[0])).z, i;
+  for(i = 1; i < cand.length; i++){
+    var z = assise(rectSol(cand[i])).z;
     if(z > bz + .15 || (Math.abs(z - bz) <= .15
-        && rectSol(vols[i]).w * rectSol(vols[i]).d > rectSol(big).w * rectSol(big).d)){
-      bz = Math.max(bz, z); big = vols[i];
+        && rectSol(cand[i]).w * rectSol(cand[i]).d > rectSol(big).w * rectSol(big).d)){
+      bz = Math.max(bz, z); big = cand[i];
     }
   }
   S.forEach(function(n){

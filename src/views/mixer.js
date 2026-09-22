@@ -32,6 +32,7 @@ import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
 import { s as svg } from "../core/svg.js";
 import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
+import { doctrineSection, pilesBloc } from "./doctrine.js";
 import { RULES } from "../data/rules.js";
 import { accept, clearAccepts, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
@@ -44,7 +45,7 @@ import {
 } from "../mix/floors.js";
 import { grouper, pieces, setGrouper, setPieces, setTirer, tirerNiveaux } from "../mix/opts.js";
 import { PMAP, aOf, posesDedans, qOf, uOf } from "../mix/prog.js";
-import { repartir } from "../mix/shuffle.js";
+import { pilesAdmissibles, repartir } from "../mix/shuffle.js";
 import { saveSoon, setChip } from "../mix/store.js";
 
 /* Surface d'un mètre carré, en pixels carrés. Constante pour toute la vue :
@@ -913,4 +914,29 @@ export function resizeMix(){
     var host = stackEl.querySelector('[data-canvas="' + i + '"]');
     if(host) paintFloor(host, i);
   }
+}
+
+/* ---------- le volet « Contraintes » ----------------------------------------
+   Le mixer FAIT une répartition ; ce volet dit ce qui la gouverne, et le règle.
+   Les deux vivent sous le même onglet parce qu'on passe de l'un à l'autre à
+   chaque proposition qui déplaît : on lit le résultat, on corrige un poids, on
+   rejoue. Les avoir séparés par un onglet de premier rang aurait fait de ce
+   va-et-vient un voyage.
+
+   La navigation est INJECTÉE (`setMixNav`) plutôt qu'importée : `render.js`
+   importe déjà ce module, et l'importer en retour ferait un cycle. C'est le
+   même procédé que `setAreaHandler` dans la légende. */
+var mixNav = null;
+export function setMixNav(f){ mixNav = f; }
+
+export function mixDoctrine(){
+  return doctrineSection("mix", function(){
+    seed(null);
+    repartir({ alea: true, etages: tirerNiveaux });
+    selU = null; openIss = null; issFocus = null;
+    saveSoon();
+    /* On revient sur la répartition : régler une contrainte sans voir ce
+       qu'elle change, c'est régler à l'aveugle. */
+    if(mixNav) mixNav("repartition");
+  }, pilesBloc(pilesAdmissibles()));
 }

@@ -1,4 +1,4 @@
-import { TABS, isTool, readHash, setSub, view, writeHash } from "./core/viewstate.js";
+import { TABS, curSub, isTool, readHash, setSub, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
 import { resizeMix } from "./views/mixer.js";
 import { resizeMass } from "./views/massing.js";
@@ -95,8 +95,10 @@ tabBtns.forEach(function(b, i){
 document.getElementById("barEst").addEventListener("click", function(){
   /* Les surfaces à préciser se saisissent dans le volet Surfaces : depuis
      « Contraintes » ou « Adjacences », changer d'onglet ne suffisait plus. */
-  var move = view.tab !== "programme" || view.sub !== "surfaces";
-  setSub("surfaces");
+  var move = view.tab !== "programme" || curSub() !== "surfaces";
+  /* Le volet est nommé AVEC son onglet : depuis le mixer, « surfaces » n'est
+     pas un volet du mixer, et le régler sans dire où n'aurait rien fait. */
+  setSub("surfaces", "programme");
   if(view.tab !== "programme") goTo("programme", false);
   else if(move) apply();
   var host = document.getElementById("vars");

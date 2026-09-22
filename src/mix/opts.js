@@ -9,9 +9,18 @@
    à remonter dans `views/` — une couche ne dépend pas de celle qui la montre.
    ========================================================================= */
 
-/* Le tirage propose aussi la pile : nombre de sous-sols et d'étages, déduits
-   de la surface bâtie à loger et du plateau du rez. */
-export var tirerNiveaux = false;
+/* Le tirage propose aussi la pile : nombre de sous-sols et d'étages, déduits de
+   l'aire posable de la parcelle, de la part qu'un plateau peut en prendre, et
+   de ce que le règlement cloue au rez.
+
+   ENCLENCHÉ PAR DÉFAUT, désormais. Il ne l'était pas, et pour une bonne raison :
+   la pile se tirait alors à pile ou face — un sous-sol une fois sur deux, un
+   étage de plus ou de moins trois fois sur dix — et il valait mieux ne pas s'en
+   servir. Depuis que `proposerPile()` CONSTRUIT la liste des piles que le site
+   admet et en choisit une, l'éteindre revient à proposer une école de plain-pied
+   de trois mille quatre cents mètres carrés d'emprise : ce n'est pas un choix
+   de projet, c'est l'absence de choix. */
+export var tirerNiveaux = true;
 /* Ce que le règlement veut côte à côte se déplace ensemble. Éteint, une grappe
    de proximité peut s'éparpiller sur trois étages — et le contrôle le dira. */
 export var grouper = false;

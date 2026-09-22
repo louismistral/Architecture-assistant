@@ -31,7 +31,7 @@ repris dans `src/mass/` et `src/views/vue3d.js` ; `src/core/gl.js`, qui ne parle
 d'architecture, est resté où il était.
 
 Le **cahier des charges** porte **deux volets**, dans cet ordre : **Surfaces** et
-**Contraintes** (`view.sub`, `SUBS` dans `src/core/viewstate.js`). Ils étaient trois,
+**Contraintes** (`view.subs`, `SUBS_BY` dans `src/core/viewstate.js`). Ils étaient trois,
 empilés sur une seule page avant cela : revenir d'une adjacence à la surface qu'elle
 commente demandait quatre écrans de défilement.
 
@@ -64,11 +64,27 @@ commente demandait quatre écrans de défilement.
   programme plutôt que les proximités qu'il exige — on ne voyait pas que la grappe de la
   salle de sport tient dix-sept locaux et traverse trois pôles.
 
-URL : `#programme/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a
-un regroupement. L'identifiant de l'onglet reste `programme` : les liens qui ont circulé
-— `#adjacences`, `#programme/adjacences`, `#programme/fam` — restent valables et mènent
-au volet qui les a repris. Un volet s'ajoute dans `SUBS` plus une branche dans
-`render()` ; le bouton et le routage par hash suivent tout seuls.
+**CHAQUE ONGLET A SES VOLETS**, et chacun garde le sien (`view.subs`, `SUBS_BY` dans
+`src/core/viewstate.js`) :
+
+| onglet | volets |
+|---|---|
+| Cahier des charges | Surfaces · Contraintes |
+| Programme mixer | Répartition · **Contraintes** |
+| Massing | Volumétrie · **Contraintes** |
+
+Les deux volets « Contraintes » des OUTILS sont d'une autre nature que celui du cahier
+des charges : là on lit ce que le RÈGLEMENT impose, ici on lit — et l'on RÈGLE — ce que
+NOUS avons arbitré pour qu'un générateur produise quelque chose. Voir « La doctrine de
+projet » plus bas.
+
+URL : `#<onglet>/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a un
+regroupement. Les liens qui ont circulé — `#adjacences`, `#programme/adjacences`,
+`#programme/fam` — restent valables et mènent au volet qui les a repris. Un volet s'ajoute
+dans `SUBS_BY` plus une branche dans `render()` ; le bouton, l'ARIA et le routage par hash
+suivent tout seuls. Le volet d'un onglet se nomme TOUJOURS avec son onglet
+(`setSub(id, tab)`) : deux onglets ont un volet « contraintes », et le régler sans dire où
+ne faisait rien.
 
 ---
 
@@ -115,6 +131,43 @@ distance, la cour et son préau n'ont pas de couloirs à nous.
 - Elle se réglait auparavant dans DEUX outils, sous le même mot et avec deux
   arithmétiques opposées : 15 % ajoutés à l'utile dans le générateur de volumétrie,
   18 % du bâti dans le plan. L'écart valait 200 m².
+
+## La doctrine de projet — source unique : `src/data/doctrine.js`
+
+`rules.js` tient ce qui est OPPOSABLE. **`doctrine.js` tient tout le reste** — ce que nous
+avons arbitré, préféré, supposé, parce qu'il fallait bien trancher pour produire un
+bâtiment. Les deux générateurs n'ont pas d'autre source de réglage : *une valeur qui n'est
+ni dans `rules.js` ni dans `doctrine.js` est un nombre écrit en dur, et c'est un défaut.*
+
+Pourquoi ce fichier existe : les deux tirages étaient gouvernés par une trentaine de
+nombres semés dans `shuffle.js` et `gen.js` — un sous-sol tiré à pile ou face, un bonus
+d'alignement de 26 contre un bonus d'orientation de 10. On obtenait des résultats sans
+pouvoir dire POURQUOI, donc sans pouvoir les corriger autrement qu'à tâtons.
+
+**Cinq rangs de dureté**, et c'est la seule hiérarchie qui compte :
+
+| rang | ce que ça veut dire |
+|---|---|
+| `dure` | écrite au règlement ou à l'AEAI. Le générateur ne rend jamais une composition qui l'enfreint |
+| `ferme` | arbitrée par nous, faute de donnée opposable, mais APPLIQUÉE comme une règle |
+| `forte` | préférence lourdement notée : le générateur y renonce seulement sans autre issue |
+| `pref` | préférence : elle départage deux compositions également valables |
+| `guide` | ne pèse sur aucun tirage ; elle oriente la lecture, le contrôle ou la recherche |
+
+Le fichier porte quatre tables, et les deux volets « Contraintes » les affichent telles
+quelles : `DOC` (les valeurs vivantes), `REGLES` (une ligne par contrainte, avec sa source,
+le module qui l'applique et ce qu'elle change), `SCRIPTS` (l'inventaire des outils de
+génération — ce que chacun lit, décide, et sur quoi il agit) et `TIRAGES` (ce que le hasard
+décide, en toutes lettres). `REGLES[i].k` désigne la case de `DOC` : l'affichage et le
+comportement ne peuvent pas diverger, et le volet écrit dans la case même que le générateur
+lit. Une valeur réglée est persistée — mais **seuls les ÉCARTS au défaut** : tout
+enregistrer figerait dans le navigateur les valeurs du jour, et une correction apportée au
+fichier ne parviendrait jamais à qui a déjà ouvert l'application.
+
+Le volet du massing porte en tête la **note de la composition à l'écran**, critère par
+critère (`noterDetail()` / `noteCourante()`) : c'est la réponse à « pourquoi obtient-on ce
+résultat », et sans elle les poids se règlent à l'aveugle. Celui du mixer porte **les piles
+que le site admet**.
 
 ## Contraintes du concours — source unique : `src/data/rules.js`
 
@@ -185,6 +238,7 @@ toiture infiltrées sur site · intégration au bâtiment et aux jardins de l'an
 
 ```
 src/data/rules.js     contraintes du concours          ← SOURCE UNIQUE
+src/data/doctrine.js  ce que le règlement NE dit pas   ← SOURCE UNIQUE
 src/data/schema.js    adjacences exigées               ← SOURCE UNIQUE
 src/core/model.js     totaux, surfaces saisies, part de circulation
 src/core/treemap.js   pavage squarifié : un bloc vaut sa surface
@@ -192,7 +246,7 @@ src/core/rand.js      tirage reproductible à graine
 src/mix/prog.js       le programme vu comme des parts à poser ; adjacences par poste
 src/mix/niv.js        règles de niveau, cotes admissibles d'un poste
 src/mix/floors.js     la pile de niveaux, les parts posées, déplacer / scinder
-src/mix/shuffle.js    répartition ordonnée, tirage, proposition de pile
+src/mix/shuffle.js    la NOTE de niveau, le tirage, la proposition de pile
 src/mix/checks.js     contrôle d'une répartition → écarts, avec code et remèdes
 src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
 src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
@@ -200,6 +254,49 @@ src/mix/opts.js       les trois interrupteurs : tirer la pile, grouper, voir les
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
 src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le glisser
 ```
+
+**LE TIRAGE NOTE AVANT DE POSER.** Chaque niveau candidat reçoit une note — la place qui y
+reste, les adjacences exigées déjà satisfaites, la grappe qui y pèse, la famille d'usage,
+ce que l'usage scolaire veut au rez et ce qu'il veut à l'étage —, un bruit de Gumbel
+d'amplitude `DOC.temperature` s'y ajoute, et le meilleur gagne. À température nulle le
+tirage est déterministe et rend la meilleure répartition ; plus elle monte, plus il propose
+des variantes. Tous les poids sont dans `doctrine.js`.
+
+Ce qui a précédé, et pourquoi c'était faux : un poste allait au niveau LE PLUS VIDE,
+pondéré par la place restante — c'était la seule note, on remplissait sans composer ; le
+« Shuffle » mélangeait les postes puis les RETRIAIT par surface, si bien que le tri écrasait
+le mélange ; les dix-huit classes se répartissaient au prorata de la place libre, ce
+qu'aucune école qui existe ne fait.
+
+**LA PILE SE DÉDUIT DU SITE, elle ne se tire plus.** `pilesAdmissibles()` construit la
+liste des piles que le site admet — celles dont le plateau déduit tient dans l'emprise
+(l'aire POSABLE de la parcelle, 10'528 m², multipliée par `DOC.plateauPart`), dont les
+étages ne dépassent pas le plafond, dont le rez porte ce que le règlement y cloue et dont
+les niveaux de classes suffisent au contingent — et le tirage en prend une, les plus
+compactes d'abord. Une variante tirée est donc une variante VALABLE. Avant : le nombre
+d'étages se déduisait d'un plateau de 2'400 m², un nombre rond sans rapport avec le site,
+et le sous-sol se décidait à PILE OU FACE — ce qui contredisait frontalement l'analyse de
+nappe du projet. L'interrupteur « Shuffle niveaux » est par conséquent ENCLENCHÉ par
+défaut : l'éteindre revient à proposer une école de plain-pied de 3'400 m² d'emprise.
+
+**LE PLATEAU SUIT LA RÉPARTITION**, comme la hauteur de niveau suit le programme qu'il
+porte. Il sert de CAPACITÉ pendant la pose — c'est lui qui répartit —, puis `ajusterPlateaux()`
+le ramène à ce que le niveau porte vraiment, borné par l'emprise. Il restait sinon figé à
+la valeur estimée, et le contrôle criait au débordement sur une pile que l'outil venait
+lui-même de proposer. Le vrai plafond n'a jamais été le plateau : il est l'emprise.
+
+**L'UNITÉ PÉDAGOGIQUE** (`DOC.clsParNiveau`, 11) plafonne les salles de classe d'un NIVEAU
+— pas d'un poste : les salles standard et celles de réserve sont deux postes, et chacun
+respectait le sien, ce qui faisait quatorze salles sur un plateau qui n'en admet que onze.
+Elle ne compte que les VRAIES salles de classe (`UNITE` dans `niv.js`) : y ajouter le
+dédoublement, l'ACM et l'appui portait le contingent à vingt-neuf, donc à quatre niveaux de
+classes là où le règlement n'en admet que trois. Et elle décide aussi du nombre minimum
+d'étages : vingt et une salles à onze par niveau en demandent deux, le rez non compris —
+il porte déjà tout ce que le règlement y cloue.
+
+**Un dernier étage vide, ou qui ne porte que ses sanitaires, n'est pas un étage** :
+`tasserSommet()` redescend ce qu'il porte et le retire. On ne rogne que la pile qu'on vient
+de proposer — celle que l'utilisateur a composée à la main lui appartient, même vide.
 
 **Le mixer ne refuse rien.** Une répartition qui sort des règles est produite quand même
 et `checks.js` la dit : rouge pour une règle écrite au règlement ou à l'AEAI, ambre pour
@@ -246,7 +343,8 @@ clavier fait les mêmes gestes sur le bloc au foyer : flèches haut et bas pour 
 niveau — le bac étant le cran sous le rez —, Maj pour n'emmener qu'une pièce, Suppr pour
 renvoyer au bac.
 
-Par défaut la pile n'a qu'un **rez-de-chaussée**. On l'édite **là où elle se dessine** :
+Une pile neuve n'a qu'un **rez-de-chaussée** ; le premier tirage en propose une déduite du
+site. On l'édite **là où elle se dessine** :
 « + Ajouter un étage » en tête de pile, « + Creuser un sous-sol » au pied, et une corbeille
 sur chaque niveau qui le retire en renvoyant ses pièces au bac (`addFloorTop`,
 `addFloorBottom`, `delFloorAt`). Retirer un niveau du MILIEU est permis : les cotes se
@@ -254,8 +352,9 @@ renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
 
 **Trois interrupteurs**, dans la barre du haut, persistés avec le reste :
 
-- **Shuffle niveaux** — le tirage propose aussi la pile, déduite de la surface bâtie à
-  loger, du plateau du rez et de ce que le règlement admet en sous-sol.
+- **Shuffle niveaux** — le tirage propose aussi la pile, déduite de l'aire POSABLE de la
+  parcelle, de ce que le règlement cloue au rez et du contingent de classes. **Enclenché
+  par défaut** : voir `pilesAdmissibles()` plus haut.
 - **Grouper les liés** — déplacer une pièce emmène toute sa GRAPPE de proximité, la
   composante connexe des adjacences exigées (`grappeDe` dans `prog.js`, `moveGroupe` dans
   `floors.js`). Une mutualisation possible n'en fait pas partie : elle est offerte, pas
@@ -296,7 +395,15 @@ src/views/vue3d.js    la 3D : terrain maillé, courbes drapées, existant, volum
 ```
 
 **Le massing ne redit rien du programme : il le LIT.** `niveaux()` relit `FLOORS` à chaque
-appel — jamais de copie, jamais de cache. Un poste déplacé d'étage dans le mixer change la
+appel — jamais de copie, jamais de cache. Mais un volume désigne ses niveaux par leur
+INDICE : quand le mixer ajoute, retire ou renumérote un niveau, ces indices ne veulent plus
+rien dire. `empreintePile()` en garde la forme, et le massing se régénère quand elle a
+changé. Rien ne le voyait : on ne régénérait que si AUCUN volume n'était posé, si bien
+qu'après un « Shuffle » au mixer on revenait sur une implantation qui répondait à la pile
+PRÉCÉDENTE, et la note comme le bilan portaient sur un programme qui n'existait plus. On ne
+compare que la FORME de la pile, pas les surfaces : un poste déplacé d'un étage à l'autre
+change les aires, et `bilan()` le dit déjà — défaire une implantation composée à la main
+pour un poste déplacé serait pire que le mal. Un poste déplacé d'étage dans le mixer change la
 volumétrie sans qu'on ait à synchroniser quoi que ce soit ; et déplacer un volume ici ne
 touche pas au programme, parce que ce n'est pas la même question. Les couleurs, les noms,
 les surfaces, les familles et les niveaux sont les mêmes objets, lus au même endroit.
@@ -329,6 +436,63 @@ laisse chercher ce qu'elle voudrait dire.
 Ils ont deux graines distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
 `MASS.graine`. Les confondre ferait qu'on ne peut plus changer l'une sans perdre l'autre.
 
+### La note : un critère porte un nom, ou il n'existe pas
+
+`noterDetail()` rend le DÉTAIL — un critère, son nom, ce qu'il a coûté ou rapporté —, et
+`noter()` n'en est que la somme. Le volet « Contraintes » du massing l'affiche pour la
+composition à l'écran : c'est la réponse à « pourquoi obtient-on ce résultat ».
+
+Quatre critères manquaient, et ils manquaient beaucoup :
+
+- **le jour entre les corps.** Les 6 m de l'AEAI sont une distance d'INCENDIE : deux barres
+  de quatre niveaux à six mètres l'une de l'autre sont conformes et inhabitables. L'écart
+  utile se mesure à la HAUTEUR du plus haut (`DOC.ombreK`, 1,10). Il ne vaut qu'entre
+  façades qui SE FONT FACE — `visAVis()` mesure la longueur en regard, faute de quoi deux
+  corps en quinconce, à six mètres par leurs angles, déclenchaient une alerte que rien ne
+  pouvait corriger. Et `reparer()` VISE cet écart, pas seulement celui de l'AEAI : sans
+  cela la réparation ramenait tout à 6,35 m puis la note pénalisait ces mêmes 6,35 m — les
+  deux se battaient, et la réparation gagnait toujours, parce que c'est elle qui fixe les
+  positions ;
+- **le programme.** La note ne connaissait que des rectangles : une salle de classe pouvait
+  atterrir au nord, au cœur d'un bloc de 46 m de profondeur, sans qu'un point soit compté.
+  Les critères « profondeur » et « sud » lisent la PART DE CLASSES de chaque corps
+  (`postesDe()`, donc le mixer) — un corps de technique a le droit d'être épais ;
+- **la cour.** 500 m² de cour et 120 m² de préau : un vide QUALIFIÉ, tenu par les
+  bâtiments. Rien ne le composait — c'était une ligne de bilan, hors enveloppe. Le critère
+  mesure le vide que la figure ENFERME, l'aire de son enveloppe convexe moins les emprises
+  (`enveloppe()` dans `geom.js`) ;
+- **l'adresse.** Le plus GRAND corps doit se tenir dans une bande d'approche d'une voie.
+  « Au moins un corps près d'une rue » était vrai de toute composition, le site étant bordé
+  de rues sur trois côtés ; et le calque des routes du relevé est filtré aux polylignes de
+  plus de soixante mètres — sans quoi un bord de place comptait pour une rue.
+
+Deux critères ont été corrigés : l'**orientation** pesait 10 contre 26 pour l'alignement,
+si bien que l'outil rangeait les bâtiments sur des lignes plutôt que de les tourner au
+soleil — elle pèse 34 et se pondère par la longueur de façade, le nombre d'étages et la
+part de classes ; la **compacité** sommait les emprises, quantité quasi constante d'une
+composition à l'autre qui ne départageait rien — elle se mesure en façade développée par
+mètre carré bâti, ce que le règlement nomme (art. 2.9, Minergie).
+
+### La salle de sport s'implante EN PREMIER
+
+C'est l'objet le plus contraignant du programme : 896 m² qui ne montent pas, deux cotes
+données, sept mètres libres sous structure. Elle était posée EN DERNIER et au hasard, puis
+réparée — donc elle SUBISSAIT la composition au lieu de la fonder. `ancrer()` lui cherche
+la place la plus BASSE du terrain qui soit admissible, et `reparer()` la fait céder trois
+fois moins que les autres : ce sont les autres corps qui lui font de la place.
+
+Les sous-sols, eux, ne vont PAS sous elle — sept mètres de hauteur libre plus trois mètres
+de couverture font une fouille qu'aucun projet ne creuse sous une dalle de 28 × 32 m — et
+ils se replacent APRÈS le repêchage, qui déplace les corps : sans cela une composition
+repêchée annonçait un manque de couverture que le générateur n'avait plus moyen de voir.
+
+### La recherche : on reconnaît avant de chercher
+
+En « Auto », les onze partis se relayaient à tour de rôle sur trente essais — deux ou trois
+tirages chacun, donc un bon parti éliminé par malchance et un mauvais retenu par chance.
+Chacun reçoit maintenant `DOC.essaisParti` essais de reconnaissance ; les `DOC.finalistes`
+meilleurs sont retenus, et les `DOC.essais` essais suivants se concentrent sur eux.
+
 ### Ce n'est pas un tirage
 
 Un tirage pur pose des boîtes au hasard et laisse l'architecte trier. `genMass()` compose,
@@ -345,7 +509,8 @@ prorata l'aurait coupée en deux. Les postes `hors` — piscine, chauffage à di
 ne sont pas des volumes : le règlement les veut indépendants et au second temps.
 
 **Les sous-sols vont sous le corps le plus HAUT du site**, pas le plus grand : la nappe est
-à 462,25 m et le règlement veut 3,00 m de couverture, qu'on ne trouve qu'au tiers est.
+à 462,25 m et le règlement veut 3,00 m de couverture, qu'on ne trouve qu'au tiers est. Et
+jamais sous la salle de sport — voir plus haut.
 
 Douze partis, chacun composant vraiment différemment : auto, bloc compact, barre, barres
 parallèles, L, U, cour, pavillons, hameau, terrasses, peigne, composition libre. « Auto »
@@ -438,8 +603,10 @@ Quatre curseurs ont disparu avec elle — force d'alignement, compacité, régul
 intensité des terrasses. Ils réglaient ce que le PARTI dit déjà (un peigne est fragmenté,
 un bloc compact l'est par définition), et personne ne savait quoi répondre à
 « compacité 0,35 ». Ce sont des constantes de composition, écrites là où elles agissent
-(`ALIGN`, `JEU`, `GRAD` dans `gen.js`) ; la compacité, dont la valeur neutre ne changeait
-rien, n'a pas été remplacée. Il reste trois réglages : le nombre de VOLUMES — le rail dit
+(`JEU` et `GRAD` dans `gen.js`, `DOC.alignForce` et `DOC.alignPoids` dans la doctrine —
+ce que le générateur TOURNE un corps vers son attracteur et ce que la note lui RAPPORTE
+sont deux choses, et un seul nombre faisait les deux) ; la compacité, dont la valeur neutre
+ne changeait rien, a été remplacée par une vraie mesure de façade développée. Il reste trois réglages : le nombre de VOLUMES — le rail dit
 volume, comme le reste de l'interface, là où le générateur dit corps —, la distance entre
 eux, et l'orientation générale.
 
@@ -464,6 +631,10 @@ quoi ce programme ressemblerait-il, physiquement, sur ce site ?
 - **Une surface, un nombre, une famille, une note** : `src/data/program.js` seul.
 - **Une contrainte du concours** : `src/data/rules.js` seul — la section Contraintes, les
   règles de niveau et le contrôle en découlent.
+- **Un seuil, un plafond, un poids de génération** : `src/data/doctrine.js` seul. Les deux
+  générateurs le lisent, les deux volets « Contraintes » l'affichent et le règlent. Une
+  règle nouvelle s'ajoute dans `DOC` (la valeur) plus `REGLES` (sa ligne : rang, source,
+  module qui l'applique, ce qu'elle change) ; le volet suit tout seul.
 - **Une adjacence** : `src/data/schema.js` seul — le lien, le pôle du nœud, et les postes
   qu'il désigne (`nd.k`). Ni surface ni coordonnée : la surface se lit dans `program.js`
   par cette table, la géométrie est déduite par la vue. Le pôle ne place plus rien : il
@@ -536,6 +707,23 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
       'demandé ' + Math.round(b.demande) + ' · posé ' + Math.round(b.pose),
       JSON.stringify(C.massVerdict(C.massCheck())));
   });
+});"
+```
+
+Et la doctrine, pour voir ce que chaque critère coûte à la composition retenue :
+
+```bash
+node --input-type=module -e "
+Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
+             import('./src/mass/model.js')]).then(([S,G,M])=>{
+  S.repartir({ alea:false, etages:true });
+  M.massSet('parti','auto');
+  M.massVols(G.genMass(11));
+  var d = G.noteCourante();
+  d.crit.forEach(function(c){
+    console.log(c.n.padEnd(38), (c.pts >= 0 ? '+' : '−') + Math.round(Math.abs(c.pts)));
+  });
+  console.log('TOTAL', Math.round(d.total));
 });"
 ```
 

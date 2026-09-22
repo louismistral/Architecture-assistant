@@ -3,12 +3,12 @@ import {
   ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, ESTT, FMAP, GRAND, GRANDG, PROG,
   setCirc, setItemArea
 } from "../core/model.js";
-import { SUBS, view, writeHash } from "../core/viewstate.js";
+import { curSub, setSub, subBtnId, subsOf, view, writeHash } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { FREE, SLINK, SNODE } from "../data/schema.js";
-import { drawMass, massPanel } from "./massing.js";
-import { drawMix, mixPanel } from "./mixer.js";
+import { drawMass, massDoctrine, massPanel, setMassNav } from "./massing.js";
+import { drawMix, mixDoctrine, mixPanel, setMixNav } from "./mixer.js";
 import { saveSoon } from "../mix/store.js";
 import { constraintsSection } from "./constraints.js";
 import { drawDiagram, panelsEl, ppm, refreshPpm, scaleBar } from "./diagram.js";
@@ -39,10 +39,21 @@ setCircHandler(function(p){
    après qu'on l'eut changée. Le champ reprend le focus par son id stable,
    comme il le faisait déjà quand la légende seule était remplacée. */
 function refreshProgramme(){
-  if(view.tab === "programme" && view.sub === "surfaces") render();
+  if(view.tab === "programme" && curSub() === "surfaces") render();
   else { renderBar(); renderLegend(); renderTotals(); }
   saveSoon();
 }
+
+/* Les deux outils reviennent sur leur volet d'origine après un tirage lancé
+   depuis les contraintes. Ils ne peuvent pas importer `render` — il les importe
+   déjà —, alors on le leur donne. */
+function allerAuVolet(sub){
+  setSub(sub);
+  writeHash();
+  render();
+}
+setMixNav(allerAuVolet);
+setMassNav(allerAuVolet);
 
 export function scheduleList(items, showChap){
   var ul = el("ul","schedule");
@@ -110,19 +121,19 @@ function programmeBar(){
 function subTabs(){
   var nav = el("nav","btn-group subtabs");
   nav.setAttribute("role","tablist");
-  nav.setAttribute("aria-label","Volets du programme");
-  var ids = [];
+  nav.setAttribute("aria-label","Volets de " + view.tab);
+  var SUBS = subsOf(), ids = [];
   SUBS.forEach(function(sb, i){
     var b = el("button","btn", sb.label);
     b.type = "button";
-    b.id = "sub" + sb.id.charAt(0).toUpperCase() + sb.id.slice(1);
+    b.id = subBtnId(view.tab, sb.id);
     b.setAttribute("role","tab");
-    b.setAttribute("aria-selected", String(view.sub === sb.id));
+    b.setAttribute("aria-selected", String(curSub() === sb.id));
     b.setAttribute("aria-controls","subpanel");
-    b.tabIndex = view.sub === sb.id ? 0 : -1;
+    b.tabIndex = curSub() === sb.id ? 0 : -1;
     b.addEventListener("click", function(){
-      if(view.sub === sb.id) return;
-      view.sub = sb.id;
+      if(curSub() === sb.id) return;
+      setSub(sb.id);
       writeHash();
       render();
     });
@@ -132,7 +143,7 @@ function subTabs(){
       if(!d) return;
       e.preventDefault();
       var n = d === -99 ? 0 : d === 99 ? SUBS.length - 1 : (i + d + SUBS.length) % SUBS.length;
-      view.sub = SUBS[n].id;
+      setSub(SUBS[n].id);
       writeHash();
       render();
       /* Le rendu a refait les boutons : on retrouve le nouveau par son id. */
@@ -143,6 +154,21 @@ function subTabs(){
     nav.appendChild(b);
   });
   return nav;
+}
+
+/* Le volet d'un onglet : la barre, puis l'hôte. Le cahier des charges le faisait
+   seul ; les deux outils ont les mêmes volets, donc le même patron — il n'y a
+   aucune raison qu'un onglet ait sa propre façon de changer de volet. */
+function subHost(){
+  var bar = el("div","subtabs-bar");
+  bar.appendChild(subTabs());
+  panelsEl.appendChild(bar);
+  var host = el("div","subpanel");
+  host.id = "subpanel";
+  host.setAttribute("role","tabpanel");
+  host.setAttribute("aria-labelledby", subBtnId(view.tab, curSub()));
+  panelsEl.appendChild(host);
+  return host;
 }
 
 /* Un rang de section : le numéro dit l'ordre de lecture, le titre dit quoi. */
@@ -162,17 +188,22 @@ export function render(){
   tip.style.opacity = "0";
   renderBar();
 
+  /* Les deux outils ont chacun deux volets : ce qu'ils FONT, et les CONTRAINTES
+     qui gouvernent ce qu'ils font. Le second est la réponse à « pourquoi
+     obtient-on ce résultat » — et c'est là qu'on le corrige. */
   if(view.tab === "mixer"){
-    var mp = mixPanel();
-    panelsEl.appendChild(mp);
+    var mh = subHost();
+    if(curSub() === "contraintes"){ mh.appendChild(mixDoctrine()); return; }
+    mh.appendChild(mixPanel());
     drawMix();
     return;
   }
   /* Le massing se dessine APRÈS avoir rejoint le document : son plan a besoin
      d'une largeur mesurable, et WebGL d'un canevas attaché. */
   if(view.tab === "massing"){
-    var ma = massPanel();
-    panelsEl.appendChild(ma);
+    var xh = subHost();
+    if(curSub() === "contraintes"){ xh.appendChild(massDoctrine()); return; }
+    xh.appendChild(massPanel());
     requestAnimationFrame(drawMass);
     return;
   }
@@ -184,18 +215,9 @@ export function render(){
      sans arrêt et qu'on ne les lit pas d'affilée. La chronologie du concours,
      elle, reste dans les onglets : Programme, puis le mixer. */
   panelsEl.appendChild(introSection());
-  var sbar = el("div","subtabs-bar");
-  sbar.appendChild(subTabs());
-  panelsEl.appendChild(sbar);
+  var host = subHost();
 
-  var host = el("div","subpanel");
-  host.id = "subpanel";
-  host.setAttribute("role","tabpanel");
-  host.setAttribute("aria-labelledby",
-    "sub" + view.sub.charAt(0).toUpperCase() + view.sub.slice(1));
-  panelsEl.appendChild(host);
-
-  if(view.sub === "contraintes"){
+  if(curSub() === "contraintes"){
     host.appendChild(sectHead("2", "Contraintes",
       "Le cadre : site, hauteurs libres, protection incendie, séisme, mobilité, second temps, "
       + "et les proximités exigées entre locaux."));

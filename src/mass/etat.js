@@ -11,7 +11,7 @@
    surfaces des niveaux du mixer, qui sont enregistrés de leur côté. Un fichier
    relu ne rejoue donc jamais deux fois la même surface.
    ========================================================================= */
-import { MASS } from "./model.js";
+import { MASS, empreintePile } from "./model.js";
 
 export function massOf(){
   return {
@@ -19,6 +19,9 @@ export function massOf(){
     graine: MASS.graine,
     par: { nb: MASS.par.nb, dmin: MASS.par.dmin, cap: MASS.par.cap },
     mono: MASS.mono ? 1 : 0,
+    /* La pile pour laquelle ces volumes ont été composés : une solution relue
+       alors que le mixer a changé de nombre de niveaux ne veut plus rien dire. */
+    pile: MASS.pile || empreintePile(),
     etage: MASS.etage,
     vol: MASS.vol.map(function(v){
       return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
@@ -43,6 +46,7 @@ export function setMass(o){
   }
   MASS.mono = !!o.mono;
   if(o.etage !== undefined) MASS.etage = o.etage;
+  MASS.pile = o.pile || null;
   if(o.vol && o.vol.length){
     MASS.vol = o.vol.filter(function(v){ return v && v.lv && v.lv.length; });
     /* Une solution enregistrée avant que la clé descende sur l'étage : le

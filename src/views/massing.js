@@ -30,11 +30,12 @@ import { repartir } from "../mix/shuffle.js";
 import { saveSoon } from "../mix/store.js";
 import { tirerNiveaux } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
-import { admissible, genMass, rectSol } from "../mass/gen.js";
+import { admissible, genMass, noteCourante, rectSol } from "../mass/gen.js";
 import {
-  MASS, PARTIS, bilan, bilanTotal, horsEnveloppe, massPar, massSet,
+  MASS, PARTIS, bilan, bilanTotal, empreintePile, horsEnveloppe, massPar, massSet,
   massVols, niveaux, partiOf, profMax, profUsuel, volHaut, volNiv
 } from "../mass/model.js";
+import { doctrineSection, noteBloc } from "./doctrine.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
   vue3dPick } from "./vue3d.js";
@@ -104,7 +105,7 @@ export function massPanel(){
    besoin d'une largeur mesurable, et WebGL d'un élément attaché. */
 export function drawMass(){
   if(!planEl) return;
-  if(!MASS.vol.length && aPoser() > 0) regenere();
+  if((!MASS.vol.length || perime()) && aPoser() > 0) regenere();
   planMount(planEl);
   if(!monte){ vue3dMount(troisEl); monte = true; }
   else vue3dDraw();
@@ -126,8 +127,16 @@ function aPoser(){
 }
 function regenere(){
   massVols(aPoser() > 0 ? genMass() : []);
+  MASS.pile = empreintePile();
   MASS.sel = null;
   camFit();
+}
+/* La pile du mixer a-t-elle changé depuis que cette implantation a été
+   composée ? Un volume désigne ses niveaux par leur indice : quand le mixer en
+   ajoute ou en retire un, les indices ne veulent plus rien dire, et l'on
+   regardait une volumétrie qui répondait à la pile précédente. */
+function perime(){
+  return !!MASS.vol.length && MASS.pile && MASS.pile !== empreintePile();
 }
 function redessine(){
   planDraw();
@@ -564,3 +573,29 @@ function blocAlertes(){
   return b;
 }
 
+
+/* ---------- le volet « Contraintes » ----------------------------------------
+   Le massing POSE une volumétrie ; ce volet dit ce qui la gouverne, et le
+   règle. Il porte en tête la NOTE de la composition à l'écran, critère par
+   critère : c'est la réponse à « pourquoi obtient-on ce résultat », et sans
+   elle les poids se règlent à l'aveugle.
+
+   La navigation est injectée plutôt qu'importée : `render.js` importe déjà ce
+   module, et l'importer en retour ferait un cycle. */
+var massNav = null;
+export function setMassNav(f){ massNav = f; }
+
+export function massDoctrine(){
+  /* On arrive parfois ici SANS être passé par la volumétrie — un lien direct,
+     un rechargement sur `#massing/contraintes`. La note n'aurait alors rien à
+     montrer, alors que le programme, lui, est réparti. */
+  if((!MASS.vol.length || perime()) && aPoser() > 0) regenere();
+  return doctrineSection("mass", function(){
+    if(aPoser() > 0){
+      massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
+      regenere();
+      saveSoon();
+    }
+    if(massNav) massNav("volumetrie");
+  }, noteBloc(noteCourante()));
+}

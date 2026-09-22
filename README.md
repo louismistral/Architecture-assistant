@@ -46,10 +46,30 @@ Le chrome permanent (`.appbar`, collant, ~52 px) ne contient que le nom du proje
 total vivant, les onglets et la bascule de thème. **Tout contenu éditorial appartient à la
 vue qu'il décrit.**
 
-La vue courante est dans le fragment d'URL (`#mixer`, `#programme/surfaces/fam`,
-`#programme/contraintes`) : rechargeable et partageable. L'identifiant de l'onglet reste
-`programme` ; les formes qui ont circulé avant — `#adjacences`, `#programme/adjacences` et
-`#programme/fam` — restent valables et mènent au volet qui les a reprises.
+La vue courante est dans le fragment d'URL (`#mixer/repartition`, `#mixer/contraintes`,
+`#massing/volumetrie`, `#programme/surfaces/fam`) : rechargeable et partageable.
+L'identifiant de l'onglet reste `programme` ; les formes qui ont circulé avant —
+`#adjacences`, `#programme/adjacences` et `#programme/fam` — restent valables et mènent au
+volet qui les a reprises.
+
+### Chaque onglet a ses volets, et les deux outils ont le leur
+
+Le cahier des charges avait seul des volets. Les deux outils en ont désormais deux : ce
+qu'ils **font**, et les **contraintes** qui gouvernent ce qu'ils font.
+
+| onglet | volets |
+|---|---|
+| Cahier des charges | Surfaces · Contraintes |
+| Programme mixer | Répartition · Contraintes |
+| Massing | Volumétrie · Contraintes |
+
+Les deux volets « Contraintes » des outils sont d'une autre nature que celui du cahier des
+charges : là on lit ce que le **règlement** impose, ici on lit — et l'on **règle** — ce que
+nous avons arbitré pour qu'un générateur produise quelque chose. Rien n'y est opposable,
+tout s'y discute. Ils listent les règles **de la plus dure à la plus molle**, disent ce que
+le hasard décide, et inventorient les scripts qui génèrent. Le volet du massing porte en
+tête la **note de la composition à l'écran**, critère par critère : c'est la réponse à
+« pourquoi obtient-on ce résultat », et c'est là qu'on le corrige.
 
 ### Le cahier des charges, en deux volets
 
@@ -102,6 +122,8 @@ styles/
   program.css         panneaux, diagrammes, contraintes, rangs de section, récapitulatif
   schema.css          adjacences
   mixer.css           le mixer : pile, canevas d'un niveau, blocs, pièces, bac
+  massing.css         le massing : rail, plan et 3D, alertes
+  doctrine.css        le volet Contraintes des outils : règles repliées, note, scripts
 src/
   data/               données pures, sans logique
     families.js       familles d'usage (id, couleur, libellé)        ← source unique
@@ -111,8 +133,12 @@ src/
     site.js           périmètre du concours, terrain, nappe phréatique — relevé seul
     rules.js          contraintes du concours : distances, hauteurs libres, feu,
                       nappe, stationnement, circulation, second temps ← source unique
+    doctrine.js       LA DOCTRINE DE PROJET — tout ce que le règlement NE dit pas et
+                      que les deux générateurs appliquent : seuils, plafonds, poids,
+                      rangs de dureté, inventaire des scripts   ← source unique
   core/
-    viewstate.js      view.tab / view.group / view.mode + routage par hash
+    viewstate.js      view.tab / view.subs (un volet par onglet) / group / mode
+                      + routage par hash
     model.js          totaux dérivés du programme, surfaces saisies, PART DE CIRCULATION
     format.js         fmt / dec / el / slug / arrondis
     svg.js            fabrique d'éléments SVG
@@ -140,7 +166,10 @@ src/
   views/
     render.js         aiguillage par onglet, cahier des charges, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
-    constraints.js    la section Contraintes, lue dans rules.js
+    constraints.js    la section Contraintes du cahier des charges, lue dans rules.js
+    doctrine.js       le volet Contraintes des DEUX outils : les règles rangées par
+                      dureté et réglables, la note d'une composition, les piles
+                      admissibles, ce que le hasard décide, l'inventaire des scripts
     diagram.js        diagrammes à l'échelle et barre d'échelle
     schema.js         schéma fonctionnel : grappes rayonnantes, locaux à l'échelle
     mixer.js          l'onglet Programme mixer
