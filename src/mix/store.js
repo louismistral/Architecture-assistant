@@ -52,39 +52,74 @@ function failChip(){
   chipEl.classList.add("is-bad");
 }
 
+/* ---------- L'INSTANTANÉ ----------------------------------------------------
+   Un seul objet dit ce qu'est « l'état du projet », et deux choses le lisent :
+   l'enregistrement sur l'appareil, et une VARIANTE partagée au groupe. Les
+   séparer aurait fait deux vérités — on aurait rechargé une variante et
+   retrouvé une pile sans ses écarts assumés, ou l'inverse. */
+export function snapshot(){
+  return {
+    areas: userAreas,
+    circ: circValue(),
+    lvls: FLOORS.map(function(F){ return F.lvl; }),
+    plates: FLOORS.map(function(F){ return F.plate; }),
+    blocks: BLOCKS.filter(function(b){ return b.fl !== TRAY; })
+                  .map(function(b){ return { k:b.key, q:b.q, f:b.fl }; }),
+    /* Les écarts assumés survivent eux aussi : les reprendre un par un à
+       chaque ouverture reviendrait à ne jamais pouvoir en assumer un. */
+    accepts: acceptList(),
+    /* Les deux interrupteurs du mixer : les retrouver éteints à chaque
+       ouverture revenait à ne jamais pouvoir s'en servir. */
+    opts: optsOf(),
+    /* Le MASSING : les volumes posés, leurs positions, leurs rotations, le
+       parti et les réglages. Aller au mixer et revenir ne doit pas défaire
+       une implantation qu'on a passé un quart d'heure à régler. */
+    mass: massOf(),
+    /* LA DOCTRINE, et seulement ce qui s'écarte du défaut. Enregistrer l'objet
+       entier figerait dans ce navigateur les valeurs du jour, et une valeur
+       corrigée dans `data/doctrine.js` ne parviendrait jamais à qui a déjà
+       ouvert l'application. */
+    doc: docOf(),
+    updatedAt: Date.now()
+  };
+}
+
+/* Remet l'instantané en place, section par section : perdre la pile vaut mieux
+   que perdre aussi les surfaces. Rend la liste de ce qui n'a pas pu revenir. */
+export function restore(o){
+  var lost = [];
+  if(!o) return lost;
+  try{ applyAreas(o.areas); }catch(_){ lost.push("surfaces"); }
+  try{ if(o.circ != null) loadCirc(o.circ); }catch(_){ lost.push("circulation"); }
+  try{ applyStack(o.lvls, o.plates); }catch(_){ lost.push("niveaux"); }
+  try{ applyBlocks(o.blocks); }catch(_){ lost.push("répartition"); }
+  try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
+  try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
+  try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
+  try{ setDocs(o.doc); }catch(_){ lost.push("contraintes"); }
+  return lost;
+}
+
+/* Ce qui veut savoir qu'un enregistrement vient d'avoir lieu s'abonne ici —
+   les réglages partagés, par exemple. `store.js` n'a pas à connaître le
+   réseau : il dit qu'il a écrit, et rien de plus. */
+var apres = [];
+export function onSave(fn){
+  apres.push(fn);
+  return function(){ apres = apres.filter(function(f){ return f !== fn; }); };
+}
+
 export function saveSoon(){
   if(!storeReady) return;
   clearTimeout(saveT);
   paint("Enregistrement…", false);
   saveT = setTimeout(function(){
-    var payload = {
-      areas: userAreas,
-      circ: circValue(),
-      lvls: FLOORS.map(function(F){ return F.lvl; }),
-      plates: FLOORS.map(function(F){ return F.plate; }),
-      blocks: BLOCKS.filter(function(b){ return b.fl !== TRAY; })
-                    .map(function(b){ return { k:b.key, q:b.q, f:b.fl }; }),
-      /* Les écarts assumés survivent eux aussi : les reprendre un par un à
-         chaque ouverture reviendrait à ne jamais pouvoir en assumer un. */
-      accepts: acceptList(),
-      /* Les deux interrupteurs du mixer : les retrouver éteints à chaque
-         ouverture revenait à ne jamais pouvoir s'en servir. */
-      opts: optsOf(),
-      /* Le MASSING : les volumes posés, leurs positions, leurs rotations, le
-         parti et les réglages. Aller au mixer et revenir ne doit pas défaire
-         une implantation qu'on a passé un quart d'heure à régler. */
-      mass: massOf(),
-      /* LA DOCTRINE, et seulement ce qui s'écarte du défaut. Enregistrer l'objet
-         entier figerait dans ce navigateur les valeurs du jour, et une valeur
-         corrigée dans `data/doctrine.js` ne parviendrait jamais à qui a déjà
-         ouvert l'application. */
-      doc: docOf(),
-      updatedAt: Date.now()
-    };
+    var snap = snapshot();
     try {
-      localStorage.setItem(LSKEY, JSON.stringify(payload));
+      localStorage.setItem(LSKEY, JSON.stringify(snap));
       paint("Enregistré sur cet appareil", true);
     } catch(_){ failChip(); }
+    apres.forEach(function(f){ try{ f(snap); }catch(_){} });
   }, 700);
 }
 
@@ -146,15 +181,7 @@ export function initStore(){
   try {
     var raw = localStorage.getItem(LSKEY);
     if(raw){
-      var o = JSON.parse(raw), lost = [];
-      try{ applyAreas(o.areas); }catch(_){ lost.push("surfaces"); }
-      try{ if(o.circ != null) loadCirc(o.circ); }catch(_){ lost.push("circulation"); }
-      try{ applyStack(o.lvls, o.plates); }catch(_){ lost.push("niveaux"); }
-      try{ applyBlocks(o.blocks); }catch(_){ lost.push("répartition"); }
-      try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
-      try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
-      try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
-      try{ setDocs(o.doc); }catch(_){ lost.push("contraintes"); }
+      var lost = restore(JSON.parse(raw));
       if(lost.length) badParts = lost;
     }
     localStorage.setItem(LSKEY + ".probe", "1");

@@ -17,6 +17,7 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | ce que le règlement ne dit pas, et que les générateurs appliquent | `docs/doctrine.md` |
 | l'onglet Programme mixer | `docs/mixer.md` |
 | l'onglet Massing | `docs/massing.md` |
+| les variantes partagées, le compte, le groupe, la base | `docs/variantes.md` |
 | le relevé du géomètre et sa regénération | `docs/releve.md` |
 
 ---
@@ -57,6 +58,7 @@ Par **onglet**, pas par fichier — le découpage existe déjà.
 |---|---|---|
 | Mixer | `src/mix/*`, `views/mixer.js` | quasi nul |
 | Massing | `src/mass/*`, `views/massing.js`, `plan.js`, `vue3d.js` | quasi nul |
+| Variantes | `src/net/*`, `views/variantes.js`, la base | quasi nul |
 | Typologie (à construire) | `src/typo/*` | nul |
 | Données | `program.js`, `rules.js`, `doctrine.js`, `schema.js` | **garanti** |
 
@@ -89,7 +91,12 @@ contraintes             programme sur       sur le site coupes
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :
 l'onglet Site venait après le Plan, donc la typologie décidait du volume.
 
-Trois onglets existent ; seule la **Typologie** reste à construire. `src/vol/`, qui gardait
+Trois onglets existent ; seule la **Typologie** reste à construire.
+
+**Les variantes ne sont PAS un onglet.** Une variante enregistre l'état du projet
+sous un nom et le recharge à l'identique : elle TRAVERSE les trois onglets au lieu
+d'en être une étape. Son bouton vit donc à côté du compte, hors du groupe de
+destinations, et ouvre un panneau posé par-dessus. Voir `docs/variantes.md`. `src/vol/`, qui gardait
 dormants un générateur de volumétrie et une scène 3D, a été RETIRÉ quand le Massing a été
 construit : le garder aurait fait deux générateurs pour une seule question. Ce qui en valait la
 peine est repris dans `src/mass/` et `src/views/vue3d.js` ; `src/core/gl.js`, qui ne parle pas
@@ -182,6 +189,12 @@ c'est un défaut.
   voisin, à côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js`, engendré — voir `docs/releve.md`.
+- **L'état qui survit à un rechargement** : `snapshot()` / `restore()` dans
+  `src/mix/store.js` seuls. Un seul objet dit ce qu'est « l'état du projet », et
+  deux choses le lisent — l'enregistrement local et une variante partagée. Les
+  séparer ferait deux vérités.
+- **L'adresse de la base ou sa clé** : `src/data/supabase.js` seul. La clé
+  `service_role` n'entre JAMAIS dans le dépôt.
 - **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait pas lire
   `var(--f-cla)` : `cssRGB()` fait résoudre le token par le navigateur et le garde en cache tant
   que le thème ne change pas.
