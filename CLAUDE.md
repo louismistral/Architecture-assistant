@@ -31,7 +31,7 @@ repris dans `src/mass/` et `src/views/vue3d.js` ; `src/core/gl.js`, qui ne parle
 d'architecture, est resté où il était.
 
 Le **cahier des charges** porte **deux volets**, dans cet ordre : **Surfaces** et
-**Contraintes** (`view.sub`, `SUBS` dans `src/core/viewstate.js`). Ils étaient trois,
+**Contraintes** (`view.subs`, `SUBS_BY` dans `src/core/viewstate.js`). Ils étaient trois,
 empilés sur une seule page avant cela : revenir d'une adjacence à la surface qu'elle
 commente demandait quatre écrans de défilement.
 
@@ -343,7 +343,8 @@ clavier fait les mêmes gestes sur le bloc au foyer : flèches haut et bas pour 
 niveau — le bac étant le cran sous le rez —, Maj pour n'emmener qu'une pièce, Suppr pour
 renvoyer au bac.
 
-Par défaut la pile n'a qu'un **rez-de-chaussée**. On l'édite **là où elle se dessine** :
+Une pile neuve n'a qu'un **rez-de-chaussée** ; le premier tirage en propose une déduite du
+site. On l'édite **là où elle se dessine** :
 « + Ajouter un étage » en tête de pile, « + Creuser un sous-sol » au pied, et une corbeille
 sur chaque niveau qui le retire en renvoyant ses pièces au bac (`addFloorTop`,
 `addFloorBottom`, `delFloorAt`). Retirer un niveau du MILIEU est permis : les cotes se
@@ -351,8 +352,9 @@ renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
 
 **Trois interrupteurs**, dans la barre du haut, persistés avec le reste :
 
-- **Shuffle niveaux** — le tirage propose aussi la pile, déduite de la surface bâtie à
-  loger, du plateau du rez et de ce que le règlement admet en sous-sol.
+- **Shuffle niveaux** — le tirage propose aussi la pile, déduite de l'aire POSABLE de la
+  parcelle, de ce que le règlement cloue au rez et du contingent de classes. **Enclenché
+  par défaut** : voir `pilesAdmissibles()` plus haut.
 - **Grouper les liés** — déplacer une pièce emmène toute sa GRAPPE de proximité, la
   composante connexe des adjacences exigées (`grappeDe` dans `prog.js`, `moveGroupe` dans
   `floors.js`). Une mutualisation possible n'en fait pas partie : elle est offerte, pas
@@ -507,7 +509,8 @@ prorata l'aurait coupée en deux. Les postes `hors` — piscine, chauffage à di
 ne sont pas des volumes : le règlement les veut indépendants et au second temps.
 
 **Les sous-sols vont sous le corps le plus HAUT du site**, pas le plus grand : la nappe est
-à 462,25 m et le règlement veut 3,00 m de couverture, qu'on ne trouve qu'au tiers est.
+à 462,25 m et le règlement veut 3,00 m de couverture, qu'on ne trouve qu'au tiers est. Et
+jamais sous la salle de sport — voir plus haut.
 
 Douze partis, chacun composant vraiment différemment : auto, bloc compact, barre, barres
 parallèles, L, U, cour, pavillons, hameau, terrasses, peigne, composition libre. « Auto »
@@ -600,8 +603,10 @@ Quatre curseurs ont disparu avec elle — force d'alignement, compacité, régul
 intensité des terrasses. Ils réglaient ce que le PARTI dit déjà (un peigne est fragmenté,
 un bloc compact l'est par définition), et personne ne savait quoi répondre à
 « compacité 0,35 ». Ce sont des constantes de composition, écrites là où elles agissent
-(`ALIGN`, `JEU`, `GRAD` dans `gen.js`) ; la compacité, dont la valeur neutre ne changeait
-rien, n'a pas été remplacée. Il reste trois réglages : le nombre de VOLUMES — le rail dit
+(`JEU` et `GRAD` dans `gen.js`, `DOC.alignForce` et `DOC.alignPoids` dans la doctrine —
+ce que le générateur TOURNE un corps vers son attracteur et ce que la note lui RAPPORTE
+sont deux choses, et un seul nombre faisait les deux) ; la compacité, dont la valeur neutre
+ne changeait rien, a été remplacée par une vraie mesure de façade développée. Il reste trois réglages : le nombre de VOLUMES — le rail dit
 volume, comme le reste de l'interface, là où le générateur dit corps —, la distance entre
 eux, et l'orientation générale.
 
