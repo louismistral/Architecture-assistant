@@ -178,6 +178,11 @@
 .plan-vol__p.is-fix{ stroke-dasharray:none; fill-opacity:.7; }
 .plan-cel{ fill-opacity:var(--fill-op); stroke:var(--paper); stroke-width:.12; }
 .plan-vol__c{ fill:none; stroke:var(--ink); stroke-width:.55; stroke-linejoin:round; }
+/* Les murs extérieurs, en poché : 50 cm autour de la surface utile. */
+.plan-mur{ fill:var(--ink); stroke:none; }
+/* Les passerelles : une connexion, pas un volume — hachurée, bord fin. */
+.plan-pont{ fill:var(--site-emprise); fill-opacity:.35; stroke:var(--ink); stroke-width:.35;
+  stroke-dasharray:1.2 .8; }
 .plan-vol.is-sel .plan-vol__c,
 .plan-vol.is-sel .plan-vol__p{ stroke:var(--focus); stroke-width:.9; }
 /* Le second temps, en pointillé : la piscine et le chauffage à distance sont

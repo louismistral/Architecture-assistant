@@ -19,7 +19,8 @@ import { fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, cellules, famCol, filtreDe, volRect } from "../mass/model.js";
+import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volInt, volRect }
+  from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 
@@ -115,6 +116,13 @@ export function planDraw(){
   /* --- les volumes --- */
   gVol = svg("g", { "class":"plan__vol" });
   MASS.vol.forEach(function(v, k){ dessineVol(gVol, v, k); });
+  /* Les passerelles, par-dessus : une connexion entre deux corps, au niveau
+     qu'elles desservent. */
+  (MASS.pont || []).forEach(function(p){
+    if(MASS.etage >= 0 && MASS.etage !== p.i) return;
+    var r = pontRect(p);
+    if(r) gVol.appendChild(svg("path", { d: chemin(coins(r), true), "class":"plan-pont" }));
+  });
   root.appendChild(gVol);
 
   /* --- l'échelle et le nord --- */
@@ -145,23 +153,28 @@ function dessineVol(g, v, k){
     gv.appendChild(svg("path", { d: chemin(coins(r), true), "class":"plan-vol__et" }));
   });
   if(plein){
-    var rc = volRect(v, plein);
+    /* L'emprise MURS COMPRIS pour le contour ; l'intérieur — la surface utile —
+       pour le programme ; les murs en poché entre les deux. */
+    var rc = volRect(v, plein), ri = volInt(v, plein);
     var q = coins(rc);
     if(MASS.mono){
       gv.appendChild(svg("path", { d: chemin(q, true), "class":"plan-vol__p" }));
     } else {
       /* Le programme, pavé dans le rectangle : on lit OÙ sont les classes, pas
          seulement qu'il y a un bâtiment. */
-      cellules(plein.i, rc.w, rc.d, filtreDe(v, plein)).forEach(function(c){
+      cellules(plein.i, ri.w, ri.d, filtreDe(v, plein)).forEach(function(c){
         var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
-        var sub = { x: rc.x + cx * Math.cos(rc.a) - cy * Math.sin(rc.a),
-                    y: rc.y + cx * Math.sin(rc.a) + cy * Math.cos(rc.a),
-                    w: c.w, d: c.d, a: rc.a };
+        var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
+                    y: ri.y + cx * Math.sin(ri.a) + cy * Math.cos(ri.a),
+                    w: c.w, d: c.d, a: ri.a };
         var p = svg("path", { d: chemin(coins(sub), true), "class":"plan-cel" });
         p.style.fill = famCol(c.f);
         p.appendChild(svg("title", null));
         p.lastChild.textContent = c.n + " · " + fmt(Math.round(c.a)) + " m²";
         gv.appendChild(p);
+      });
+      mursDe(v, plein).forEach(function(m){
+        gv.appendChild(svg("path", { d: chemin(coins(m), true), "class":"plan-mur" }));
       });
       gv.appendChild(svg("path", { d: chemin(q, true), "class":"plan-vol__c" }));
     }
@@ -173,7 +186,7 @@ function dessineVol(g, v, k){
       transform: "rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " "
                + rc.x.toFixed(2) + " " + Y(rc.y).toFixed(2) + ")" });
     t.textContent = (v.nom ? v.nom : v.fix ? "Sport" : "V" + (k + 1))
-      + " · " + fmt(Math.round(rc.w * rc.d)) + " m²"
+      + " · " + fmt(Math.round(ri.w * ri.d)) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);
     if(sel) gv.appendChild(poignee(rc));

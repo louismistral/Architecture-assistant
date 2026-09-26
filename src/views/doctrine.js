@@ -22,7 +22,7 @@
    ========================================================================= */
 import { dec, el, fmt } from "../core/format.js";
 import {
-  DOC, RANGS, docDefaut, docModifie, docReset, docSet, rangDe, reglesDe,
+  DOC, docDefaut, docModifie, docReset, docSet, rangsDe, reglesDe,
   scriptsDe, tiragesDe
 } from "../data/doctrine.js";
 
@@ -39,15 +39,30 @@ function chipDe(id){
   return id === "dure" ? "danger" : id === "ferme" ? "warn"
        : id === "forte" ? "ok" : "soft";
 }
+/* Ce qu'une règle dit de la composition à l'écran — jamais un nombre : une
+   contrainte dure est respectée ou enfreinte, une priorité ou une préférence
+   favorable, neutre ou défavorable. */
+var ETAT = {
+  dure: [["danger", "enfreinte"], null, ["ok", "respectée"]],
+  autre: [["warn", "défavorable"], ["soft", "neutre"], ["ok", "favorable"]]
+};
+function etatChip(r, e){
+  var t = ETAT[r.rang === "dure" ? "dure" : "autre"][e.niv] || ETAT.autre[1];
+  var c = el("i", "chip chip--" + t[0], t[1]);
+  if(e.txt) c.title = e.txt;
+  return c;
+}
 
 /* Une règle. Quand elle porte une valeur, la valeur est SAISISSABLE : c'est
    tout le propos du volet. Quand elle n'en porte pas, c'est une règle de
    structure — elle s'applique ou non, et la changer demande de toucher au
    code ; la ligne dit alors où. */
-function ligne(r, onChange){
+function ligne(r, onChange, etat){
   var d = el("details", "doc-r" + (r.k && DOC[r.k] !== docDefaut(r.k) ? " is-off" : ""));
   var sm = el("summary", "doc-r__h");
   sm.appendChild(el("b", "doc-r__t", r.titre));
+  var e = etat ? etat(r) : null;
+  if(e) sm.appendChild(etatChip(r, e));
   var v = el("span", "doc-r__v mono");
   if(r.k) v.textContent = valTxt(r);
   else v.textContent = r.val || "—";
@@ -75,7 +90,8 @@ function ligne(r, onChange){
       "défaut " + (r.pct ? dec(docDefaut(r.k)) : docDefaut(r.k)));
     b.appendChild(def);
   }
-  b.appendChild(el("p", "doc-r__w", r.pourquoi));
+  if(e && e.txt) b.appendChild(el("p", "doc-r__w", "À l'écran : " + e.txt));
+  if(r.pourquoi) b.appendChild(el("p", "doc-r__w", r.pourquoi));
   var meta = el("dl", "doc-r__m");
   [["Source", r.source], ["Appliquée par", r.lu], ["Ce qu'elle change", r.agit]]
     .forEach(function(p){
@@ -98,7 +114,7 @@ function valTxt(r){
    `dom` vaut "mix" ou "mass" ; `rejouer` est le geste qui refait le tirage avec
    les valeurs qu'on vient de changer — sans lui, régler une contrainte ne
    montrerait rien, et il faudrait aller cliquer ailleurs pour voir l'effet. */
-export function doctrineSection(dom, rejouer, extra){
+export function doctrineSection(dom, rejouer, extra, etat){
   var p = el("section", "panel doc");
 
   var hd = el("div", "panel-head");
@@ -111,10 +127,11 @@ export function doctrineSection(dom, rejouer, extra){
       + "NOUS imposons : des arbitrages, des préférences et des poids, sans lesquels "
       + "aucun tirage ne rendrait autre chose qu'un remplissage. Rien n'est opposable, "
       + "tout se règle — et le tirage se rejoue sans quitter ce volet."
-    : "Le cahier des charges dit ce que le règlement impose. Ici commence ce que NOUS "
-      + "imposons : ce qui distingue un générateur d'un tirage de boîtes. Chaque critère "
-      + "de la note porte son nom et son poids ; c'est ici qu'on corrige un mauvais "
-      + "massing, et nulle part ailleurs."));
+    : "Trois rangs, et aucun point. Le générateur jette toute variante qui enfreint une "
+      + "CONTRAINTE DURE, écarte celles qu'une autre bat sur les PRIORITÉS FORTES, et ne "
+      + "départage par les PRÉFÉRENCES que des variantes égales sur les fortes. Le parti est "
+      + "tiré parmi tous ceux qui rendent une variante valide : la diversité est voulue. "
+      + "Chaque ligne dit ce qu'elle pense de la composition à l'écran."));
 
   /* La barre d'action : rejouer, et rétablir. Elle est EN TÊTE parce qu'on y
      revient à chaque réglage, et qu'une commande qu'il faut aller chercher au
@@ -142,7 +159,7 @@ export function doctrineSection(dom, rejouer, extra){
 
   /* --- les contraintes, de la plus dure à la plus molle ------------------- */
   var L = reglesDe(dom);
-  RANGS.forEach(function(rg){
+  rangsDe(dom).forEach(function(rg){
     var lot = L.filter(function(r){ return r.rang === rg.id; });
     if(!lot.length) return;
     var sec = el("section", "doc-sec");
@@ -150,7 +167,7 @@ export function doctrineSection(dom, rejouer, extra){
     lot.forEach(function(r){ sec.appendChild(ligne(r, function(){
       var b = document.querySelector(".doc-bar .btn--quiet");
       if(b) b.disabled = !docModifie();
-    })); });
+    }, etat)); });
     p.appendChild(sec);
   });
 
@@ -210,45 +227,52 @@ export function doctrineSection(dom, rejouer, extra){
   return p;
 }
 
-/* ---------- la note de la composition posée ---------------------------------
-   « On obtient un tel résultat » : voilà pourquoi. Chaque critère, son poids,
-   ce qu'il a coûté ou rapporté à la composition qui est à l'écran. Sans cela,
-   les poids ci-dessus sont des nombres qu'on règle à l'aveugle. */
-export function noteBloc(detail){
+/* ---------- le jugement de la composition posée -----------------------------
+   « On obtient un tel résultat » : voilà pourquoi — sans un seul point. Les
+   contraintes dures, respectées ou non ; puis chaque priorité et chaque
+   préférence, favorable, neutre ou défavorable. Le détail est sur chaque ligne
+   plus bas ; ici, d'un coup d'œil. */
+export function jugementBloc(j){
   var s = el("section", "doc-note");
-  if(!detail){
-    s.appendChild(el("p", "cons__note", "Aucune composition posée : la note n'a rien à "
-      + "départager. « Shuffle massing » en propose une."));
+  if(!j){
+    s.appendChild(el("p", "cons__note", "Aucune composition posée. « Shuffle massing » "
+      + "en propose une."));
     return s;
   }
-  s.appendChild(el("h4", "label", "La note de la composition à l'écran"));
-  s.appendChild(el("p", "doc-note__i", "Le générateur compose, mesure et jette : il "
-    + "garde celle qui totalise le moins. Un nombre NÉGATIF est une qualité — le critère "
-    + "rapporte ; un nombre positif est un écart qu'il faudra payer. Ce tableau est la "
-    + "raison pour laquelle cette composition-ci a gagné."));
-  var t = el("table", "doc-crit");
-  var mx = 1;
-  detail.crit.forEach(function(c){ mx = Math.max(mx, Math.abs(c.pts)); });
-  detail.crit.forEach(function(c){
-    var tr = el("tr");
-    tr.appendChild(el("td", null, c.n));
-    var bar = el("td", "doc-crit__b");
-    var i = el("i", c.pts < 0 ? "is-bon" : "is-cout");
-    i.style.width = (Math.abs(c.pts) / mx * 100) + "%";
-    bar.appendChild(i);
-    tr.appendChild(bar);
-    tr.appendChild(el("td", "mono n", (c.pts >= 0 ? "+" : "−")
-      + Math.round(Math.abs(c.pts))));
-    t.appendChild(tr);
+  s.appendChild(el("h4", "label", "La composition à l'écran"));
+  var n = j.dures.filter(function(x){ return !x.pile; }).length;
+  s.appendChild(el("p", "doc-note__i", n
+    ? n + " contrainte" + (n > 1 ? "s dures enfreintes" : " dure enfreinte")
+      + " : aucune variante valide n'a été trouvée, celle-ci est la moins fautive."
+    : "Toutes les contraintes dures sont respectées."));
+  [["Priorités fortes", j.fortes], ["Préférences", j.prefs]].forEach(function(g){
+    var ul = el("ul", "doc-jug");
+    ul.appendChild(el("li", "doc-jug__h", g[0]));
+    g[1].forEach(function(c){
+      var li = el("li");
+      li.appendChild(etatChip({ rang:"forte" }, c));
+      li.appendChild(el("b", null, c.n));
+      li.appendChild(el("span", null, " — " + c.txt));
+      ul.appendChild(li);
+    });
+    s.appendChild(ul);
   });
-  var tot = el("tr", "doc-crit__t");
-  tot.appendChild(el("td", null, "Total"));
-  tot.appendChild(el("td"));
-  tot.appendChild(el("td", "mono n", (detail.total >= 0 ? "+" : "−")
-    + Math.round(Math.abs(detail.total))));
-  t.appendChild(tot);
-  s.appendChild(t);
   return s;
+}
+/* Ce que le jugement dit d'une ligne de la table : l'id de la ligne est celui
+   du critère. Une ligne sans critère (un sous-seuil, un paramètre) n'a rien à
+   dire. */
+export function etatDe(j){
+  if(!j) return null;
+  var F = {};
+  j.fortes.concat(j.prefs).forEach(function(c){ F[c.id] = c; });
+  var D = {};
+  j.dures.forEach(function(x){ if(!D[x.k]) D[x.k] = x; });
+  return function(r){
+    if(r.rang === "dure")
+      return D[r.id] ? { niv:0, txt:D[r.id].msg } : { niv:2, txt:"" };
+    return F[r.id] || null;
+  };
 }
 
 /* ---------- les piles que le site admet -------------------------------------

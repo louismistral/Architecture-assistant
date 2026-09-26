@@ -27,8 +27,8 @@ import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4pro
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
-import { MASS, cellules, debord, famTok, filtreDe, hauteurEtage, niveaux,
-  volRect } from "../mass/model.js";
+import { MASS, cellules, debord, famTok, filtreDe, hauteurEtage, mursDe, niveaux,
+  pontRect, volInt, volRect } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
@@ -253,16 +253,35 @@ function volMesh(){
         boite(M, q, z0, z0 + h - .12,
           n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono), 1, edge);
       } else {
-        cellules(e.i, rc.w, rc.d, filtreDe(v, e)).forEach(function(c){
+        /* Le programme dans la surface UTILE, les murs de 50 cm autour, en
+           blanc de maquette : ce que le volume a de plus que ses mètres carrés. */
+        var ri = volInt(v, e);
+        cellules(e.i, ri.w, ri.d, filtreDe(v, e)).forEach(function(c){
           var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
-          var sub = { x: rc.x + cx * Math.cos(rc.a) - cy * Math.sin(rc.a),
-                      y: rc.y + cx * Math.sin(rc.a) + cy * Math.cos(rc.a),
-                      w: c.w, d: c.d, a: rc.a };
+          var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
+                      y: ri.y + cx * Math.sin(ri.a) + cy * Math.cos(ri.a),
+                      w: c.w, d: c.d, a: ri.a };
           boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f), op), 1, null);
+        });
+        mursDe(v, e).forEach(function(m){
+          boite(M, coins(m), z0, z0 + h - .12, v.ph ? teinte("--site-mono", .40) : cMono, 1, null);
         });
         aretes(M, q, z0, z0 + h - .12, edge);
       }
     });
+  });
+  /* Les passerelles : au niveau qu'elles desservent, posées sur la hauteur du
+     premier volume qu'elles relient. */
+  (MASS.pont || []).forEach(function(p){
+    if(MASS.etage >= 0 && MASS.etage !== p.i) return;
+    var r = pontRect(p), A = null;
+    MASS.vol.forEach(function(v){ if(v.id === p.a) A = v; });
+    if(!r || !A || !N[p.i]) return;
+    var z = assise(rectBas(A)).z - ZBAS;
+    A.lv.forEach(function(e){
+      if(N[e.i] && N[e.i].lvl >= 0 && e.i < p.i) z += hauteurEtage(e, N[e.i]);
+    });
+    boite(M, coins(r), z, z + N[p.i].h - .12, cMono, 1, cEdge);
   });
   return M;
 }

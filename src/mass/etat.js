@@ -17,17 +17,17 @@ export function massOf(){
   return {
     parti: MASS.parti,
     graine: MASS.graine,
-    par: { nb: MASS.par.nb, dmin: MASS.par.dmin, prof: MASS.par.prof,
-           cap: MASS.par.cap },
+    par: { nb: MASS.par.nb, cap: MASS.par.cap },
     second: MASS.second,
     mono: MASS.mono ? 1 : 0,
     /* La pile pour laquelle ces volumes ont été composés : une solution relue
        alors que le mixer a changé de nombre de niveaux ne veut plus rien dire. */
     pile: MASS.pile || empreintePile(),
     etage: MASS.etage,
+    pont: (MASS.pont || []).map(function(p){ return { a:p.a, b:p.b, i:p.i }; }),
     vol: MASS.vol.map(function(v){
       return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
-               ph:v.ph || 0, nom:v.nom || null,
+               ph:v.ph || 0, nom:v.nom || null, joint:v.joint || null,
                /* `key` sur l'ÉTAGE et non sur le seul volume : la salle de
                   sport peut en porter un au-dessus d'elle, et celui-là loge du
                   programme ordinaire. C'est lui qui dit ce qu'on y pave. */
@@ -51,8 +51,10 @@ export function setMass(o){
   if(o.second) MASS.second = o.second;
   if(o.etage !== undefined) MASS.etage = o.etage;
   MASS.pile = o.pile || null;
+  MASS.pont = o.pont || [];
   if(o.vol && o.vol.length){
     MASS.vol = o.vol.filter(function(v){ return v && v.lv && v.lv.length; });
+    MASS.vol.forEach(function(v){ if(!v.joint) delete v.joint; });
     /* Une solution enregistrée avant que la clé descende sur l'étage — ou du
        temps où l'étage n'en portait qu'une. On la remet au plus bas de ses
        étages, qui est celui que le règlement dimensionne. */

@@ -28,7 +28,7 @@ import { mixCheck, mixVerdict } from "../mix/checks.js";
 import { restore, saveSoon, snapshot } from "../mix/store.js";
 import { MASS, bilanTotal, volCoins } from "../mass/model.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
-import { noteCourante } from "../mass/gen.js";
+import { jugementCourant } from "../mass/juge.js";
 import { CPT } from "./compte.js";
 import { deleteApi, insertApi, patchApi, selectApi } from "./supa.js";
 
@@ -57,7 +57,13 @@ export function vignetteCourante(){
    pour ne pas avoir à le recalculer à chaque affichage de la liste. */
 export function resumeCourant(){
   var b = bilanTotal(), note = null, crit = null;
-  try{ var d = noteCourante(); if(d){ note = Math.round(d.total); crit = d.crit; } }catch(_){}
+  /* Plus de note : la variante garde son JUGEMENT — chaque priorité et chaque
+     préférence, favorable (2), neutre (1) ou défavorable (0). */
+  try{
+    var d = jugementCourant();
+    if(d) crit = d.fortes.concat(d.prefs).map(function(c){
+      return { id:c.id, n:c.n, niv:c.niv, txt:c.txt }; });
+  }catch(_){}
   var vm = {}, vx = {};
   try{ vm = massVerdict(massCheck()) || {}; }catch(_){}
   try{ vx = mixVerdict(mixCheck()) || {}; }catch(_){}

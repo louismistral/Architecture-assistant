@@ -495,7 +495,19 @@ function ligne(k, v, cls){
   d.appendChild(el("b", "mono", v));
   return d;
 }
+/* Un critère : son état — favorable, neutre, défavorable —, jamais un nombre.
+   Les variantes enregistrées avant l'abandon des points portent encore `pts`,
+   et se lisent comme avant. */
+var NIV = [["warn", "défavorable"], ["soft", "neutre"], ["ok", "favorable"]];
 function critere(c, max){
+  if(c.niv != null){
+    var q = el("div", "vm-c");
+    q.appendChild(el("span", "vm-c__n", c.n));
+    q.appendChild(el("span", "vm-c__t", c.txt || ""));
+    var t0 = NIV[c.niv] || NIV[1];
+    q.appendChild(el("i", "chip chip--" + t0[0], t0[1]));
+    return q;
+  }
   var d = el("div", "vm-c");
   d.appendChild(el("span", "vm-c__n", c.n));
   var t = el("span", "vm-c__t");
@@ -544,9 +556,15 @@ export function ouvrirModal(v){
   var gros = el("b", "vm-note__n mono", v.score == null ? "—" : (v.score > 0 ? "+" : "") + v.score);
   if(v.score != null) gros.classList.add(v.score >= 0 ? "is-haut" : "is-bas");
   tete.appendChild(gros);
-  tete.appendChild(el("p", null, "La somme des critères de la composition. Elle sert à trier, pas à juger."));
+  tete.appendChild(el("p", null, v.score == null
+    ? "Chaque priorité et chaque préférence de la composition — favorable, neutre ou défavorable."
+    : "La somme des critères de la composition, avant l'abandon des points."));
   s1.appendChild(tete);
   var crit = (v.criteria || []).slice();
+  if(crit.length && crit[0].niv != null){
+    crit.forEach(function(c){ s1.appendChild(critere(c)); });
+    crit = [];
+  }
   var max = crit.reduce(function(m, c){ return Math.max(m, Math.abs(c.pts)); }, 1);
   var nuls = crit.filter(function(c){ return Math.round(c.pts) === 0; });
   crit.filter(function(c){ return Math.round(c.pts) !== 0; })

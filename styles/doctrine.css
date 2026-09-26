@@ -40,6 +40,12 @@
 .doc-r[open]>.doc-r__h::before{transform:rotate(90deg) translateX(1px)}
 .doc-r__h:hover{background:var(--panel)}
 .doc-r__t{font-weight:500;font-size:var(--t-sm)}
+.doc-r__h>.chip{flex:none}
+/* Le jugement de la composition à l'écran : un état, jamais un nombre. */
+.doc-jug{list-style:none;margin:var(--s-3) 0 0;padding:0;font-size:var(--t-xs);line-height:var(--lh-base)}
+.doc-jug li{display:flex;flex-wrap:wrap;gap:var(--s-2);align-items:baseline;padding:2px 0}
+.doc-jug__h{font-size:var(--t-3xs);text-transform:uppercase;letter-spacing:var(--track-caps);color:var(--ink-3)}
+.doc-jug span{color:var(--ink-2)}
 .doc-r__v{
   margin-left:auto;font-size:var(--t-xs);color:var(--ink-2);
   text-align:right;max-width:46%;

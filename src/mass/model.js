@@ -25,11 +25,12 @@
    ========================================================================= */
 import { CIRC, FMAP, ITEMS } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
+import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import { FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
   from "../mix/floors.js";
 import { PMAP } from "../mix/prog.js";
-import { aire, assise, coins, local } from "./geom.js";
+import { aire, assise, coins, ecartAngle, local } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
    Chacun est une FAÇON DE COMPOSER, pas un style : il dit combien de corps, où
@@ -37,9 +38,9 @@ import { aire, assise, coins, local } from "./geom.js";
    dégrade en montant. Le texte est ce qu'on lit dans le panneau. */
 export var PARTIS = [
   { id:"auto",      n:"Auto",              d:"Le générateur essaie tous les partis et garde celui qui tient le mieux sur ce site, avec ce programme." },
-  { id:"compact",   n:"Bloc compact",      d:"Un seul corps, aussi carré que le plateau le permet. Le plus court en façade, le plus avare en terrain — et le plus sourd au site." },
+  { id:"compact",   n:"Bloc compact",      d:"Un seul corps, aussi épais que la règle des classes en façade le permet. Sur ce site, le programme le rend souvent trop long : le générateur le dira." },
   { id:"barre",     n:"Barre",             d:"Un seul corps allongé, d'une profondeur qui laisse les classes en façade. Il fait une limite et libère tout le reste." },
-  { id:"barres",    n:"Barres parallèles", d:"Plusieurs corps allongés, parallèles entre eux, séparés de la distance incendie. Entre eux, des cours en bandes." },
+  { id:"barres",    n:"Barres parallèles", d:"Plusieurs corps allongés, parallèles entre eux, séparés — ou accolés en un seul bâtiment. Entre eux, des cours en bandes." },
   { id:"L",         n:"Forme en L",        d:"Deux ailes perpendiculaires. L'angle tient un dehors, sans le fermer." },
   { id:"U",         n:"Forme en U",        d:"Trois ailes autour d'une cour ouverte d'un côté — la cour d'école dans sa forme la plus ancienne." },
   { id:"cour",      n:"Cour",              d:"Quatre ailes, une cour fermée. Elle demande beaucoup d'emprise : sur un site étroit, le générateur le dira." },
@@ -64,67 +65,50 @@ export var MASS = {
   graine: 1,
   par: {
     nb: 0,          /* nombre de volumes · 0 = au parti d'en décider */
-    dmin: RULES.dist.entre,
-    prof: null,     /* profondeur d'un volume · null = celle du programme */
-    cap: null       /* orientation générale · null = l'axe du périmètre */
+    cap: null       /* orientation générale · null = au générateur de la chercher */
   },
-  second: "sep",    /* second temps : "sep" deux volumes · "un" groupés · "non" */
+  /* second temps : "auto" au générateur · "sep" deux volumes · "un" groupés · "non" */
+  second: "auto",
   vol: [],
+  pont: [],         /* passerelles : { a, b, i } — deux volumes et un niveau */
   mono: false,      /* affichage : couleurs du programme, ou masse seule */
   etage: -1,        /* niveau montré · -1 = tous */
   sel: null         /* volume sélectionné */
 };
 export function massSet(k, v){ MASS[k] = v; }
 export function massPar(k, v){ MASS.par[k] = v; }
-export function massVols(list){ MASS.vol = list || []; MASS.sel = null; }
+export function massVols(list){
+  MASS.vol = list || []; MASS.pont = (list && list.ponts) || []; MASS.sel = null;
+}
 
-/* ---------- la profondeur, DONNÉE et non réglée ------------------------------
-   C'était un champ à saisir, 18 m par défaut : un chiffre de projet sans
-   source, qu'on pouvait mettre à 9 ou à 46 sans que rien ne le contredise. Or
-   la profondeur d'un corps n'est pas un goût, elle est donnée — par le plan
-   d'affectation communal, ou par le programme.
-
-     — le PACom de Saxon range le site en zone de constructions et
-       d'installations publiques A : AUCUNE contrainte de gabarit, de hauteur
-       ni de distance aux limites (art. 2.3). Il n'impose donc pas de
-       profondeur, et il faut le dire plutôt que d'inventer un chiffre ;
-     — le programme, lui, en impose deux. La COURANTE est celle d'un corps de
-       classes : deux rangées de salles, prises à leur surface BÂTIE — le
-       couloir est dans la part de circulation, il ne s'ajoute pas par-dessus.
-       Le MAXIMUM est celui du local le plus profond qu'on ait à loger, la
-       salle de sport double, 28 m dans sa petite cote. Au-delà, on bâtit de la
-       profondeur que personne n'a demandée, et sans jour. */
-export function profUsuel(){
+/* ---------- la profondeur, et ses deux bornes --------------------------------
+   La profondeur d'un corps est sa PETITE cote. Elle se choisit entre deux bornes
+   de la doctrine : `DOC.profMin`, réglage de l'utilisateur qui ne descend pas
+   sous la largeur minimale absolue, et `DOC.profMax`. Le générateur tire la
+   sienne entre les deux ; `juge.js` jette ce qui en sort. */
+export function profBornes(){
+  var lo = Math.max(DOC.profMin, DOC.largeurMin);
+  return { lo:lo, hi:Math.max(lo, DOC.profMax) };
+}
+/* TOUTES LES CLASSES EN FAÇADE. Un corps qui porte des salles de classe n'a pas
+   plus de deux salles de profondeur — prises à leur surface BÂTIE, la
+   circulation y est —, sans quoi une salle se retrouve au milieu, sans fenêtre.
+   La cote vient du programme, au module. */
+export function profFacade(){
   var u = 0;
   ITEMS.forEach(function(it){
     if(it.f !== "cla") return;
     if(!u || it.nb > u.nb) u = it;
   });
-  if(!u) return 18;
-  /* Au demi-mètre, comme toutes les cotes du projet (`core/geometry.js`) : le
-     curseur du rail s'y pose exactement, et un chiffre affiché qui ne
-     correspond pas à la position du curseur est un chiffre qu'on ne croit
-     plus. */
-  return Math.round(2 * Math.sqrt(u.u / (1 - CIRC)) * 2) / 2;
+  if(!u) return DOC.profMax;
+  return auModule(2 * Math.sqrt(u.u / (1 - CIRC)));
 }
-/* CE QU'ON CHOISIT, ENTRE LE MINIMUM ET LE PLAFOND. La profondeur usuelle est
-   une proposition, pas une fatalité : un concours se joue aussi sur des corps
-   plus minces ou plus épais, et l'outil doit laisser essayer. Ce qui ne se
-   choisit pas est le PLAFOND — `profMax()` —, et aucun volume ne le franchit. */
-export function profDe(){
-  var p = MASS.par.prof;
-  if(p == null || !isFinite(p)) p = profUsuel();
-  return Math.max(PROF_MIN, Math.min(profMax(), p));
-}
-export var PROF_MIN = 9;   /* une salle de classe et son couloir — voir checks.js */
-
-export function profMax(){
-  var p = 0;
-  ITEMS.forEach(function(it){
-    if(!it.w || !it.h) return;
-    p = Math.max(p, Math.min(it.w, it.h));
-  });
-  return p || profUsuel();
+/* LE MODULE : toute cote de corps est un multiple de `DOC.module` (0,50 m). Une
+   seule fonction arrondit, le générateur, les remèdes et la main l'appellent. */
+export function auModule(x){ var m = DOC.module; return Math.round(x / m) * m; }
+export function horsModule(x){
+  var m = DOC.module, q = x / m;
+  return Math.abs(q - Math.round(q)) > 1e-6;
 }
 
 /* ---------- le porte-à-faux --------------------------------------------------
@@ -253,8 +237,62 @@ export function postesDe(i, avecHors){
    Un volume porte une liste d'étages, chacun désignant un niveau du mixer par
    son indice. Les cotes sont celles de CE niveau : un étage plus petit que
    celui d'en dessous est un retrait, un étage décalé est un porte-à-faux. */
-export function volRect(v, e){
+/* LES MURS. `e.w × e.d` est la surface UTILE intérieure, celle que le programme
+   demande et que le bilan compte ; le mur extérieur (`RULES.haut.mur`, 0,50 m)
+   s'ajoute AUTOUR. `volRect` rend l'emprise ARCHITECTURALE, murs compris — c'est
+   elle que mesurent le périmètre, les distances, la cour et le dessin —, et
+   `volInt` l'intérieur, où l'on pave le programme. */
+export function volInt(v, e){
   return local({ x:v.x, y:v.y, w:e.w, d:e.d, a:v.a }, e.dx || 0, e.dy || 0);
+}
+export function volRect(v, e){
+  var m = 2 * RULES.haut.mur;
+  return local({ x:v.x, y:v.y, w:e.w + m, d:e.d + m, a:v.a }, e.dx || 0, e.dy || 0);
+}
+/* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
+   largeur, deux pignons entre eux. */
+export function mursDe(v, e){
+  var r = volInt(v, e), m = RULES.haut.mur;
+  var R = { x:r.x, y:r.y, w:r.w + 2 * m, d:m, a:r.a };
+  var P = { x:r.x, y:r.y, w:m, d:r.d, a:r.a };
+  return [local(R, 0, -(r.d + m) / 2), local(R, 0, (r.d + m) / 2),
+          local(P, -(r.w + m) / 2, 0), local(P, (r.w + m) / 2, 0)];
+}
+
+/* LES PASSERELLES. Une passerelle ne porte ni programme ni surface : c'est une
+   CONNEXION `{ a, b, i }` — deux volumes, un niveau. Sa géométrie se DÉDUIT des
+   deux volumes à chaque lecture : un corps déplacé à la main l'emporte avec
+   lui, et une passerelle dont les façades ne se font plus face n'est plus
+   dessinée. Elle relie deux façades parallèles, au droit de ce qu'elles ont en
+   commun. */
+export function pontRect(p, vols){
+  var A = null, B = null;
+  (vols || MASS.vol).forEach(function(v){ if(v.id === p.a) A = v; if(v.id === p.b) B = v; });
+  if(!A || !B) return null;
+  var ea = volEtage(A, p.i), eb = volEtage(B, p.i);
+  if(!ea || !eb) return null;
+  var ra = volRect(A, ea), rb = volRect(B, eb);
+  var da = ecartAngle(rb.a, ra.a);
+  var tourne = Math.abs(Math.abs(da) - Math.PI / 2) <= .05;
+  if(!tourne && Math.abs(da) > .05) return null;
+  /* B dans le repère de A. */
+  var c = Math.cos(-ra.a), s = Math.sin(-ra.a);
+  var u = (rb.x - ra.x) * c - (rb.y - ra.y) * s, v = (rb.x - ra.x) * s + (rb.y - ra.y) * c;
+  var bw = (tourne ? rb.d : rb.w) / 2, bd = (tourne ? rb.w : rb.d) / 2;
+  var L = DOC.passLarg, q = null;
+  var ou0 = Math.max(-ra.w / 2, u - bw), ou1 = Math.min(ra.w / 2, u + bw);
+  var ov0 = Math.max(-ra.d / 2, v - bd), ov1 = Math.min(ra.d / 2, v + bd);
+  if(ou1 - ou0 >= L + 2){
+    var g0 = v > 0 ? ra.d / 2 : v + bd, g1 = v > 0 ? v - bd : -ra.d / 2;
+    if(g1 - g0 > .1) q = { u:(ou0 + ou1) / 2, v:(g0 + g1) / 2, w:L, d:g1 - g0, l:g1 - g0 };
+  } else if(ov1 - ov0 >= L + 2){
+    var h0 = u > 0 ? ra.w / 2 : u + bw, h1 = u > 0 ? u - bw : -ra.w / 2;
+    if(h1 - h0 > .1) q = { u:(h0 + h1) / 2, v:(ov0 + ov1) / 2, w:h1 - h0, d:L, l:h1 - h0 };
+  }
+  if(!q) return null;
+  var r = local({ x:ra.x, y:ra.y, w:q.w, d:q.d, a:ra.a }, q.u, q.v);
+  r.long = q.l;
+  return r;
 }
 export function volEtage(v, i){
   var e = null;

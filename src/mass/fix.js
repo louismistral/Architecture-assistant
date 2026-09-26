@@ -25,9 +25,9 @@
 import { dec } from "../core/format.js";
 import { repartir } from "../mix/shuffle.js";
 import {
-  admissible, ecarter, genMass, poserSecondTemps, recaler, replacerSousSol
-} from "./gen.js";
-import { MASS, massSet, massVols, niveaux, profDe, volEtage } from "./model.js";
+  admissible, ecarter, genMass, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
+import { MASS, auModule, massSet, massVols, niveaux, profBornes, profFacade, volEtage }
+  from "./model.js";
 
 /* Un remède : ce qu'on propose, ce que ça coûte, et ce que ça fait. */
 export function acte(label, hint, run){ return { label:label, hint:hint, run:run }; }
@@ -69,15 +69,17 @@ function reformer(v, fd){
   v.lv.forEach(function(e){
     var a = e.w * e.d, d = fd(e);
     if(!(d > 0)) return;
-    e.d = Math.round(d * 10) / 10;
-    e.w = Math.round((a / e.d) * 10) / 10;
+    e.d = auModule(d);
+    e.w = auModule(a / e.d);
   });
   return tenir(v, function(){
     v.lv.forEach(function(e, k){ e.w = av[k].w; e.d = av[k].d; });
   });
 }
+/* La profondeur la plus grande qu'un corps d'école puisse prendre. */
+function profCible(){ return Math.min(profBornes().hi, profFacade()); }
 export function fixProfondeur(i){
-  var v = vol(i), p = profDe();
+  var v = vol(i), p = profCible();
   if(!v || v.fix) return null;
   return acte("Ramener " + nomDe(v, i) + " à " + dec(p) + " m de profondeur",
     "à surface exacte : il s'allonge d'autant qu'il s'amincit",
@@ -95,7 +97,7 @@ export function fixElargir(i, mini){
     });
 }
 export function fixCarrer(i){
-  var v = vol(i), p = profDe();
+  var v = vol(i), p = profCible();
   if(!v || v.fix) return null;
   return acte("Ramener " + nomDe(v, i) + " à des proportions tenables",
     "au plus carré que la profondeur retenue permet, à surface exacte",
@@ -124,6 +126,13 @@ export function fixAplomb(i){
         v.lv.forEach(function(e, k){ e.dx = av[k].dx; e.dy = av[k].dy; });
       });
     });
+}
+
+/* ---------- les passerelles ------------------------------------------------ */
+export function fixRelier(){
+  return acte("Recomposer les passerelles",
+    "entre les corps d'école qui se font face, la plus courte d'abord",
+    function(){ return relierCourant(); });
 }
 
 /* ---------- le sous-sol ----------------------------------------------------- */
@@ -155,8 +164,8 @@ export function requilibre(){
     port.forEach(function(v){
       var e = volEtage(v, n.i);
       if(!e) return;
-      e.w = Math.round(e.w * k * 10) / 10;
-      e.d = Math.round(e.d * k * 10) / 10;
+      e.w = auModule(e.w * k);
+      e.d = auModule(e.d * k);
     });
     bouge = true;
   });

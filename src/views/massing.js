@@ -32,14 +32,15 @@ import { tirerNiveaux } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { admissible, genMass, noteCourante, poserSecondTemps, rectSol }
-  from "../mass/gen.js";
+import { admissible, genMass, poserSecondTemps, rectSol } from "../mass/gen.js";
+import { jugementCourant } from "../mass/juge.js";
+import { DOC, docSet } from "../data/doctrine.js";
 import {
-  MASS, PARTIS, PROF_MIN, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massPar, massSet, massVols, niveaux, partiOf, profDe, profMax, profUsuel,
+  MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
+  massPar, massSet, massVols, niveaux, partiOf, profBornes, profFacade,
   secondTemps, volHaut, volNiv
 } from "../mass/model.js";
-import { doctrineSection, noteBloc } from "./doctrine.js";
+import { doctrineSection, etatDe, jugementBloc } from "./doctrine.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
   vue3dPick } from "./vue3d.js";
@@ -293,31 +294,22 @@ function blocParams(){
     i.addEventListener("change", function(){ fin(parseFloat(i.value)); });
     l.appendChild(i);
     var pp = el("span", "mass-cur__p");
-    pp.appendChild(el("span", null, dec(min) + " m · une classe et son couloir"));
-    pp.appendChild(el("span", null, dec(max) + " m · la salle de sport"));
+    pp.appendChild(el("span", null, dec(min) + " m · largeur minimale"));
+    pp.appendChild(el("span", null, dec(max) + " m · profondeur maximale"));
     l.appendChild(pp);
     b.appendChild(l);
   }
   num("Nombre de volumes", "nb", 0, 9, 1, "");
-  num("Distance entre volumes", "dmin", RULES.dist.entre, 30, 1, "m");
-  cur("Profondeur d’un volume", "prof", PROF_MIN, profMax(), profDe(), "m",
-    function(x){ massPar("prof", x); regenere(); redessine(); });
-  b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. "
-    + "La distance ne descend pas sous les " + RULES.dist.entre + " m de l’AEAI : "
-    + "c’est une règle écrite, pas un réglage."));
-  var pn = el("p", "mass-note");
-  pn.appendChild(document.createTextNode("La PROFONDEUR MAXIMALE est donnée, elle ne "
-    + "se règle pas : le PACom range le site en zone de constructions publiques A, "
-    + "SANS gabarit ni hauteur — il n’en impose donc aucune —, et le programme la "
-    + "fixe à "));
-  pn.appendChild(el("b", null, dec(profMax()) + " m"));
-  pn.appendChild(document.createTextNode(", la petite cote de la salle de sport double. "
-    + "Au-delà, on bâtirait de la profondeur que personne n’a demandée, et sans jour : "
-    + "aucun volume ne la franchit. En deçà, le curseur est à vous ; il part de "));
-  pn.appendChild(el("b", null, dec(profUsuel()) + " m"));
-  pn.appendChild(document.createTextNode(", deux rangées de salles de classe prises à "
-    + "leur surface bâtie — le couloir est déjà dans la circulation."));
-  b.appendChild(pn);
+  /* La profondeur MINIMALE est un paramètre de l'utilisateur : elle vit dans
+     la doctrine (`DOC.profMin`), et ce curseur écrit dans la même case que le
+     volet Contraintes — il n'y a pas deux valeurs. */
+  var PB = profBornes();
+  cur("Profondeur minimale d’un volume", "profMin", DOC.largeurMin, DOC.profMax, PB.lo, "m",
+    function(x){ docSet("profMin", x); regenere(); redessine(); saveSoon(); });
+  b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. La "
+    + "profondeur d’un corps — sa petite cote — est tirée entre ce minimum et "
+    + dec(Math.min(PB.hi, profFacade())) + " m, deux salles de classe en façade. "
+    + "Distances, cour et seuils se règlent au volet Contraintes."));
 
   /* --- LE SECOND TEMPS ---
      La piscine et le local de chauffage à distance ne sont pas de l'école. Ne
@@ -327,7 +319,8 @@ function blocParams(){
   var g2 = el("div", "btn-group");
   g2.setAttribute("role", "group");
   g2.setAttribute("aria-label", "Piscine et local de chauffage à distance");
-  [["Deux volumes", "sep"], ["Un seul", "un"], ["Non posés", "non"]].forEach(function(o){
+  [["Au choix", "auto"], ["Deux volumes", "sep"], ["Un seul", "un"], ["Non posés", "non"]]
+    .forEach(function(o){
     var t = el("button", "btn", o[0]);
     t.type = "button";
     t.setAttribute("aria-current", String(MASS.second === o[1]));
@@ -482,16 +475,19 @@ function cote(host, lb, v, k){
   /* La profondeur est PLAFONNÉE ici aussi. Le générateur ne la franchit pas ;
      la main ne doit pas pouvoir la franchir non plus, sans quoi la règle ne
      serait qu'une préférence du tirage. */
-  i.min = "5"; i.max = String(k === "d" ? profMax() : 160); i.step = "0.5";
+  i.min = String(DOC.largeurMin); i.max = String(k === "d" ? profBornes().hi : 160);
+  i.step = String(DOC.module);
   i.value = String(e0[k]);
   i.addEventListener("change", function(){
     var x = parseFloat(String(i.value).replace(",", "."));
-    if(!isFinite(x) || x < 5){ i.value = String(e0[k]); return; }
-    if(k === "d" && x > profMax()){ x = profMax(); i.value = String(x); }
+    if(!isFinite(x) || x < DOC.largeurMin){ i.value = String(e0[k]); return; }
+    x = auModule(x);
+    if(k === "d" && x > profBornes().hi){ x = profBornes().hi; }
+    i.value = String(x);
     /* Toute la pile suit la cote du rez : un massing dont chaque étage aurait
        sa propre largeur ne serait plus un volume, mais une pile d'objets. */
     var f = x / e0[k];
-    v.lv.forEach(function(e){ e[k] = Math.round(e[k] * f * 10) / 10; });
+    v.lv.forEach(function(e){ e[k] = auModule(e[k] * f); });
     redessine();
   });
   l.appendChild(i);
@@ -717,6 +713,7 @@ export function massDoctrine(){
      un rechargement sur `#massing/contraintes`. La note n'aurait alors rien à
      montrer, alors que le programme, lui, est réparti. */
   if((!MASS.vol.length || perime()) && aPoser() > 0) regenere();
+  var j = jugementCourant();
   return doctrineSection("mass", function(){
     if(aPoser() > 0){
       massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
@@ -724,5 +721,5 @@ export function massDoctrine(){
       saveSoon();
     }
     if(massNav) massNav("volumetrie");
-  }, noteBloc(noteCourante()));
+  }, jugementBloc(j), etatDe(j));
 }

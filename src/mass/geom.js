@@ -148,6 +148,53 @@ export function margeAu(poly, rc){
   return best;
 }
 
+/* La même question, quand seule la réponse compte : le rectangle tient-il à `m`
+   au moins de la limite ? Les coins d'abord — c'est presque toujours eux qui
+   sortent —, puis les bords, et l'on s'arrête au premier point qui manque. Le
+   générateur la pose des milliers de fois par tirage. */
+export function tientA(poly, rc, m){
+  var q = coins(rc), i, k, pts = [];
+  for(i = 0; i < 4; i++) pts.push(q[i]);
+  for(i = 0; i < 4; i++){
+    var a = q[i], b = q[(i + 1) % 4];
+    var n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3));
+    for(k = 1; k < n; k++)
+      pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+  }
+  /* Le champ de distance tranche à un mètre près ; seul ce qui tombe dans ce
+     mètre se mesure exactement. */
+  var F = poly === PER ? champ() : null, doute = [];
+  for(i = 0; i < pts.length; i++){
+    var x = pts[i][0], y = pts[i][1];
+    if(F){
+      var d = F.lire(x, y);
+      if(d < m - 1) return false;
+      if(d < m + 1) doute.push(pts[i]);
+    } else doute.push(pts[i]);
+  }
+  for(i = 0; i < doute.length; i++)
+    if(bordDist(poly, doute[i][0], doute[i][1]) < m) return false;
+  return true;
+}
+/* La distance au bord du périmètre, échantillonnée au mètre et interpolée : elle
+   varie d'un mètre au plus par mètre, l'interpolation se trompe donc de moins
+   d'un mètre. Le périmètre ne change jamais. */
+var CHAMP = null;
+function champ(){
+  if(CHAMP) return CHAMP;
+  var B = bbox(PER), x0 = B.x0 - 4, y0 = B.y0 - 4;
+  var nx = Math.ceil(B.x1 - B.x0) + 9, ny = Math.ceil(B.y1 - B.y0) + 9, i, j;
+  var G = new Float32Array(nx * ny);
+  for(i = 0; i < nx; i++) for(j = 0; j < ny; j++) G[i * ny + j] = bordDist(PER, x0 + i, y0 + j);
+  CHAMP = { lire: function(x, y){
+    var u = x - x0, v = y - y0, i0 = Math.floor(u), j0 = Math.floor(v);
+    if(i0 < 0 || j0 < 0 || i0 >= nx - 1 || j0 >= ny - 1) return -Infinity;
+    var fu = u - i0, fv = v - j0, k = i0 * ny + j0;
+    return (G[k] * (1 - fu) + G[k + ny] * fu) * (1 - fv) + (G[k + 1] * (1 - fu) + G[k + ny + 1] * fu) * fv;
+  } };
+  return CHAMP;
+}
+
 /* Ce que la parcelle peut PORTER : l'aire où un point est à plus du recul de
    la limite. Ce n'est pas l'aire du périmètre — 12'781 m² —, et c'est cette
    différence qui dit si un niveau tient. Échantillonnée au pas de deux mètres,
@@ -389,4 +436,18 @@ export function visAVis(r1, r2){
   }
   var a = inter(r1), b = inter(r2);
   return Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0]));
+}
+
+/* ---------- la vue ------------------------------------------------------------
+   La vue la plus intéressante du site est au nord-ouest, vers le terrain de
+   football. Le relevé le porte (calque `foo`) : la cible est le centre de ses
+   tracés, pas une direction écrite à la main. Le dessin est en coordonnées
+   suisses, nord en haut. */
+var VUE = null;
+export function cibleVue(){
+  if(VUE) return VUE;
+  var x = 0, y = 0, n = 0;
+  (SITE.foo || []).forEach(function(P){ P.forEach(function(p){ x += p[0]; y += p[1]; n++; }); });
+  VUE = n ? { x:x / n, y:y / n } : { x:-1e4, y:1e4 };
+  return VUE;
 }
