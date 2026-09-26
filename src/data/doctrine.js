@@ -198,19 +198,24 @@ function rangIdx(id){
   for(var i = 0; i < RANGS.length; i++) if(RANGS[i].id === id) return i;
   return RANGS.length;
 }
-/* LE MASSING n'a que trois rangs, et aucun n'est un poids : une contrainte DURE
+/* LE MASSING n'a que trois rangs. `poids` n'est qu'une ÉCHELLE D'AFFICHAGE :
+   chaque critère rend une qualité entre −1 et +1, multipliée par le poids de son
+   rang, pour la NOTE qu'on lit (`juge.js — noter()`). Le générateur ne la lit
+   pas : il choisit par la hiérarchie. Une contrainte dure respectée vaut 0, une
+   enfreinte coûte son poids. */
+/* Rangs : une contrainte DURE
    rend une variante invalide, une priorité FORTE écarte les variantes qu'une
    autre bat, une PRÉFÉRENCE ne départage que des variantes égales sur les
    fortes. Les paramètres de recherche sont à part : ils ne disent rien de
    l'architecture. */
 export var RANGS_MASS = [
-  { id:"dure",  n:"Contraintes dures", court:"obligatoire",
+  { id:"dure",  n:"Contraintes dures", court:"obligatoire", poids:100,
     d:"Toujours respectées. Une variante qui en enfreint une est invalide et n'est "
       + "jamais proposée." },
-  { id:"forte", n:"Priorités fortes", court:"à favoriser",
+  { id:"forte", n:"Priorités fortes", court:"à favoriser", poids:40,
     d:"Le générateur écarte toute variante qu'une autre bat sur ces critères. Elles "
       + "peuvent céder : aucune ne rend seule une variante invalide." },
-  { id:"pref",  n:"Préférences", court:"départage",
+  { id:"pref",  n:"Préférences", court:"départage", poids:15,
     d:"Ne départagent que des variantes valides et équivalentes sur les priorités fortes." },
   { id:"param", n:"Paramètres du générateur", court:"recherche",
     d:"Réglages de la recherche, pas de l'architecture." }
