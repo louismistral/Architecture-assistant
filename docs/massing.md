@@ -73,8 +73,14 @@ qu'elle pense de la composition à l'écran :
 | **priorités fortes** | on écarte toute variante qu'une autre BAT : au moins aussi bonne partout, meilleure quelque part | orientation solaire, vue vers le terrain de football (nord-ouest, lue dans le relevé), lumière entre bâtiments (1,1 × h, indication), compacité, cour généreuse |
 | **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, porte-à-faux, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement |
 
-Chaque critère rend favorable, neutre ou défavorable — les seuils sont dans `doctrine.js`,
-jamais des poids. Les paramètres de recherche (essais, reconnaissance, profondeur de mesure
+Chaque critère rend favorable, neutre ou défavorable — les seuils sont dans `doctrine.js`.
+
+**La note se lit, elle ne choisit pas.** Chaque critère porte aussi un score : sa qualité
+q ∈ [−1, 1], mesurée sur les mêmes seuils, fois le poids de son rang (`RANGS_MASS.poids` :
+dure 100, forte 40, préférence 15). Une contrainte dure respectée vaut 0, chaque écart coûte
+100. `juge.js — noter()` rend le total et le détail ; `views/note.js` les dessine — total en
+grand, gains à droite en vert, coûts à gauche en rouge, critères nuls sur une ligne — dans le
+volet Contraintes comme dans la fiche d'une variante. Le générateur ne lit pas cette somme. Les paramètres de recherche (essais, reconnaissance, profondeur de mesure
 de la cour, passerelles) sont rangés à part, sous « Paramètres du générateur ».
 
 Ont disparu, de l'interface ET de l'algorithme : les poids (`*Poids`), le coût du sous-sol

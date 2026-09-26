@@ -242,8 +242,8 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
 });"
 ```
 
-Ce que le juge dit de la composition retenue — contraintes dures, puis chaque priorité et
-préférence, favorable / neutre / défavorable (aucun point) :
+Ce que le juge dit de la composition retenue — chaque critère, son état et son score de
+lecture (le générateur choisit par la hiérarchie, pas par la note) :
 
 ```bash
 node --input-type=module -e "
@@ -253,9 +253,9 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
   M.massSet('parti','auto');
   M.massVols(G.genMass(11));
   var j = J.jugementCourant(), N = ['défavorable','neutre','favorable'];
-  console.log('parti', M.MASS.vol.parti, '· dures enfreintes :', j.dures.length);
-  j.fortes.concat(j.prefs).forEach(function(c){
-    console.log(c.n.padEnd(28), N[c.niv].padEnd(12), c.txt);
+  console.log('parti', M.MASS.vol.parti, '· note', j.total);
+  j.crit.forEach(function(c){
+    console.log(c.n.padEnd(40), N[c.niv].padEnd(12), (c.pts > 0 ? '+' : '') + c.pts);
   });
 });"
 ```
