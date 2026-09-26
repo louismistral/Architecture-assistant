@@ -10,7 +10,7 @@
 
      ERREUR   une règle ÉCRITE — le règlement, l'AEAI — ou une géométrie
               impossible : un corps hors de la parcelle, deux corps qui
-              s'interpénètrent, un sous-sol dans la nappe ;
+              s'interpénètrent ;
      AVERTIR  une règle de PROJET ou une marge qui se discute : le retrait de
               cinq mètres, la profondeur, la surface qui s'écarte du programme,
               un porte-à-faux ;
@@ -55,7 +55,6 @@ var DUR = {
   module:   { ref:"",         fix:function(){ return [fixAire()]; } },
   cour:     { ref:"2.10",     fix:function(){ return [fixRelancer(),
     fixSecond("non", "Ne pas représenter le second temps", "il libère le terrain qu’il occupe")]; } },
-  nappe:    { ref:"2.3",      fix:function(){ return [fixSousSol(), fixRelancer()]; } },
   abri:     { ref:"",         fix:function(){ return [fixPile()]; } },
   sport:    { ref:"2.10",     fix:function(){ return [fixRelancer()]; } }
 };
@@ -165,6 +164,11 @@ export function massCheck(){
         dit("i", "nappe:" + v.id, "Sous " + nm.toLowerCase() + ", "
           + dec(couv) + " m de terrain au-dessus de la nappe : le sous-sol tient.",
           "2.3", nm, i);
+      else
+        dit("w", "nappe:" + v.id, "Sous " + nm.toLowerCase() + ", " + dec(couv)
+          + " m de terrain au-dessus de la nappe (" + dec(NAPPE) + " m), pour "
+          + dec(RULES.dist.couverture) + " m souhaités. Un sous-sol excavé n’est tenable "
+          + "qu’au tiers est du site.", "2.3", nm, i, { fix:[fixSousSol(), fixRelancer()] });
     }
 
     /* --- surface d'étage et cages ------------------------------------------ */

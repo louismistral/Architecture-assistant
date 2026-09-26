@@ -199,16 +199,6 @@ export function dures(vols, vite){
       dit("sport", k, "La salle de sport ne fait plus " + it.w + " × " + it.h + " m.");
   });
 
-  /* la nappe, sous tout sous-sol — lecture inchangée : terrain − nappe ≥ 3,00 m */
-  vols.forEach(function(v, k){
-    if(stop() || !v.lv.some(function(e){ return lvlOf(e.i) < 0; })) return;
-    var z = assise(rectSol(v)).z, couv = z - NAPPE;
-    if(couv < RULES.dist.couverture - .005)
-      dit("nappe", k, "Sous " + nomV(v, k).toLowerCase() + ", le terrain est à " + dec(z)
-        + " m : " + dec(couv) + " m au-dessus de la nappe (" + dec(NAPPE) + " m), pour "
-        + dec(RULES.dist.couverture) + " m au moins.");
-  });
-
   /* l'abri PC, au moins partiellement enterré */
   if(!stop()){
     var ab = abriNiv();
@@ -361,7 +351,7 @@ export function qualites(vols){
       if(lvlOf(e.i) >= 0) el = Math.max(el, Math.max(e.w, e.d) / Math.max(1, Math.min(e.w, e.d)));
     });
   });
-  var tl = terrainLibre(vols);
+  var tl = terrainLibre(vols), nap = couverture(vols);
   var grp = ensembles(E.filter(function(v){ return !v.fix; }), vols.ponts || []);
   var prefs = [
     { id:"align", n:"Alignement", niv: E.length && rang / E.length >= .5 ? 2 : 1,
@@ -379,6 +369,7 @@ export function qualites(vols){
       txt: grp <= 1 ? "l'école tient d'un seul tenant"
         : grp + " ensembles séparés" + ((vols.ponts || []).length
           ? ", " + vols.ponts.length + " passerelle" + (vols.ponts.length > 1 ? "s" : "") : "") },
+    { id:"nappe", n:"Nappe et sous-sol", niv: nap.niv, q: nap.q, txt: nap.txt },
     { id:"terrain", n:"Accès et stationnement", niv: tl.libre >= tl.besoin ? 2 : 0,
       q: borne((tl.libre - tl.besoin) / tl.besoin),
       txt: fmt(Math.round(tl.libre)) + " m² libres pour " + fmt(tl.besoin) + " m² de cour et de "
@@ -386,6 +377,23 @@ export function qualites(vols){
   ];
   return { fortes:fortes, prefs:prefs };
 }
+/* La couverture sur la nappe — lecture inchangée : terrain moyen sous le corps
+   qui porte un sous-sol, moins 462,25 m, au moins 3,00 m. Une PRÉFÉRENCE : +1
+   quand elle tient, 0 à mi-manque, −1 quand le sous-sol touche la nappe. */
+export function couverture(vols){
+  var pire = Infinity, qui = -1;
+  vols.forEach(function(v, k){
+    if(!v.lv.some(function(e){ return lvlOf(e.i) < 0; })) return;
+    var c = assise(rectSol(v)).z - NAPPE;
+    if(c < pire){ pire = c; qui = k; }
+  });
+  var R = RULES.dist.couverture;
+  if(qui < 0) return { niv:2, q:0, txt:"aucun sous-sol", v:-1, c:Infinity };
+  return { niv: pire >= R - .005 ? 2 : 0, q: lin(Math.max(0, R - pire), 0, R / 2), v:qui, c:pire,
+           txt: dec(pire) + " m de terrain au-dessus de la nappe sous "
+             + nomV(vols[qui], qui).toLowerCase() + ", pour " + dec(R) + " m souhaités" };
+}
+
 /* Combien d'ensembles l'école fait-elle : corps accolés et passerelles relient. */
 export function ensembles(E, ponts){
   var P = {};

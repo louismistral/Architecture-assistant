@@ -69,9 +69,9 @@ qu'elle pense de la composition à l'écran :
 
 | rang | effet | règles |
 |---|---|---|
-| **contraintes dures** | une seule enfreinte : la variante est jetée (`dures()`) | périmètre et recul PACom de 5 m à tous les étages, passerelles comprises · 6 m au moins entre bâtiments à tous les étages (on peut en demander plus, on ne vise pas 6) · rien sur l'existant · largeur ≥ 11 m · profondeur entre `profMin` (réglable, 11 m) et 28 m · classes en façade : un corps qui porte des classes n'a pas plus de deux salles de profondeur (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · 3,00 m de terrain au-dessus de la nappe sous tout sous-sol · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
+| **contraintes dures** | une seule enfreinte : la variante est jetée (`dures()`) | périmètre et recul PACom de 5 m à tous les étages, passerelles comprises · 6 m au moins entre bâtiments à tous les étages (on peut en demander plus, on ne vise pas 6) · rien sur l'existant · largeur ≥ 11 m · profondeur entre `profMin` (réglable, 11 m) et 28 m · classes en façade : un corps qui porte des classes n'a pas plus de deux salles de profondeur (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
 | **priorités fortes** | on écarte toute variante qu'une autre BAT : au moins aussi bonne partout, meilleure quelque part | orientation solaire, vue vers le terrain de football (nord-ouest, lue dans le relevé), lumière entre bâtiments (1,1 × h, indication), compacité, cour généreuse |
-| **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, porte-à-faux, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement |
+| **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, porte-à-faux, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement, nappe (3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol) |
 
 Chaque critère rend favorable, neutre ou défavorable — les seuils sont dans `doctrine.js`.
 
@@ -84,7 +84,7 @@ volet Contraintes comme dans la fiche d'une variante. Le générateur ne lit pas
 de la cour, passerelles) sont rangés à part, sous « Paramètres du générateur ».
 
 Ont disparu, de l'interface ET de l'algorithme : les poids (`*Poids`), le coût du sous-sol
-hors règle (la nappe est une contrainte dure), l'éparpillement (doublon des 6 m), le maximum
+hors règle (la nappe est désormais une préférence qualitative), l'éparpillement (doublon des 6 m), le maximum
 de cour, l'adresse du corps principal et sa « bande de 30 m » (une largeur de bande autour
 d'une voie, qui ne servait qu'à ce bonus), la « marge sans pénalité » du terrassement
 (1,6 m de dénivelé en deçà duquel le malus valait zéro), la force et le poids d'alignement,
