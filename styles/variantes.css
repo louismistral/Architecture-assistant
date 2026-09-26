@@ -189,6 +189,9 @@
 .vm-note{display:flex;align-items:flex-start;gap:var(--s-4);margin-block-end:var(--s-3)}
 .vm-note__n{font-size:var(--t-num-lg);font-weight:500;line-height:1;letter-spacing:-.02em;color:var(--ink-2)}
 .vm-note__n.is-haut{color:var(--ok)}
+.vm-note__n.is-bas{color:var(--danger)}
+.vm-note__g{display:flex;flex-direction:column;gap:var(--s-1);flex:none}
+.vm-noteb{padding:var(--s-4);background:var(--panel);border-radius:var(--r-sm);margin-block-end:var(--s-5)}
 .vm-note p{margin:0;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
 
 .vm-c{display:flex;align-items:center;gap:var(--s-3);margin-block-start:var(--s-1)}

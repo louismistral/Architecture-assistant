@@ -20,6 +20,7 @@
    mettre dans le même panneau aurait mêlé « où je travaille » et « ce que
    j'ai fait ».
    ========================================================================= */
+import { noteVue } from "./note.js";
 import { el, fmt } from "../core/format.js";
 import { perime } from "../core/empreinte.js";
 import { SITE } from "../data/site.js";
@@ -495,37 +496,6 @@ function ligne(k, v, cls){
   d.appendChild(el("b", "mono", v));
   return d;
 }
-/* Un critère : son état — favorable, neutre, défavorable —, jamais un nombre.
-   Les variantes enregistrées avant l'abandon des points portent encore `pts`,
-   et se lisent comme avant. */
-var NIV = [["warn", "défavorable"], ["soft", "neutre"], ["ok", "favorable"]];
-function critere(c, max){
-  if(c.niv != null){
-    var q = el("div", "vm-c");
-    q.appendChild(el("span", "vm-c__n", c.n));
-    q.appendChild(el("span", "vm-c__t", c.txt || ""));
-    var t0 = NIV[c.niv] || NIV[1];
-    q.appendChild(el("i", "chip chip--" + t0[0], t0[1]));
-    return q;
-  }
-  var d = el("div", "vm-c");
-  d.appendChild(el("span", "vm-c__n", c.n));
-  var t = el("span", "vm-c__t");
-  var bar = el("span", "vm-c__b");
-  var p = Math.min(1, Math.abs(c.pts) / (max || 1));
-  bar.style.width = (p * 50) + "%";
-  if(c.pts >= 0){ bar.style.left = "50%"; bar.classList.add("is-haut"); }
-  else { bar.style.left = (50 - p * 50) + "%"; bar.classList.add("is-bas"); }
-  t.appendChild(el("span", "vm-c__z"));
-  t.appendChild(bar);
-  d.appendChild(t);
-  var v = el("b", "vm-c__v mono", (c.pts > 0 ? "+" : c.pts < 0 ? "−" : "") + Math.abs(Math.round(c.pts)));
-  if(c.pts > 0) v.classList.add("is-haut");
-  if(c.pts < 0) v.classList.add("is-bas");
-  d.appendChild(v);
-  return d;
-}
-
 export function ouvrirModal(v){
   var box = boite();
   var nom = el("input", "vm__nom");
@@ -552,28 +522,9 @@ export function ouvrirModal(v){
   var body = el("div", "vm__body");
 
   var s1 = el("section", "vm-sec");
-  var tete = el("div", "vm-note");
-  var gros = el("b", "vm-note__n mono", v.score == null ? "—" : (v.score > 0 ? "+" : "") + v.score);
-  if(v.score != null) gros.classList.add(v.score >= 0 ? "is-haut" : "is-bas");
-  tete.appendChild(gros);
-  tete.appendChild(el("p", null, v.score == null
-    ? "Chaque priorité et chaque préférence de la composition — favorable, neutre ou défavorable."
-    : "La somme des critères de la composition, avant l'abandon des points."));
-  s1.appendChild(tete);
-  var crit = (v.criteria || []).slice();
-  if(crit.length && crit[0].niv != null){
-    crit.forEach(function(c){ s1.appendChild(critere(c)); });
-    crit = [];
-  }
-  var max = crit.reduce(function(m, c){ return Math.max(m, Math.abs(c.pts)); }, 1);
-  var nuls = crit.filter(function(c){ return Math.round(c.pts) === 0; });
-  crit.filter(function(c){ return Math.round(c.pts) !== 0; })
-      .sort(function(a, b){ return b.pts - a.pts; })
-      .forEach(function(c){ s1.appendChild(critere(c, max)); });
-  if(nuls.length){
-    s1.appendChild(el("p", "vm-nuls", nuls.length + " critères sans effet — " +
-      nuls.map(function(c){ return c.n.toLowerCase(); }).join(", ") + "."));
-  }
+  var crit = (v.criteria || []).filter(function(c){ return c.pts != null; });
+  s1.appendChild(noteVue(v.score, crit, crit.length ? null
+    : "Variante enregistrée sans note."));
   body.appendChild(s1);
 
   var s2 = el("section", "vm-sec");

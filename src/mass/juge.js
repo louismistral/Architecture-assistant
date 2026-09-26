@@ -23,7 +23,7 @@
 import { dec, fmt } from "../core/format.js";
 import { ITEMBYKEY, ITEMS } from "../core/model.js";
 import { NAPPE, PER } from "../data/site.js";
-import { DOC } from "../data/doctrine.js";
+import { DOC, RANGS_MASS, reglesDe } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
@@ -248,6 +248,14 @@ export function valide(vols){
    Chaque critère rend `{ id, n, niv, txt }` — niv 2 favorable, 1 neutre,
    0 défavorable. Jamais un nombre à additionner. */
 function palier(x, bon, max){ return x <= bon ? 2 : x <= max ? 1 : 0; }
+/* La qualité q ∈ [−1, 1] d'une mesure « plus petit vaut mieux », calée sur les
+   mêmes seuils que le palier : +1 jusqu'au seuil favorable, 0 au seuil
+   défavorable, −1 aussi loin au-delà. C'est elle que la note affiche. */
+function lin(x, bon, max){
+  var q = 1 - (x - bon) / Math.max(1e-6, max - bon);
+  return Math.max(-1, Math.min(1, q));
+}
+function borne(q){ return Math.max(-1, Math.min(1, q)); }
 /* L'angle d'une ligne de façade longue : la normale au grand côté. */
 function normale(v){
   var r = rectSol(v);
@@ -283,8 +291,9 @@ export function qualites(vols){
       if(th <= DOC.orientBon) bon += w;
       if(th > DOC.orientMax) mal += w;
     });
-    if(!tot) return { niv:1, moy:0 };
-    return { niv: bon / tot >= 2 / 3 ? 2 : mal / tot > 1 / 3 ? 0 : 1, moy: moy / tot };
+    if(!tot) return { niv:1, moy:0, q:0 };
+    return { niv: bon / tot >= 2 / 3 ? 2 : mal / tot > 1 / 3 ? 0 : 1, moy: moy / tot,
+             q: (bon - mal) / tot };
   }
   var so = oriente(function(v){ return ecartAngle(normale(v), Math.PI / 2); });
   var vu = oriente(function(v, r){
@@ -318,17 +327,20 @@ export function qualites(vols){
   var cu = courUtile(vols);
 
   var fortes = [
-    { id:"soleil", n:"Orientation solaire", niv:so.niv,
+    { id:"soleil", n:"Orientation solaire", niv:so.niv, q:so.q,
       txt:"façades longues à " + Math.round(so.moy) + "° du sud en moyenne" },
-    { id:"vue", n:"Vue vers le nord-ouest", niv:vu.niv,
+    { id:"vue", n:"Vue vers le nord-ouest", niv:vu.niv, q:vu.q,
       txt:"façades longues à " + Math.round(vu.moy) + "° du terrain de football" },
     { id:"jour", n:"Lumière entre bâtiments", niv:jour,
+      q: paires ? lin(Math.max(0, pire), 0, .25) : 1,
       txt: !paires ? "aucune façade en vis-à-vis"
         : pire <= 0 ? "tous les vis-à-vis tiennent " + dec(DOC.ombreK) + " × la hauteur"
         : "le pire vis-à-vis manque " + Math.round(pire * 100) + " % de l'écart utile" },
     { id:"compa", n:"Compacité", niv:palier(cp, DOC.compaBon, DOC.compaMax),
+      q:lin(cp, DOC.compaBon, DOC.compaMax),
       txt: dec(Math.round(cp * 100) / 100) + " m² de façade par m² de plancher" },
     { id:"courq", n:"Cour généreuse", niv: cu.a >= DOC.courBon ? 2 : 1,
+      q: borne((cu.a - DOC.courMin) / Math.max(1, DOC.courBon - DOC.courMin)),
       txt: fmt(Math.round(cu.a)) + " m² utiles" + (cu.v >= 0 ? " devant "
         + nomV(vols[cu.v], cu.v).toLowerCase() : "") }
   ];
@@ -353,18 +365,22 @@ export function qualites(vols){
   var grp = ensembles(E.filter(function(v){ return !v.fix; }), vols.ponts || []);
   var prefs = [
     { id:"align", n:"Alignement", niv: E.length && rang / E.length >= .5 ? 2 : 1,
+      q: E.length ? rang / E.length : 0,
       txt: rang + " corps sur " + E.length + " rangés sur le site ou un voisin" },
-    { id:"aplomb", n:"Porte-à-faux", niv:palier(pf, .3, DOC.pafMax),
+    { id:"aplomb", n:"Porte-à-faux", niv:palier(pf, .3, DOC.pafMax), q:lin(pf, .3, DOC.pafMax),
       txt: pf > .3 ? "débord maximum " + dec(pf) + " m" : "tout d'aplomb" },
     { id:"pente", n:"Terrassement", niv:palier(pt, DOC.penteMax / 2, DOC.penteMax),
+      q:lin(pt, DOC.penteMax / 2, DOC.penteMax),
       txt:"jusqu'à " + dec(pt) + " m de dénivelé sous une emprise" },
     { id:"elan", n:"Élancement", niv: el <= DOC.elanceMax ? 2 : 0,
+      q: el <= DOC.elanceMax ? 1 : -borne((el - DOC.elanceMax) / DOC.elanceMax),
       txt:"jusqu'à " + dec(Math.round(el * 10) / 10) + " fois plus long que large" },
-    { id:"connex", n:"Connexions", niv: grp <= 1 ? 2 : 1,
+    { id:"connex", n:"Connexions", niv: grp <= 1 ? 2 : 1, q: grp <= 1 ? 1 : 0,
       txt: grp <= 1 ? "l'école tient d'un seul tenant"
         : grp + " ensembles séparés" + ((vols.ponts || []).length
           ? ", " + vols.ponts.length + " passerelle" + (vols.ponts.length > 1 ? "s" : "") : "") },
     { id:"terrain", n:"Accès et stationnement", niv: tl.libre >= tl.besoin ? 2 : 0,
+      q: borne((tl.libre - tl.besoin) / tl.besoin),
       txt: fmt(Math.round(tl.libre)) + " m² libres pour " + fmt(tl.besoin) + " m² de cour et de "
         + RULES.ext.voitures + " places" }
   ];
@@ -425,8 +441,40 @@ export function choisir(cands, r){
 export function jugement(vols){
   if(!vols || !vols.length) return null;
   oublier();
-  var q = qualites(vols);
-  return { dures: dures(vols, false), fortes: q.fortes, prefs: q.prefs };
+  var q = qualites(vols), d = dures(vols, false);
+  var n = noter(d, q);
+  return { dures:d, fortes:q.fortes, prefs:q.prefs, total:n.total, crit:n.crit };
+}
+
+/* ---------- la NOTE : une lecture, pas un choix -----------------------------
+   Chaque critère porte un score : sa qualité q (−1 à +1) fois le poids de son
+   rang (`RANGS_MASS`). Une contrainte dure respectée vaut 0 ; chaque écart en
+   coûte le poids. La somme se lit — elle dit d'un coup d'œil ce que la
+   composition gagne et ce qu'elle paie —, mais le générateur ne la lit pas :
+   il choisit par la hiérarchie, et c'est voulu. */
+function poidsDe(id){
+  for(var i = 0; i < RANGS_MASS.length; i++) if(RANGS_MASS[i].id === id) return RANGS_MASS[i].poids || 0;
+  return 0;
+}
+function majuscule(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
+export function noter(d, q){
+  var crit = [];
+  reglesDe("mass").forEach(function(r){
+    if(r.rang !== "dure") return;
+    var n = d.filter(function(x){ return x.k === r.id && !x.pile; }).length;
+    crit.push({ id:r.id, n:majuscule(r.titre.replace(/^— /, "")), rang:"dure", niv: n ? 0 : 2,
+                txt: n ? d.filter(function(x){ return x.k === r.id; })[0].msg : "respectée",
+                pts: n ? -n * poidsDe("dure") : 0 });
+  });
+  [["forte", q.fortes], ["pref", q.prefs]].forEach(function(g){
+    g[1].forEach(function(c){
+      crit.push({ id:c.id, n:c.n, rang:g[0], niv:c.niv, txt:c.txt,
+                  pts: Math.round(c.q * poidsDe(g[0])) });
+    });
+  });
+  var tot = 0;
+  crit.forEach(function(c){ tot += c.pts; });
+  return { total:tot, crit:crit };
 }
 export function jugementCourant(){
   if(!MASS.vol.length) return null;

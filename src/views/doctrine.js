@@ -21,6 +21,7 @@
    Un bouton rejoue le tirage sans quitter le volet.
    ========================================================================= */
 import { dec, el, fmt } from "../core/format.js";
+import { noteVue } from "./note.js";
 import {
   DOC, docDefaut, docModifie, docReset, docSet, rangsDe, reglesDe,
   scriptsDe, tiragesDe
@@ -233,31 +234,13 @@ export function doctrineSection(dom, rejouer, extra, etat){
    préférence, favorable, neutre ou défavorable. Le détail est sur chaque ligne
    plus bas ; ici, d'un coup d'œil. */
 export function jugementBloc(j){
-  var s = el("section", "doc-note");
   if(!j){
+    var s = el("section", "doc-note");
     s.appendChild(el("p", "cons__note", "Aucune composition posée. « Shuffle massing » "
       + "en propose une."));
     return s;
   }
-  s.appendChild(el("h4", "label", "La composition à l'écran"));
-  var n = j.dures.filter(function(x){ return !x.pile; }).length;
-  s.appendChild(el("p", "doc-note__i", n
-    ? n + " contrainte" + (n > 1 ? "s dures enfreintes" : " dure enfreinte")
-      + " : aucune variante valide n'a été trouvée, celle-ci est la moins fautive."
-    : "Toutes les contraintes dures sont respectées."));
-  [["Priorités fortes", j.fortes], ["Préférences", j.prefs]].forEach(function(g){
-    var ul = el("ul", "doc-jug");
-    ul.appendChild(el("li", "doc-jug__h", g[0]));
-    g[1].forEach(function(c){
-      var li = el("li");
-      li.appendChild(etatChip({ rang:"forte" }, c));
-      li.appendChild(el("b", null, c.n));
-      li.appendChild(el("span", null, " — " + c.txt));
-      ul.appendChild(li);
-    });
-    s.appendChild(ul);
-  });
-  return s;
+  return noteVue(j.total, j.crit);
 }
 /* Ce que le jugement dit d'une ligne de la table : l'id de la ligne est celui
    du critère. Une ligne sans critère (un sous-seuil, un paramètre) n'a rien à

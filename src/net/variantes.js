@@ -57,12 +57,14 @@ export function vignetteCourante(){
    pour ne pas avoir à le recalculer à chaque affichage de la liste. */
 export function resumeCourant(){
   var b = bilanTotal(), note = null, crit = null;
-  /* Plus de note : la variante garde son JUGEMENT — chaque priorité et chaque
-     préférence, favorable (2), neutre (1) ou défavorable (0). */
+  /* La NOTE de la composition et son détail, critère par critère
+     (`mass/juge.js — noter()`) : une lecture, que le générateur ne suit pas. */
   try{
     var d = jugementCourant();
-    if(d) crit = d.fortes.concat(d.prefs).map(function(c){
-      return { id:c.id, n:c.n, niv:c.niv, txt:c.txt }; });
+    if(d){
+      note = d.total;
+      crit = d.crit.map(function(c){ return { id:c.id, n:c.n, pts:c.pts, niv:c.niv }; });
+    }
   }catch(_){}
   var vm = {}, vx = {};
   try{ vm = massVerdict(massCheck()) || {}; }catch(_){}
