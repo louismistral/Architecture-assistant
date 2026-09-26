@@ -6,7 +6,8 @@ Poser le programme sur le terrain.
 src/data/site.js      le relevé, engendré du fichier Rhino    ← source unique
 src/mass/geom.js      terrain interpolé, rectangles tournés, distances, alignements
 src/mass/model.js     l'état, les niveaux RELUS du mixer, le bilan de surface
-src/mass/gen.js       le générateur : parti → figure → réparation → note
+src/mass/gen.js       le générateur : générer → valider → comparer → choisir
+src/mass/juge.js      le jugement : contraintes dures, priorités fortes, préférences
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
@@ -60,175 +61,73 @@ voudrait dire.
 Deux graines distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
 `MASS.graine`. Les confondre ferait qu'on ne peut plus changer l'une sans perdre l'autre.
 
-## La note : un critère porte un nom, ou il n'existe pas
+## Trois rangs, et aucun point
 
-`noterDetail()` rend le DÉTAIL — un critère, son nom, ce qu'il a coûté ou rapporté —, et
-`noter()` n'en est que la somme. Le volet « Contraintes » l'affiche pour la composition à
-l'écran : c'est la réponse à « pourquoi obtient-on ce résultat ».
+Le générateur ne somme plus rien — ni à l'écran, ni en coulisse. `juge.js` juge une variante
+en trois temps, et le volet « Contraintes » les affiche tels quels, chaque ligne disant ce
+qu'elle pense de la composition à l'écran :
 
-Quatre critères manquaient, et ils manquaient beaucoup :
+| rang | effet | règles |
+|---|---|---|
+| **contraintes dures** | une seule enfreinte : la variante est jetée (`dures()`) | périmètre et recul PACom de 5 m à tous les étages, passerelles comprises · 6 m au moins entre bâtiments à tous les étages (on peut en demander plus, on ne vise pas 6) · rien sur l'existant · largeur ≥ 11 m · profondeur entre `profMin` (réglable, 11 m) et 28 m · classes en façade : un corps qui porte des classes n'a pas plus de deux salles de profondeur (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · 3,00 m de terrain au-dessus de la nappe sous tout sous-sol · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
+| **priorités fortes** | on écarte toute variante qu'une autre BAT : au moins aussi bonne partout, meilleure quelque part | orientation solaire, vue vers le terrain de football (nord-ouest, lue dans le relevé), lumière entre bâtiments (1,1 × h, indication), compacité, cour généreuse |
+| **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, porte-à-faux, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement |
 
-- **le jour entre les corps.** Les 6 m de l'AEAI sont une distance d'INCENDIE : deux barres de
-  quatre niveaux à six mètres l'une de l'autre sont conformes et inhabitables. L'écart utile
-  se mesure à la HAUTEUR du plus haut (`DOC.ombreK`, 1,10). Il ne vaut qu'entre façades qui SE
-  FONT FACE — `visAVis()` mesure la longueur en regard, faute de quoi deux corps en quinconce,
-  à six mètres par leurs angles, déclenchaient une alerte que rien ne pouvait corriger. Et
-  `reparer()` VISE cet écart, pas seulement celui de l'AEAI : sans cela la réparation ramenait
-  tout à 6,35 m puis la note pénalisait ces mêmes 6,35 m — les deux se battaient, et la
-  réparation gagnait toujours, parce que c'est elle qui fixe les positions ;
-- **le programme.** La note ne connaissait que des rectangles : une salle de classe pouvait
-  atterrir au nord, au cœur d'un bloc de 46 m de profondeur, sans qu'un point soit compté. Les
-  critères « profondeur » et « sud » lisent la PART DE CLASSES de chaque corps (`postesDe()`,
-  donc le mixer) — un corps de technique a le droit d'être épais ;
-- **la cour.** 500 m² de cour et 120 m² de préau : un vide QUALIFIÉ, tenu par les bâtiments.
-  Rien ne le composait — c'était une ligne de bilan, hors enveloppe. Le critère mesure le vide
-  que la figure ENFERME, l'aire de son enveloppe convexe moins les emprises (`enveloppe()`
-  dans `geom.js`) ;
-- **l'adresse.** Le plus GRAND corps doit se tenir dans une bande d'approche d'une voie. « Au
-  moins un corps près d'une rue » était vrai de toute composition, le site étant bordé de rues
-  sur trois côtés ; et le calque des routes du relevé est filtré aux polylignes de plus de
-  soixante mètres — sans quoi un bord de place comptait pour une rue.
+Chaque critère rend favorable, neutre ou défavorable — les seuils sont dans `doctrine.js`,
+jamais des poids. Les paramètres de recherche (essais, reconnaissance, profondeur de mesure
+de la cour, passerelles) sont rangés à part, sous « Paramètres du générateur ».
 
-Deux critères ont été corrigés : l'**orientation** pesait 10 contre 26 pour l'alignement, si
-bien que l'outil rangeait les bâtiments sur des lignes plutôt que de les tourner au soleil —
-elle pèse 34 et se pondère par la longueur de façade, le nombre d'étages et la part de
-classes ; la **compacité** sommait les emprises, quantité quasi constante d'une composition à
-l'autre qui ne départageait rien — elle se mesure en façade développée par mètre carré bâti,
-ce que le règlement nomme (art. 2.9, Minergie).
+Ont disparu, de l'interface ET de l'algorithme : les poids (`*Poids`), le coût du sous-sol
+hors règle (la nappe est une contrainte dure), l'éparpillement (doublon des 6 m), le maximum
+de cour, l'adresse du corps principal et sa « bande de 30 m » (une largeur de bande autour
+d'une voie, qui ne servait qu'à ce bonus), la « marge sans pénalité » du terrassement
+(1,6 m de dénivelé en deçà duquel le malus valait zéro), la force et le poids d'alignement,
+la profondeur de départ de 18,5 m.
 
-## La salle de sport s'implante EN PREMIER
+## Générer, valider, comparer, choisir
 
-C'est l'objet le plus contraignant du programme : 896 m² qui ne montent pas, deux cotes
-données, sept mètres libres sous structure. Elle était posée EN DERNIER et au hasard, puis
-réparée — donc elle SUBISSAIT la composition au lieu de la fonder. `ancrer()` lui cherche la
-place la plus BASSE du terrain qui soit admissible, et `reparer()` la fait céder trois fois
-moins que les autres : ce sont les autres corps qui lui font de la place.
+`genMass()` compose une figure par essai — parti, profondeur tirée entre les bornes,
+orientation (axe du périmètre, optimum soleil-vue, ou libre ; dans les partis libres chaque
+corps choisit la sienne), ailes accolées en un seul bâtiment dans une partie des variantes,
+salle de sport posée sur le bas du site puis parfois accolée au corps principal, passerelles
+dans une partie des variantes. La figure est RÉPARÉE (`reparer()`, puis `repecher()` si un
+corps sort), le sous-sol va sous le corps le plus haut, et `dures()` tranche.
 
-Les sous-sols ne vont PAS sous elle — sept mètres de hauteur libre plus trois mètres de
-couverture font une fouille qu'aucun projet ne creuse sous une dalle de 28 × 32 m — et ils se
-replacent APRÈS le repêchage, qui déplace les corps : sans cela une composition repêchée
-annonçait un manque de couverture que le générateur n'avait plus moyen de voir.
+En « Auto », chaque parti a `essaisParti` essais de reconnaissance ; ceux qui rendent une
+variante valide reçoivent les `essais` suivants. **La diversité d'abord** : `choisir()` tire
+le parti parmi tous ceux qui ont rendu une variante valide, puis applique les priorités AU SEIN
+de ce parti. Sans cela le parti le mieux orienté — des barres parallèles — gagnait presque
+chaque tirage.
 
-**Les sous-sols vont sous le corps le plus HAUT du site**, pas le plus grand : la nappe est à
-462,25 m et le règlement veut 3,00 m de couverture, qu'on ne trouve qu'au tiers est.
+Quand aucune variante ne tient, la moins fautive est rendue marquée `impossible` et le
+contrôle liste ses écarts. Avec ce programme, `Bloc compact` et `Barre` le sont souvent : un
+seul corps de 18,5 m de profondeur au plus demanderait 130 m de long au rez.
 
-## Ce n'est pas un tirage
+`admissible()` reste le seul juge de l'implantation, et le glisser à la souris y passe : il
+refuse une position qui ne tient pas et longe la limite au lieu de s'y arrêter. Le
+porte-à-faux est permis — la 3D en marque l'arête, le contrôle l'avertit au-delà de `pafMax` ;
+`monter()` partage chaque niveau du bas vers le haut avec un plafond, ce qui évite les débords
+d'artefact, et plus rien ne se pose sur la salle de sport.
 
-Un tirage pur pose des boîtes au hasard et laisse l'architecte trier. `genMass()` compose,
-mesure et jette : il lit le programme niveau par niveau, lit le site, compose une figure selon
-le parti, la RÉPARE — tant qu'un corps sort du périmètre, touche un voisin ou percute
-l'existant, on le ramène —, la NOTE, et recommence trente fois. Les alignements sont des
-PRÉFÉRENCES notées, jamais des règles : axe du périmètre, perpendiculaire, longues limites de
-parcelle, routes, nord-sud. Un corps peut prendre n'importe quel angle ; il gagne seulement à
-se ranger.
+`checks.js` ne rejuge rien : ses erreurs sont les écarts de `dures()`, avec leurs remèdes ; le
+reste (jour, porte-à-faux important, terrassement, élancement, second temps, bilan) s'avertit.
 
-Douze partis, chacun composant vraiment différemment : auto, bloc compact, barre, barres
-parallèles, L, U, cour, pavillons, hameau, terrasses, peigne, composition libre. « Auto » les
-essaie tous et garde celui qui tient le mieux sur ce site avec ce programme.
+## Murs, dalles, module
 
-**La salle de sport double fait un corps à elle** : le règlement lui donne ses deux cotes,
-28 × 32 m, et 7,00 m libres ; sa surface sort du partage avant qu'il commence, sinon le prorata
-l'aurait coupée en deux. Les postes `hors` — piscine, chauffage à distance, cour — ne sont pas
-des volumes : le règlement les veut indépendants et au second temps.
+`e.w × e.d` est la surface UTILE ; le mur extérieur de 50 cm (`RULES.haut.mur`) s'ajoute
+autour. `volRect()` rend l'emprise murs compris — c'est elle que mesurent le périmètre, les
+distances et la cour —, `volInt()` l'intérieur où l'on pave le programme, `mursDe()` le poché
+du plan et de la 3D. La dalle de 40 cm (`RULES.haut.dalle`) s'ajoute à la hauteur libre. Toutes
+les cotes de corps passent par `auModule()` (0,50 m).
 
-**On reconnaît avant de chercher.** En « Auto », les onze partis se relayaient à tour de rôle
-sur trente essais — deux ou trois tirages chacun, donc un bon parti éliminé par malchance et un
-mauvais retenu par chance. Chacun reçoit maintenant `DOC.essaisParti` essais de reconnaissance ;
-les `DOC.finalistes` meilleurs sont retenus, et les `DOC.essais` essais suivants se concentrent
-sur eux.
+## Passerelles et corps accolés
 
-## L'implantation est une RÈGLE ; le reste s'avertit
-
-Un bâtiment ne sort pas du périmètre du concours. `admissible()` dans `gen.js` en est le seul
-juge, et les deux chemins y passent : le générateur ne rend que des compositions qui tiennent,
-et le glisser à la souris refuse la position qui n'en est pas une — il essaie alors chaque axe
-séparément, si bien que le corps LONGE la limite au lieu de s'y arrêter net. Trois conditions,
-et elles tiennent ensemble : tous les étages dedans avec le recul de 5 m — tous, car un
-porte-à-faux qui franchit la limite est du bâti hors parcelle —, 6 m entre bâtiments (AEAI),
-rien sur l'existant ni à moins de 6 m de lui.
-
-Quand une figure ne tient pas, elle est REPRISE, pas avertie. On ne peut pas raccourcir la
-surface, elle est au règlement : le générateur rejoue sa recherche avec des corps de plus en
-plus profonds — 18, 24, 32, 43, 46 m —, et REPÊCHE les corps restés dehors en balayant la
-parcelle pour la position admissible la plus proche, quart de tour compris. Quand rien ne tient
-malgré les douze partis, de un à sept corps et jusqu'à 46 m, ce n'est plus une implantation à
-corriger : le niveau demande plus d'emprise que la parcelle n'en offre, la composition est
-marquée `impossible`, et le contrôle dit d'aller ajouter un étage AU MIXER. Un seuil de surface
-ne l'aurait pas dit : la parcelle a la forme d'un L, et l'aire disponible (10'528 m², recul
-déduit) n'est pas l'aire posable en rectangles séparés de six mètres.
-
-Tout le reste s'avertit et ne se refuse pas, en trois niveaux : **erreur** pour une règle écrite
-(règlement, AEAI) ou une géométrie impossible ; **à vérifier** pour une règle de projet ou une
-marge qui se discute ; **info** pour ce qu'il faut savoir sans corriger. Le bilan de surface est
-donné niveau par niveau — demandé, posé, écart —, parce que c'est la question à laquelle l'outil
-doit répondre à tout moment.
-
-## Le porte-à-faux est permis, mais il n'est pas la règle
-
-Un étage peut déborder de celui du dessous. Il ne franchit aucune règle écrite et n'attend
-aucune correction : le contrôle le classe donc en **info** et le chiffre au centimètre. La 3D
-lui laisse l'ARÊTE D'AVERTISSEMENT — c'est la seule chose qui le fasse trouver d'un coup d'œil,
-et un débord qu'on ne lit que dans une liste n'est pas un débord qu'on corrige. Le volume choisi
-porte un champ « porte-à-faux du dernier étage » pour en faire un à la main. Il ne fait pas
-sortir de la parcelle : le débord est permis, le hors-parcelle non.
-
-Le générateur PRÉFÈRE L'APLOMB : `noter()` fait payer chaque mètre de débord, si bien qu'entre
-deux compositions qui logent le même programme, celle qui tient d'aplomb gagne. Auparavant les
-douze partis en portaient tous, sur tous les tirages — de quatre à dix-huit mètres —, et une
-alerte qu'on voit partout ne se lit plus nulle part.
-
-Deux causes, et deux réponses différentes :
-
-- **L'artefact.** Les parts se partageaient niveau par niveau, indépendamment : un corps portant
-  un sixième du rez et un tiers du premier devenait plus large en montant, et l'on lisait jusqu'à
-  soixante-dix mètres de débord que personne n'avait demandés. Trois choses l'en empêchent — un
-  corps garde sa PROFONDEUR du rez au faîte, donc une aire plus petite donne une largeur plus
-  petite ; le partage monte du bas avec un PLAFOND, l'aire du niveau du dessous ; et les corps
-  sont PROMUS d'office quand un étage demande plus que ses porteurs ne pèsent en bas.
-- **Le débord STRUCTUREL.** La salle de sport prend 896 m² du rez sans monter : les autres corps
-  ont donc moins d'emprise au sol qu'à l'étage, et à profondeur constante ils y sont plus larges.
-  Aucun partage entre corps n'y change rien — c'est une soustraction. Il n'y a qu'une façon
-  honnête de le supprimer : **poser l'étage manquant sur la salle elle-même**. Elle garde ses
-  cotes du règlement, l'étage tient dans ses 28 × 32 m et ne déborde de rien, et le programme y
-  trouve l'emprise qui lui manquait. `monter()` compose les deux — avec et sans —, la note
-  tranche, et le contrôle dit en info pourquoi cet étage est là et que la portée de 28 m est à
-  vérifier en structure. C'est aussi pourquoi la CLÉ d'un poste imposé est portée par l'ÉTAGE et
-  non par le volume (`filtreDe`) : l'étage du dessus loge du programme ordinaire.
-
-Reste le porte-à-faux voulu : celui qu'on fait à la main, et celui que le programme impose quand
-la salle de sport ne peut pas absorber le surplus. Ceux-là sont vrais, ils s'affichent, et ils se
-discutent.
-
-## La profondeur se CHOISIT ; son plafond est donné
-
-Elle a été un champ à saisir, 18 m par défaut — un chiffre de projet sans source, qu'on pouvait
-mettre à 9 ou à 46 sans que rien ne le contredise —, puis une valeur figée, qui ne laissait plus
-rien essayer alors que la profondeur est le premier choix d'un projet d'école. C'est aujourd'hui
-**un curseur borné**, et les deux bornes viennent d'ailleurs que de nous (`mass/model.js`) :
-
-- le **PACom de Saxon** range le site en zone de constructions et d'installations publiques A —
-  aucune contrainte de gabarit, de hauteur ni de distance aux limites (art. 2.3). Il n'impose donc
-  AUCUNE profondeur, et il faut le dire plutôt qu'inventer ;
-- le **programme** donne le PLAFOND : `profMax()`, la petite cote du local le plus profond à loger
-  — la salle de sport double, 28 m. **Aucun volume ne le franchit**, ni le générateur ni la main :
-  l'épaississement de la recherche s'y arrête, quitte à rendre la composition impossible et à
-  renvoyer au mixer, et la poignée de redimensionnement y est bornée. Au-delà, on bâtirait de la
-  profondeur que personne n'a demandée, et sans jour ;
-- le **programme** donne aussi le point de départ : `profUsuel()`, deux rangées de salles de classe
-  prises à leur surface BÂTIE — le couloir est dans la part de circulation, il ne s'ajoute pas
-  par-dessus —, arrondi au demi-mètre comme toutes les cotes du projet, soit 18,5 m. Le plancher du
-  curseur est la largeur d'une classe et de son couloir.
-
-Quatre curseurs ont disparu en chemin — force d'alignement, compacité, régularité, intensité des
-terrasses. Ils réglaient ce que le PARTI dit déjà (un peigne est fragmenté, un bloc compact l'est
-par définition), et personne ne savait quoi répondre à « compacité 0,35 ». Ce sont des constantes
-de composition, écrites là où elles agissent (`JEU` et `GRAD` dans `gen.js`, `DOC.alignForce` et
-`DOC.alignPoids` dans la doctrine — ce que le générateur TOURNE un corps vers son attracteur et ce
-que la note lui RAPPORTE sont deux choses, et un seul nombre faisait les deux) ; la compacité, dont
-la valeur neutre ne changeait rien, a été remplacée par une vraie mesure de façade développée. Il
-reste quatre réglages au rail : le nombre de VOLUMES — le rail dit volume, comme le reste de
-l'interface, là où le générateur dit corps —, la distance entre eux, la profondeur, et
-l'orientation générale.
+Une passerelle est une CONNEXION `{ a, b, i }` (`MASS.pont`) : sa géométrie se déduit à chaque
+lecture des deux façades qui se font face (`pontRect()`), donc un corps déplacé l'emporte avec
+lui. `relier()` n'en pose qu'entre ensembles pas encore reliés, la plus courte d'abord, dans le
+périmètre et sans traverser un corps. Deux corps accolés portent `joint` : ils font un seul
+bâtiment et peuvent se toucher sans se recouvrir — c'est ce qui intègre la salle de sport ou
+fait un L d'un seul tenant.
 
 ## Le second temps occupe du terrain, donc il se dessine
 
@@ -244,9 +143,9 @@ Ce sont des BÂTIMENTS, et `secondTemps()` les reconnaît à ce qui les distingu
 `hauteurEtage()`) : une piscine indépendante ne prend pas les 7,45 m que la salle de sport impose
 au rez de l'école.
 
-Trois façons de les prendre, et les trois se défendent — **deux volumes** séparés, lecture
-littérale du règlement et défaut ; **un seul** volume commun, la piscine et le chauffage à distance
-partageant volontiers leurs machines et leur accès camion ; **aucun**, pour ne regarder que l'école.
+Leur séparation n'est pas imposée : **au choix** (défaut) laisse le générateur les réunir ou les
+séparer ; **deux volumes**, **un seul** ou **aucun** l'imposent. Ils se posent sans entamer la
+cour minimale.
 
 Ils se posent **après** que l'école est composée, sur la composition retenue, et prennent les MARGES
 du site : `poserSecond()` balaie la parcelle du bord vers le cœur et prend la première position

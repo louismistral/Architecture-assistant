@@ -12,9 +12,11 @@ Les deux générateurs n'ont pas d'autre source de réglage : *une valeur qui n'
 > de 26 contre un bonus d'orientation de 10. On obtenait des résultats sans pouvoir dire
 > POURQUOI, donc sans pouvoir les corriger autrement qu'à tâtons.
 
-## Cinq rangs de dureté
+## Cinq rangs de dureté — trois au massing
 
-C'est la seule hiérarchie qui compte.
+C'est la seule hiérarchie qui compte. Le massing n'en garde que trois, sans poids —
+`dure`, `forte`, `pref` (`RANGS_MASS`) — plus les paramètres du générateur (`param`) ; voir
+`docs/massing.md`.
 
 | rang | ce que ça veut dire |
 |---|---|
@@ -52,7 +54,7 @@ Ils sont d'une autre nature que celui du cahier des charges : là on lit ce que 
 impose, ici on lit — et l'on RÈGLE — ce que NOUS avons arbitré pour qu'un générateur produise
 quelque chose.
 
-Le volet du massing porte en tête la **note de la composition à l'écran**, critère par critère
-(`noterDetail()` / `noteCourante()`) : c'est la réponse à « pourquoi obtient-on ce résultat »,
-et sans elle les poids se règlent à l'aveugle. Celui du mixer porte **les piles que le site
+Le volet du massing porte en tête le **jugement de la composition à l'écran**
+(`jugementCourant()` dans `mass/juge.js`) : contraintes dures respectées ou non, chaque
+priorité et préférence favorable, neutre ou défavorable — jamais un score. Celui du mixer porte **les piles que le site
 admet**.

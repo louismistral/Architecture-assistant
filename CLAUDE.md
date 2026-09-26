@@ -242,19 +242,20 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
 });"
 ```
 
-Ce que chaque critère coûte à la composition retenue :
+Ce que le juge dit de la composition retenue — contraintes dures, puis chaque priorité et
+préférence, favorable / neutre / défavorable (aucun point) :
 
 ```bash
 node --input-type=module -e "
 Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
-             import('./src/mass/model.js')]).then(([S,G,M])=>{
+             import('./src/mass/model.js'),import('./src/mass/juge.js')]).then(([S,G,M,J])=>{
   S.repartir({ alea:false, etages:true });
   M.massSet('parti','auto');
   M.massVols(G.genMass(11));
-  var d = G.noteCourante();
-  d.crit.forEach(function(c){
-    console.log(c.n.padEnd(38), (c.pts >= 0 ? '+' : '−') + Math.round(Math.abs(c.pts)));
+  var j = J.jugementCourant(), N = ['défavorable','neutre','favorable'];
+  console.log('parti', M.MASS.vol.parti, '· dures enfreintes :', j.dures.length);
+  j.fortes.concat(j.prefs).forEach(function(c){
+    console.log(c.n.padEnd(28), N[c.niv].padEnd(12), c.txt);
   });
-  console.log('TOTAL', Math.round(d.total));
 });"
 ```
