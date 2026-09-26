@@ -417,13 +417,6 @@ export var REGLES = [
     pourquoi:"Le terrain libre d'un seul tenant devant une façade d'école, dans le "
       + "périmètre, hors de tout bâtiment. Pas de maximum.",
     agit:"Jette toute variante qui ne l'offre pas." },
-  { id:"nappe", dom:"mass", rang:"dure", titre:"Nappe et sous-sol",
-    val:"3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol",
-    source:"règlement art. 2.3", lu:"src/mass/gen.js — enterrer() · juge.js",
-    pourquoi:"Même lecture qu'avant, sans l'inverser : l'altitude moyenne du terrain sous "
-      + "le corps qui porte un sous-sol doit dépasser la nappe (462,25 m) d'au moins "
-      + "3,00 m (RULES.dist.couverture). Le terrain va de 463,3 à 466,7 m : seul le tiers "
-      + "est l'offre.", agit:"Le sous-sol va sous le corps le plus haut ; sinon, la variante est jetée." },
   { id:"abri", dom:"mass", rang:"dure", titre:"Abri PC au moins partiellement enterré",
     val:"au sous-sol, ou au rez d'un corps posé sur la pente", source:"règlement — abri PC",
     lu:"src/mass/juge.js — dures()",
@@ -502,6 +495,15 @@ export var REGLES = [
     lu:"src/mass/juge.js — terrainLibre()",
     pourquoi:"Deux dépose-bus, quatre dépose-minute, 70 places : ce que les bâtiments "
       + "laissent du terrain posable doit pouvoir les accueillir, avec la cour.", agit:"" },
+  { id:"nappe", dom:"mass", rang:"pref", titre:"Nappe et sous-sol",
+    val:"3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol",
+    source:"règlement art. 2.3", lu:"src/mass/gen.js — enterrer() · juge.js — qualites()",
+    pourquoi:"Même lecture qu'avant, sans l'inverser : l'altitude moyenne du terrain sous "
+      + "le corps qui porte un sous-sol doit dépasser la nappe (462,25 m) d'au moins "
+      + "3,00 m (RULES.dist.couverture). Le terrain va de 463,3 à 466,7 m : seul le tiers "
+      + "est l'offre. Une préférence, plus une contrainte dure : une variante qui creuse "
+      + "trop bas reste valide, elle est seulement moins bonne.",
+    agit:"Le sous-sol va sous le corps le plus haut ; à égalité du reste, la couverture suffisante l'emporte." },
   { id:"second", dom:"mass", rang:"pref", titre:"Ouvrages du second temps",
     val:"piscine 500 m² et local CAD 400 m² — réunis ou séparés",
     source:"règlement art. 2.2", lu:"src/mass/gen.js — poserSecond()",
