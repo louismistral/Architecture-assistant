@@ -199,10 +199,11 @@ function rangIdx(id){
   return RANGS.length;
 }
 /* LE MASSING n'a que trois rangs. `poids` n'est qu'une ÉCHELLE D'AFFICHAGE :
-   chaque critère rend une qualité entre −1 et +1, multipliée par le poids de son
-   rang, pour la NOTE qu'on lit (`juge.js — noter()`). Le générateur ne la lit
-   pas : il choisit par la hiérarchie. Une contrainte dure respectée vaut 0, une
-   enfreinte coûte son poids. */
+   chaque critère rend une qualité entre −1 et +1 ; les poids des rangs forte et
+   pref disent leur PROPORTION dans la NOTE, ramenée SUR 100 — une composition
+   qui répond pleinement à tout vaut 100 (`juge.js — noter()`). Une contrainte
+   dure respectée vaut 0, chaque écart coûte 100. Le générateur ne lit pas la
+   note : il choisit par la hiérarchie. */
 /* Rangs : une contrainte DURE
    rend une variante invalide, une priorité FORTE écarte les variantes qu'une
    autre bat, une PRÉFÉRENCE ne départage que des variantes égales sur les
