@@ -84,104 +84,54 @@ export var DOC = {
      volontiers un niveau avec les salles de classe. */
   bruitCalme: 12,
 
-  /* === VOLUMÉTRIE — où, dans quelle direction, à quelle profondeur ======== */
+  /* === VOLUMÉTRIE — trois rangs, et AUCUN point ============================
+     Le générateur ne somme plus rien. Il jette ce qui enfreint une contrainte
+     DURE, garde parmi le reste ce qu'aucune autre variante ne bat sur les
+     priorités FORTES, et ne départage par les PRÉFÉRENCES que des variantes
+     équivalentes sur les fortes. Les valeurs ci-dessous sont des seuils, jamais
+     des poids : elles disent où finit « favorable » et où commence
+     « défavorable ». Voir `src/mass/juge.js`. */
 
-  /* L'OMBRE PORTÉE. Les 6 m de l'AEAI sont une distance d'INCENDIE : deux
-     barres de quatre niveaux à six mètres l'une de l'autre sont conformes et
-     inhabitables. L'écart utile se mesure à la hauteur du plus haut des deux
-     corps. C'est la contrainte qui manquait le plus, et celle qui change le
-     plus l'allure d'une composition. */
-  ombreK: 1.10,
-  ombrePoids: 22,
-
-  /* LA PROFONDEUR ET LE JOUR. Un corps qui loge des salles de classe ne peut
-     pas être plus profond que deux rangées de salles : au-delà, les locaux du
-     milieu n'ont pas de fenêtre. La cote vient du programme (`profUsuel()`) ;
-     ici ne vit que le poids de la pénalité, et il est proportionnel à la PART
-     DE CLASSES que le corps porte — un corps de technique a le droit d'être
-     épais. */
-  profPoids: 18,
-
-  /* L'ORIENTATION. Le règlement la nomme (art. 2.9, usage passif de l'énergie
-     solaire). Elle pesait 10 contre 26 pour l'alignement : l'outil rangeait les
-     bâtiments sur des lignes plutôt que de les tourner au soleil. Le bonus est
-     désormais pondéré par la longueur de la façade, le nombre d'étages et la
-     part de classes — une façade sud de dépôt ne vaut pas celle d'un corps de
-     classes. */
-  sudPoids: 34,
-  /* L'alignement reste une préférence : un corps peut prendre n'importe quel
-     angle, il gagne seulement à se ranger sur l'axe du périmètre, une limite,
-     une route ou le nord-sud. Deux choses distinctes, et il fallait les séparer :
-     `alignForce` est ce que le générateur TOURNE un corps vers l'attracteur le
-     plus proche au moment de le poser ; `alignPoids` est ce que la note lui
-     RAPPORTE ensuite. Un seul nombre faisait les deux, donc on ne pouvait pas
-     laisser un corps libre de son angle tout en récompensant celui qui se range. */
-  alignForce: 0.70,
-  alignPoids: 26,
-
-  /* LA COUR. Le règlement demande 500 m² de cour et 120 m² de préau couvert :
-     620 m² de vide QUALIFIÉ, tenu par les bâtiments, pas un reste de terrain.
-     Rien ne la composait — elle était une ligne de bilan. On note donc le vide
-     que la figure enferme, entre un minimum utile et un maximum au-delà duquel
-     ce n'est plus une cour mais un champ. */
+  /* Dures. `distMin` ne descend pas sous les 6 m de l'AEAI (RULES.dist.entre) :
+     on peut en demander PLUS, le générateur ne vise pas six mètres. La
+     profondeur d'un corps est sa PETITE cote ; `profMin` est le réglage de
+     l'utilisateur, `largeurMin` son plancher absolu. La cour se mesure en
+     surface utile libre devant une façade d'école (500 m² + 120 m² de préau). */
+  distMin: 6,
+  largeurMin: 11,
+  profMin: 11,
+  profMax: 28,
   courMin: 620,
-  courMax: 2600,
-  courPoids: 40,
+  module: 0.5,
 
-  /* L'ENTRÉE. Deux dépose-bus rue du Casino, quatre dépose-minute, la mobilité
-     douce depuis le chemin du Petit Mont : le règlement dit par où l'on arrive.
-     Les routes ne servaient que d'attracteurs d'ANGLE. Au moins un corps doit
-     se tenir dans une bande d'approche — ni collé à la route, ni à cent mètres
-     d'elle. */
-  entreeMin: 8,
-  entreeMax: 30,
-  entreePoids: 26,
+  /* Fortes. Une façade longue dont la normale est à moins de `orientBon` degrés
+     du sud (ou de la vue) est favorable, au-delà de `orientMax` défavorable.
+     Le jour : l'écart entre façades qui se font face vaut `ombreK` fois la
+     hauteur du plus haut. La compacité : façade développée par m² de plancher —
+     les seuils sont calés sur les variantes valides du site (le rez prend les
+     7,40 m de la salle de sport, d'où des valeurs proches de 1).
+     La cour : au-delà de `courBon`, elle est jugée généreuse. */
+  orientBon: 30,
+  orientMax: 60,
+  ombreK: 1.10,
+  compaBon: 0.95,
+  compaMax: 1.10,
+  courBon: 1500,
 
-  /* LE TERRAIN. Trois mètres quarante de dénivelé d'est en ouest : un corps
-     posé en travers de la pente demande un terrassement. En deçà de la marge,
-     on ne dit rien. */
-  penteLibre: 1.6,
-  pentePoids: 16,
-
-  /* LA NAPPE. Le règlement veut 3,00 m de couverture au-dessus de 462,25 m : on
-     ne les trouve qu'au tiers est du site. C'est une règle DURE, donc son poids
-     doit peser comme telle. À 90 points par mètre manquant, dix centimètres de
-     manque coûtaient neuf points contre cent-six pour l'alignement : le
-     générateur préférait un sous-sol hors règle à une composition moins rangée,
-     et le contrôle répétait le même conflit à chaque tirage. */
-  nappePoids: 120,
-
-  /* L'APLOMB. Le porte-à-faux est permis et il se paie en structure : entre
-     deux compositions qui logent le même programme, celle qui tient d'aplomb
-     vaut mieux. */
-  aplombPoids: 9,
-
-  /* LA COMPACITÉ. Nommée au règlement (art. 2.9, Minergie A ou P). Elle se
-     mesure en façade développée par mètre carré bâti — la vraie mesure d'un
-     projet économe —, et non par la somme des emprises, qui était quasi
-     constante d'une composition à l'autre et ne départageait rien. */
-  compaPoids: 18,
-
-  /* PROPORTIONS. Une lame de six mètres de profondeur n'est pas une école, un
-     ruban dix fois plus long que large non plus. */
+  /* Préférences. Dénivelé sous une emprise, porte-à-faux au-delà duquel on
+     avertit, élancement d'un corps — garde-fous secondaires. */
+  penteMax: 2,
+  pafMax: 3,
   elanceMax: 9,
-  largeurMin: 9,
-  elancePoids: 14,
-  etroitPoids: 18,
 
-  /* L'ÉPARPILLEMENT : des corps à soixante mètres les uns des autres ne font
-     plus un centre scolaire, ils font un lotissement. */
-  eparSeuil: 55,
-  eparPoids: 0.6,
-
-  /* LA RECHERCHE. `essais` compositions par cran de profondeur ; en « Auto »,
-     `essaisParti` tours de reconnaissance par parti avant de concentrer la
-     recherche sur les trois meilleurs. Le générateur essayait les onze partis
-     à tour de rôle sur trente essais : deux ou trois tirages par parti, donc
-     un bon parti éliminé par malchance. */
-  essais: 30,
-  essaisParti: 3,
-  finalistes: 3
+  /* Paramètres du générateur — pas des contraintes d'architecture : combien
+     d'essais, jusqu'où l'on mesure une cour devant une façade, la longueur et
+     la largeur d'une passerelle. */
+  essais: 40,
+  essaisParti: 4,
+  courFond: 30,
+  passMax: 24,
+  passLarg: 3
 };
 
 /* Les valeurs de départ, pour « Rétablir ». Un réglage qu'on ne peut pas
@@ -248,6 +198,24 @@ function rangIdx(id){
   for(var i = 0; i < RANGS.length; i++) if(RANGS[i].id === id) return i;
   return RANGS.length;
 }
+/* LE MASSING n'a que trois rangs, et aucun n'est un poids : une contrainte DURE
+   rend une variante invalide, une priorité FORTE écarte les variantes qu'une
+   autre bat, une PRÉFÉRENCE ne départage que des variantes égales sur les
+   fortes. Les paramètres de recherche sont à part : ils ne disent rien de
+   l'architecture. */
+export var RANGS_MASS = [
+  { id:"dure",  n:"Contraintes dures", court:"obligatoire",
+    d:"Toujours respectées. Une variante qui en enfreint une est invalide et n'est "
+      + "jamais proposée." },
+  { id:"forte", n:"Priorités fortes", court:"à favoriser",
+    d:"Le générateur écarte toute variante qu'une autre bat sur ces critères. Elles "
+      + "peuvent céder : aucune ne rend seule une variante invalide." },
+  { id:"pref",  n:"Préférences", court:"départage",
+    d:"Ne départagent que des variantes valides et équivalentes sur les priorités fortes." },
+  { id:"param", n:"Paramètres du générateur", court:"recherche",
+    d:"Réglages de la recherche, pas de l'architecture." }
+];
+export function rangsDe(dom){ return dom === "mass" ? RANGS_MASS : RANGS; }
 
 /* ---------- la table ---------------------------------------------------------
    Une ligne par contrainte, du plus dur au plus mou. `k` désigne la valeur dans
@@ -385,229 +353,175 @@ export var REGLES = [
       + "écrasait le mélange, et la variation ne venait que d'un tirage pondéré caché.",
     agit:"À 0, « Shuffle » rend toujours la même chose. À 1, il pose presque n'importe où." },
 
-  /* ===== VOLUMÉTRIE ====================================================== */
-  { id:"prof-max", dom:"mass", rang:"dure", titre:"Profondeur maximale d'un volume",
-    val:"28 m — la petite cote de la salle de sport double",
-    source:"règlement art. 2.10", lu:"src/mass/model.js — profMax(), profDe()",
-    pourquoi:"Le PACom range le site en zone de constructions et d'installations "
-      + "publiques A : aucun gabarit, aucune hauteur, aucune distance aux limites. Il "
-      + "n'impose donc pas de profondeur, et il faut le dire plutôt qu'inventer un "
-      + "chiffre. Le programme, lui, en impose une : au-delà du local le plus profond "
-      + "qu'on ait à loger, on bâtit de la profondeur que personne n'a demandée, et "
-      + "sans jour.",
-    agit:"Plafonne le curseur du rail et l'épaississement du générateur. Aucun volume "
-      + "ne la franchit — le dernier cran de la recherche s'y arrête, quitte à rendre "
-      + "la composition impossible et à renvoyer au mixer." },
-
-  { id:"prof-us", dom:"mass", rang:"pref", titre:"Profondeur de départ d'un corps de classes",
-    val:"deux rangées de salles prises à leur surface bâtie, soit 18,5 m",
-    source:"projet", lu:"src/mass/model.js — profUsuel()",
-    pourquoi:"Le couloir est déjà dans la part de circulation : il ne s'ajoute pas "
-      + "par-dessus les deux rangées. C'est le point de départ du curseur, pas une "
-      + "limite — la profondeur est le premier choix d'un projet d'école, et l'outil "
-      + "doit laisser l'essayer.",
-    agit:"Donne la valeur du curseur tant qu'on n'y a pas touché." },
-
-  { id:"second", dom:"mass", rang:"ferme", titre:"Ouvrages du second temps",
-    val:"piscine 500 m² et local CAD 400 m², posés séparément par défaut",
-    source:"règlement art. 2.2", lu:"src/mass/gen.js — poserSecond()",
-    pourquoi:"Le règlement les veut indépendants des bâtiments scolaires et réalisés "
-      + "plus tard : ils ne pèsent sur aucun plateau, ne comptent pas au bilan et se "
-      + "dessinent en pointillé. Mais ils occupent 900 m² de terrain, et ne rien en "
-      + "dessiner laissait croire que cette emprise est disponible pour la cour et le "
-      + "stationnement.",
-    agit:"Posés APRÈS l'école, dans les marges du site, aux mêmes distances que tout "
-      + "le reste. Groupés ou séparés au choix ; quand ils ne tiennent pas, le "
-      + "contrôle le dit et propose de les grouper." },
-
-  { id:"perim", dom:"mass", rang:"dure", titre:"Rester dans le périmètre du concours",
-    val:"tous les étages, y compris les porte-à-faux",
-    source:"règlement art. 2.3 — parcelles du concours",
+  /* ===== VOLUMÉTRIE ======================================================
+     Trois rangs — dure, forte, pref — et les paramètres du générateur à part.
+     L'`id` d'une ligne dure ou forte est celui que `src/mass/juge.js` rend :
+     le volet affiche, à côté de chaque règle, ce qu'elle dit de la
+     composition à l'écran. */
+  { id:"perim", dom:"mass", rang:"dure", titre:"Périmètre constructible et recul PACom",
+    val:"5 m de recul, tous les étages, porte-à-faux et passerelles compris",
+    source:"PACom · règlement art. 2.3", lu:"src/mass/gen.js — admissible()",
+    pourquoi:"Tout le bâti reste dans le périmètre du concours, à 5 m au moins de sa "
+      + "limite. Un porte-à-faux qui franchit le recul est du bâti hors limite.",
+    agit:"Condition d'existence d'une variante. Le recul vit dans RULES.dist.retrait." },
+  { id:"dist", dom:"mass", rang:"dure", titre:"Distance entre bâtiments", k:"distMin",
+    unite:"m au moins", min:6, max:40, pas:0.5, source:"AEAI DPI 16-15",
     lu:"src/mass/gen.js — admissible()",
-    pourquoi:"Un porte-à-faux qui franchit la limite est du bâti hors parcelle : la "
-      + "condition porte sur TOUS les étages, et pas seulement sur l'emprise au sol. "
-      + "Ce n'est pas un avertissement : ni le générateur ni le glisser à la souris ne "
-      + "posent un corps dehors.",
-    agit:"C'est la condition d'existence d'une composition." },
+    pourquoi:"Un minimum, pas une cible : deux corps peuvent être bien plus loin. "
+      + "Mesurée à tous les étages. Un corps ACCOLÉ (salle de sport intégrée) fait un "
+      + "seul bâtiment avec son voisin et n'y est pas soumis.",
+    agit:"Jette toute variante où deux bâtiments sont plus près." },
+  { id:"existant", dom:"mass", rang:"dure", titre:"Bâtiments existants",
+    val:"rien dessus, et la même distance minimale", source:"règlement art. 2.3 · AEAI",
+    lu:"src/mass/gen.js — admissible()",
+    pourquoi:"On ne construit pas sur l'ancien Casino ni à côté de lui sans la distance "
+      + "incendie.", agit:"Jette la variante." },
+  { id:"largeur", dom:"mass", rang:"dure", titre:"Largeur minimale d'un corps", k:"largeurMin",
+    unite:"m, sur les deux cotes", min:6, max:20, pas:0.5, source:"projet",
+    lu:"src/mass/juge.js — dures()",
+    pourquoi:"Plancher absolu, à tous les étages : en deçà, un corps n'accueille plus une "
+      + "salle et sa circulation.", agit:"Jette la variante ; borne la profondeur minimale." },
+  { id:"prof", dom:"mass", rang:"dure", titre:"Profondeur minimale d'un corps", k:"profMin",
+    unite:"m", min:6, max:28, pas:0.5, source:"paramètre de l'utilisateur",
+    lu:"src/mass/gen.js — cotes() · src/mass/juge.js — dures()",
+    pourquoi:"La profondeur est la petite cote d'un corps. C'est le premier choix d'un "
+      + "projet d'école, il vous appartient. Elle ne descend pas sous la largeur minimale.",
+    agit:"Le générateur tire ses profondeurs entre ce minimum et le maximum." },
+  { id:"profmax", dom:"mass", rang:"dure", titre:"— profondeur maximale", k:"profMax",
+    unite:"m", min:11, max:40, pas:0.5, source:"règlement art. 2.10 — la salle de sport",
+    lu:"src/mass/juge.js — dures()",
+    pourquoi:"Au-delà de la petite cote du local le plus profond du programme, on bâtit "
+      + "de la profondeur sans jour. La salle de sport garde ses cotes du règlement.",
+    agit:"Jette la variante ; plafonne la poignée de redimensionnement." },
+  { id:"facade", dom:"mass", rang:"dure", titre:"Toutes les salles de classe en façade",
+    val:"un corps qui porte des classes n'a pas plus de deux salles de profondeur",
+    source:"projet — jour naturel", lu:"src/mass/model.js — profFacade()",
+    pourquoi:"Deux rangées de salles de classe prises à leur surface bâtie, circulation "
+      + "comprise : au-delà, une salle se retrouve au milieu du corps, sans fenêtre. La "
+      + "cote vient du programme, pas d'un réglage.",
+    agit:"Jette la variante ; plafonne la profondeur tirée pour les corps d'école." },
+  { id:"module", dom:"mass", rang:"dure", titre:"Module dimensionnel",
+    val:"0,50 m — toutes les cotes des corps", source:"projet",
+    lu:"src/mass/model.js — auModule()",
+    pourquoi:"Les cotes intérieures des corps sont des multiples de 0,50 m, comme les "
+      + "proportions des pièces (`core/geometry.js`). Le pavage des salles DANS un corps "
+      + "relève de la typologie.", agit:"Arrondit toutes les cotes ; jette ce qui y échappe." },
+  { id:"cour", dom:"mass", rang:"dure", titre:"Cour — surface utile minimale", k:"courMin",
+    unite:"m²", min:0, max:5000, pas:20, source:"règlement art. 2.10 — 500 m² + 120 m² de préau",
+    lu:"src/mass/juge.js — courUtile()",
+    pourquoi:"Le terrain libre d'un seul tenant devant une façade d'école, dans le "
+      + "périmètre, hors de tout bâtiment. Pas de maximum.",
+    agit:"Jette toute variante qui ne l'offre pas." },
+  { id:"nappe", dom:"mass", rang:"dure", titre:"Nappe et sous-sol",
+    val:"3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol",
+    source:"règlement art. 2.3", lu:"src/mass/gen.js — enterrer() · juge.js",
+    pourquoi:"Même lecture qu'avant, sans l'inverser : l'altitude moyenne du terrain sous "
+      + "le corps qui porte un sous-sol doit dépasser la nappe (462,25 m) d'au moins "
+      + "3,00 m (RULES.dist.couverture). Le terrain va de 463,3 à 466,7 m : seul le tiers "
+      + "est l'offre.", agit:"Le sous-sol va sous le corps le plus haut ; sinon, la variante est jetée." },
+  { id:"abri", dom:"mass", rang:"dure", titre:"Abri PC au moins partiellement enterré",
+    val:"au sous-sol, ou au rez d'un corps posé sur la pente", source:"règlement — abri PC",
+    lu:"src/mass/juge.js — dures()",
+    pourquoi:"Le niveau de l'abri est décidé au mixer. S'il est au rez, un corps qui le porte "
+      + "doit s'enterrer d'au moins un mètre dans la pente.",
+    agit:"Quand aucune composition ne peut y répondre, le contrôle renvoie au mixer." },
+  { id:"sport", dom:"mass", rang:"dure", titre:"Salle de sport double",
+    val:"28 × 32 m, 7,00 m libres, rien au-dessus", source:"règlement art. 2.10",
+    lu:"src/mass/gen.js — corpsImpose(), accoler()",
+    pourquoi:"Ses cotes et sa hauteur sont obligatoires, et aucun étage ne la surmonte. "
+      + "Elle n'est pas forcément posée la première ni forcément à part : une variante "
+      + "sur trois environ l'accole au corps principal, et elle fait alors partie du bâtiment.",
+    agit:"Jette toute variante qui la surmonte ou la déforme." },
 
-  { id:"recul", dom:"mass", rang:"ferme", titre:"Recul de travail sur le périmètre",
-    val:"5 m — soit 2'255 m² d'aire posable en moins (12'783 → 10'528)",
-    source:"projet — se corrige dans RULES.dist.retrait",
-    lu:"src/data/rules.js — dist.retrait, lu par gen.js et shuffle.js",
-    pourquoi:"En zone de constructions publiques A, le PACom ne fixe NI gabarit, NI "
-      + "hauteur, NI distance aux limites : ce recul n'est opposable à personne. Nous le "
-      + "tenons faute d'alignement routier numérisé, et nous l'appliquons comme une règle "
-      + "dure parce que c'est la seule garantie qu'un dessin est posable. C'est le "
-      + "meilleur candidat au titre de contrainte à desserrer : il coûte un cinquième de "
-      + "la parcelle, et c'est lui qui déclenche « aucune implantation ne tient ».",
-    agit:"L'aire posable, donc le nombre d'étages que le mixer déduit ET la place que le "
-      + "massing trouve. Il vit encore dans `rules.js` : le déplacer ici demanderait de "
-      + "toucher aux deux générateurs, et il n'a qu'un seul chiffre." },
+  { id:"soleil", dom:"mass", rang:"forte", titre:"Orientation solaire", k:"orientBon",
+    unite:"° du sud au plus — favorable", min:5, max:80, pas:5, source:"règlement art. 2.9",
+    lu:"src/mass/juge.js — qualites()",
+    pourquoi:"Chaque corps se juge sur SA façade longue : les corps peuvent prendre des "
+      + "orientations différentes, aucune n'est imposée. Le relevé est en coordonnées "
+      + "suisses, nord en haut.", agit:"Un tiers des variantes tourne la figure vers l'optimum soleil-vue." },
+  { id:"orientmax", dom:"mass", rang:"forte", titre:"— défavorable au-delà de", k:"orientMax",
+    unite:"°", min:10, max:90, pas:5, source:"projet", lu:"src/mass/juge.js — qualites()",
+    pourquoi:"Entre les deux seuils, l'orientation est acceptable. Le même couple de seuils "
+      + "juge la vue.", agit:"" },
+  { id:"vue", dom:"mass", rang:"forte", titre:"Vue vers le nord-ouest",
+    val:"vers le terrain de football du relevé", source:"site",
+    lu:"src/mass/geom.js — cibleVue()",
+    pourquoi:"La vue la plus intéressante du site. Jugée pour les corps qui portent des "
+      + "classes : l'angle entre leur façade longue et la direction du terrain de football.",
+    agit:"Départage des variantes également ensoleillées." },
+  { id:"jour", dom:"mass", rang:"forte", titre:"Lumière entre bâtiments", k:"ombreK",
+    unite:"× la hauteur du plus haut", min:0, max:3, pas:0.05, source:"projet",
+    lu:"src/mass/juge.js — qualites() · gen.js — reparer()",
+    pourquoi:"Indication, pas une contrainte : seuls les 6 m sont dus. Entre façades qui se "
+      + "font face.", agit:"La réparation écarte doucement les corps vers cet écart." },
+  { id:"compa", dom:"mass", rang:"forte", titre:"Compacité", k:"compaBon",
+    unite:"m² de façade par m² de plancher — favorable", min:0.1, max:1, pas:0.01,
+    source:"règlement art. 2.9 — Minergie", lu:"src/mass/juge.js — qualites()",
+    pourquoi:"Préférable quand elle loge bien le programme ; une variante moins compacte "
+      + "mais meilleure ailleurs n'est jamais écartée pour ce seul motif.", agit:"" },
+  { id:"compamax", dom:"mass", rang:"forte", titre:"— défavorable au-delà de", k:"compaMax",
+    unite:"m²/m²", min:0.1, max:1.5, pas:0.01, source:"projet",
+    lu:"src/mass/juge.js — qualites()", pourquoi:"", agit:"" },
+  { id:"courq", dom:"mass", rang:"forte", titre:"Cour généreuse", k:"courBon",
+    unite:"m² de cour utile", min:0, max:8000, pas:50, source:"projet",
+    lu:"src/mass/juge.js — qualites()",
+    pourquoi:"Plus grande que le minimum, c'est mieux, tant qu'elle reste devant une façade "
+      + "d'école. Tenue ou ouverte : aucune forme n'est imposée.", agit:"" },
 
-  { id:"aeai", dom:"mass", rang:"dure", titre:"Six mètres entre bâtiments",
-    val:"6 m — et rien sur l'existant ni à moins de 6 m de lui",
-    source:"AEAI DPI 16-15", lu:"src/mass/gen.js — admissible(), reparer()",
-    pourquoi:"Distance d'incendie. Opposable, et la seule distance entre corps qui le soit.",
-    agit:"Écarte les corps, et interdit de poser sur le bâtiment de l'ancien Casino." },
-
-  { id:"nappe", dom:"mass", rang:"dure", titre:"Couverture sur la nappe",
-    val:"3,00 m au-dessus de 462,25 m",
-    source:"règlement art. 2.3", lu:"src/mass/gen.js — enterrer(), noter()",
-    pourquoi:"Le terrain monte de 463,3 m à l'ouest à 466,7 m à l'est : la marge sur la "
-      + "nappe va de 1,0 m à 4,5 m. Un sous-sol excavé n'est tenable qu'au tiers est.",
-    agit:"Les sous-sols vont sous le corps le plus HAUT du site, pas sous le plus grand." },
-
-  { id:"nappep", dom:"mass", rang:"dure", titre:"— ce que coûte un sous-sol hors règle", k:"nappePoids",
-    unite:"points", min:0, max:600, pas:10,
-    source:"règlement art. 2.3", lu:"src/mass/gen.js — noter(), critère « nappe »",
-    pourquoi:"Une règle dure doit peser comme telle dans la note. À 90 points par mètre "
-      + "manquant, dix centimètres de manque coûtaient neuf points contre cent-six pour "
-      + "l'alignement : le générateur préférait un sous-sol hors règle à une composition "
-      + "moins rangée, et le contrôle répétait le même conflit à chaque tirage.",
-    agit:"Pousse les sous-sols vers le tiers est du site, où la couverture existe." },
-
-  { id:"sport", dom:"mass", rang:"ferme", titre:"La salle de sport s'implante en premier",
-    val:"corps à elle, 28 × 32 m, 7,00 m libres",
-    source:"projet", lu:"src/mass/gen.js — ancrer(), poser()",
-    pourquoi:"C'est l'objet le plus contraignant du programme : 896 m² qui ne montent pas, "
-      + "deux cotes données, sept mètres sous structure. Elle était posée EN DERNIER et au "
-      + "hasard, puis réparée — donc elle subissait la composition au lieu de la fonder. "
-      + "Dans un projet réel elle s'implante d'abord, souvent sur la partie basse du site.",
-    agit:"Donne son point d'appui à toute la figure, et cherche le bas du terrain." },
-
-  { id:"ombre", dom:"mass", rang:"forte", titre:"Écart entre corps pour le jour", k:"ombreK",
-    unite:"× la hauteur du plus haut", min:0, max:3, pas:0.05,
-    source:"projet", lu:"src/mass/gen.js — noter(), critère « jour »",
-    pourquoi:"LA contrainte qui manquait. Les 6 m de l'AEAI sont une distance d'incendie : "
-      + "deux barres de quatre niveaux à six mètres sont conformes et inhabitables. "
-      + "L'écart utile se mesure à la hauteur.",
-    agit:"Desserre la composition, et c'est ce qui change le plus l'allure d'un résultat." },
-  { id:"ombrep", dom:"mass", rang:"forte", titre:"— son poids", k:"ombrePoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"projet", lu:"src/mass/gen.js — noter()",
-    pourquoi:"Assez lourd pour peser contre la compacité, pas assez pour empêcher une figure.",
-    agit:"Arbitre entre serrer et éclairer." },
-
-  { id:"prof", dom:"mass", rang:"forte", titre:"Profondeur d'un corps de classes", k:"profPoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"programme", lu:"src/mass/gen.js — noter(), critère « profondeur »",
-    pourquoi:"La cote vient du programme et non d'un réglage : deux rangées de salles prises "
-      + "à leur surface bâtie (`profUsuel()`). La pénalité est proportionnelle à la PART DE "
-      + "CLASSES que le corps porte — un corps de technique a le droit d'être épais. Avant, "
-      + "la note ignorait totalement le programme : une classe pouvait atterrir au cœur d'un "
-      + "bloc de 46 m sans que rien ne le dise.",
-    agit:"Affine les corps qui logent des classes, et laisse grossir les autres." },
-
-  { id:"sud", dom:"mass", rang:"forte", titre:"Orientation des façades", k:"sudPoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"règlement art. 2.9", lu:"src/mass/gen.js — noter(), critère « sud »",
-    pourquoi:"Le règlement nomme l'usage passif de l'énergie solaire. Le bonus valait 10 "
-      + "contre 26 pour l'alignement : l'outil rangeait les bâtiments sur des lignes plutôt "
-      + "que de les tourner au soleil. Il est maintenant pondéré par la longueur de façade, "
-      + "le nombre d'étages et la part de classes.",
-    agit:"Tourne les corps de classes vers le sud." },
-
-  { id:"cour", dom:"mass", rang:"forte", titre:"Cour tenue par les bâtiments", k:"courPoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"règlement art. 2.10", lu:"src/mass/gen.js — noter(), critère « cour »",
-    pourquoi:"500 m² de cour et 120 m² de préau : un vide QUALIFIÉ, tenu par les corps, pas "
-      + "un reste de terrain. Rien ne le composait — la cour était une ligne de bilan, hors "
-      + "enveloppe. C'est pourtant ce qui distingue une école d'un groupe de bureaux.",
-    agit:"Pousse les corps à se faire face au lieu de s'aligner côte à côte." },
-  { id:"courmin", dom:"mass", rang:"pref", titre:"— vide utile, minimum", k:"courMin",
-    unite:"m²", min:0, max:4000, pas:20, source:"règlement art. 2.10",
-    lu:"src/mass/gen.js — noter()",
-    pourquoi:"500 m² de cour plus 120 m² de préau couvert.", agit:"En deçà, le vide ne compte pas comme une cour." },
-  { id:"courmax", dom:"mass", rang:"pref", titre:"— vide utile, maximum", k:"courMax",
-    unite:"m²", min:100, max:12000, pas:100, source:"projet",
-    lu:"src/mass/gen.js — noter()",
-    pourquoi:"Au-delà, ce n'est plus une cour : c'est un champ entre deux bâtiments.",
-    agit:"Empêche la prime au vide de récompenser l'éparpillement." },
-
-  { id:"entree", dom:"mass", rang:"pref", titre:"Adresse du corps principal", k:"entreePoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"règlement art. 2.4", lu:"src/mass/gen.js — noter(), critère « adresse »",
-    pourquoi:"Deux dépose-bus rue du Casino, quatre dépose-minute, mobilité douce depuis le "
-      + "chemin du Petit Mont. Les routes ne servaient que d'attracteurs d'ANGLE : rien ne "
-      + "demandait qu'un bâtiment soit joignable. La règle porte sur le PLUS GRAND corps et "
-      + "sur lui seul : « au moins un corps près d'une rue » était vrai de toute composition, "
-      + "le site étant bordé de rues sur trois côtés. Et le calque des routes du relevé est "
-      + "filtré aux polylignes de plus de soixante mètres — les vraies voies —, sans quoi un "
-      + "bord de place ou une entrée de garage comptait pour une rue.",
-    agit:"Empêche de reléguer le bâtiment principal au fond de la parcelle." },
-  { id:"entreeb", dom:"mass", rang:"guide", titre:"— la bande", k:"entreeMax",
-    unite:"m au plus d'une voie", min:10, max:150, pas:5, source:"projet",
-    lu:"src/mass/gen.js — noter()",
-    pourquoi:"Le point le plus enfoui de la parcelle est à 46 m d'une voie : au-delà de "
-      + "trente, le critère ne départage plus rien.", agit:"Largeur de la bande d'approche." },
-
-  { id:"alignf", dom:"mass", rang:"pref", titre:"Force d'alignement à la pose", k:"alignForce",
-    unite:"0 = angle libre, 1 = collé à l'attracteur", min:0, max:1, pas:0.05,
-    source:"projet", lu:"src/mass/gen.js — poser()",
-    pourquoi:"Ce que le générateur TOURNE un corps vers l'attracteur le plus proche au moment "
-      + "de le poser. C'est distinct de ce que la note lui rapporte ensuite ; un seul nombre "
-      + "faisait les deux.",
-    agit:"À 0, les corps prennent l'angle que le parti leur donne et rien d'autre." },
-
-  { id:"align", dom:"mass", rang:"pref", titre:"Alignement — ce qu'il rapporte", k:"alignPoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"projet", lu:"src/mass/gen.js — poser(), noter()",
-    pourquoi:"Axe du périmètre, perpendiculaire, longues limites de parcelle, routes, "
-      + "nord-sud. Ce sont des PRÉFÉRENCES notées, jamais des règles : un corps peut prendre "
-      + "n'importe quel angle, il gagne seulement à se ranger.",
-    agit:"Range la composition sur le site. Trop fort, il l'emporte sur l'orientation." },
-
-  { id:"compa", dom:"mass", rang:"pref", titre:"Compacité", k:"compaPoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"règlement art. 2.9", lu:"src/mass/gen.js — noter(), critère « compacité »",
-    pourquoi:"Minergie A ou P. Mesurée en façade développée par mètre carré bâti — la vraie "
-      + "mesure d'un projet économe. L'ancien terme sommait les emprises, ce qui est presque "
-      + "constant d'une composition à l'autre : il ne départageait rien.",
-    agit:"Préfère peu de corps épais à beaucoup de corps minces — et se bat donc contre le jour." },
-
-  { id:"pente", dom:"mass", rang:"pref", titre:"Terrassement", k:"pentePoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"règlement art. 2.3", lu:"src/mass/gen.js — noter()",
-    pourquoi:"3,40 m de dénivelé d'est en ouest. Un corps en travers de la pente demande un "
-      + "terrassement, ou un niveau décroché.", agit:"Range les corps dans le sens des courbes." },
-  { id:"pentem", dom:"mass", rang:"guide", titre:"— marge sans pénalité", k:"penteLibre",
-    unite:"m de dénivelé", min:0, max:6, pas:0.1, source:"projet",
-    lu:"src/mass/gen.js — noter()", pourquoi:"En deçà, on ne dit rien.",
-    agit:"Seuil de déclenchement du terrassement." },
-
-  { id:"aplomb", dom:"mass", rang:"pref", titre:"Aplomb", k:"aplombPoids",
-    unite:"points", min:0, max:120, pas:1,
-    source:"projet", lu:"src/mass/gen.js — noter()",
-    pourquoi:"Le porte-à-faux est permis et il se paie en structure : entre deux "
-      + "compositions qui logent le même programme, celle qui tient d'aplomb vaut mieux.",
-    agit:"Empile les étages plutôt que de les décaler." },
-
-  { id:"elan", dom:"mass", rang:"pref", titre:"Élancement maximum", k:"elanceMax",
+  { id:"align", dom:"mass", rang:"pref", titre:"Alignement",
+    val:"sur le site ou sur un voisin — jamais dû", source:"projet",
+    lu:"src/mass/juge.js — qualites()",
+    pourquoi:"Un corps rangé sur l'axe du périmètre, une limite, une route ou un autre corps "
+      + "est préféré à égalité du reste. Rien n'oblige à s'aligner.", agit:"" },
+  { id:"aplomb", dom:"mass", rang:"pref", titre:"Porte-à-faux", k:"pafMax",
+    unite:"m — au-delà, on avertit", min:0, max:15, pas:0.5, source:"projet",
+    lu:"src/mass/juge.js — qualites() · checks.js",
+    pourquoi:"Autorisé. Préférer l'aplomb à égalité du reste, et signaler un débord important.",
+    agit:"" },
+  { id:"pente", dom:"mass", rang:"pref", titre:"Terrassement", k:"penteMax",
+    unite:"m de dénivelé sous une emprise", min:0.5, max:6, pas:0.1,
+    source:"relevé — terrain maillé", lu:"src/mass/juge.js — qualites()",
+    pourquoi:"Le dénivelé du terrain réel sous chaque emprise. Moitié du seuil : favorable ; "
+      + "au-delà du seuil : terrassement important.", agit:"" },
+  { id:"elan", dom:"mass", rang:"pref", titre:"Élancement", k:"elanceMax",
     unite:"× plus long que large", min:2, max:30, pas:1, source:"projet",
-    lu:"src/mass/gen.js — noter()", pourquoi:"Un ruban dix fois plus long que large n'est pas un bâtiment.",
-    agit:"Épaissit les barres." },
-  { id:"etroit", dom:"mass", rang:"pref", titre:"Largeur minimale d'un corps", k:"largeurMin",
-    unite:"m", min:4, max:30, pas:1, source:"projet",
-    lu:"src/mass/gen.js — noter()", pourquoi:"Une salle de classe en demande neuf avec son couloir.",
-    agit:"Interdit en pratique les lames trop minces." },
-  { id:"epar", dom:"mass", rang:"pref", titre:"Éparpillement", k:"eparSeuil",
-    unite:"m entre corps avant pénalité", min:10, max:200, pas:5, source:"projet",
-    lu:"src/mass/gen.js — noter()",
-    pourquoi:"Des corps à soixante mètres les uns des autres ne font plus un centre "
-      + "scolaire, ils font un lotissement.", agit:"Resserre la figure." },
+    lu:"src/mass/juge.js — qualites()", pourquoi:"Garde-fou secondaire.", agit:"" },
+  { id:"connex", dom:"mass", rang:"pref", titre:"Connexions",
+    val:"corps accolés ou reliés par passerelle", source:"projet",
+    lu:"src/mass/gen.js — relier()",
+    pourquoi:"Une école d'un seul tenant est préférée à égalité du reste. Les passerelles "
+      + "relient sans fusionner ; le générateur n'en pose que dans une partie des "
+      + "variantes, et seulement entre corps qui ne sont pas déjà reliés.", agit:"" },
+  { id:"terrain", dom:"mass", rang:"pref", titre:"Accès et stationnement",
+    val:"terrain libre pour la cour et 70 places de parc", source:"règlement art. 2.4",
+    lu:"src/mass/juge.js — terrainLibre()",
+    pourquoi:"Deux dépose-bus, quatre dépose-minute, 70 places : ce que les bâtiments "
+      + "laissent du terrain posable doit pouvoir les accueillir, avec la cour.", agit:"" },
+  { id:"second", dom:"mass", rang:"pref", titre:"Ouvrages du second temps",
+    val:"piscine 500 m² et local CAD 400 m² — réunis ou séparés",
+    source:"règlement art. 2.2", lu:"src/mass/gen.js — poserSecond()",
+    pourquoi:"Indépendants de l'école et bâtis plus tard. « Au choix » laisse le générateur "
+      + "les réunir ou les séparer ; le rail peut l'imposer.", agit:"" },
 
-  { id:"rech", dom:"mass", rang:"guide", titre:"Compositions essayées", k:"essais",
-    unite:"par cran de profondeur", min:5, max:200, pas:5, source:"projet",
+  { id:"essais", dom:"mass", rang:"param", titre:"Compositions essayées", k:"essais",
+    unite:"essais", min:5, max:300, pas:5, source:"générateur", lu:"src/mass/gen.js — genMass()",
+    pourquoi:"Plus d'essais, plus de variantes valides parmi lesquelles choisir, et un "
+      + "tirage plus lent.", agit:"" },
+  { id:"essaisParti", dom:"mass", rang:"param", titre:"Reconnaissance par parti en Auto",
+    k:"essaisParti", unite:"essais", min:1, max:20, pas:1, source:"générateur",
     lu:"src/mass/gen.js — genMass()",
-    pourquoi:"Le générateur compose, mesure et jette. Plus d'essais, meilleure composition, "
-      + "et un tirage plus lent.", agit:"Qualité contre temps de calcul." },
-  { id:"rech2", dom:"mass", rang:"guide", titre:"— reconnaissance par parti en Auto", k:"essaisParti",
-    unite:"essais", min:1, max:20, pas:1, source:"projet",
-    lu:"src/mass/gen.js — genMass()",
-    pourquoi:"« Auto » essayait les onze partis à tour de rôle sur trente essais : deux ou "
-      + "trois tirages chacun, donc un bon parti éliminé par malchance. On reconnaît d'abord, "
-      + "puis on concentre la recherche sur les meilleurs.",
-    agit:"Rend le choix du parti en Auto beaucoup moins aléatoire." }
+    pourquoi:"Chaque parti est essayé d'abord ; seuls ceux qui rendent une variante valide "
+      + "reçoivent la suite des essais.", agit:"" },
+  { id:"courFond", dom:"mass", rang:"param", titre:"Profondeur de mesure de la cour",
+    k:"courFond", unite:"m devant une façade", min:10, max:80, pas:5, source:"générateur",
+    lu:"src/mass/juge.js — courUtile()", pourquoi:"Jusqu'où l'on compte le terrain libre "
+      + "devant une façade d'école.", agit:"" },
+  { id:"passMax", dom:"mass", rang:"param", titre:"Longueur maximale d'une passerelle",
+    k:"passMax", unite:"m", min:6, max:60, pas:1, source:"générateur",
+    lu:"src/mass/gen.js — relier()", pourquoi:"", agit:"" },
+  { id:"passLarg", dom:"mass", rang:"param", titre:"Largeur d'une passerelle",
+    k:"passLarg", unite:"m", min:2, max:6, pas:0.5, source:"générateur",
+    lu:"src/mass/model.js — pontRect()", pourquoi:"", agit:"" }
 ];
 
 /* Triées par dureté, puis dans l'ordre d'écriture — qui est celui du raisonnement. */
@@ -664,51 +578,49 @@ export var SCRIPTS = [
   { dom:"mass", f:"src/mass/gen.js", n:"Le générateur de volumétrie",
     lit:"les niveaux du mixer, le relevé du site, `rules.js`, la doctrine ci-dessus",
     decide:"combien de corps, où, dans quelle direction, à quelle profondeur, jusqu'à quel "
-      + "étage, avec quels retraits",
+      + "étage, accolés ou reliés",
     agit:"le plan et la 3D — c'est la proposition architecturale elle-même",
     hasard:"graine du massing (`MASS.graine`), distincte de celle du mixer" },
 
   { dom:"mass", f:"src/mass/gen.js — figure()", n:"Les douze partis",
     lit:"le parti choisi, le nombre de niveaux à loger",
-    decide:"la FIGURE : combien de corps, comment ils se tiennent les uns par rapport aux "
-      + "autres, comment la pile se dégrade en montant",
-    agit:"l'allure générale. « Auto » les essaie tous et garde celui qui tient le mieux",
-    hasard:"oui — nombre de corps, poids, angles et positions sont tirés dans des bornes" },
+    decide:"la FIGURE : combien de corps, comment ils se tiennent, comment la pile se "
+      + "dégrade en montant",
+    agit:"l'allure générale. « Auto » les essaie tous et garde ceux qui rendent une "
+      + "variante valide",
+    hasard:"oui — nombre de corps, poids, angles, positions et profondeur" },
 
   { dom:"mass", f:"src/mass/gen.js — monter()", n:"Le partage des surfaces",
     lit:"la surface bâtie de chaque niveau, les poids des corps",
-    decide:"quelle part de chaque niveau va à chaque corps, et donc ses cotes",
-    agit:"l'invariant du massing : la somme des emprises vaut la surface du niveau. "
-      + "Profondeur constante du rez au faîte, plafond de l'étage du dessous, promotion "
-      + "d'office — c'est ce qui évite les porte-à-faux d'artefact",
+    decide:"quelle part de chaque niveau va à chaque corps, et donc ses cotes, au module",
+    agit:"l'invariant du massing : la somme des emprises UTILES vaut la surface du niveau ; "
+      + "les murs s'ajoutent autour",
     hasard:"aucun — le programme décide" },
 
-  { dom:"mass", f:"src/mass/gen.js — noter()", n:"La note d'une composition",
+  { dom:"mass", f:"src/mass/juge.js", n:"Le jugement d'une variante",
     lit:"la doctrine, la géométrie posée, le programme porté par chaque corps",
-    decide:"laquelle des N compositions est gardée",
-    agit:"TOUT le caractère du résultat. C'est ici qu'on corrige un mauvais massing : "
-      + "chaque critère est nommé, et son poids se règle ci-dessus",
-    hasard:"aucun — elle départage" },
+    decide:"dures → valide ou non ; fortes et préférences → favorable, neutre, défavorable",
+    agit:"le choix : on garde les variantes qu'aucune autre ne bat sur les priorités fortes, "
+      + "les préférences ne départagent que des égales, et un parti est tiré parmi elles",
+    hasard:"le tirage final parmi les variantes non dominées, pour garder la diversité" },
 
   { dom:"mass", f:"src/mass/gen.js — reparer() / repecher()", n:"La réparation",
     lit:"le périmètre, les corps, l'existant",
     decide:"ramène un corps qui sort, qui touche un voisin ou qui percute l'existant ; "
-      + "et, s'il n'a aucune issue par petits pas, balaie la parcelle pour la position "
-      + "admissible la plus proche, quart de tour compris",
-    agit:"c'est ce qui distingue un générateur d'un tirage : une figure qui ne tient pas "
-      + "est reprise, pas avertie",
+      + "sinon balaie la parcelle pour la position admissible la plus proche",
+    agit:"une figure qui ne tient pas est reprise, pas avertie",
     hasard:"aucun" },
 
   { dom:"mass", f:"src/mass/checks.js", n:"Le contrôle de volumétrie",
-    lit:"les volumes posés, le site, `rules.js` et la doctrine",
-    decide:"rien — il dit, en trois niveaux : erreur, à vérifier, info",
+    lit:"les volumes posés et le jugement de `juge.js`",
+    decide:"rien — il dit : erreur pour une contrainte dure, à vérifier, info",
     agit:"le bilan de surface niveau par niveau, et la liste d'alertes du rail",
     hasard:"aucun" },
 
   { dom:"mass", f:"src/mass/geom.js", n:"La géométrie du site",
     lit:"`data/site.js` — le relevé engendré du fichier Rhino",
     decide:"terrain interpolé, assise d'un volume, distances entre rectangles tournés, "
-      + "aire posable, attracteurs d'alignement",
+      + "aire posable, attracteurs d'alignement, cible de la vue",
     agit:"toutes les mesures du massing. Aucune règle n'y vit",
     hasard:"aucun" }
 ];
@@ -731,17 +643,21 @@ export var TIRAGES = [
       + "`température` s'y ajoute, et le meilleur gagne. À température nulle, le tirage est "
       + "déterministe et rend toujours la meilleure répartition." },
   { dom:"mass", quoi:"Le parti, en mode Auto",
-    comment:"tous les partis sont reconnus sur quelques essais, les meilleurs sont retenus, "
-      + "et la recherche se concentre sur eux." },
+    comment:"tous les partis sont essayés ; ceux qui rendent une variante valide reçoivent "
+      + "la suite des essais, et le parti retenu est tiré parmi ceux des variantes non "
+      + "dominées — c'est ce qui garde la diversité." },
   { dom:"mass", quoi:"La figure",
-    comment:"nombre de corps, poids relatifs, angles, positions dans le cadre : tirés dans "
-      + "des bornes propres à chaque parti." },
-  { dom:"mass", quoi:"L'orientation générale",
-    comment:"un jeu de ±0,11 rad autour de l'axe du périmètre — sans lui, les N compositions "
-      + "d'un même parti seraient la même." },
-  { dom:"mass", quoi:"La position de la salle de sport",
-    comment:"tirée dans la moitié basse du site, puis retenue si elle est admissible : elle "
-      + "est l'ancre, tout le reste se compose autour d'elle." }
+    comment:"nombre de corps, poids relatifs, angles, positions, profondeur entre le minimum "
+      + "et le maximum : tirés dans des bornes propres à chaque parti." },
+  { dom:"mass", quoi:"L'orientation",
+    comment:"la figure suit l'axe du périmètre, l'optimum soleil-vue, ou un angle libre ; "
+      + "dans les partis libres, chaque corps choisit la sienne." },
+  { dom:"mass", quoi:"La salle de sport",
+    comment:"posée sur le bas du site, puis, dans une partie des variantes, accolée au "
+      + "corps principal." },
+  { dom:"mass", quoi:"Les passerelles",
+    comment:"dans une partie des variantes, les corps d'école non reliés le sont par la "
+      + "passerelle la plus courte qui tienne." }
 ];
 export function tiragesDe(dom){
   return TIRAGES.filter(function(t){ return t.dom === dom || t.dom === "deux"; });

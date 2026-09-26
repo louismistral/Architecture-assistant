@@ -31,19 +31,20 @@ export var RULES = {
   },
 
   /* --- distances retenues pour l'implantation ---------------------------- */
-  /* `entre` vient de l'AEAI, `retrait` est une règle de projet : faute
-     d'alignement routier numérisé, on garde un recul de travail sur le
-     périmètre. `couverture` est la terre qu'un sous-sol excavé doit garder
-     au-dessus de la nappe. */
+  /* `entre` vient de l'AEAI ; `retrait` est le recul du PACom sur le
+     périmètre constructible — une contrainte DURE, tenue par tous les étages,
+     porte-à-faux compris. `couverture` est la terre qu'un sous-sol excavé doit
+     garder au-dessus de la nappe. */
   dist: { retrait: 5, entre: 6, couverture: 3.0 },
 
   /* --- hauteurs ---------------------------------------------------------- */
   /* `libre` : hauteurs libres EXIGÉES par le règlement, par famille ou par
-     local. `dalle` et `acrotere` sont des hypothèses de projet, assumées comme
-     telles : elles servent à passer d'une hauteur libre à une hauteur de
-     niveau, et de là à une silhouette. */
+     local. `dalle`, `mur` et `acrotere` sont des hypothèses de projet,
+     assumées comme telles. La dalle s'AJOUTE à la hauteur libre, le mur
+     extérieur s'ajoute AUTOUR de la surface utile : ni l'un ni l'autre ne
+     retranche un mètre carré au programme. */
   haut: {
-    dalle: 0.45, acrotere: 0.60,
+    dalle: 0.40, mur: 0.50, acrotere: 0.60,
     libre: {
       cla: 2.80,    /* vide d'étage des salles de classe — 2.10 */
       spo: 7.00,    /* salle de sport double, libre sous structure — 2.10 */
