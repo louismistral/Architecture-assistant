@@ -409,9 +409,76 @@ var JOIGNABLES = ["barres", "L", "U", "cour", "peigne", "terrasses"];
 function joindre(vols, r){
   var E = vols.filter(function(v){ return !v.fix && !v.ph; });
   E.sort(function(a, b){ return rectSol(b).w * rectSol(b).d - rectSol(a).w * rectSol(a).d; });
-  for(var k = 1; k < E.length; k++) accolerA(E[k], E[0], vols, r);
+  for(var k = 1; k < E.length; k++) accolerA(E[k], E[0], vols, r, true);
 }
-function accolerA(sp, M, vols, r){
+/* DEUX CORPS QUI SE TOUCHENT N'EN FONT QU'UN. Quand deux volumes accolés ont
+   le même angle, la même profondeur à chaque étage et se touchent bout à bout,
+   leur réunion est un rectangle : on les FUSIONNE en un seul volume. Le double
+   mur du contact disparaît, la surface utile de chaque étage est la somme
+   exacte des deux. Un L ou un T ne sont pas un rectangle : ils restent deux
+   corps accolés (`joint`), un seul bâtiment. La salle de sport, qui a ses cotes
+   et sa hauteur, ne fusionne pas. */
+function fusionner(vols){
+  var fait = true, i, j;
+  while(fait){
+    fait = false;
+    for(i = 0; i < vols.length && !fait; i++){
+      for(j = 0; j < vols.length && !fait; j++){
+        var A = vols[i], B = vols[j];
+        if(i === j || !lies(A, B) || A.fix || B.fix || A.ph || B.ph) continue;
+        var M = fusion(A, B);
+        if(!M) continue;
+        vols[i] = M;
+        vols.splice(j, 1);
+        vols.forEach(function(v){ if(v.joint === B.id) v.joint = M.id; });
+        fait = true;
+      }
+    }
+  }
+}
+function fusion(A, B){
+  if(Math.abs(ecartAngle(A.a, B.a)) > .01)return null;
+  if(A.lv.concat(B.lv).some(function(e){ return e.dy || lvlOf(e.i) < 0; })) return null;
+  var ga = etageSol(A), gb = etageSol(B);
+  if(ga.dx || gb.dx || Math.abs(ga.d - gb.d) > .01)return null;
+  var ra = rectSol(A), rb = rectSol(B);
+  if(ecart(ra, rb) > .05)return null;
+  var c = Math.cos(-A.a), s = Math.sin(-A.a);
+  var u = (rb.x - ra.x) * c - (rb.y - ra.y) * s, v = (rb.x - ra.x) * s + (rb.y - ra.y) * c;
+  if(Math.abs(v) > .05)return null;
+  /* Bout à bout, dans l'axe de A : le centre du volume fusionné est celui de la
+     réunion, et le rez fait la somme des deux largeurs utiles. */
+  var cm = (Math.min(-ra.w / 2, u - rb.w / 2) + Math.max(ra.w / 2, u + rb.w / 2)) / 2;
+  var m2 = 2 * RULES.haut.mur, W0 = ga.w + gb.w;
+  var I = [];
+  A.lv.concat(B.lv).forEach(function(e){ if(I.indexOf(e.i) < 0) I.push(e.i); });
+  I.sort(function(x, y){ return x - y; });
+  var lv = [], ok = true;
+  I.forEach(function(i){
+    var ea = volEtage(A, i), eb = volEtage(B, i), w, d, ce;
+    if(ea && eb){
+      if(Math.abs(ea.d - eb.d) > .01){ ok = false; return; }
+      w = ea.w + eb.w; d = ea.d;
+      ce = ((ea.dx || 0) * ea.w + (u + (eb.dx || 0)) * eb.w) / w;
+    } else {
+      var e = ea || eb;
+      w = e.w; d = e.d; ce = ea ? (ea.dx || 0) : u + (eb.dx || 0);
+    }
+    /* L'étage reste au-dessus du rez fusionné. */
+    var jeu = Math.max(0, (W0 - w) / 2), dx = i === ga.i ? 0 : ce - cm;
+    dx = Math.max(-jeu, Math.min(jeu, dx));
+    lv.push({ i:i, w:w, d:d, dx:d1(dx), dy:0, a:(ea ? ea.a : 0) + (eb ? eb.a : 0) });
+  });
+  if(!ok || m2 < 0) return null;
+  var jt = [A.joint, B.joint].filter(function(x){ return x && x !== A.id && x !== B.id; })[0];
+  var M = { id:A.id, x:d1(ra.x + cm * Math.cos(A.a)), y:d1(ra.y + cm * Math.sin(A.a)), a:A.a,
+            lv:lv, fix:0, prof:A.prof, grad:0 };
+  if(jt) M.joint = jt;
+  return M;
+}
+/* `bout` : essayer d'abord BOUT À BOUT dans l'axe — la seule pose qui se
+   fusionne en un seul volume. */
+function accolerA(sp, M, vols, r, bout){
   if(!sp || !M) return false;
   var rm = rectSol(M), rs = rectSol(sp), cand = [], s, t, q;
   [0, Math.PI / 2].forEach(function(rot){
@@ -419,11 +486,11 @@ function accolerA(sp, M, vols, r){
     for(s = -1; s <= 1; s += 2){
       for(t = -1; t <= 1; t++){
         cand.push({ rot:rot, u:t * (rm.w - sx) / 2, v:s * (rm.d + sy) / 2 });
-        cand.push({ rot:rot, u:s * (rm.w + sx) / 2, v:t * (rm.d - sy) / 2 });
+        cand.push({ rot:rot, u:s * (rm.w + sx) / 2, v:t * (rm.d - sy) / 2, bout: !rot && !t });
       }
     }
   });
-  cand.forEach(function(c){ c.o = r(); });
+  cand.forEach(function(c){ c.o = r() - (bout && c.bout ? 1 : 0); });
   cand.sort(function(a, b){ return a.o - b.o; });
   var av = { x:sp.x, y:sp.y, a:sp.a };
   sp.joint = M.id;
@@ -554,7 +621,10 @@ export function ecartVols(v, o, P, seuil){
   var A = rectsHors(v, P), Bo = rectsHors(o), m = Infinity, s = seuil == null ? Infinity : seuil;
   A.forEach(function(a){
     Bo.forEach(function(b){
-      var bas = Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(a.w, a.d) / 2
+      /* `ecart()` est l'écart le long des axes des rectangles, qui peut être
+         PLUS PETIT que la distance à vol d'oiseau : sur les deux axes de `a`,
+         il vaut au moins la distance des centres / √2, moins les deux rayons. */
+      var bas = Math.hypot(a.x - b.x, a.y - b.y) / Math.SQRT2 - Math.hypot(a.w, a.d) / 2
               - Math.hypot(b.w, b.d) / 2;
       if(bas >= s) return;
       var e = ecart(a, b);
@@ -736,6 +806,7 @@ export function genMass(graine){
     var vols = poser(corps, C, imp, r, atts);
     if(JOIGNABLES.indexOf(pid) >= 0 && r() < .4) joindre(vols, r);
     if(imp && r() < .4) accoler(vols, r);
+    fusionner(vols);
     enterrer(vols);
     vols.ponts = r() < .5 ? relier(vols) : [];
     vols.parti = pid; vols.prof = prof;

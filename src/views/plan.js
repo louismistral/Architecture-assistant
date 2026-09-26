@@ -19,7 +19,7 @@ import { fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volInt, volRect }
+import { MASS, cellules, contourDe, famCol, filtreDe, mursDe, pontRect, volInt, volRect }
   from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
@@ -176,7 +176,10 @@ function dessineVol(g, v, k){
       mursDe(v, plein).forEach(function(m){
         gv.appendChild(svg("path", { d: chemin(coins(m), true), "class":"plan-mur" }));
       });
-      gv.appendChild(svg("path", { d: chemin(q, true), "class":"plan-vol__c" }));
+      /* Le contour sur les seules portions libres : deux corps accolés se lisent
+         comme un seul bâtiment. */
+      gv.appendChild(svg("path", { d: contourDe(v, plein).map(function(sg){
+        return chemin(sg, false); }).join(" "), "class":"plan-vol__c" }));
     }
     /* Le nom et la cote, au centre, dans le sens du bâtiment. */
     var nv = 0;

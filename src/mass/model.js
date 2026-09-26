@@ -249,14 +249,56 @@ export function volRect(v, e){
   var m = 2 * RULES.haut.mur;
   return local({ x:v.x, y:v.y, w:e.w + m, d:e.d + m, a:v.a }, e.dx || 0, e.dy || 0);
 }
-/* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
-   largeur, deux pignons entre eux. */
-export function mursDe(v, e){
-  var r = volInt(v, e), m = RULES.haut.mur;
-  var R = { x:r.x, y:r.y, w:r.w + 2 * m, d:m, a:r.a };
-  var P = { x:r.x, y:r.y, w:m, d:r.d, a:r.a };
-  return [local(R, 0, -(r.d + m) / 2), local(R, 0, (r.d + m) / 2),
-          local(P, -(r.w + m) / 2, 0), local(P, (r.w + m) / 2, 0)];
+/* DEUX CORPS QUI SE TOUCHENT FONT UN SEUL BÂTIMENT. Au droit du contact avec un
+   voisin accolé (`joint`), il n'y a ni mur extérieur ni contour : les deux
+   intérieurs se rejoignent. `bordsLibres()` rend, pour chaque côté de l'emprise
+   murs compris, les portions qui ne touchent AUCUN voisin accolé au même
+   niveau — `t0`, `t1` le long du côté, de `p` à `q`. Le mur et le contour du
+   plan et de la 3D n'y sont dessinés que là. Les surfaces n'en changent pas :
+   le mur n'a jamais compté dans la surface utile. */
+export function bordsLibres(v, e, vols){
+  var R = [];
+  (vols || MASS.vol).forEach(function(o){
+    if(o === v || !(o.joint === v.id || v.joint === o.id)) return;
+    var eo = volEtage(o, e.i);
+    if(eo) R.push(coins(volRect(o, eo)));
+  });
+  var q = coins(volRect(v, e)), out = [], k;
+  for(k = 0; k < 4; k++){
+    var p0 = q[k], p1 = q[(k + 1) % 4];
+    var dx = p1[0] - p0[0], dy = p1[1] - p0[1], L = Math.hypot(dx, dy) || 1;
+    var ux = dx / L, uy = dy / L, nx = -uy, ny = ux, cuts = [];
+    R.forEach(function(C){
+      var dn = C.map(function(c){ return (c[0] - p0[0]) * nx + (c[1] - p0[1]) * ny; });
+      if(Math.min.apply(null, dn) > .15 || Math.max.apply(null, dn) < -.15) return;
+      var t = C.map(function(c){ return ((c[0] - p0[0]) * ux + (c[1] - p0[1]) * uy) / L; });
+      var a = Math.max(0, Math.min.apply(null, t)), b = Math.min(1, Math.max.apply(null, t));
+      if(b > a) cuts.push([a, b]);
+    });
+    cuts.sort(function(x, y){ return x[0] - y[0]; });
+    var t0 = 0;
+    cuts.forEach(function(c){ if(c[0] > t0 + 1e-3) out.push({ p:p0, q:p1, n:[nx, ny], L:L, t0:t0, t1:c[0] });
+                              t0 = Math.max(t0, c[1]); });
+    if(t0 < 1 - 1e-3) out.push({ p:p0, q:p1, n:[nx, ny], L:L, t0:t0, t1:1 });
+  }
+  return out;
+}
+/* Les bandes de mur d'un étage — 50 cm vers l'intérieur de l'emprise, sur les
+   seules portions libres de chaque côté. */
+export function mursDe(v, e, vols){
+  var m = RULES.haut.mur, a = v.a;
+  return bordsLibres(v, e, vols).map(function(s){
+    var tm = (s.t0 + s.t1) / 2, dx = s.q[0] - s.p[0], dy = s.q[1] - s.p[1];
+    return { x: s.p[0] + dx * tm + s.n[0] * m / 2, y: s.p[1] + dy * tm + s.n[1] * m / 2,
+             w: (s.t1 - s.t0) * s.L, d: m, a: Math.atan2(dy, dx) };
+  });
+}
+/* Le contour libre d'un étage, en segments : ce qui se dessine d'un bâtiment. */
+export function contourDe(v, e, vols){
+  return bordsLibres(v, e, vols).map(function(s){
+    var dx = s.q[0] - s.p[0], dy = s.q[1] - s.p[1];
+    return [[s.p[0] + dx * s.t0, s.p[1] + dy * s.t0], [s.p[0] + dx * s.t1, s.p[1] + dy * s.t1]];
+  });
 }
 
 /* LES PASSERELLES. Une passerelle ne porte ni programme ni surface : c'est une
