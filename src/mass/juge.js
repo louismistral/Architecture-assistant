@@ -487,7 +487,8 @@ export function noter(d, q){
   });
   var tot = 0;
   crit.forEach(function(c){ tot += c.pts; });
-  return { total:Math.round(tot), crit:crit };
+  /* 100 est le plafond : rien ne rapporte plus que répondre pleinement à tout. */
+  return { total:Math.min(100, Math.round(tot)), crit:crit };
 }
 export function jugementCourant(){
   if(!MASS.vol.length) return null;

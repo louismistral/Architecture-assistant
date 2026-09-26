@@ -40,6 +40,7 @@ export function noteVue(total, crit, texte){
   col.appendChild(el("span", "label", "Note"));
   var gros = el("b", "vm-note__n mono", total == null ? "—" : signe(total));
   if(total != null) gros.classList.add(total >= 0 ? "is-haut" : "is-bas");
+  if(total != null) gros.appendChild(el("span", "vm-note__s", "/100"));
   col.appendChild(gros);
   tete.appendChild(col);
   tete.appendChild(el("p", null, texte || ("La somme des " + (crit || []).length
