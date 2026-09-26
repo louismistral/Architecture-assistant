@@ -43,7 +43,8 @@ export function noteVue(total, crit, texte){
   col.appendChild(gros);
   tete.appendChild(col);
   tete.appendChild(el("p", null, texte || ("La somme des " + (crit || []).length
-    + " critères de la composition. Elle sert à lire, pas à choisir : le générateur "
+    + " critères de la composition, sur 100 — une composition qui répond pleinement à "
+    + "tout vaut 100. Elle sert à lire, pas à choisir : le générateur "
     + "suit la hiérarchie — contraintes dures, priorités fortes, préférences.")));
   s.appendChild(tete);
   var L = (crit || []).filter(function(c){ return Math.round(c.pts) !== 0; })

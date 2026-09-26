@@ -388,7 +388,7 @@ export function couverture(vols){
     if(c < pire){ pire = c; qui = k; }
   });
   var R = RULES.dist.couverture;
-  if(qui < 0) return { niv:2, q:0, txt:"aucun sous-sol", v:-1, c:Infinity };
+  if(qui < 0) return { niv:2, q:1, txt:"aucun sous-sol", v:-1, c:Infinity };
   return { niv: pire >= R - .005 ? 2 : 0, q: lin(Math.max(0, R - pire), 0, R / 2), v:qui, c:pire,
            txt: dec(pire) + " m de terrain au-dessus de la nappe sous "
              + nomV(vols[qui], qui).toLowerCase() + ", pour " + dec(R) + " m souhaités" };
@@ -466,7 +466,12 @@ function poidsDe(id){
 }
 function majuscule(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
 export function noter(d, q){
-  var crit = [];
+  var crit = [], G = [["forte", q.fortes], ["pref", q.prefs]], plein = 0;
+  /* SUR 100 : une composition qui répond pleinement à tout — chaque critère à
+     q = +1, aucune contrainte dure enfreinte — vaut exactement 100. Les poids
+     des rangs ne sont que des proportions entre critères. */
+  G.forEach(function(g){ plein += g[1].length * poidsDe(g[0]); });
+  var K = plein ? 100 / plein : 0;
   reglesDe("mass").forEach(function(r){
     if(r.rang !== "dure") return;
     var n = d.filter(function(x){ return x.k === r.id && !x.pile; }).length;
@@ -474,15 +479,15 @@ export function noter(d, q){
                 txt: n ? d.filter(function(x){ return x.k === r.id; })[0].msg : "respectée",
                 pts: n ? -n * poidsDe("dure") : 0 });
   });
-  [["forte", q.fortes], ["pref", q.prefs]].forEach(function(g){
+  G.forEach(function(g){
     g[1].forEach(function(c){
       crit.push({ id:c.id, n:c.n, rang:g[0], niv:c.niv, txt:c.txt,
-                  pts: Math.round(c.q * poidsDe(g[0])) });
+                  pts: Math.round(c.q * poidsDe(g[0]) * K * 10) / 10 });
     });
   });
   var tot = 0;
   crit.forEach(function(c){ tot += c.pts; });
-  return { total:tot, crit:crit };
+  return { total:Math.round(tot), crit:crit };
 }
 export function jugementCourant(){
   if(!MASS.vol.length) return null;
