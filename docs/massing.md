@@ -127,6 +127,18 @@ distances et la cour —, `volInt()` l'intérieur où l'on pave le programme, `m
 du plan et de la 3D. La dalle de 40 cm (`RULES.haut.dalle`) s'ajoute à la hauteur libre. Toutes
 les cotes de corps passent par `auModule()` (0,50 m).
 
+## Le décrochement : pas de segment de plus de 28 m
+
+Un corps dont une façade dépasse `DOC.longMax` (28 m, murs compris) est découpé par
+`decrocher()` en segments accolés d'au plus cette longueur, décalés tour à tour de
+`DOC.decroche` (3 m) perpendiculairement à la façade. Ils portent le même `grp` : un seul
+bâtiment, pas de mur au contact, et chaque étage garde sa surface utile exacte. Un étage plus
+court que le rez se pose sur les segments du milieu et reste d'un seul tenant. Deux parties
+d'un même bâtiment se TOUCHENT (à `CONTACT` près, 15 cm) ou se tiennent aux 6 m ; le repêchage
+déplace un bâtiment découpé d'un bloc, et ne sépare ses segments qu'à défaut. La salle de
+sport et le second temps, qui ont leurs cotes, n'y sont pas soumis. Aucun article du
+règlement dans le dépôt ne fixe ces 28 m : c'est une règle de projet, réglable au volet.
+
 ## Passerelles et corps accolés
 
 Une passerelle est une CONNEXION `{ a, b, i }` (`MASS.pont`) : sa géométrie se déduit à chaque
