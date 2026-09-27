@@ -106,9 +106,10 @@ le parti parmi tous ceux qui ont rendu une variante valide, puis applique les pr
 de ce parti. Sans cela le parti le mieux orienté — des barres parallèles — gagnait presque
 chaque tirage.
 
-Quand aucune variante ne tient, la moins fautive est rendue marquée `impossible` et le
-contrôle liste ses écarts. Avec ce programme, `Bloc compact` et `Barre` le sont souvent : un
-seul corps de 18,5 m de profondeur au plus demanderait 130 m de long au rez.
+Quand aucune variante ne tient, **rien n'est proposé** : une composition qui enfreint une
+contrainte dure n'est pas une option, même « la moins fautive ». `genMass()` rend une liste
+vide marquée `impossible` ; le plan reste vide, le contrôle dit pourquoi et propose de laisser
+le générateur choisir le parti (`fixAuto`), de rejouer, ou de rebattre la pile au mixer.
 
 `admissible()` reste le seul juge de l'implantation, et le glisser à la souris y passe : il
 refuse une position qui ne tient pas et longe la limite au lieu de s'y arrêter. Rien ne se pose
