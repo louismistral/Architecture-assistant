@@ -92,7 +92,8 @@ export var DOC = {
      des poids : elles disent où finit « favorable » et où commence
      « défavorable ». Voir `src/mass/juge.js`. */
 
-  /* Dures. `distMin` ne descend pas sous les 6 m de l'AEAI (RULES.dist.entre) :
+  /* Dures. `profMax` borne les DEUX cotes d'un volume (longueur et largeur).
+     `distMin` ne descend pas sous les 6 m de l'AEAI (RULES.dist.entre) :
      on peut en demander PLUS, le générateur ne vise pas six mètres. La
      profondeur d'un corps est sa PETITE cote ; `profMin` est le réglage de
      l'utilisateur, `largeurMin` son plancher absolu. La cour se mesure en
@@ -392,13 +393,15 @@ export var REGLES = [
     pourquoi:"La profondeur est la petite cote d'un corps. C'est le premier choix d'un "
       + "projet d'école, il vous appartient. Elle ne descend pas sous la largeur minimale.",
     agit:"Le générateur tire ses profondeurs entre ce minimum et le maximum." },
-  { id:"profmax", dom:"mass", rang:"dure", titre:"Profondeur maximale d'un corps", k:"profMax",
-    unite:"m au plus", min:11, max:40, pas:0.5, source:"règlement art. 2.10 — la salle de sport",
-    lu:"src/mass/juge.js — dures()",
-    pourquoi:"Une LIMITE, pas une cible : le générateur tire ses profondeurs librement sous "
-      + "ce plafond. Une composition qui le dépasse est invalide, et il en cherche une autre — "
-      + "aucune forme de repli (décrochement, fusion, porte-à-faux) n'est appliquée. La salle "
-      + "de sport garde ses cotes du règlement.",
+  { id:"profmax", dom:"mass", rang:"dure", titre:"Dimensions maximales d'un volume", k:"profMax",
+    unite:"m au plus, en longueur comme en largeur", min:11, max:60, pas:0.5,
+    source:"projet · règlement art. 2.10 pour la salle de sport",
+    lu:"src/mass/juge.js — dures() · gen.js — cotes()",
+    pourquoi:"Aucun volume, à aucun étage ni au sous-sol, ne dépasse cette cote dans l'une ou "
+      + "l'autre direction. C'est une LIMITE, pas une cible : le générateur choisit les "
+      + "proportions librement dessous et pose autant de corps que le programme en demande ; "
+      + "une composition qui la franchit est invalide. Seule exception : la salle de sport "
+      + "double, dont le règlement fixe les cotes à 28 × 32 m.",
     agit:"Jette la variante ; plafonne la poignée de redimensionnement." },
   { id:"facade", dom:"mass", rang:"dure", titre:"Toutes les salles de classe en façade",
     val:"un corps qui porte des classes n'a pas plus de deux salles de profondeur",
