@@ -31,10 +31,10 @@ import { lies, rectSol } from "./gen.js";
 import { courProgramme, courUtile, dures, terrainLibre } from "./juge.js";
 import { isAccepted } from "../mix/accept.js";
 import {
-  fixAire, fixAplomb, fixCarrer, fixEcarter, fixElargir, fixPile, fixProfondeur,
+  fixAire, fixCarrer, fixEcarter, fixElargir, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
-import { MASS, bilan, niveaux, pontRect, porteAFaux, profBornes, secondTemps,
+import { MASS, bilan, niveaux, pontRect, profBornes, secondTemps,
   volHaut } from "./model.js";
 
 function nom(v, k){
@@ -53,7 +53,6 @@ var DUR = {
   profmax:  { ref:"2.10",     fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
   facade:   { ref:"",         fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
   module:   { ref:"",         fix:function(){ return [fixAire()]; } },
-  longueur: { ref:"",         fix:function(){ return [fixRelancer()]; } },
   cour:     { ref:"2.10",     fix:function(){ return [fixRelancer(),
     fixSecond("non", "Ne pas représenter le second temps", "il libère le terrain qu’il occupe")]; } },
   abri:     { ref:"",         fix:function(){ return [fixPile()]; } },
@@ -133,18 +132,6 @@ export function massCheck(){
           + "que large — " + dec(lg) + " × " + dec(pt) + " m.", "", nm, i,
           { fix:[fixCarrer(i), fixRelancer()] });
       }
-    }
-
-    /* --- porte-à-faux : permis ; averti quand il devient important --------- */
-    var pf = porteAFaux(v);
-    if(pf > .3){
-      dit(pf > DOC.pafMax ? "w" : "i", "pf:" + v.id, "Porte-à-faux sur " + nm.toLowerCase()
-        + " — dépassement maximum " + dec(pf) + " m." + (pf > DOC.pafMax ? " Au-delà de "
-          + dec(DOC.pafMax) + " m, c’est un porte-à-faux important." : " Il est permis."),
-        "", nm, i,
-        { fix: fixAplomb(i),
-          note:"Le débord qui vient des surfaces ne se défait pas d'un clic : il "
-            + "faudrait changer les mètres carrés, et ils sont au règlement." });
     }
 
     /* --- le terrain -------------------------------------------------------- */

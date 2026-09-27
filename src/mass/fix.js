@@ -106,28 +106,6 @@ export function fixCarrer(i){
     });
 }
 
-/* ---------- l'aplomb --------------------------------------------------------
-   Un porte-à-faux VOULU se défait : on remet les étages au droit les uns des
-   autres. Celui que le programme impose — un étage plus grand que le niveau du
-   dessous — ne se défait pas d'un clic, et le remède n'est alors pas proposé :
-   il faudrait changer les surfaces, et les surfaces sont au règlement. */
-export function fixAplomb(i){
-  var v = vol(i);
-  if(!v) return null;
-  var dec0 = false;
-  v.lv.forEach(function(e){ if(e.dx || e.dy) dec0 = true; });
-  if(!dec0) return null;
-  return acte("Remettre les étages de " + nomDe(v, i) + " d'aplomb",
-    "les décalages reviennent à zéro ; le débord qui vient des surfaces reste",
-    function(){
-      var av = v.lv.map(function(e){ return { dx:e.dx || 0, dy:e.dy || 0 }; });
-      v.lv.forEach(function(e){ e.dx = 0; e.dy = 0; });
-      return tenir(v, function(){
-        v.lv.forEach(function(e, k){ e.dx = av[k].dx; e.dy = av[k].dy; });
-      });
-    });
-}
-
 /* ---------- les passerelles ------------------------------------------------ */
 export function fixRelier(){
   return acte("Recomposer les passerelles",

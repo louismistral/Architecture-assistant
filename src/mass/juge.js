@@ -29,7 +29,7 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { MASS, touche, horsModule, horsSol, pontRect, porteAFaux, postesDe, profBornes,
+import { MASS, touche, horsModule, horsSol, pontRect, postesDe, profBornes,
   profFacade, volRect } from "./model.js";
 import { ecartVols, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
 
@@ -170,10 +170,6 @@ export function dures(vols, vite){
     v.lv.forEach(function(e){
       var sol = lvlOf(e.i) >= 0, pt = Math.min(e.w, e.d);
       function une(k, msg){ if(!vu[k]){ vu[k] = 1; dit(k, i, msg); } }
-      if(sol && !v.fix && !v.ph
-         && Math.max(e.w, e.d) + 2 * RULES.haut.mur > DOC.longMax + .01)
-        une("longueur", nomV(v, i) + " fait " + dec(Math.max(e.w, e.d) + 2 * RULES.haut.mur)
-          + " m de long, pour " + dec(DOC.longMax) + " m au plus : un décrochement.");
       if(horsModule(e.w) || horsModule(e.d))
         une("module", nomV(v, i) + " — " + dec(e.w) + " × " + dec(e.d) + " m : hors du module de "
           + dec(DOC.module) + " m.");
@@ -346,8 +342,7 @@ export function qualites(vols){
       return o !== v && Math.abs(ecartAngle(2 * v.a, 2 * o.a)) < .07; });
     if(ok) rang++;
   });
-  var pf = 0, pt = 0, el = 0;
-  vols.forEach(function(v){ pf = Math.max(pf, porteAFaux(v)); });
+  var pt = 0, el = 0;
   E.forEach(function(v){
     if(!v.fix) pt = Math.max(pt, assise(rectSol(v)).d);
     if(v.fix) return;
@@ -361,8 +356,6 @@ export function qualites(vols){
     { id:"align", n:"Alignement", niv: E.length && rang / E.length >= .5 ? 2 : 1,
       q: E.length ? rang / E.length : 0,
       txt: rang + " corps sur " + E.length + " rangés sur le site ou un voisin" },
-    { id:"aplomb", n:"Porte-à-faux", niv:palier(pf, .3, DOC.pafMax), q:lin(pf, .3, DOC.pafMax),
-      txt: pf > .3 ? "débord maximum " + dec(pf) + " m" : "tout d'aplomb" },
     { id:"pente", n:"Terrassement", niv:palier(pt, DOC.penteMax / 2, DOC.penteMax),
       q:lin(pt, DOC.penteMax / 2, DOC.penteMax),
       txt:"jusqu'à " + dec(pt) + " m de dénivelé sous une emprise" },
@@ -404,7 +397,7 @@ export function ensembles(E, ponts){
   function f(x){ while(P[x] !== x) x = P[x] = P[P[x]]; return x; }
   function u(a, b){ if(P[a] !== undefined && P[b] !== undefined) P[f(a)] = f(b); }
   E.forEach(function(v){ P[v.id] = v.id; });
-  E.forEach(function(v){ if(v.joint) u(v.id, v.joint); if(v.grp) u(v.id, v.grp); });
+  E.forEach(function(v){ if(v.joint) u(v.id, v.joint); });
   ponts.forEach(function(p){ u(p.a, p.b); });
   var n = 0;
   E.forEach(function(v){ if(f(v.id) === v.id) n++; });

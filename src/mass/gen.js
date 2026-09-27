@@ -410,149 +410,10 @@ var JOIGNABLES = ["barres", "L", "U", "cour", "peigne", "terrasses"];
 function joindre(vols, r){
   var E = vols.filter(function(v){ return !v.fix && !v.ph; });
   E.sort(function(a, b){ return rectSol(b).w * rectSol(b).d - rectSol(a).w * rectSol(a).d; });
-  /* Un segment d'un bâtiment découpé ne se détache pas des autres. */
   for(var k = 1; k < E.length; k++)
-    if(!E[k].grp && !lies(E[k], E[0])) accolerA(E[k], E[0], vols, r, true);
+    if(!lies(E[k], E[0])) accolerA(E[k], E[0], vols, r, true);
 }
-/* LE DÉCROCHEMENT. Un corps plus long que `DOC.longMax` (murs compris) se
-   découpe en N segments accolés d'au plus cette longueur, décalés tour à tour
-   de `DOC.decroche` perpendiculairement à la façade. Ils forment UN bâtiment
-   (`grp`) : pas de mur au contact, et la surface utile de chaque étage est
-   exactement celle du corps. Un étage plus court que le rez se pose sur le
-   nombre de segments qu'il lui faut, au milieu, et reste d'un seul tenant :
-   segments intérieurs pleins, segments d'extrémité alignés vers l'intérieur. */
-function decrocher(vols, r){
-  var m2 = 2 * RULES.haut.mur, i;
-  for(i = vols.length - 1; i >= 0; i--){
-    var v = vols[i];
-    if(v.fix || v.ph || v.grp) continue;
-    var g = etageSol(v);
-    if(g.dx || g.dy || g.w < g.d || g.w + m2 <= DOC.longMax + .01) continue;
-    var N = Math.ceil(g.w / (DOC.longMax - m2 - DOC.module));
-    var ws = [], k, reste = g.w;
-    for(k = 0; k < N; k++){ ws.push(k < N - 1 ? auModule(g.w / N) : reste); reste -= ws[k]; }
-    var T = 0;
-    ws.forEach(function(w){ T += w + m2; });
-    var sg = r() < .5 ? 1 : -1, u0 = -T / 2, segs = [];
-    for(k = 0; k < N; k++){
-      segs.push({ uc: u0 + (ws[k] + m2) / 2, vc: sg * DOC.decroche * (k % 2 ? .5 : -.5), lv:[] });
-      u0 += ws[k] + m2;
-    }
-    var ok = true;
-    v.lv.forEach(function(e){
-      if(!ok || lvlOf(e.i) < 0) return;
-      var rez = e === g;
-      var n = rez ? N : Math.max(1, Math.min(N, Math.ceil(e.w / ws[0] - 1e-6)));
-      var k0 = rez ? 0 : Math.floor((N - n) / 2), pieces, q;
-      if(rez) pieces = ws.slice();
-      else if(n === 1) pieces = [e.w];
-      else {
-        var plein = 0;
-        for(q = 1; q < n - 1; q++) plein += ws[k0 + q];
-        var x = auModule((e.w - plein) / 2);
-        pieces = [x];
-        for(q = 1; q < n - 1; q++) pieces.push(ws[k0 + q]);
-        pieces.push(e.w - plein - x);
-      }
-      pieces.forEach(function(p, q2){
-        var kk = k0 + q2, dx = 0;
-        if(n > 1 && q2 === 0) dx = (ws[kk] - p) / 2;          /* vers l'intérieur */
-        if(n > 1 && q2 === n - 1) dx = -(ws[kk] - p) / 2;
-        segs[kk].lv.push({ i:e.i, w:p, d:e.d, dx:d1(dx), dy:e.dy || 0, a:p * e.d });
-      });
-    });
-    if(!ok) continue;
-    var c = Math.cos(v.a), s = Math.sin(v.a);
-    function segments(sens){
-      return segs.map(function(S2, k2){
-        /* Positions EXACTES : arrondir chaque segment ouvrirait des joints. */
-        var o = { id: k2 ? v.id + String.fromCharCode(97 + k2) : v.id,
-                  x:v.x + S2.uc * c - sens * S2.vc * s, y:v.y + S2.uc * s + sens * S2.vc * c,
-                  a:v.a, lv:S2.lv, fix:0, prof:v.prof, grad:v.grad, grp:v.id };
-        if(v.joint) o.joint = v.joint;
-        return o;
-      });
-    }
-    /* Le décalage dans un sens, et s'il ne tient pas, dans l'autre. */
-    var out = segments(1);
-    vols.splice.apply(vols, [i, 1].concat(out));
-    if(!out.every(function(o){ return admissible(o, vols); })){
-      var alt = segments(-1);
-      vols.splice.apply(vols, [i, out.length].concat(alt));
-      if(!alt.every(function(o){ return admissible(o, vols); }))
-        vols.splice.apply(vols, [i, alt.length].concat(out));
-    }
-  }
-}
-
-/* DEUX CORPS QUI SE TOUCHENT N'EN FONT QU'UN. Quand deux volumes accolés ont
-   le même angle, la même profondeur à chaque étage et se touchent bout à bout,
-   leur réunion est un rectangle : on les FUSIONNE en un seul volume. Le double
-   mur du contact disparaît, la surface utile de chaque étage est la somme
-   exacte des deux. Un L ou un T ne sont pas un rectangle : ils restent deux
-   corps accolés (`joint`), un seul bâtiment. La salle de sport, qui a ses cotes
-   et sa hauteur, ne fusionne pas. */
-function fusionner(vols){
-  var fait = true, i, j;
-  while(fait){
-    fait = false;
-    for(i = 0; i < vols.length && !fait; i++){
-      for(j = 0; j < vols.length && !fait; j++){
-        var A = vols[i], B = vols[j];
-        if(i === j || !lies(A, B) || A.fix || B.fix || A.ph || B.ph) continue;
-        var M = fusion(A, B);
-        if(!M) continue;
-        vols[i] = M;
-        vols.splice(j, 1);
-        vols.forEach(function(v){ if(v.joint === B.id) v.joint = M.id; });
-        fait = true;
-      }
-    }
-  }
-}
-function fusion(A, B){
-  if(A.grp || B.grp || Math.abs(ecartAngle(A.a, B.a)) > .01) return null;
-  if(A.lv.concat(B.lv).some(function(e){ return e.dy || lvlOf(e.i) < 0; })) return null;
-  var ga = etageSol(A), gb = etageSol(B);
-  if(ga.dx || gb.dx || Math.abs(ga.d - gb.d) > .01) return null;
-  var ra = rectSol(A), rb = rectSol(B);
-  if(!touche(ecart(ra, rb))) return null;
-  var c = Math.cos(-A.a), s = Math.sin(-A.a);
-  var u = (rb.x - ra.x) * c - (rb.y - ra.y) * s, v = (rb.x - ra.x) * s + (rb.y - ra.y) * c;
-  if(Math.abs(v) > .05) return null;
-  /* Bout à bout, dans l'axe de A : le centre du volume fusionné est celui de la
-     réunion, et le rez fait la somme des deux largeurs utiles. */
-  var cm = (Math.min(-ra.w / 2, u - rb.w / 2) + Math.max(ra.w / 2, u + rb.w / 2)) / 2;
-  var m2 = 2 * RULES.haut.mur, W0 = ga.w + gb.w;
-  if(W0 + m2 > DOC.longMax + .01) return null;
-  var I = [];
-  A.lv.concat(B.lv).forEach(function(e){ if(I.indexOf(e.i) < 0) I.push(e.i); });
-  I.sort(function(x, y){ return x - y; });
-  var lv = [], ok = true;
-  I.forEach(function(i){
-    var ea = volEtage(A, i), eb = volEtage(B, i), w, d, ce;
-    if(ea && eb){
-      if(Math.abs(ea.d - eb.d) > .01){ ok = false; return; }
-      w = ea.w + eb.w; d = ea.d;
-      ce = ((ea.dx || 0) * ea.w + (u + (eb.dx || 0)) * eb.w) / w;
-    } else {
-      var e = ea || eb;
-      w = e.w; d = e.d; ce = ea ? (ea.dx || 0) : u + (eb.dx || 0);
-    }
-    /* L'étage reste au-dessus du rez fusionné. */
-    var jeu = Math.max(0, (W0 - w) / 2), dx = i === ga.i ? 0 : ce - cm;
-    dx = Math.max(-jeu, Math.min(jeu, dx));
-    lv.push({ i:i, w:w, d:d, dx:d1(dx), dy:0, a:(ea ? ea.a : 0) + (eb ? eb.a : 0) });
-  });
-  if(!ok || m2 < 0) return null;
-  var jt = [A.joint, B.joint].filter(function(x){ return x && x !== A.id && x !== B.id; })[0];
-  var M = { id:A.id, x:d1(ra.x + cm * Math.cos(A.a)), y:d1(ra.y + cm * Math.sin(A.a)), a:A.a,
-            lv:lv, fix:0, prof:A.prof, grad:0 };
-  if(jt) M.joint = jt;
-  return M;
-}
-/* `bout` : essayer d'abord BOUT À BOUT dans l'axe — la seule pose qui se
-   fusionne en un seul volume. */
+/* `bout` : essayer d'abord BOUT À BOUT dans l'axe du corps principal. */
 function accolerA(sp, M, vols, r, bout){
   if(!sp || !M) return false;
   var rm = rectSol(M), rs = rectSol(sp), cand = [], s, t, q;
@@ -715,8 +576,8 @@ export function admissible(v, vols, x, y, a){
   for(i = 0; i < vols.length; i++){
     var o = vols[i];
     if(o === v) continue;
-    /* Deux parties d'un même bâtiment se TOUCHENT, ou se tiennent à la distance
-       minimale comme deux bâtiments : un mètre d'écart n'est ni l'un ni l'autre. */
+    /* Deux corps accolés se TOUCHENT, ou se tiennent à la distance minimale
+       comme deux bâtiments : un mètre d'écart n'est ni l'un ni l'autre. */
     var e = ecartVols(v, o, P, DOC.distMin);
     if(e < DOC.distMin - .01 && !(lies(v, o) && touche(e))) return false;
   }
@@ -794,38 +655,7 @@ function reparer(vols){
 }
 /* Le repêchage : la position admissible la plus proche, quart de tour compris. */
 function repecher(vols){
-  var vus = {};
-  for(var i = 0; i < vols.length; i++){
-    var v = vols[i];
-    if(!v.grp){ recaler(v, vols); continue; }
-    if(vus[v.grp]) continue;
-    vus[v.grp] = 1;
-    /* Le bâtiment entier d'abord ; à défaut, ses segments un à un — ils se
-       tiennent alors à la distance minimale, comme des bâtiments distincts. */
-    var G = vols.filter(function(o){ return o.grp === v.grp; });
-    if(!recalerGroupe(G, vols)) G.forEach(function(o){ recaler(o, vols); });
-  }
-}
-/* Les segments d'un bâtiment découpé se déplacent ENSEMBLE : la position
-   admissible la plus proche pour tout le bâtiment, sans le défaire. */
-function recalerGroupe(G, vols){
-  if(G.every(function(o){ return admissible(o, vols); })) return false;
-  var cx = 0, cy = 0, demi = Infinity;
-  G.forEach(function(o){
-    cx += o.x / G.length; cy += o.y / G.length;
-    rectsHors(o).forEach(function(r){ demi = Math.min(demi, Math.min(r.w, r.d) / 2); });
-  });
-  var av = G.map(function(o){ return [o.x, o.y]; });
-  var cand = grilleSite().filter(function(p){ return p[2] >= RULES.dist.retrait + demi - .01; })
-    .map(function(p){ return [p[0] - cx, p[1] - cy, (p[0] - cx) * (p[0] - cx) + (p[1] - cy) * (p[1] - cy)]; });
-  cand.sort(function(a, b){ return a[2] - b[2]; });
-  for(var q = 0; q < cand.length; q++){
-    var ddx = d1(cand[q][0]), ddy = d1(cand[q][1]);
-    G.forEach(function(o, k){ o.x = av[k][0] + ddx; o.y = av[k][1] + ddy; });
-    if(G.every(function(o){ return admissible(o, vols); })) return true;
-  }
-  G.forEach(function(o, k){ o.x = av[k][0]; o.y = av[k][1]; });
-  return false;
+  for(var i = 0; i < vols.length; i++) recaler(vols[i], vols);
 }
 export function recaler(v, vols){
   if(!v || admissible(v, vols)) return false;
@@ -911,10 +741,8 @@ export function genMass(graine){
     var corps = figure(pid, r, C, N, { prof:prof, nb:MASS.par.nb });
     monter(corps, N, imp, hiE);
     var vols = poser(corps, C, imp, r, atts);
-    decrocher(vols, r);
     if(JOIGNABLES.indexOf(pid) >= 0 && r() < .4) joindre(vols, r);
     if(imp && r() < .4) accoler(vols, r);
-    fusionner(vols);
     enterrer(vols);
     vols.ponts = r() < .5 ? relier(vols) : [];
     vols.parti = pid; vols.prof = prof;

@@ -27,7 +27,7 @@ import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4pro
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
-import { MASS, cellules, debord, famTok, filtreDe, hauteurEtage, mursDe, niveaux,
+import { MASS, cellules, famTok, filtreDe, hauteurEtage, mursDe, niveaux,
   pontRect, volInt, volRect } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
@@ -209,7 +209,7 @@ function boiteLibre(M, P, z0, z1, c, a, edge){
 /* ---------- les volumes, refaits à chaque image ----------------------------- */
 function volMesh(){
   var M = Mesh(), N = niveaux();
-  var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus"), cPF = cssRGB("--warn");
+  var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus");
   /* Le monochrome est BLANC, et blanc pur : c'est la maquette de concours, où
      la masse se lit à l'ombre et à l'arête, jamais à la teinte. Un vert délavé
      restait une couleur, et l'on cherchait ce qu'il voulait dire. L'existant
@@ -220,7 +220,7 @@ function volMesh(){
     var as = assise(rectBas(v)).z - ZBAS;
     var sel = MASS.sel === v.id;
     var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
-    var z = as, bas = null;
+    var z = as;
     /* Les sous-sols descendent sous l'assise, les étages montent depuis elle. */
     var sous = 0;
     lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
@@ -233,15 +233,9 @@ function volMesh(){
       var h = hauteurEtage(e, n);
       var vis = MASS.etage < 0 || MASS.etage === e.i;
       var z0 = z; z += h;
-      /* Le PORTE-À-FAUX est autorisé, et la 3D le dessine tel quel — mais elle
-         le dit : l'étage qui déborde de celui du dessous prend l'arête
-         d'avertissement. Un dépassement qu'on ne voit que dans une liste n'est
-         pas un dépassement qu'on corrige. */
-      var pf = n.lvl >= 0 && bas ? debord(bas, e) : 0;
-      if(n.lvl >= 0) bas = e;
       if(!vis) return;
       var rc = volRect(v, e), q = coins(rc);
-      var edge = sel ? cSel : (pf > .3 ? cPF : cEdge);
+      var edge = sel ? cSel : cEdge;
       /* Un ouvrage du SECOND TEMPS se lit PÂLE : il occupe le terrain, mais il
          ne sera pas bâti avec l'école. Le plan le dit en pointillé, comme le
          veut le plan de situation ; la 3D n'a pas de pointillé, elle a la
