@@ -71,7 +71,7 @@ qu'elle pense de la composition à l'écran :
 |---|---|---|
 | **contraintes dures** | une seule enfreinte : la variante est jetée (`dures()`) | périmètre et recul PACom de 5 m à tous les étages, passerelles comprises · 6 m au moins entre bâtiments à tous les étages (on peut en demander plus, on ne vise pas 6) · rien sur l'existant · largeur ≥ 11 m · profondeur entre `profMin` (réglable, 11 m) et 28 m · classes en façade : un corps qui porte des classes n'a pas plus de deux salles de profondeur (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
 | **priorités fortes** | on écarte toute variante qu'une autre BAT : au moins aussi bonne partout, meilleure quelque part | orientation solaire, vue vers le terrain de football (nord-ouest, lue dans le relevé), lumière entre bâtiments (1,1 × h, indication), compacité, cour généreuse |
-| **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, porte-à-faux, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement, nappe (3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol) |
+| **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement, nappe (3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol) |
 
 Chaque critère rend favorable, neutre ou défavorable — les seuils sont dans `doctrine.js`.
 
@@ -111,13 +111,11 @@ contrôle liste ses écarts. Avec ce programme, `Bloc compact` et `Barre` le son
 seul corps de 18,5 m de profondeur au plus demanderait 130 m de long au rez.
 
 `admissible()` reste le seul juge de l'implantation, et le glisser à la souris y passe : il
-refuse une position qui ne tient pas et longe la limite au lieu de s'y arrêter. Le
-porte-à-faux est permis — la 3D en marque l'arête, le contrôle l'avertit au-delà de `pafMax` ;
-`monter()` partage chaque niveau du bas vers le haut avec un plafond, ce qui évite les débords
-d'artefact, et plus rien ne se pose sur la salle de sport.
+refuse une position qui ne tient pas et longe la limite au lieu de s'y arrêter. Rien ne se pose
+sur la salle de sport.
 
 `checks.js` ne rejuge rien : ses erreurs sont les écarts de `dures()`, avec leurs remèdes ; le
-reste (jour, porte-à-faux important, terrassement, élancement, second temps, bilan) s'avertit.
+reste (jour, terrassement, élancement, second temps, bilan) s'avertit.
 
 ## Murs, dalles, module
 
@@ -127,17 +125,14 @@ distances et la cour —, `volInt()` l'intérieur où l'on pave le programme, `m
 du plan et de la 3D. La dalle de 40 cm (`RULES.haut.dalle`) s'ajoute à la hauteur libre. Toutes
 les cotes de corps passent par `auModule()` (0,50 m).
 
-## Le décrochement : pas de segment de plus de 28 m
+## Une seule limite géométrique : 28 m de profondeur
 
-Un corps dont une façade dépasse `DOC.longMax` (28 m, murs compris) est découpé par
-`decrocher()` en segments accolés d'au plus cette longueur, décalés tour à tour de
-`DOC.decroche` (3 m) perpendiculairement à la façade. Ils portent le même `grp` : un seul
-bâtiment, pas de mur au contact, et chaque étage garde sa surface utile exacte. Un étage plus
-court que le rez se pose sur les segments du milieu et reste d'un seul tenant. Deux parties
-d'un même bâtiment se TOUCHENT (à `CONTACT` près, 15 cm) ou se tiennent aux 6 m ; le repêchage
-déplace un bâtiment découpé d'un bloc, et ne sépare ses segments qu'à défaut. La salle de
-sport et le second temps, qui ont leurs cotes, n'y sont pas soumis. Aucun article du
-règlement dans le dépôt ne fixe ces 28 m : c'est une règle de projet, réglable au volet.
+La profondeur d'un corps (sa petite cote) ne dépasse jamais `DOC.profMax`, 28 m. C'est une
+LIMITE, pas une cible : le générateur tire ses profondeurs librement dessous, et une géométrie
+qui la franchit est simplement invalide — il cherche une autre composition. Aucune forme de
+repli n'est appliquée : pas de décrochement automatique, pas de fusion des volumes qui se
+touchent, pas de règle sur les porte-à-faux (ni préférence, ni avertissement, ni arête en 3D).
+Ces trois mécanismes ont été retirés du générateur, du jugement, du contrôle et du dessin.
 
 ## Passerelles et corps accolés
 
@@ -193,7 +188,7 @@ ici.
   redimensionne repasse par `admissible()`, et rend `false` en remettant en place quand il ne tient
   pas. Ce qui change une forme le fait **à surface exacte**.
 - Un remède qui n'existe pas n'est pas proposé : on n'élargit pas un corps dont le règlement fixe
-  les cotes, et on ne remet pas d'aplomb un porte-à-faux qui vient des surfaces — il faudrait changer
+  les cotes — il faudrait changer
   les mètres carrés, et ils sont au règlement. L'alerte porte alors une `note` qui le dit.
 - « Laisser comme ça » n'efface rien. Les codes sont ceux du mixer, préfixés **`m:`** — « je laisse
   comme ça » est une seule décision de projet et n'a pas à s'enregistrer à deux endroits, mais un
