@@ -29,14 +29,15 @@ import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { areaOf, lvlOf, onFloor } from "../mix/floors.js";
 import {
-  alignement, assise, attracteurs, axePer, bbox, bordDist, dedans, airePosable,
-  ecart, ecartAngle, ecartPoly, margeAu, tientA, visAVis
+  assise, attracteurs, axePer, bbox, bordDist, dedans, airePosable,
+  ecart, ecartAngle, ecartPoly, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
-import { MASS, auModule, horsSol, lies, pontRect, touche, profBornes, profFacade, secondTemps,
+import { CONTACT, MASS, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
   sousSol, volEtage, volRect } from "./model.js";
 export { lies };
 import { angleSoleilVue, choisir, courUtile, dures, ensembles, oublier, qualites }
   from "./juge.js";
+import { PARTIS_FIGURES, composer } from "./partis.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
    Une graine propre : celle du mixer rejoue une RÉPARTITION, celle-ci rejoue
@@ -53,45 +54,11 @@ function alea(g){
 }
 function entre(r, a, b){ return a + r() * (b - a); }
 
-/* ---------- ce qui ne se règle plus -----------------------------------------
-   Quatre curseurs commandaient ici la force d'alignement, la compacité, la
-   régularité et l'intensité des terrasses. Ils réglaient la MÊME chose que le
-   parti — un peigne est fragmenté, un bloc compact l'est par définition —, et
-   l'on n'a jamais su quoi répondre à « compacité 0,35 ». Ce sont donc des
-   constantes de composition, écrites là où elles agissent :
-
-     JEU    le jeu d'orientation autour de l'axe du périmètre — sans lui, les
-            trente compositions d'un même parti seraient la même ;
-     GRAD   le retrait d'un gradin sur celui du dessous, pour le seul parti
-            « terrasses », qui est le seul à en vouloir.
-
-   La compacité, elle, a simplement disparu : sa valeur neutre ne changeait
-   rien, et le parti dit déjà si l'on cherche un bloc ou un éclat. */
-var JEU = .11, GRAD = .4;
+/* JEU : le jeu d'orientation autour de l'angle choisi — sans lui, les
+   compositions d'un même parti seraient la même. */
+var JEU = .11;
 function d1(v){ return Math.round(v * 10) / 10; }
 
-/* ---------- le cadre constructible ------------------------------------------
-   Le périmètre du concours est un polygone de vingt-sept côtés : personne n'y
-   compose directement. On travaille dans SON axe, sur la boîte qu'il inscrit,
-   retrait compris — et l'on vérifie ensuite chaque corps contre le polygone
-   vrai, qui reste le juge. */
-function cadre(cap){
-  var c = Math.cos(-cap), s = Math.sin(-cap);
-  var u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
-  PER.forEach(function(p){
-    var u = p[0] * c - p[1] * s, v = p[0] * s + p[1] * c;
-    if(u < u0) u0 = u; if(u > u1) u1 = u;
-    if(v < v0) v0 = v; if(v > v1) v1 = v;
-  });
-  var m = RULES.dist.retrait;
-  return { u0:u0 + m, u1:u1 - m, v0:v0 + m, v1:v1 - m,
-           cu:(u0 + u1) / 2, cv:(v0 + v1) / 2,
-           L:(u1 - u0) - 2 * m, P:(v1 - v0) - 2 * m, cap:cap };
-}
-function versSite(C, u, v){
-  var c = Math.cos(C.cap), s = Math.sin(C.cap);
-  return { x: u * c - v * s, y: u * s + v * c };
-}
 
 /* ---------- les emprises déjà là --------------------------------------------
    Les bâtiments existants qui touchent le périmètre : ce sont eux que l'on ne
@@ -155,109 +122,6 @@ function corpsImpose(iRez){
   return out;
 }
 
-/* ---------- la composition ---------------------------------------------------
-   Chaque parti rend une liste de CORPS : un poids, une profondeur, un angle
-   relatif au cadre, une position dans le cadre, et jusqu'à quel niveau il
-   monte. Les cotes viennent après, du programme. */
-function figure(parti, r, C, N, par){
-  var nMax = N.length;
-  var prof = par.prof;
-  var nb = par.nb > 0 ? par.nb : 0;
-  /* Autant de corps qu'il en faut pour que chacun reste sous la cote maximale :
-     les partis à nombre libre en posent au moins `nMin`. */
-  var nMin = par.nMin || 1;
-  function combien(x){ return Math.max(nMin, nb || x); }
-  /* `k` corps en rang le long du cadre, de u0 à u1. */
-  function rang(k, u0, u1, o){
-    for(var j = 0; j < k; j++){
-      var q = {}, x;
-      for(x in o) q[x] = o[x];
-      q.u = k > 1 ? u0 + (u1 - u0) * j / (k - 1) : (u0 + u1) / 2;
-      C1(q);
-    }
-  }
-  var corps = [];
-  function C1(o){
-    corps.push({ poids: o.poids == null ? 1 : o.poids,
-                 prof: o.prof || prof, ang: o.ang || 0,
-                 u: o.u || 0, v: o.v || 0, haut: o.haut == null ? nMax : o.haut,
-                 grad: o.grad || 0, libre: o.libre || 0 });
-  }
-  var i, n;
-  if(parti === "compact"){
-    C1({ prof: Math.min(prof * 2.4, 46), haut: nMax });
-  } else if(parti === "barre"){
-    C1({ prof: prof, haut: nMax });
-  } else if(parti === "barres"){
-    /* Des barres parallèles, sur deux ou trois rangs quand il en faut beaucoup. */
-    n = combien(Math.round(entre(r, 2, 4)));
-    var rangs = n <= 3 ? n : n <= 6 ? 2 : 3, cols = Math.ceil(n / rangs);
-    for(i = 0; i < n; i++)
-      C1({ poids: i === 0 ? 1.35 : 1, prof: prof, v: i % rangs,
-           u: cols > 1 ? (Math.floor(i / rangs) / (cols - 1)) * 2 - 1 : 0,
-           haut: Math.max(1, nMax - (i > 0 ? Math.round(entre(r, 0, 1.6)) : 0)) });
-  } else if(parti === "L"){
-    /* Chaque aile porte autant de volumes qu'il en faut, en rang : la figure
-       reste un L même quand aucun corps ne peut dépasser la cote maximale. */
-    var kL = Math.max(1, Math.ceil(nMin / 2));
-    rang(kL, -1, .6, { poids:1.25, prof: prof, v:0, ang:0, haut:nMax });
-    for(i = 0; i < kL; i++)
-      C1({ poids:.85, prof: prof, u:1, v:1 + i, ang:Math.PI / 2, haut: Math.max(1, nMax - 1) });
-  } else if(parti === "U"){
-    var kb = Math.max(1, Math.ceil(nMin / 3)), ks = Math.max(1, Math.ceil((nMin - kb) / 2));
-    rang(kb, -.6, .6, { poids:1.2, prof: prof, v:0, ang:0, haut:nMax });
-    for(i = 0; i < ks; i++){
-      C1({ poids:.8, prof: prof, u:-1, v:1 + i, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
-      C1({ poids:.8, prof: prof, u:1, v:1 + i, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
-    }
-  } else if(parti === "cour"){
-    var kc = Math.max(1, Math.ceil(nMin / (4 * .85)));
-    rang(kc, -.7, .7, { poids:1, prof: prof * .85, v:-1, ang:0, haut:nMax });
-    rang(kc, -.7, .7, { poids:1, prof: prof * .85, v:1, ang:0, haut:Math.max(1, nMax - 1) });
-    for(i = 0; i < kc; i++){
-      var vv = kc > 1 ? (i / (kc - 1)) * 1.2 - .6 : 0;
-      C1({ poids:.75, prof: prof * .85, u:-1, v:vv, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
-      C1({ poids:.75, prof: prof * .85, u:1, v:vv, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
-    }
-  } else if(parti === "pavillons"){
-    n = combien(Math.round(entre(r, 3, 6)));
-    for(i = 0; i < n; i++)
-      C1({ poids: entre(r, .7, 1.3), prof: Math.min(prof, entre(r, 13, 20)),
-           u: (i % 2) * 2 - 1, v: Math.floor(i / 2) - (n > 4 ? 1 : .5),
-           haut: Math.max(1, Math.min(nMax, Math.round(entre(r, 1, 2.6)))), libre:1 });
-  } else if(parti === "hameau"){
-    n = combien(Math.round(entre(r, 3, 5)));
-    for(i = 0; i < n; i++)
-      C1({ poids: entre(r, .6, 1.6), prof: Math.min(prof, entre(r, 12, 22)),
-           ang: entre(r, -.5, .5),
-           u: entre(r, -1, 1), v: entre(r, -1, 1),
-           haut: Math.max(1, Math.min(nMax, Math.round(entre(r, 1, nMax + .4)))), libre:1 });
-  } else if(parti === "terrasses"){
-    n = combien(r() < .45 ? 2 : 1);
-    var rt = n <= 2 ? n : 2, ct = Math.ceil(n / rt);
-    for(i = 0; i < n; i++)
-      C1({ poids:1, prof: Math.min(prof * 1.5, 30), v: i % rt, haut: nMax,
-           u: ct > 1 ? (Math.floor(i / rt) / (ct - 1)) * 2 - 1 : 0, grad: GRAD });
-  } else if(parti === "peigne"){
-    n = Math.max(nMin - 1, nb || Math.round(entre(r, 3, 5)));
-    C1({ poids:1.1, prof: Math.min(prof, 15), u:0, v:-1, ang:0, haut:nMax });
-    for(i = 0; i < n; i++)
-      C1({ poids:.7, prof: Math.min(prof, 15), ang:Math.PI / 2,
-           u: i - (n - 1) / 2, v: .6, haut: Math.max(1, nMax - 1) });
-  } else { /* libre */
-    n = combien(Math.round(entre(r, 2, 5)));
-    for(i = 0; i < n; i++)
-      C1({ poids: entre(r, .5, 1.8), prof: Math.min(prof, entre(r, 12, 24)),
-           ang: entre(r, -1.2, 1.2), u: entre(r, -1, 1), v: entre(r, -1, 1),
-           haut: Math.max(1, Math.min(nMax, Math.round(entre(r, 1, nMax + .4)))), libre:1 });
-  }
-  /* Chaque volume son nombre d'étages : une fois sur deux, les corps
-     secondaires tirent le leur entre un et le maximum (`VARIER`, coupé par
-     `genMass()` quand aucune variante ainsi tirée ne tient). */
-  if(VARIER && nMax > 1 && corps.length > 1 && r() < .5)
-    corps.forEach(function(c, k2){ if(k2) c.haut = 1 + Math.floor(r() * nMax); });
-  return corps;
-}
 
 /* ---------- des corps aux volumes -------------------------------------------
    Ici, et seulement ici, le programme donne les cotes. La part d'un corps dans
@@ -277,161 +141,8 @@ function cotes(a, prof, hi){
   d = auModule(d);
   return { w: auModule(a / d), d: d };
 }
-function monter(corps, N, imp, hi){
-  /* La surface imposée sort du partage avant qu'il commence. Rien ne se pose
-     sur la salle de sport : c'est une contrainte dure. */
-  var A = N.map(function(n, k){
-    return n.A - (imp && k === 0 ? imp.aire : 0);
-  });
-  var k, i, B = profBornes();
-  corps.forEach(function(c){ c.lv = []; c.aire = []; });
 
-  /* QUI monte : le parti le propose, et CHAQUE VOLUME A SON NOMBRE D'ÉTAGES. Une
-     seule exigence : ceux qui montent jusqu'à un niveau pèsent au moins la part
-     que ce niveau représente du rez — sans quoi un seul corps haut porterait
-     tous les étages et deviendrait une barre de cent mètres. On promeut alors,
-     du plus lourd au plus léger, ce qu'il faut et pas plus. */
-  var tot = 0;
-  corps.forEach(function(c){ tot += c.poids; });
-  for(k = 1; k < N.length; k++){
-    if(!(A[k] > 0) || !(A[0] > 0)) continue;
-    var sur = 0;
-    corps.forEach(function(c){ if(c.haut > k) sur += c.poids; });
-    /* Au repli (`VARIER` coupé), tout le monde monte : les hauteurs d'avant. */
-    var manque = (VARIER ? Math.min(1, 1.3 * A[k] / A[0]) : 1) * tot - sur;
-    corps.filter(function(c){ return c.haut <= k; })
-         .sort(function(a2, b2){ return b2.poids - a2.poids; })
-         .forEach(function(c){
-           if(manque <= .01 && sur > 0) return;
-           c.haut = k + 1; manque -= c.poids; sur += c.poids;
-         });
-  }
 
-  /* Le partage, DU HAUT VERS LE BAS. Le dernier niveau se partage entre ceux qui
-     y montent, au prorata de leur poids ; à chaque niveau inférieur, un corps
-     reprend d'abord ce qu'il porte au-dessus, puis sa part de ce qui reste.
-     Un corps haut a donc une emprise plus grande, un corps bas prend le reste
-     du rez — n'importe quel mélange de hauteurs se loge ainsi d'aplomb. Quand le
-     programme demande plus en haut qu'en bas, l'étage se réduit au prorata. */
-  for(k = N.length - 1; k >= 0; k--){
-    if(!(A[k] > 0)) continue;
-    var port = corps.filter(function(c){ return c.haut > k; });
-    if(!port.length) continue;
-    var dessus = 0, som = 0;
-    port.forEach(function(c){ dessus += c.aire[k + 1] || 0; som += c.poids; });
-    var reste = A[k] - dessus;
-    port.forEach(function(c){
-      var h = c.aire[k + 1] || 0;
-      c.aire[k] = reste >= 0 ? h + reste * c.poids / som : h * A[k] / dessus;
-    });
-  }
-
-  /* Les cotes, du bas vers le haut : le rez fixe la PROFONDEUR du corps, la
-     largeur suit la surface. Un étage trop court pour la largeur minimale
-     s'amincit plutôt que de devenir une lame. */
-  for(k = 0; k < N.length; k++){
-    for(i = 0; i < corps.length; i++){
-      var c = corps[i];
-      if(c.aire[k] == null) continue;
-      var a = c.aire[k], q, d;
-      if(!c.lv.length){
-        q = cotes(a, c.prof, hi);
-        c.d0 = q.d;
-      } else if(c.grad){
-        /* Une terrasse se retire dans les DEUX sens. */
-        var bas = c.lv[c.lv.length - 1];
-        var g = Math.sqrt(Math.max(.15, a / Math.max(1, bas.w * bas.d)));
-        d = auModule(Math.max(B.lo, bas.d * g));
-        q = { w: auModule(a / d), d: d };
-      } else {
-        d = c.d0;
-        if(a / d < DOC.largeurMin) d = auModule(Math.max(B.lo, a / DOC.largeurMin));
-        q = { w: auModule(a / d), d: d };
-      }
-      c.lv.push({ i:N[k].i, w:q.w, d:q.d, dx:0, dy:0, a:a });
-    }
-  }
-  corps.forEach(function(c){
-    if(!c.grad || c.lv.length < 2) return;
-    var d0 = c.lv[0].d;
-    c.lv.forEach(function(e, kk){ if(kk) e.dy = d1(-(d0 - e.d) / 2); });
-  });
-  return corps;
-}
-
-/* ---------- poser la figure sur le site -------------------------------------
-   Les corps ont leurs cotes : on les pose dans le cadre selon la figure, puis
-   on RÉPARE. Dans les partis libres, CHAQUE corps choisit son orientation — se
-   ranger sur le site, se tourner vers le soleil et la vue, ou garder l'angle
-   du parti : aucune orientation commune n'est imposée. */
-function poser(corps, C, imp, r, atts){
-  var vols = [];
-  if(imp) vols.push(ancrer(imp, C, r));
-  corps.forEach(function(c, k){
-    var e0 = c.lv[0] || { w:12, d:12 };
-    var span = c.ang ? e0.d : e0.w;
-    var ecar = c.ang ? e0.w : e0.d;
-    var u = C.cu + c.u * (C.L / 2 - span / 2) * entre(r, .5, .92);
-    var v = C.cv + c.v * (ecar + DOC.distMin) * (c.libre ? entre(r, .7, 1.3) : 1);
-    if(c.libre){
-      u = C.cu + c.u * (C.L / 2) * entre(r, .35, .85);
-      v = C.cv + c.v * (C.P / 2) * entre(r, .35, .85);
-    }
-    var p = versSite(C, u, v), ang = C.cap + c.ang;
-    if(c.libre){
-      var m = r();
-      if(m < .35){
-        var al = alignement(ang, atts);
-        ang -= ecartAngle(ang, al.att.a);
-      } else if(m < .7) ang = angleSoleilVue(p.x, p.y) + entre(r, -.1, .1);
-    }
-    vols.push({ id:"v" + (k + 1), x:d1(p.x), y:d1(p.y), a:ang, lv:c.lv,
-                fix:0, prof:c.prof, grad:c.grad });
-  });
-  reparer(vols);
-  return vols;
-}
-
-/* ---------- la salle de sport ------------------------------------------------
-   Ses cotes ne bougent pas d'un centimètre et rien ne se pose dessus. On la
-   pose d'abord sur le BAS du terrain — sept mètres libres se logent d'autant
-   mieux qu'on part bas —, puis, dans une partie des variantes, on l'ACCOLE au
-   corps principal : elle fait alors partie du bâtiment. Ni première, ni à part
-   par principe. */
-function ancrer(imp, C, r){
-  var lvi = [{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, keys:[imp.key] }];
-  var best = null, bz = Infinity, t;
-  for(t = 0; t < 8; t++){
-    var u = C.cu + entre(r, -.42, .42) * C.L, v = C.cv + entre(r, -.42, .42) * C.P;
-    var pp = versSite(C, u, v);
-    var P = { x:d1(pp.x), y:d1(pp.y), a:C.cap + (r() < .5 ? 0 : Math.PI / 2) };
-    var rc = volRect(P, lvi[0]);
-    var z = assise(rc).z + (margeAu(PER, rc) >= RULES.dist.retrait ? 0 : 100);
-    if(z < bz){ bz = z; best = P; }
-  }
-  return { id:"vsport", x:best.x, y:best.y, a:best.a, lv:lvi,
-           fix:1, ancre:1, key:imp.key, prof:imp.d, grad:0 };
-}
-function accoler(vols, r){
-  var sp = null, E = [];
-  vols.forEach(function(v){ if(v.fix) sp = v; else if(!v.ph) E.push(v); });
-  if(!sp) return false;
-  /* Au corps principal d'abord, puis aux autres, du plus grand au plus petit. */
-  E.sort(function(a, b){ return rectSol(b).w * rectSol(b).d - rectSol(a).w * rectSol(a).d; });
-  for(var n = 0; n < E.length; n++) if(accolerA(sp, E[n], vols, r)) return true;
-  return false;
-}
-/* UN SEUL BÂTIMENT. Dans une partie des variantes, les ailes d'un parti à
-   plusieurs corps s'accolent au corps principal au lieu de s'en tenir à six
-   mètres : un L, un T, un U d'un seul tenant. Même mécanique que la salle de
-   sport intégrée. */
-var JOIGNABLES = ["barres", "L", "U", "cour", "peigne", "terrasses"];
-function joindre(vols, r){
-  var E = vols.filter(function(v){ return !v.fix && !v.ph; });
-  E.sort(function(a, b){ return rectSol(b).w * rectSol(b).d - rectSol(a).w * rectSol(a).d; });
-  for(var k = 1; k < E.length; k++)
-    if(!lies(E[k], E[0])) accolerA(E[k], E[0], vols, r, true);
-}
 /* `bout` : essayer d'abord BOUT À BOUT dans l'axe du corps principal. */
 function accolerA(sp, M, vols, r, bout){
   if(!sp || !M) return false;
@@ -599,10 +310,10 @@ export function admissible(v, vols, x, y, a){
   for(i = 0; i < vols.length; i++){
     var o = vols[i];
     if(o === v) continue;
-    /* Deux corps accolés se TOUCHENT, ou se tiennent à la distance minimale
-       comme deux bâtiments : un mètre d'écart n'est ni l'un ni l'autre. */
+    /* Deux parties d'un même bâtiment ne se recouvrent pas ; deux bâtiments se
+       tiennent à la distance minimale. */
     var e = ecartVols(v, o, P, DOC.distMin);
-    if(e < DOC.distMin - .01 && !(lies(v, o) && touche(e))) return false;
+    if(e < DOC.distMin - .01 && !(lies(v, o) && e >= -CONTACT)) return false;
   }
   var H = rectsHors(v, P);
   for(i = 0; i < H.length; i++){
@@ -712,7 +423,7 @@ function grilleSite(){
   GRILLE = [];
   for(cx = B.x0; cx <= B.x1; cx += 3){
     for(cy = B.y0; cy <= B.y1; cy += 3){
-      if(dedans(PER, cx, cy)) GRILLE.push([cx, cy, bordDist(PER, cx, cy)]);
+      if(dedans(PER, cx, cy)) GRILLE.push([cx, cy, bordDist(PER, cx, cy), terrain(cx, cy)]);
     }
   }
   return GRILLE;
@@ -733,6 +444,103 @@ function etageSol(v){
 }
 function rectSol(v){ return volRect(v, etageSol(v)); }
 
+/* ---------- poser une figure de parti D'UN BLOC --------------------------------
+   La figure de `partis.js` arrive dans son repère ; on ne la déforme plus. On
+   cherche une position et un angle où TOUS ses volumes tiennent — parcelle,
+   recul, existant —, et c'est tout : pas de poussée corps par corps, qui
+   défaisait un U en trois blocs épars. Si rien ne tient, la figure est jetée. */
+var ATTS = null;
+function implanter(S, N, r, th0){
+  if(!ATTS) ATTS = attracteurs();
+  var cx = 0, cy = 0, rMin = Infinity;
+  S.forEach(function(s){ cx += s.x / S.length; cy += s.y / S.length; });
+  var vols = S.map(function(s, k){
+    rMin = Math.min(rMin, Math.min(s.w, s.d) / 2);
+    return { id:"v" + (k + 1), x:0, y:0, a:0, lx:s.x - cx, ly:s.y - cy, la:s.a,
+             bat:s.bat, role:s.role, fix:0, prof:s.d, grad: s.gradin ? 1 : 0,
+             lv: s.lv.map(function(e){
+               return { i:N[e.k].i, w:e.w, d:e.d, dx:0,
+                        dy: s.gradin && e.k > 0 ? d1(-(s.d - e.d) / 2) : 0, a:e.a };
+             }) };
+  });
+  var cand = grilleSite().filter(function(p){ return p[2] >= RULES.dist.retrait + rMin; });
+  var t, k;
+  for(t = 0; t < 300; t++){
+    var p = cand[Math.floor(r() * cand.length)];
+    /* L'angle choisi le plus souvent ; parfois une direction du site — une
+       longue barre ne tient que dans le sens de la parcelle. */
+    var th = r() < .7 ? th0 + entre(r, -1, 1) * JEU * 1.5 + (r() < .25 ? Math.PI / 2 : 0)
+                      : ATTS[Math.floor(r() * ATTS.length)].a + (r() < .5 ? 0 : Math.PI / 2);
+    var c = Math.cos(th), s2 = Math.sin(th), ok = true;
+    for(k = 0; k < vols.length; k++){
+      var v = vols[k];
+      v.x = d1(p[0] + v.lx * c - v.ly * s2); v.y = d1(p[1] + v.lx * s2 + v.ly * c); v.a = th + v.la;
+    }
+    for(k = 0; k < vols.length && ok; k++) if(!admissible(vols[k], vols)) ok = false;
+    if(ok){ vols.T = { x:p[0], y:p[1], a:th }; return vols; }
+  }
+  return null;
+}
+/* La figure est-elle restée celle qu'on a construite ? Chaque volume à sa place
+   dans le repère posé, au décimètre près. C'est la garde contre toute retouche
+   qui la déformerait. */
+function intact(vols){
+  var T = vols.T;
+  if(!T) return true;
+  var c = Math.cos(T.a), s = Math.sin(T.a);
+  return vols.every(function(v){
+    if(v.lx == null) return true;
+    var x = T.x + v.lx * c - v.ly * s, y = T.y + v.lx * s + v.ly * c;
+    return Math.hypot(v.x - x, v.y - y) < .2 && Math.abs(Math.sin(v.a - T.a - v.la)) < .01;
+  });
+}
+/* La salle de sport : accolée à la figure une fois sur trois, sinon sur le bas
+   du terrain, à distance. Ses cotes ne bougent pas. */
+function placerSport(vols, imp, r, th){
+  var sp = { id:"vsport", x:0, y:0, a:th, fix:1, ancre:1, key:imp.key, prof:imp.d, grad:0,
+             lv:[{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, keys:[imp.key] }] };
+  vols.push(sp);
+  var E = vols.filter(function(v){ return !v.fix && !v.ph; });
+  if(E.length && r() < .35 && accolerA(sp, E[Math.floor(r() * E.length)], vols, r)) return true;
+  delete sp.joint;
+  var demi = Math.min(imp.w, imp.d) / 2 + RULES.haut.mur;
+  var cand = grilleSite().filter(function(p){ return p[2] >= RULES.dist.retrait + demi; })
+    .map(function(p){ return [p[0], p[1], p[3] + r() * .8]; });
+  cand.sort(function(a, b){ return a[2] - b[2]; });
+  for(var q = 0; q < cand.length && q < 500; q++){
+    var A = [th, th + Math.PI / 2];
+    for(var k = 0; k < 2; k++){
+      if(admissible(sp, vols, cand[q][0], cand[q][1], A[k])){
+        sp.x = d1(cand[q][0]); sp.y = d1(cand[q][1]); sp.a = A[k];
+        return true;
+      }
+    }
+  }
+  vols.pop();
+  return false;
+}
+/* Le sens de la pente : vers où le terrain descend, au cœur du site. */
+var AVAL = null;
+function aval(){
+  if(AVAL != null) return AVAL;
+  var B = bbox(PER), h = 20;
+  var gx = terrain(B.cx + h, B.cy) - terrain(B.cx - h, B.cy);
+  var gy = terrain(B.cx, B.cy + h) - terrain(B.cx, B.cy - h);
+  AVAL = Math.atan2(-gy, -gx);
+  return AVAL;
+}
+/* L'orientation d'une figure : l'axe du périmètre, l'optimum soleil-vue, ou un
+   angle libre. Les terrasses suivent les courbes : leurs rangs descendent la
+   pente (le +v de la figure va vers l'aval). */
+function orientation(pid, r, centreSite){
+  if(pid === "terrasses") return aval() - Math.PI / 2;
+  if(MASS.par.cap != null) return MASS.par.cap;
+  var m = r();
+  if(m < .4) return axePer();
+  if(m < .75) return angleSoleilVue(centreSite.cx, centreSite.cy);
+  return axePer() + entre(r, -.7, .7);
+}
+
 /* ---------- le tirage massing ------------------------------------------------
    Générer, valider, comparer, choisir — dans cet ordre. En « Auto », chaque
    parti est reconnu ; ceux qui rendent au moins une variante valide reçoivent
@@ -744,7 +552,6 @@ export function genMass(graine){
   var N = horsSol();
   if(!N.length) return [];
   oublier();
-  var atts = attracteurs();
   var imp = corpsImpose(N[0].i);
   if(imp) imp.i = N[0].i;
   var partis = MASS.parti === "auto" ? PARTIS_LIBRES : [MASS.parti];
@@ -752,41 +559,41 @@ export function genMass(graine){
   var centreSite = bbox(PER);
   var valides = [], rates = [];
 
+  /* L'aire bâtie d'école par niveau hors sol : ce que la figure doit loger. */
+  var Aecole = N.map(function(n, k){ return Math.max(0, n.A - (imp && k === 0 ? imp.aire : 0)); });
+
+  /* UN ESSAI, dans l'ordre voulu : 1. le PARTI construit sa figure ; 2. le
+     PROGRAMME lui donne ses étages et ses emprises (dans `composer`) ; la
+     figure est posée d'un bloc, puis la salle de sport et le sous-sol ; 3. les
+     RÈGLES DURES — TOUTES, sans exception — décident si elle entre dans les
+     résultats ; 4. les priorités et préférences ne départagent qu'ensuite. */
   function essai(pid){
-    var prof = auModule(entre(r, B.lo, hiE));
-    var m = r(), cap;
-    if(MASS.par.cap != null) cap = MASS.par.cap;
-    else if(m < .4) cap = axePer();
-    else if(m < .75) cap = angleSoleilVue(centreSite.cx, centreSite.cy);
-    else cap = axePer() + entre(r, -.7, .7);
-    var C = cadre(cap + entre(r, -1, 1) * JEU);
-    /* Combien de corps au moins, pour qu'aucun ne dépasse la cote maximale au
-       rez : l'aire du rez d'école sur la plus grande emprise qu'un corps de
-       cette profondeur puisse avoir. */
-    /* +10 % : les corps lourds et les corps hauts prennent plus que leur part. */
-    var nMin = Math.ceil(1.1 * Math.max(0, N[0].A - (imp ? imp.aire : 0)) / (B.hi * prof) - 1e-6);
-    var corps = figure(pid, r, C, N, { prof:prof, nb:MASS.par.nb, nMin:nMin });
-    monter(corps, N, imp, hiE);
-    var vols = poser(corps, C, imp, r, atts);
-    if(JOIGNABLES.indexOf(pid) >= 0 && r() < .4) joindre(vols, r);
-    if(imp && r() < .4) accoler(vols, r);
-    enterrer(vols);
-    vols.ponts = r() < .5 ? relier(vols) : [];
-    vols.parti = pid; vols.prof = prof;
-    var d = dures(vols, true).filter(function(x){ return !x.pile; });
-    /* Une figure qui ne tient pas dans la parcelle est REPRISE : chaque corps
-       fautif va à la position admissible la plus proche, quart de tour
-       compris, et le sous-sol suit le terrain de la position finale. */
-    if(d.length && /perim|dist|existant/.test(d[0].k)){
-      repecher(vols);
-      desenterrer(vols); enterrer(vols);
-      if(vols.ponts.length) vols.ponts = relier(vols);
-      d = dures(vols, true).filter(function(x){ return !x.pile; });
+    /* La profondeur, tirée sous la cote : une barre et un bloc compact la
+       veulent pleine, des pavillons et un hameau plus mince. */
+    var p0 = B.lo, p1 = hiE;
+    if(pid === "barre" || pid === "compact") p0 = Math.max(B.lo, hiE - 3);
+    if(pid === "pavillons" || pid === "hameau") p1 = Math.max(B.lo, Math.min(hiE, B.lo + 5));
+    var prof = auModule(entre(r, p0, p1)), vols;
+    {
+      var S = composer(pid, Aecole, prof, r);
+      if(!S){ rates.push({ pid:pid, k:"parti" }); return false; }
+      var th = orientation(pid, r, centreSite);
+      vols = implanter(S, N, r, th);
+      if(!vols){ rates.push({ pid:pid, k:"perim" }); return false; }
+      if(imp && !placerSport(vols, imp, r, th)){ rates.push({ pid:pid, k:"sport" }); return false; }
+      enterrer(vols);
+      var bats = {};
+      vols.forEach(function(v){ if(v.bat) bats[v.bat] = 1; });
+      vols.ponts = Object.keys(bats).length > 1 && r() < .4 ? relier(vols) : [];
+      if(!intact(vols)){ rates.push({ pid:pid, k:"parti" }); return false; }
     }
+    vols.parti = pid; vols.prof = prof;
+    var d = dures(vols, true);
     if(!d.length){ valides.push({ vols:vols, pid:pid, q:qualites(vols) }); return true; }
-    rates.push({ vols:vols, pid:pid, k:d[0].k });
+    rates.push({ vols:vols, pid:pid, k:d[0].k, pile:d[0].pile });
     return false;
   }
+
 
   var lot = partis, t;
   if(partis.length > 1){
@@ -799,44 +606,44 @@ export function genMass(graine){
     if(l2.length) lot = l2;
   }
   for(t = 0; t < Math.max(1, Math.round(DOC.essais)); t++) essai(lot[t % lot.length]);
+  /* Un parti imposé qui n'a encore presque rien rendu : on persévère, les
+     essais ne coûtent que quelques millisecondes — jusqu'à dix fois le budget. */
+  var plafond = 10 * Math.max(1, Math.round(DOC.essais));
+  while(valides.length < 4 && t < plafond){ essai(lot[t % lot.length]); t++; }
 
-  /* Aucune variante n'a tenu : on rejoue une fois avec les hauteurs que le
-     parti propose, qui se logent plus souvent. */
-  if(!valides.length){
-    VARIER = false;
-    for(t = 0; t < Math.max(1, Math.round(DOC.essais)); t++) essai(lot[t % lot.length]);
-    VARIER = true;
-  }
-  /* Le repêchage coûte un balayage de la parcelle par corps : on ne le paie que
-     si aucune variante n'a tenu, et sur quelques-unes seulement. */
-  if(!valides.length){
-    rates.filter(function(x){ return /perim|dist|existant/.test(x.k); }).slice(0, 5)
-      .forEach(function(x){
-        repecher(x.vols);
-        desenterrer(x.vols); enterrer(x.vols);
-        x.vols.ponts = relier(x.vols);
-        if(!dures(x.vols, true).filter(function(y){ return !y.pile; }).length)
-          valides.push({ vols:x.vols, pid:x.pid, q:qualites(x.vols) });
-      });
-  }
-  if(valides.length){
+  /* LA DERNIÈRE GARDE. Les ouvrages du second temps se posent sur la variante
+     retenue : on revérifie alors TOUTES les règles dures. S'ils en font
+     enfreindre une, ils ne sont pas posés (le contrôle le dit) ; si la variante
+     elle-même ne tient plus, elle est abandonnée et l'on en tire une autre.
+     Rien de ce qui enfreint une règle dure n'arrive jusqu'à l'écran. */
+  var n0 = valides.length;
+  while(valides.length){
     var ch = choisir(valides, r);
-    ch.vols.valides = valides.length;
     poserSecond(ch.vols, r);
-    return ch.vols;
+    if(dures(ch.vols, false).length) retirerSecond(ch.vols);
+    if(!dures(ch.vols, false).length){
+      ch.vols.valides = n0;
+      return ch.vols;
+    }
+    valides.splice(valides.indexOf(ch), 1);
   }
   /* AUCUNE variante ne tient : on ne propose RIEN. Une composition qui enfreint
      une contrainte dure n'est pas une option, même « la moins fautive ». Le
      résultat est vide et marqué, et le contrôle dit pourquoi et quoi faire. */
   var vide = [];
   vide.impossible = 1;
+  /* Ce qui a fait échouer les essais, compté : de quoi dire pourquoi. */
+  vide.echecs = {};
+  rates.forEach(function(x){ vide.echecs[x.k] = (vide.echecs[x.k] || 0) + 1; });
+  /* Une règle que la composition ne peut pas résoudre (l'abri PC à l'étage) : on
+     le dit, c'est au mixer. */
+  var pile = rates.filter(function(x){ return x.pile && x.vols; })[0];
+  if(pile) vide.raison = dures(pile.vols, false).filter(function(x){ return x.pile; })[0].msg;
   vide.parti = MASS.parti;
   vide.posable = airePosable(RULES.dist.retrait);
   return vide;
 }
-var VARIER = true;
-var PARTIS_LIBRES = ["compact","barre","barres","L","U","cour","pavillons",
-                     "hameau","terrasses","peigne","libre"];
+var PARTIS_LIBRES = PARTIS_FIGURES.concat(["libre"]);
 
 /* Les sous-sols vont sous le corps le PLUS HAUT du site : trois mètres de
    terrain au-dessus de la nappe ne se trouvent qu'au tiers est. Jamais sous la
@@ -905,4 +712,4 @@ export function relierCourant(){
   return MASS.pont.length > 0;
 }
 
-export { cadre, rectSol };
+export { rectSol };

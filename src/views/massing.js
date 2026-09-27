@@ -37,7 +37,7 @@ import { jugementCourant } from "../mass/juge.js";
 import { DOC } from "../data/doctrine.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massPar, massSet, massVols, niveaux, partiOf, profBornes,
+  massSet, massVols, niveaux, partiOf, profBornes,
   volHaut, volNiv
 } from "../mass/model.js";
 import { doctrineSection, etatDe, jugementBloc } from "./doctrine.js";
@@ -251,26 +251,9 @@ function blocParti(){
    pas, il se tâtonne. */
 function blocParams(){
   var b = bloc("Paramètres");
-  function num(lb, k, min, max, pas, suf){
-    var l = el("label", "mass-par");
-    l.appendChild(el("span", "mass-par__n", lb));
-    var i = document.createElement("input");
-    i.type = "number"; i.className = "mono";
-    i.min = String(min); i.max = String(max); i.step = String(pas);
-    i.value = String(MASS.par[k]);
-    i.addEventListener("change", function(){
-      var v = parseFloat(String(i.value).replace(",", "."));
-      if(!isFinite(v)) { i.value = String(MASS.par[k]); return; }
-      massPar(k, Math.max(min, Math.min(max, v)));
-      regenere(); redessine();
-    });
-    l.appendChild(i);
-    if(suf) l.appendChild(el("span", "mass-par__u", suf));
-    b.appendChild(l);
-  }
-  num("Nombre de volumes", "nb", 0, 9, 1, "");
-  b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. "
-    + "Profondeurs, distances, cour et seuils se règlent au volet Contraintes."));
+  b.appendChild(el("p", "mass-note", "Le parti décide du nombre de volumes, selon le "
+    + "programme et la cote maximale. Profondeurs, distances, cour et seuils se règlent "
+    + "au volet Contraintes."));
   return b;
 }
 

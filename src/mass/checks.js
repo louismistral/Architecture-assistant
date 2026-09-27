@@ -79,7 +79,8 @@ export function massCheck(){
       + "a tout essayé, de " + dec(profBornes().lo) + " à " + dec(profBornes().hi) + " m de "
       + "profondeur ; l’aire posable est de " + fmt(Math.round(V.posable || 0)) + " m², recul "
       + "du PACom déduit. Essayer un autre parti, rejouer, ajouter un étage au mixer, ou "
-      + "desserrer une contrainte dans le volet Contraintes.", "2.3", "", -1,
+      + "desserrer une contrainte dans le volet Contraintes."
+      + (V.raison ? " En cause, et cela se règle au mixer : " + V.raison : ""), "2.3", "", -1,
       { fix:[fixAuto(), fixRelancer(), fixPile()] });
     return out;
   }

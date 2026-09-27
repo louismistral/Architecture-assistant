@@ -37,18 +37,18 @@ import { aire, assise, coins, ecartAngle, local } from "./geom.js";
    ils se tiennent les uns par rapport aux autres, et comment la pile se
    dégrade en montant. Le texte est ce qu'on lit dans le panneau. */
 export var PARTIS = [
-  { id:"auto",      n:"Auto",              d:"Le générateur essaie tous les partis et garde celui qui tient le mieux sur ce site, avec ce programme." },
-  { id:"compact",   n:"Bloc compact",      d:"Un seul corps. Aucun volume ne dépassant 28 m dans une direction, ce programme ne tient pas dans un seul : le générateur le dira." },
-  { id:"barre",     n:"Barre",             d:"Un seul corps allongé. Aucun volume ne dépassant 28 m, ce programme n'y tient pas : le générateur le dira." },
-  { id:"barres",    n:"Barres parallèles", d:"Plusieurs corps allongés, parallèles entre eux, séparés — ou accolés en un seul bâtiment. Entre eux, des cours en bandes." },
-  { id:"L",         n:"Forme en L",        d:"Deux ailes perpendiculaires. L'angle tient un dehors, sans le fermer." },
-  { id:"U",         n:"Forme en U",        d:"Trois ailes autour d'une cour ouverte d'un côté — la cour d'école dans sa forme la plus ancienne." },
-  { id:"cour",      n:"Cour",              d:"Quatre ailes, une cour fermée. Elle demande beaucoup d'emprise : sur un site étroit, le générateur le dira." },
-  { id:"pavillons", n:"Pavillons",         d:"Le programme éclaté en plusieurs petits corps, bas, posés séparément." },
-  { id:"hameau",    n:"Hameau",            d:"Des corps de tailles et d'orientations différentes, qui gardent une relation entre eux — ni alignés, ni étrangers." },
-  { id:"terrasses", n:"Terrasses",         d:"Chaque niveau se retire sur le précédent : le volume descend en gradins vers le sud." },
-  { id:"peigne",    n:"Peigne",            d:"Un corps principal, et des ailes perpendiculaires qui s'y accrochent." },
-  { id:"libre",     n:"Composition libre", d:"Aucune règle de figure : les corps se posent où le site les prend, orientés vers ce qui les attire." }
+  { id:"auto",      n:"Auto",              d:"Le générateur explore tous les partis et tire parmi ceux qui rendent une variante valide : des familles de compositions réellement différentes." },
+  { id:"compact",   n:"Bloc compact",      d:"Deux rangs de volumes accolés par leurs longs côtés : un seul bâtiment ramassé, sans longue barre ni corps dispersés." },
+  { id:"barre",     n:"Barre",             d:"Une seule file de volumes accolés, une direction dominante. Avec ce programme elle est très longue : le site la refuse souvent." },
+  { id:"barres",    n:"Barres parallèles", d:"Deux à quatre barres parallèles de longueurs différentes, décalées, séparées de vides qui font cour." },
+  { id:"L",         n:"Forme en L",        d:"Deux ailes perpendiculaires qui se rencontrent à l'une de leurs extrémités : l'angle cadre un dehors." },
+  { id:"U",         n:"Forme en U",        d:"Une base et deux ailes du même côté, de longueurs libres, qui tiennent un espace central." },
+  { id:"cour",      n:"Cour",              d:"Trois côtés accolés et un quatrième bâtiment qui ferme la cour à distance : un vide central au moins égal à la cour minimale." },
+  { id:"pavillons", n:"Pavillons",         d:"Des volumes autonomes, en trame décalée, séparés par des dehors : aucun ne touche l'autre." },
+  { id:"hameau",    n:"Hameau",            d:"Trois ou quatre groupes de volumes, chacun son orientation, autour d'une place : un ensemble, pas une dispersion." },
+  { id:"terrasses", n:"Terrasses",         d:"Des rangs qui suivent les courbes de niveau, le plus haut en amont, et des étages qui se retirent en gradins vers l'amont." },
+  { id:"peigne",    n:"Peigne",            d:"Un corps principal et plusieurs branches perpendiculaires d'un même côté, espacées d'au moins la distance entre bâtiments." },
+  { id:"libre",     n:"Composition libre", d:"Des groupes — files, coudes, volumes seuls — aux orientations libres, rapprochés autant que les règles le permettent." }
 ];
 export function partiOf(id){
   var p = null;
@@ -227,13 +227,16 @@ export function volRect(v, e){
   var m = 2 * RULES.haut.mur;
   return local({ x:v.x, y:v.y, w:e.w + m, d:e.d + m, a:v.a }, e.dx || 0, e.dy || 0);
 }
-/* Ce qui compte pour « se toucher » : les positions sont arrondies au
-   décimètre, un contact exact n'existe pas. */
+/* La tolérance d'un contact : les positions sont arrondies au décimètre, un
+   contact exact n'existe pas. */
 export var CONTACT = 0.15;
-export function touche(e){ return e >= -CONTACT && e <= CONTACT; }
-/* DEUX VOLUMES SONT-ILS ACCOLÉS ? `joint` désigne le voisin. Une seule
-   définition, lue par l'implantation et le jugement. */
-export function lies(a, b){ return a.joint === b.id || b.joint === a.id; }
+/* DEUX VOLUMES SONT-ILS UN MÊME BÂTIMENT ? `joint` désigne un voisin accolé (la
+   salle de sport intégrée), `bat` le bâtiment d'un parti (les volumes d'une
+   aile, d'une barre). Une seule définition, lue par l'implantation, le
+   jugement et le dessin. */
+export function lies(a, b){
+  return a.joint === b.id || b.joint === a.id || (!!a.bat && a.bat === b.bat);
+}
 
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
    largeur, deux pignons entre eux, 50 cm vers l'intérieur de l'emprise. */

@@ -29,7 +29,7 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { MASS, touche, horsModule, horsSol, pontRect, postesDe, profBornes,
+import { CONTACT, MASS, horsModule, horsSol, pontRect, postesDe, profBornes,
   profFacade, volRect } from "./model.js";
 import { ecartVols, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
 
@@ -143,7 +143,7 @@ export function dures(vols, vite){
   for(i = 0; i < vols.length && !stop(); i++){
     for(j = i + 1; j < vols.length && !stop(); j++){
       var e = ecartVols(vols[i], vols[j]), L = lies(vols[i], vols[j]);
-      if(e < DOC.distMin - .01 && !(L && touche(e)))
+      if(e < DOC.distMin - .01 && !(L && e >= -CONTACT))
         dit("dist", i, nomV(vols[i], i) + " et " + nomV(vols[j], j).toLowerCase()
           + (e < 0 ? " s'interpénètrent." : " sont à " + dec(e) + " m, pour "
             + dec(DOC.distMin) + " m au moins."), 0, j);
@@ -401,7 +401,11 @@ export function ensembles(E, ponts){
   function f(x){ while(P[x] !== x) x = P[x] = P[P[x]]; return x; }
   function u(a, b){ if(P[a] !== undefined && P[b] !== undefined) P[f(a)] = f(b); }
   E.forEach(function(v){ P[v.id] = v.id; });
-  E.forEach(function(v){ if(v.joint) u(v.id, v.joint); });
+  var chef = {};
+  E.forEach(function(v){
+    if(v.joint) u(v.id, v.joint);
+    if(v.bat){ if(chef[v.bat]) u(v.id, chef[v.bat]); else chef[v.bat] = v.id; }
+  });
   ponts.forEach(function(p){ u(p.a, p.b); });
   var n = 0;
   E.forEach(function(v){ if(f(v.id) === v.id) n++; });
