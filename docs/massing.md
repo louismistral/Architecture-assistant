@@ -8,6 +8,7 @@ src/mass/geom.js      terrain interpolé, rectangles tournés, distances, aligne
 src/mass/model.js     l'état, les niveaux RELUS du mixer, le bilan de surface
 src/mass/gen.js       le générateur : générer → valider → comparer → choisir
 src/mass/juge.js      le jugement : contraintes dures, priorités fortes, préférences
+src/mass/partis.js    les douze partis : figure exacte, programme, cohérence du parti
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
@@ -93,30 +94,37 @@ la profondeur de départ de 18,5 m.
 
 ## Générer, valider, comparer, choisir
 
-`genMass()` compose une figure par essai — parti, profondeur tirée entre les bornes,
-orientation (axe du périmètre, optimum soleil-vue, ou libre ; dans les partis libres chaque
-corps choisit la sienne), ailes accolées en un seul bâtiment dans une partie des variantes,
-salle de sport posée sur le bas du site puis parfois accolée au corps principal, passerelles
-dans une partie des variantes. La figure est RÉPARÉE (`reparer()`, puis `repecher()` si un
-corps sort), le sous-sol va sous le corps le plus haut, et `dures()` tranche.
+L'ordre est imposé : **1. le parti · 2. le programme · 3. les règles dures · 4. les priorités.**
 
-En « Auto », chaque parti a `essaisParti` essais de reconnaissance ; ceux qui rendent une
-variante valide reçoivent les `essais` suivants. **La diversité d'abord** : `choisir()` tire
-le parti parmi tous ceux qui ont rendu une variante valide, puis applique les priorités AU SEIN
-de ce parti. Sans cela le parti le mieux orienté — des barres parallèles — gagnait presque
-chaque tirage.
+1. **Le parti construit la figure** (`partis.js — composer()`). Chaque parti a ses directives :
+   un bloc compact est fait de deux rangs de volumes accolés ; une barre, d'une seule file ; des
+   barres parallèles, de deux à quatre files séparées d'un vide ; un L, de deux ailes qui se
+   rencontrent à une extrémité ; un U, d'une base et de deux ailes du même côté ; une cour, de
+   trois côtés accolés et d'un quatrième bâtiment qui la ferme à distance ; des pavillons, de
+   volumes tous séparés ; un hameau, de groupes aux orientations différentes autour d'une place ;
+   des terrasses, de rangs qui suivent les courbes, le plus haut en amont, les étages retirés vers
+   l'amont ; un peigne, d'un dos et de branches du même côté ; la composition libre, de groupes
+   libres mais tenus. La diversité est dans le parti : longueur et asymétrie des ailes, nombre de
+   volumes, hauteurs, écarts, profondeur, angle.
+2. **Le programme** (`programme()`) donne à chaque volume ses étages et son emprise pour que
+   chaque niveau reçoive exactement sa surface : un volume est une extrusion.
+3. **La cohérence du parti** (`signature()`) est vérifiée sur la figure : un U doit avoir une
+   base et deux ailes qui tiennent un vide d'au moins la distance, une cour un vide au moins égal
+   à la cour minimale, des pavillons aucun contact… Une figure qui ne ressemble pas à son parti
+   est jetée. Puis la figure est posée **d'un bloc** (`implanter()`) — position et angle, rien
+   d'autre : aucune poussée corps par corps ne vient la déformer (`intact()` le vérifie). Viennent
+   la salle de sport, le sous-sol et, parfois, des passerelles.
+4. **Les règles dures, toutes, sans exception** (`dures()`) décident si la variante entre dans
+   les résultats. Après le choix, les ouvrages du second temps sont posés et tout est revérifié :
+   s'ils font enfreindre une règle, ils ne sont pas posés ; si la variante ne tient plus, elle est
+   abandonnée. Rien qui enfreigne une règle dure n'arrive à l'écran.
+5. **Les priorités et préférences** ne départagent qu'ensuite. En Auto, le parti est tiré parmi
+   tous ceux qui ont rendu une variante valide (`DOC.essaisParti` essais chacun) ; quand un parti
+   imposé n'a presque rien rendu, le générateur persévère jusqu'à dix fois le budget.
 
-Quand aucune variante ne tient, **rien n'est proposé** : une composition qui enfreint une
-contrainte dure n'est pas une option, même « la moins fautive ». `genMass()` rend une liste
-vide marquée `impossible` ; le plan reste vide, le contrôle dit pourquoi et propose de laisser
-le générateur choisir le parti (`fixAuto`), de rejouer, ou de rebattre la pile au mixer.
-
-`admissible()` reste le seul juge de l'implantation, et le glisser à la souris y passe : il
-refuse une position qui ne tient pas et longe la limite au lieu de s'y arrêter. Rien ne se pose
-sur la salle de sport.
-
-`checks.js` ne rejuge rien : ses erreurs sont les écarts de `dures()`, avec leurs remèdes ; le
-reste (jour, terrassement, élancement, second temps, bilan) s'avertit.
+Avec ce programme, la Barre ne tient presque jamais : une seule file de volumes d'au plus 28 m
+fait 130 m. Les pavillons, six à neuf bâtiments à six mètres les uns des autres, tiennent
+difficilement. Quand rien ne tient, rien n'est proposé.
 
 ## Murs, dalles, module
 
