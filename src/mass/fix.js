@@ -183,6 +183,13 @@ export function fixRelancer(){
       return true;
     });
 }
+/* Un parti qui ne tient pas ce programme : laisser le générateur choisir. */
+export function fixAuto(){
+  if(MASS.parti === "auto") return null;
+  return acte("Laisser le générateur choisir le parti",
+    "« Auto » essaie les douze partis et ne garde que ce qui respecte les contraintes dures",
+    function(){ massSet("parti", "auto"); massVols(genMass()); return true; });
+}
 /* Le seul remède qui ne soit PAS ici : quand aucune implantation ne tient, la
    réponse est au mixer, en ajoutant un étage. On l'appelle donc de là-bas. */
 export function fixPile(){

@@ -31,7 +31,7 @@ import { lies, rectSol } from "./gen.js";
 import { courProgramme, courUtile, dures, terrainLibre } from "./juge.js";
 import { isAccepted } from "../mix/accept.js";
 import {
-  fixAire, fixCarrer, fixEcarter, fixElargir, fixPile, fixProfondeur,
+  fixAire, fixAuto, fixCarrer, fixEcarter, fixElargir, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
 import { MASS, bilan, niveaux, pontRect, profBornes, secondTemps,
@@ -72,20 +72,21 @@ export function massCheck(){
                fixes: fx.filter(function(f){ return !!f; }),
                ok: isAccepted(c) });
   }
+  /* --- aucune variante valide : rien n'est proposé ------------------------ */
+  if(!V.length && V.impossible){
+    dit("e", "tient", "Aucune composition ne respecte toutes les contraintes dures avec le "
+      + "parti « " + (V.parti || MASS.parti) + " » — aucune n’est donc proposée. Le générateur "
+      + "a tout essayé, de " + dec(profBornes().lo) + " à " + dec(profBornes().hi) + " m de "
+      + "profondeur ; l’aire posable est de " + fmt(Math.round(V.posable || 0)) + " m², recul "
+      + "du PACom déduit. Essayer un autre parti, rejouer, ajouter un étage au mixer, ou "
+      + "desserrer une contrainte dans le volet Contraintes.", "2.3", "", -1,
+      { fix:[fixAuto(), fixRelancer(), fixPile()] });
+    return out;
+  }
   if(!V.length){
     dit("i", "vide", "Aucun volume posé. « Shuffle massing » en propose un jeu à partir "
       + "de la répartition du mixer.", "", "", -1);
     return out;
-  }
-
-  /* --- aucune variante valide --------------------------------------------- */
-  if(MASS.vol.impossible){
-    dit("e", "tient", "Aucune variante ne respecte toutes les contraintes dures : le "
-      + "générateur a essayé les douze partis, de un à sept corps, de "
-      + dec(profBornes().lo) + " à " + dec(profBornes().hi) + " m de profondeur, et montre la "
-      + "moins fautive. L’aire posable est de " + fmt(Math.round(MASS.vol.posable || 0))
-      + " m², recul du PACom déduit. Ajouter un étage au mixer, ou desserrer une contrainte "
-      + "dans le volet Contraintes.", "2.3", "", -1, { fix:[fixPile(), fixRelancer()] });
   }
 
   /* --- LES CONTRAINTES DURES, telles que le juge les lit ------------------ */

@@ -736,9 +736,8 @@ function rectSol(v){ return volRect(v, etageSol(v)); }
 /* ---------- le tirage massing ------------------------------------------------
    Générer, valider, comparer, choisir — dans cet ordre. En « Auto », chaque
    parti est reconnu ; ceux qui rendent au moins une variante valide reçoivent
-   la suite des essais. Quand aucune variante ne tient, la composition la moins
-   fautive est rendue marquée `impossible`, et le contrôle dit ce qu'elle
-   enfreint et où aller le corriger. */
+   la suite des essais. Quand aucune variante ne tient, RIEN n'est proposé : le
+   résultat est vide, marqué `impossible`, et le contrôle dit quoi faire. */
 export function genMass(graine){
   var g = graine == null ? MASS.graine : graine;
   var r = alea(g);
@@ -826,17 +825,14 @@ export function genMass(graine){
     poserSecond(ch.vols, r);
     return ch.vols;
   }
-  var repli = null, rn = Infinity;
-  rates.slice(0, 12).forEach(function(x){
-    var n = dures(x.vols, false).filter(function(y){ return !y.pile; }).length;
-    if(n < rn){ rn = n; repli = x.vols; }
-  });
-  if(repli){
-    repli.impossible = 1;
-    repli.posable = airePosable(RULES.dist.retrait);
-    poserSecond(repli, r);
-  }
-  return repli || [];
+  /* AUCUNE variante ne tient : on ne propose RIEN. Une composition qui enfreint
+     une contrainte dure n'est pas une option, même « la moins fautive ». Le
+     résultat est vide et marqué, et le contrôle dit pourquoi et quoi faire. */
+  var vide = [];
+  vide.impossible = 1;
+  vide.parti = MASS.parti;
+  vide.posable = airePosable(RULES.dist.retrait);
+  return vide;
 }
 var VARIER = true;
 var PARTIS_LIBRES = ["compact","barre","barres","L","U","cour","pavillons",

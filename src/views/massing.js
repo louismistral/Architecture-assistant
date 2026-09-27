@@ -113,7 +113,7 @@ export function massPanel(){
    besoin d'une largeur mesurable, et WebGL d'un élément attaché. */
 export function drawMass(){
   if(!planEl) return;
-  if((!MASS.vol.length || perime()) && aPoser() > 0) regenere();
+  if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
   planMount(planEl);
   if(!monte){ vue3dMount(troisEl); monte = true; }
   else vue3dDraw();
@@ -144,7 +144,7 @@ function regenere(){
    ajoute ou en retire un, les indices ne veulent plus rien dire, et l'on
    regardait une volumétrie qui répondait à la pile précédente. */
 function perime(){
-  return !!MASS.vol.length && MASS.pile && MASS.pile !== empreintePile();
+  return (!!MASS.vol.length || !!MASS.vol.impossible) && MASS.pile && MASS.pile !== empreintePile();
 }
 function redessine(){
   planDraw();
@@ -644,7 +644,7 @@ export function massDoctrine(){
   /* On arrive parfois ici SANS être passé par la volumétrie — un lien direct,
      un rechargement sur `#massing/contraintes`. La note n'aurait alors rien à
      montrer, alors que le programme, lui, est réparti. */
-  if((!MASS.vol.length || perime()) && aPoser() > 0) regenere();
+  if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
   var j = jugementCourant();
   return doctrineSection("mass", function(){
     if(aPoser() > 0){
