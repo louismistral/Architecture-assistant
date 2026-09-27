@@ -188,8 +188,7 @@ ici.
   redimensionne repasse par `admissible()`, et rend `false` en remettant en place quand il ne tient
   pas. Ce qui change une forme le fait **à surface exacte**.
 - Un remède qui n'existe pas n'est pas proposé : on n'élargit pas un corps dont le règlement fixe
-  les cotes — il faudrait changer
-  les mètres carrés, et ils sont au règlement. L'alerte porte alors une `note` qui le dit.
+  les cotes. L'alerte porte alors une `note` qui le dit.
 - « Laisser comme ça » n'efface rien. Les codes sont ceux du mixer, préfixés **`m:`** — « je laisse
   comme ça » est une seule décision de projet et n'a pas à s'enregistrer à deux endroits, mais un
   code de niveau et un code de volume ne doivent jamais se rencontrer, et chaque onglet ne reprend
