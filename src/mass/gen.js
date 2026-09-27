@@ -224,6 +224,11 @@ function figure(parti, r, C, N, par){
            ang: entre(r, -1.2, 1.2), u: entre(r, -1, 1), v: entre(r, -1, 1),
            haut: Math.max(1, Math.min(nMax, Math.round(entre(r, 1, nMax + .4)))), libre:1 });
   }
+  /* Chaque volume son nombre d'étages : une fois sur deux, les corps
+     secondaires tirent le leur entre un et le maximum (`VARIER`, coupé par
+     `genMass()` quand aucune variante ainsi tirée ne tient). */
+  if(VARIER && nMax > 1 && corps.length > 1 && r() < .5)
+    corps.forEach(function(c, k2){ if(k2) c.haut = 1 + Math.floor(r() * nMax); });
   return corps;
 }
 
@@ -251,60 +256,44 @@ function monter(corps, N, imp, hi){
   var k, i, B = profBornes();
   corps.forEach(function(c){ c.lv = []; c.aire = []; });
 
-  /* QUI monte. Le parti propose une silhouette, mais le programme a le dernier
-     mot : on promeut, du plus gros au plus petit, jusqu'à ce que les porteurs
-     d'un niveau pèsent au moins ce que ce niveau demande — sans quoi ils
-     seraient plus larges en haut qu'en bas. */
+  /* QUI monte : le parti le propose, et CHAQUE VOLUME A SON NOMBRE D'ÉTAGES. Une
+     seule exigence : ceux qui montent jusqu'à un niveau pèsent au moins la part
+     que ce niveau représente du rez — sans quoi un seul corps haut porterait
+     tous les étages et deviendrait une barre de cent mètres. On promeut alors,
+     du plus lourd au plus léger, ce qu'il faut et pas plus. */
+  var tot = 0;
+  corps.forEach(function(c){ tot += c.poids; });
   for(k = 1; k < N.length; k++){
-    if(A[k] <= 0 || A[k - 1] <= 0) continue;
-    var tot = 0, sur = 0;
-    corps.forEach(function(c){
-      tot += c.poids;
-      if(c.haut > k) sur += c.poids;
-    });
-    var manque = (A[k] / A[k - 1]) * tot - sur;
-    if(manque <= .01) continue;
+    if(!(A[k] > 0) || !(A[0] > 0)) continue;
+    var sur = 0;
+    corps.forEach(function(c){ if(c.haut > k) sur += c.poids; });
+    /* Au repli (`VARIER` coupé), tout le monde monte : les hauteurs d'avant. */
+    var manque = (VARIER ? Math.min(1, 1.3 * A[k] / A[0]) : 1) * tot - sur;
     corps.filter(function(c){ return c.haut <= k; })
          .sort(function(a2, b2){ return b2.poids - a2.poids; })
          .forEach(function(c){
-           if(manque <= .01) return;
-           c.haut = k + 1;
-           manque -= c.poids;
+           if(manque <= .01 && sur > 0) return;
+           c.haut = k + 1; manque -= c.poids; sur += c.poids;
          });
   }
 
-  /* Le partage, DU BAS VERS LE HAUT : en montant, un corps ne dépasse pas
-     l'aire qu'il a au niveau du dessous, et ce qui ne tient pas repasse aux
-     corps qui ont encore de la marge. Le surplus qui reste est un vrai
-     porte-à-faux : permis, et il se voit. */
-  for(k = 0; k < N.length; k++){
+  /* Le partage, DU HAUT VERS LE BAS. Le dernier niveau se partage entre ceux qui
+     y montent, au prorata de leur poids ; à chaque niveau inférieur, un corps
+     reprend d'abord ce qu'il porte au-dessus, puis sa part de ce qui reste.
+     Un corps haut a donc une emprise plus grande, un corps bas prend le reste
+     du rez — n'importe quel mélange de hauteurs se loge ainsi d'aplomb. Quand le
+     programme demande plus en haut qu'en bas, l'étage se réduit au prorata. */
+  for(k = N.length - 1; k >= 0; k--){
+    if(!(A[k] > 0)) continue;
     var port = corps.filter(function(c){ return c.haut > k; });
-    if(!port.length) port = [corps[0]];
-    var som = 0;
-    port.forEach(function(c){ som += c.poids; });
-    port.forEach(function(c){ c.aire[k] = Math.max(0, A[k]) * c.poids / som; });
-    if(k === 0) continue;
-    var pass;
-    for(pass = 0; pass < 4; pass++){
-      var surplus = 0, marge = 0;
-      port.forEach(function(c){
-        var pla = c.aire[k - 1];
-        if(pla == null) return;
-        if(c.aire[k] > pla){ surplus += c.aire[k] - pla; c.aire[k] = pla; }
-        else marge += pla - c.aire[k];
-      });
-      if(surplus < .5) break;
-      if(marge < .5){
-        port.forEach(function(c){ c.aire[k] += surplus / port.length; });
-        break;
-      }
-      port.forEach(function(c){
-        var pla = c.aire[k - 1];
-        if(pla == null) return;
-        var m = pla - c.aire[k];
-        if(m > 0) c.aire[k] += surplus * (m / marge);
-      });
-    }
+    if(!port.length) continue;
+    var dessus = 0, som = 0;
+    port.forEach(function(c){ dessus += c.aire[k + 1] || 0; som += c.poids; });
+    var reste = A[k] - dessus;
+    port.forEach(function(c){
+      var h = c.aire[k + 1] || 0;
+      c.aire[k] = reste >= 0 ? h + reste * c.poids / som : h * A[k] / dessus;
+    });
   }
 
   /* Les cotes, du bas vers le haut : le rez fixe la PROFONDEUR du corps, la
@@ -773,6 +762,13 @@ export function genMass(graine){
   }
   for(t = 0; t < Math.max(1, Math.round(DOC.essais)); t++) essai(lot[t % lot.length]);
 
+  /* Aucune variante n'a tenu : on rejoue une fois avec les hauteurs que le
+     parti propose, qui se logent plus souvent. */
+  if(!valides.length){
+    VARIER = false;
+    for(t = 0; t < Math.max(1, Math.round(DOC.essais)); t++) essai(lot[t % lot.length]);
+    VARIER = true;
+  }
   /* Le repêchage coûte un balayage de la parcelle par corps : on ne le paie que
      si aucune variante n'a tenu, et sur quelques-unes seulement. */
   if(!valides.length){
@@ -803,6 +799,7 @@ export function genMass(graine){
   }
   return repli || [];
 }
+var VARIER = true;
 var PARTIS_LIBRES = ["compact","barre","barres","L","U","cour","pavillons",
                      "hameau","terrasses","peigne","libre"];
 
