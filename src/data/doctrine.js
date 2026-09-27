@@ -101,6 +101,10 @@ export var DOC = {
   largeurMin: 11,
   profMin: 11,
   profMax: 28,
+  /* Aucun segment de bâtiment plus long que `longMax` : au-delà, le corps se
+     découpe en segments accolés, décalés de `decroche` — le décrochement. */
+  longMax: 28,
+  decroche: 3,
   courMin: 620,
   module: 0.5,
 
@@ -399,6 +403,18 @@ export var REGLES = [
     pourquoi:"Au-delà de la petite cote du local le plus profond du programme, on bâtit "
       + "de la profondeur sans jour. La salle de sport garde ses cotes du règlement.",
     agit:"Jette la variante ; plafonne la poignée de redimensionnement." },
+  { id:"longueur", dom:"mass", rang:"dure", titre:"Longueur d'un segment de bâtiment", k:"longMax",
+    unite:"m au plus, murs compris", min:15, max:120, pas:1, source:"projet",
+    lu:"src/mass/gen.js — decrocher() · juge.js — dures()",
+    pourquoi:"Au-delà, le corps se découpe en segments accolés d'au plus cette longueur, "
+      + "décalés l'un de l'autre : un décrochement. Les segments forment un seul bâtiment — "
+      + "pas de mur au contact — et la surface utile de chaque étage est inchangée. La salle "
+      + "de sport et les ouvrages du second temps, qui ont leurs cotes, n'y sont pas soumis.",
+    agit:"Découpe les corps trop longs ; jette ce qui y échappe." },
+  { id:"decroche", dom:"mass", rang:"dure", titre:"— profondeur du décrochement", k:"decroche",
+    unite:"m", min:0.5, max:10, pas:0.5, source:"projet", lu:"src/mass/gen.js — decrocher()",
+    pourquoi:"Le décalage entre deux segments voisins, perpendiculairement à la façade.",
+    agit:"" },
   { id:"facade", dom:"mass", rang:"dure", titre:"Toutes les salles de classe en façade",
     val:"un corps qui porte des classes n'a pas plus de deux salles de profondeur",
     source:"projet — jour naturel", lu:"src/mass/model.js — profFacade()",
