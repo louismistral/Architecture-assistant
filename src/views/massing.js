@@ -407,14 +407,14 @@ function cote(host, lb, v, k){
   /* La profondeur est PLAFONNÉE ici aussi. Le générateur ne la franchit pas ;
      la main ne doit pas pouvoir la franchir non plus, sans quoi la règle ne
      serait qu'une préférence du tirage. */
-  i.min = String(DOC.largeurMin); i.max = String(k === "d" ? profBornes().hi : 160);
+  i.min = String(DOC.largeurMin); i.max = String(profBornes().hi);
   i.step = String(DOC.module);
   i.value = String(e0[k]);
   i.addEventListener("change", function(){
     var x = parseFloat(String(i.value).replace(",", "."));
     if(!isFinite(x) || x < DOC.largeurMin){ i.value = String(e0[k]); return; }
     x = auModule(x);
-    if(k === "d" && x > profBornes().hi){ x = profBornes().hi; }
+    if(x > profBornes().hi){ x = profBornes().hi; }      /* longueur comme largeur */
     i.value = String(x);
     /* Toute la pile suit la cote du rez : un massing dont chaque étage aurait
        sa propre largeur ne serait plus un volume, mais une pile d'objets. */

@@ -38,8 +38,8 @@ import { aire, assise, coins, ecartAngle, local } from "./geom.js";
    dégrade en montant. Le texte est ce qu'on lit dans le panneau. */
 export var PARTIS = [
   { id:"auto",      n:"Auto",              d:"Le générateur essaie tous les partis et garde celui qui tient le mieux sur ce site, avec ce programme." },
-  { id:"compact",   n:"Bloc compact",      d:"Un seul corps, aussi épais que la règle des classes en façade le permet. Sur ce site, le programme le rend souvent trop long : le générateur le dira." },
-  { id:"barre",     n:"Barre",             d:"Un seul corps allongé, d'une profondeur qui laisse les classes en façade. Il fait une limite et libère tout le reste." },
+  { id:"compact",   n:"Bloc compact",      d:"Un seul corps. Aucun volume ne dépassant 28 m dans une direction, ce programme ne tient pas dans un seul : le générateur le dira." },
+  { id:"barre",     n:"Barre",             d:"Un seul corps allongé. Aucun volume ne dépassant 28 m, ce programme n'y tient pas : le générateur le dira." },
   { id:"barres",    n:"Barres parallèles", d:"Plusieurs corps allongés, parallèles entre eux, séparés — ou accolés en un seul bâtiment. Entre eux, des cours en bandes." },
   { id:"L",         n:"Forme en L",        d:"Deux ailes perpendiculaires. L'angle tient un dehors, sans le fermer." },
   { id:"U",         n:"Forme en U",        d:"Trois ailes autour d'une cour ouverte d'un côté — la cour d'école dans sa forme la plus ancienne." },
@@ -88,7 +88,9 @@ export function massVols(list){
    sienne entre les deux ; `juge.js` jette ce qui en sort. */
 export function profBornes(){
   var lo = Math.max(DOC.profMin, DOC.largeurMin);
-  return { lo:lo, hi:Math.max(lo, DOC.profMax) };
+  /* `DOC.profMax` se mesure HORS TOUT, murs compris — la cote qu'on lit au plan.
+     La borne des cotes intérieures en retire donc les deux murs. */
+  return { lo:lo, hi:Math.max(lo, DOC.profMax - 2 * RULES.haut.mur) };
 }
 /* TOUTES LES CLASSES EN FAÇADE. Un corps qui porte des salles de classe n'a pas
    plus de deux salles de profondeur — prises à leur surface BÂTIE, la

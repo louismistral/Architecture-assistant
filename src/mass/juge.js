@@ -173,6 +173,13 @@ export function dures(vols, vite){
       if(horsModule(e.w) || horsModule(e.d))
         une("module", nomV(v, i) + " — " + dec(e.w) + " × " + dec(e.d) + " m : hors du module de "
           + dec(DOC.module) + " m.");
+      /* Aucun volume ne dépasse la cote maximale, dans l'une ou l'autre direction,
+         à aucun étage ni au sous-sol — la salle de sport a ses cotes du règlement. */
+      var lg = Math.max(e.w, e.d);
+      if(!v.fix && lg > B.hi + .01)
+        une("profmax", nomV(v, i) + " fait " + dec(e.w + 2 * RULES.haut.mur) + " × "
+          + dec(e.d + 2 * RULES.haut.mur) + " m hors tout " + (sol ? "" : "au sous-sol ")
+          + ": au-delà des " + dec(DOC.profMax) + " m.");
       if(!sol || v.fix) return;
       if(pt < DOC.largeurMin - .01)
         une("largeur", nomV(v, i) + " ne fait que " + dec(pt) + " m de large, pour "
@@ -180,10 +187,7 @@ export function dures(vols, vite){
       else if(pt < B.lo - .01)
         une("prof", nomV(v, i) + " a " + dec(pt) + " m de profondeur, pour " + dec(B.lo)
           + " m au moins.");
-      if(pt > B.hi + .01)
-        une("profmax", nomV(v, i) + " a " + dec(pt) + " m de profondeur, au-delà des "
-          + dec(B.hi) + " m.");
-      else if(cla && pt > PF + .01)
+      if(cla && pt > PF + .01)
         une("facade", nomV(v, i) + " porte des classes sur " + dec(pt) + " m de profondeur : "
           + "au-delà de " + dec(PF) + " m — deux salles —, une salle n'a plus de façade.");
     });

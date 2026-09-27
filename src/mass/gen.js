@@ -163,6 +163,19 @@ function figure(parti, r, C, N, par){
   var nMax = N.length;
   var prof = par.prof;
   var nb = par.nb > 0 ? par.nb : 0;
+  /* Autant de corps qu'il en faut pour que chacun reste sous la cote maximale :
+     les partis à nombre libre en posent au moins `nMin`. */
+  var nMin = par.nMin || 1;
+  function combien(x){ return Math.max(nMin, nb || x); }
+  /* `k` corps en rang le long du cadre, de u0 à u1. */
+  function rang(k, u0, u1, o){
+    for(var j = 0; j < k; j++){
+      var q = {}, x;
+      for(x in o) q[x] = o[x];
+      q.u = k > 1 ? u0 + (u1 - u0) * j / (k - 1) : (u0 + u1) / 2;
+      C1(q);
+    }
+  }
   var corps = [];
   function C1(o){
     corps.push({ poids: o.poids == null ? 1 : o.poids,
@@ -176,49 +189,63 @@ function figure(parti, r, C, N, par){
   } else if(parti === "barre"){
     C1({ prof: prof, haut: nMax });
   } else if(parti === "barres"){
-    n = nb || Math.round(entre(r, 2, 4));
+    /* Des barres parallèles, sur deux ou trois rangs quand il en faut beaucoup. */
+    n = combien(Math.round(entre(r, 2, 4)));
+    var rangs = n <= 3 ? n : n <= 6 ? 2 : 3, cols = Math.ceil(n / rangs);
     for(i = 0; i < n; i++)
-      C1({ poids: i === 0 ? 1.35 : 1, prof: prof, v: i,
+      C1({ poids: i === 0 ? 1.35 : 1, prof: prof, v: i % rangs,
+           u: cols > 1 ? (Math.floor(i / rangs) / (cols - 1)) * 2 - 1 : 0,
            haut: Math.max(1, nMax - (i > 0 ? Math.round(entre(r, 0, 1.6)) : 0)) });
   } else if(parti === "L"){
-    C1({ poids:1.25, prof: prof, u:0, v:0, ang:0, haut:nMax });
-    C1({ poids:.85, prof: prof, u:1, v:1, ang:Math.PI / 2,
-         haut: Math.max(1, nMax - 1) });
+    /* Chaque aile porte autant de volumes qu'il en faut, en rang : la figure
+       reste un L même quand aucun corps ne peut dépasser la cote maximale. */
+    var kL = Math.max(1, Math.ceil(nMin / 2));
+    rang(kL, -1, .6, { poids:1.25, prof: prof, v:0, ang:0, haut:nMax });
+    for(i = 0; i < kL; i++)
+      C1({ poids:.85, prof: prof, u:1, v:1 + i, ang:Math.PI / 2, haut: Math.max(1, nMax - 1) });
   } else if(parti === "U"){
-    C1({ poids:1.2, prof: prof, u:0, v:0, ang:0, haut:nMax });
-    C1({ poids:.8, prof: prof, u:-1, v:1, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
-    C1({ poids:.8, prof: prof, u:1, v:1, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
+    var kb = Math.max(1, Math.ceil(nMin / 3)), ks = Math.max(1, Math.ceil((nMin - kb) / 2));
+    rang(kb, -.6, .6, { poids:1.2, prof: prof, v:0, ang:0, haut:nMax });
+    for(i = 0; i < ks; i++){
+      C1({ poids:.8, prof: prof, u:-1, v:1 + i, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
+      C1({ poids:.8, prof: prof, u:1, v:1 + i, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
+    }
   } else if(parti === "cour"){
-    C1({ poids:1, prof: prof * .85, u:0, v:-1, ang:0, haut:nMax });
-    C1({ poids:1, prof: prof * .85, u:0, v:1, ang:0, haut:Math.max(1, nMax - 1) });
-    C1({ poids:.75, prof: prof * .85, u:-1, v:0, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
-    C1({ poids:.75, prof: prof * .85, u:1, v:0, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
+    var kc = Math.max(1, Math.ceil(nMin / (4 * .85)));
+    rang(kc, -.7, .7, { poids:1, prof: prof * .85, v:-1, ang:0, haut:nMax });
+    rang(kc, -.7, .7, { poids:1, prof: prof * .85, v:1, ang:0, haut:Math.max(1, nMax - 1) });
+    for(i = 0; i < kc; i++){
+      var vv = kc > 1 ? (i / (kc - 1)) * 1.2 - .6 : 0;
+      C1({ poids:.75, prof: prof * .85, u:-1, v:vv, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
+      C1({ poids:.75, prof: prof * .85, u:1, v:vv, ang:Math.PI / 2, haut:Math.max(1, nMax - 1) });
+    }
   } else if(parti === "pavillons"){
-    n = nb || Math.round(entre(r, 3, 6));
+    n = combien(Math.round(entre(r, 3, 6)));
     for(i = 0; i < n; i++)
       C1({ poids: entre(r, .7, 1.3), prof: Math.min(prof, entre(r, 13, 20)),
            u: (i % 2) * 2 - 1, v: Math.floor(i / 2) - (n > 4 ? 1 : .5),
            haut: Math.max(1, Math.min(nMax, Math.round(entre(r, 1, 2.6)))), libre:1 });
   } else if(parti === "hameau"){
-    n = nb || Math.round(entre(r, 3, 5));
+    n = combien(Math.round(entre(r, 3, 5)));
     for(i = 0; i < n; i++)
       C1({ poids: entre(r, .6, 1.6), prof: Math.min(prof, entre(r, 12, 22)),
            ang: entre(r, -.5, .5),
            u: entre(r, -1, 1), v: entre(r, -1, 1),
            haut: Math.max(1, Math.min(nMax, Math.round(entre(r, 1, nMax + .4)))), libre:1 });
   } else if(parti === "terrasses"){
-    n = nb || (r() < .45 ? 2 : 1);
+    n = combien(r() < .45 ? 2 : 1);
+    var rt = n <= 2 ? n : 2, ct = Math.ceil(n / rt);
     for(i = 0; i < n; i++)
-      C1({ poids:1, prof: Math.min(prof * 1.5, 30), v: i, haut: nMax,
-           grad: GRAD });
+      C1({ poids:1, prof: Math.min(prof * 1.5, 30), v: i % rt, haut: nMax,
+           u: ct > 1 ? (Math.floor(i / rt) / (ct - 1)) * 2 - 1 : 0, grad: GRAD });
   } else if(parti === "peigne"){
-    n = nb || Math.round(entre(r, 3, 5));
+    n = Math.max(nMin - 1, nb || Math.round(entre(r, 3, 5)));
     C1({ poids:1.1, prof: Math.min(prof, 15), u:0, v:-1, ang:0, haut:nMax });
     for(i = 0; i < n; i++)
       C1({ poids:.7, prof: Math.min(prof, 15), ang:Math.PI / 2,
            u: i - (n - 1) / 2, v: .6, haut: Math.max(1, nMax - 1) });
   } else { /* libre */
-    n = nb || Math.round(entre(r, 2, 5));
+    n = combien(Math.round(entre(r, 2, 5)));
     for(i = 0; i < n; i++)
       C1({ poids: entre(r, .5, 1.8), prof: Math.min(prof, entre(r, 12, 24)),
            ang: entre(r, -1.2, 1.2), u: entre(r, -1, 1), v: entre(r, -1, 1),
@@ -243,7 +270,10 @@ function figure(parti, r, C, N, par){
 function cotes(a, prof, hi){
   var B = profBornes(), top = Math.max(B.lo, Math.min(hi || B.hi, B.hi));
   var d = Math.max(B.lo, Math.min(prof, top, Math.sqrt(a)));
-  if(a / d > 120) d = Math.min(top, a / 120);
+  /* La LONGUEUR aussi reste sous la cote maximale : à surface égale, on
+     épaissit — et si même l'épaisseur maximale n'y suffit pas, le corps est
+     trop grand pour ce parti, et la variante sera jetée. */
+  if(a / d > B.hi) d = Math.min(top, a / B.hi);
   d = auModule(d);
   return { w: auModule(a / d), d: d };
 }
@@ -477,8 +507,12 @@ function poserSecond(vols, r){
   if(MASS.second === "non") return;
   var S = secondTemps();
   if(!S.length) return;
-  var modes = MASS.second === "auto" ? (r() < .5 ? ["un", "sep"] : ["sep", "un"])
-                                     : [MASS.second];
+  var tot = 0;
+  S.forEach(function(x){ tot += x.a; });
+  /* Réunis, ils ne se tentent que si l'ouvrage commun reste sous la cote. */
+  var unOk = tot <= profBornes().hi * profBornes().hi;
+  var modes = MASS.second === "auto"
+    ? (unOk ? (r() < .5 ? ["un", "sep"] : ["sep", "un"]) : ["sep"]) : [MASS.second];
   var i;
   for(i = 0; i < modes.length; i++){
     retirerSecond(vols);
@@ -727,7 +761,12 @@ export function genMass(graine){
     else if(m < .75) cap = angleSoleilVue(centreSite.cx, centreSite.cy);
     else cap = axePer() + entre(r, -.7, .7);
     var C = cadre(cap + entre(r, -1, 1) * JEU);
-    var corps = figure(pid, r, C, N, { prof:prof, nb:MASS.par.nb });
+    /* Combien de corps au moins, pour qu'aucun ne dépasse la cote maximale au
+       rez : l'aire du rez d'école sur la plus grande emprise qu'un corps de
+       cette profondeur puisse avoir. */
+    /* +10 % : les corps lourds et les corps hauts prennent plus que leur part. */
+    var nMin = Math.ceil(1.1 * Math.max(0, N[0].A - (imp ? imp.aire : 0)) / (B.hi * prof) - 1e-6);
+    var corps = figure(pid, r, C, N, { prof:prof, nb:MASS.par.nb, nMin:nMin });
     monter(corps, N, imp, hiE);
     var vols = poser(corps, C, imp, r, atts);
     if(JOIGNABLES.indexOf(pid) >= 0 && r() < .4) joindre(vols, r);
@@ -824,12 +863,28 @@ function enterrer(vols){
       bz = Math.max(bz, z); big = cand[i];
     }
   }
-  var e0 = etageSol(big);
+  /* Le sous-sol se loge sous le corps le plus haut, et sous les suivants quand
+     il dépasse ce qu'un volume peut avoir : chaque part garde la profondeur de
+     son corps et reste sous la cote maximale. */
+  var ordre = cand.slice().sort(function(a, b){
+    return assise(rectSol(b)).z - assise(rectSol(a)).z; });
+  ordre.splice(ordre.indexOf(big), 1); ordre.unshift(big);
   S.forEach(function(n){
-    var q = cotes(n.A, e0.d);
-    big.lv.unshift({ i:n.i, w:q.w, d:q.d, dx:0, dy:0, a:n.A });
+    var reste = n.A, k = 0;
+    while(reste > 1 && k < ordre.length){
+      var v = ordre[k++], hi = profBornes().hi, d = Math.min(etageSol(v).d, hi);
+      var a = Math.min(reste, d * hi);
+      var q = cotes(a, d);
+      v.lv.push({ i:n.i, w:q.w, d:q.d, dx:0, dy:0, a:a });
+      reste -= a;
+    }
+    if(reste > 1){                                  /* rien d'autre sous quoi creuser */
+      var e = null;
+      big.lv.forEach(function(x){ if(x.i === n.i) e = x; });
+      if(e){ e.a += reste; var q2 = cotes(e.a, e.d); e.w = q2.w; e.d = q2.d; }
+    }
   });
-  big.lv.sort(function(a, b){ return a.i - b.i; });
+  ordre.forEach(function(v){ v.lv.sort(function(a, b){ return a.i - b.i; }); });
 }
 
 /* ---------- ce que les remèdes rejouent --------------------------------------
