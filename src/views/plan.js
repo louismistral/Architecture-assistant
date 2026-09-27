@@ -15,11 +15,11 @@
    TOURNE par sa poignée. Chacun de ces gestes redessine la 3D dans la foulée :
    les deux vues ne sont pas deux dessins, c'est le même modèle vu deux fois.
    ========================================================================= */
-import { fmt } from "../core/format.js";
+import { dec, fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volInt, volRect }
+import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volRect }
   from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
@@ -189,7 +189,7 @@ function dessineVol(g, v, k){
       + " · " + fmt(Math.round(ri.w * ri.d)) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);
-    if(sel) gv.appendChild(poignee(rc));
+    if(sel){ gv.appendChild(cotation(rc, v)); gv.appendChild(poignee(rc)); }
   }
   g.appendChild(gv);
 }
@@ -204,6 +204,40 @@ function bas(v){
     if(!e || x.i < e.i) e = x;
   });
   return e || v.lv[0];
+}
+/* LES COTES du volume choisi : longueur et profondeur hors tout, murs compris,
+   en lignes de cote posées à 4 m du bâtiment, et la hauteur au milieu. On clique
+   un volume, on lit ses dimensions — sans aller les chercher dans le rail. */
+function cotation(rc, v){
+  /* À l'échelle de la vue : lisibles de loin comme de près. */
+  var k = Math.max(1, VUE.w / 160), D = 4 * k, F = 2.4 * k;
+  var g = svg("g", { "class":"plan-cote" }), q = coins(rc);
+  g.style.fontSize = F.toFixed(2) + "px";
+  g.style.strokeWidth = (.3 * k).toFixed(2);
+  function ligne(a, b, nx, ny, txt){
+    var A = [a[0] + nx * D, a[1] + ny * D], B = [b[0] + nx * D, b[1] + ny * D];
+    g.appendChild(svg("path", { d: chemin([a, A], false) + " " + chemin([b, B], false)
+      + " " + chemin([A, B], false), "class":"plan-cote__l" }));
+    var mx = (A[0] + B[0]) / 2 + nx * F * .7, my = (A[1] + B[1]) / 2 + ny * F * .7;
+    var ang = Math.atan2(B[1] - A[1], B[0] - A[0]) * 180 / Math.PI;
+    if(ang > 90) ang -= 180; if(ang < -90) ang += 180;
+    var t = svg("text", { x: mx.toFixed(2), y: Y(my).toFixed(2), "class":"plan-cote__t",
+      "text-anchor":"middle", "dominant-baseline":"middle",
+      transform:"rotate(" + (-ang).toFixed(1) + " " + mx.toFixed(2) + " " + Y(my).toFixed(2) + ")" });
+    t.textContent = txt;
+    g.appendChild(t);
+  }
+  var c = Math.cos(rc.a), s2 = Math.sin(rc.a);
+  /* le long côté vers l'« avant » du volume, le petit côté à GAUCHE — la
+     poignée de rotation est à droite */
+  ligne(q[0], q[1], s2, -c, dec(rc.w) + " m");
+  ligne(q[3], q[0], -c, -s2, dec(rc.d) + " m");
+  var h = svg("text", { x: rc.x.toFixed(2), y: (Y(rc.y) + F * 1.4).toFixed(2), "class":"plan-cote__t",
+    "text-anchor":"middle", transform:"rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " "
+      + rc.x.toFixed(2) + " " + Y(rc.y).toFixed(2) + ")" });
+  h.textContent = "h " + dec(volHaut(v)) + " m";
+  g.appendChild(h);
+  return g;
 }
 /* La poignée de rotation : posée au bout de l'axe long, dehors, reliée par un
    trait. On tourne en la tirant — c'est le geste qu'on attend d'un plan. */

@@ -32,13 +32,13 @@ import { tirerNiveaux } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { admissible, genMass, poserSecondTemps, rectSol } from "../mass/gen.js";
+import { admissible, genMass, rectSol } from "../mass/gen.js";
 import { jugementCourant } from "../mass/juge.js";
-import { DOC, docSet } from "../data/doctrine.js";
+import { DOC } from "../data/doctrine.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massPar, massSet, massVols, niveaux, partiOf, profBornes, profFacade,
-  secondTemps, volHaut, volNiv
+  massPar, massSet, massVols, niveaux, partiOf, profBornes,
+  volHaut, volNiv
 } from "../mass/model.js";
 import { doctrineSection, etatDe, jugementBloc } from "./doctrine.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
@@ -268,77 +268,9 @@ function blocParams(){
     if(suf) l.appendChild(el("span", "mass-par__u", suf));
     b.appendChild(l);
   }
-  /* LA PROFONDEUR SE CHOISIT, SON PLAFOND NON. Un curseur, borné : en bas la
-     largeur d'une salle de classe et de son couloir, en haut la petite cote de
-     la salle de sport double — le local le plus profond que le règlement nous
-     donne à loger. Aucun volume ne franchit ce plafond, ni le générateur ni la
-     main. Le champ libre d'avant laissait écrire 46 ; la valeur figée qui l'a
-     remplacé ne laissait plus rien essayer, alors que la profondeur est le
-     premier choix d'un projet d'école. */
-  function cur(lb, k, min, max, val, suf, fin){
-    var l = el("label", "mass-cur");
-    var h = el("span", "mass-cur__h");
-    h.appendChild(el("span", "mass-par__n", lb));
-    var chiffre = el("span", "mono", dec(val) + " " + suf);
-    h.appendChild(chiffre);
-    l.appendChild(h);
-    var i = document.createElement("input");
-    i.type = "range";
-    i.min = String(min); i.max = String(max); i.step = "0.5";
-    i.value = String(val);
-    /* Le chiffre suit le doigt, la composition ne se rejoue qu'au relâcher :
-       trente tirages par glissement rendaient le curseur inutilisable. */
-    i.addEventListener("input", function(){
-      chiffre.textContent = dec(parseFloat(i.value)) + " " + suf;
-    });
-    i.addEventListener("change", function(){ fin(parseFloat(i.value)); });
-    l.appendChild(i);
-    var pp = el("span", "mass-cur__p");
-    pp.appendChild(el("span", null, dec(min) + " m · largeur minimale"));
-    pp.appendChild(el("span", null, dec(max) + " m · profondeur maximale"));
-    l.appendChild(pp);
-    b.appendChild(l);
-  }
   num("Nombre de volumes", "nb", 0, 9, 1, "");
-  /* La profondeur MINIMALE est un paramètre de l'utilisateur : elle vit dans
-     la doctrine (`DOC.profMin`), et ce curseur écrit dans la même case que le
-     volet Contraintes — il n'y a pas deux valeurs. */
-  var PB = profBornes();
-  cur("Profondeur minimale d’un volume", "profMin", DOC.largeurMin, DOC.profMax, PB.lo, "m",
-    function(x){ docSet("profMin", x); regenere(); redessine(); saveSoon(); });
-  b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. La "
-    + "profondeur d’un corps — sa petite cote — est tirée entre ce minimum et "
-    + dec(Math.min(PB.hi, profFacade())) + " m, deux salles de classe en façade. "
-    + "Distances, cour et seuils se règlent au volet Contraintes."));
-
-  /* --- LE SECOND TEMPS ---
-     La piscine et le local de chauffage à distance ne sont pas de l'école. Ne
-     rien en dessiner laissait croire que les 900 m² qu'ils prennent sont
-     disponibles pour la cour et le stationnement. */
-  b.appendChild(el("h4", "label mass-sous", "Second temps"));
-  var g2 = el("div", "btn-group");
-  g2.setAttribute("role", "group");
-  g2.setAttribute("aria-label", "Piscine et local de chauffage à distance");
-  [["Au choix", "auto"], ["Deux volumes", "sep"], ["Un seul", "un"], ["Non posés", "non"]]
-    .forEach(function(o){
-    var t = el("button", "btn", o[0]);
-    t.type = "button";
-    t.setAttribute("aria-current", String(MASS.second === o[1]));
-    t.addEventListener("click", function(){
-      massSet("second", o[1]);
-      poserSecondTemps(MASS.vol);
-      redessine();
-    });
-    g2.appendChild(t);
-  });
-  b.appendChild(g2);
-  var S2 = secondTemps();
-  b.appendChild(el("p", "mass-note", S2.map(function(x){
-      return x.n + " " + fmt(Math.round(x.a)) + " m², " + dec(x.h) + " m de haut";
-    }).join(" · ") + ". Le règlement les veut indépendants des bâtiments scolaires "
-    + "et réalisés plus tard : ils ne pèsent sur aucun plateau et ne comptent pas au "
-    + "bilan, mais ils occupent le terrain — et ils se dessinent en pointillé, comme "
-    + "au plan de situation. Ils se posent APRÈS l’école, dans les marges du site."));
+  b.appendChild(el("p", "mass-note", "« 0 volume » laisse le parti en décider. "
+    + "Profondeurs, distances, cour et seuils se règlent au volet Contraintes."));
   return b;
 }
 
@@ -569,7 +501,7 @@ function blocBilan(){
       + "et réalisés au second temps : ils ne comptent dans aucun niveau du bilan. "
       + (MASS.second === "non"
          ? "La piscine et le local CAD ne sont pas posés — ils occupent pourtant du "
-           + "terrain, et le réglage « Second temps » les fait apparaître."
+           + "terrain."
          : "La piscine et le local CAD sont posés à part, en pointillé, parce qu’ils "
            + "occupent du terrain que la cour et le stationnement n’auront pas. "
            + "La cour, elle, n’est pas un volume : elle est le vide que la figure tient.")));
