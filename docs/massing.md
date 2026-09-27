@@ -138,14 +138,21 @@ aucune variante ainsi tirée ne tient, le générateur rejoue avec tous les corp
 Ici les 1ᵉʳ et 2ᵉ étages ont presque la même surface : on obtient surtout des R+2 à côté de rez
 seuls, plus rarement des R+1.
 
-## Une seule limite géométrique : 28 m de profondeur
+## Une seule limite géométrique : 28 m, en longueur comme en largeur
 
-La profondeur d'un corps (sa petite cote) ne dépasse jamais `DOC.profMax`, 28 m. C'est une
-LIMITE, pas une cible : le générateur tire ses profondeurs librement dessous, et une géométrie
-qui la franchit est simplement invalide — il cherche une autre composition. Aucune forme de
-repli n'est appliquée : pas de décrochement automatique, pas de fusion des volumes qui se
-touchent, pas de règle sur les porte-à-faux (ni préférence, ni avertissement, ni arête en 3D).
-Ces trois mécanismes ont été retirés du générateur, du jugement, du contrôle et du dessin.
+Aucun volume ne dépasse `DOC.profMax`, 28 m, dans l'une ou l'autre direction — à aucun étage,
+ni au sous-sol. Seule exception : la salle de sport double, que le règlement fixe à 28 × 32 m.
+C'est une LIMITE, pas une cible : `cotes()` choisit les proportions à surface exacte sous cette
+cote, et une géométrie qui la franchit est invalide — le générateur cherche une autre
+composition. Aucune forme de repli n'est appliquée : ni décrochement, ni fusion, ni règle de
+porte-à-faux.
+
+Conséquence : un corps d'école fait au plus 28 × 18,5 m (les classes en façade), soit environ
+520 m² par étage, et le rez en demande quatre fois plus. `genMass()` calcule donc le nombre de
+corps nécessaire (`nMin`) et chaque parti en pose au moins autant — en rangs pour les barres
+et les terrasses, le long de chaque aile pour le L, le U et la cour. Le sous-sol se répartit
+sous plusieurs corps, et la piscine et le local CAD ne se réunissent que si l'ouvrage commun
+reste sous la cote. Bloc compact et Barre, qui n'ont qu'un corps, ne tiennent plus ce programme.
 
 ## Passerelles et corps accolés
 
