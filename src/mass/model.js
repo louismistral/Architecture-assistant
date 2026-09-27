@@ -256,10 +256,22 @@ export function volRect(v, e){
    niveau — `t0`, `t1` le long du côté, de `p` à `q`. Le mur et le contour du
    plan et de la 3D n'y sont dessinés que là. Les surfaces n'en changent pas :
    le mur n'a jamais compté dans la surface utile. */
+/* DEUX VOLUMES FONT-ILS UN SEUL BÂTIMENT ? Ils sont accolés (`joint` désigne
+   l'un ou son bâtiment) ou sont deux segments d'un même bâtiment (`grp`). Une
+   seule définition, lue par l'implantation, le jugement et le dessin. */
+/* Ce qui compte pour « se toucher » : les positions sont arrondies au
+   décimètre, un contact exact n'existe pas. */
+export var CONTACT = 0.15;
+export function touche(e){ return e >= -CONTACT && e <= CONTACT; }
+export function lies(a, b){
+  return a.joint === b.id || b.joint === a.id
+      || (!!a.grp && (a.grp === b.grp || b.joint === a.grp))
+      || (!!b.grp && a.joint === b.grp);
+}
 export function bordsLibres(v, e, vols){
   var R = [];
   (vols || MASS.vol).forEach(function(o){
-    if(o === v || !(o.joint === v.id || v.joint === o.id)) return;
+    if(o === v || !lies(o, v)) return;
     var eo = volEtage(o, e.i);
     if(eo) R.push(coins(volRect(o, eo)));
   });

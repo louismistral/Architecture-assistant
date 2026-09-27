@@ -53,6 +53,7 @@ var DUR = {
   profmax:  { ref:"2.10",     fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
   facade:   { ref:"",         fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
   module:   { ref:"",         fix:function(){ return [fixAire()]; } },
+  longueur: { ref:"",         fix:function(){ return [fixRelancer()]; } },
   cour:     { ref:"2.10",     fix:function(){ return [fixRelancer(),
     fixSecond("non", "Ne pas représenter le second temps", "il libère le terrain qu’il occupe")]; } },
   abri:     { ref:"",         fix:function(){ return [fixPile()]; } },

@@ -29,7 +29,7 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { MASS, horsModule, horsSol, pontRect, porteAFaux, postesDe, profBornes,
+import { MASS, touche, horsModule, horsSol, pontRect, porteAFaux, postesDe, profBornes,
   profFacade, volRect } from "./model.js";
 import { ecartVols, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
 
@@ -142,8 +142,8 @@ export function dures(vols, vite){
   /* les distances : entre bâtiments, à tous les étages ; à l'existant */
   for(i = 0; i < vols.length && !stop(); i++){
     for(j = i + 1; j < vols.length && !stop(); j++){
-      var e = ecartVols(vols[i], vols[j]), m = lies(vols[i], vols[j]) ? 0 : DOC.distMin;
-      if(e < m - .01)
+      var e = ecartVols(vols[i], vols[j]), L = lies(vols[i], vols[j]);
+      if(e < DOC.distMin - .01 && !(L && touche(e)))
         dit("dist", i, nomV(vols[i], i) + " et " + nomV(vols[j], j).toLowerCase()
           + (e < 0 ? " s'interpénètrent." : " sont à " + dec(e) + " m, pour "
             + dec(DOC.distMin) + " m au moins."), 0, j);
@@ -170,6 +170,10 @@ export function dures(vols, vite){
     v.lv.forEach(function(e){
       var sol = lvlOf(e.i) >= 0, pt = Math.min(e.w, e.d);
       function une(k, msg){ if(!vu[k]){ vu[k] = 1; dit(k, i, msg); } }
+      if(sol && !v.fix && !v.ph
+         && Math.max(e.w, e.d) + 2 * RULES.haut.mur > DOC.longMax + .01)
+        une("longueur", nomV(v, i) + " fait " + dec(Math.max(e.w, e.d) + 2 * RULES.haut.mur)
+          + " m de long, pour " + dec(DOC.longMax) + " m au plus : un décrochement.");
       if(horsModule(e.w) || horsModule(e.d))
         une("module", nomV(v, i) + " — " + dec(e.w) + " × " + dec(e.d) + " m : hors du module de "
           + dec(DOC.module) + " m.");
@@ -400,7 +404,7 @@ export function ensembles(E, ponts){
   function f(x){ while(P[x] !== x) x = P[x] = P[P[x]]; return x; }
   function u(a, b){ if(P[a] !== undefined && P[b] !== undefined) P[f(a)] = f(b); }
   E.forEach(function(v){ P[v.id] = v.id; });
-  E.forEach(function(v){ if(v.joint) u(v.id, v.joint); });
+  E.forEach(function(v){ if(v.joint) u(v.id, v.joint); if(v.grp) u(v.id, v.grp); });
   ponts.forEach(function(p){ u(p.a, p.b); });
   var n = 0;
   E.forEach(function(v){ if(f(v.id) === v.id) n++; });
