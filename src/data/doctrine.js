@@ -101,10 +101,6 @@ export var DOC = {
   largeurMin: 11,
   profMin: 11,
   profMax: 28,
-  /* Aucun segment de bâtiment plus long que `longMax` : au-delà, le corps se
-     découpe en segments accolés, décalés de `decroche` — le décrochement. */
-  longMax: 28,
-  decroche: 3,
   courMin: 620,
   module: 0.5,
 
@@ -122,10 +118,9 @@ export var DOC = {
   compaMax: 1.10,
   courBon: 1500,
 
-  /* Préférences. Dénivelé sous une emprise, porte-à-faux au-delà duquel on
-     avertit, élancement d'un corps — garde-fous secondaires. */
+  /* Préférences. Dénivelé sous une emprise, élancement d'un corps — garde-fous
+     secondaires. */
   penteMax: 2,
-  pafMax: 3,
   elanceMax: 9,
 
   /* Paramètres du générateur — pas des contraintes d'architecture : combien
@@ -397,24 +392,14 @@ export var REGLES = [
     pourquoi:"La profondeur est la petite cote d'un corps. C'est le premier choix d'un "
       + "projet d'école, il vous appartient. Elle ne descend pas sous la largeur minimale.",
     agit:"Le générateur tire ses profondeurs entre ce minimum et le maximum." },
-  { id:"profmax", dom:"mass", rang:"dure", titre:"— profondeur maximale", k:"profMax",
-    unite:"m", min:11, max:40, pas:0.5, source:"règlement art. 2.10 — la salle de sport",
+  { id:"profmax", dom:"mass", rang:"dure", titre:"Profondeur maximale d'un corps", k:"profMax",
+    unite:"m au plus", min:11, max:40, pas:0.5, source:"règlement art. 2.10 — la salle de sport",
     lu:"src/mass/juge.js — dures()",
-    pourquoi:"Au-delà de la petite cote du local le plus profond du programme, on bâtit "
-      + "de la profondeur sans jour. La salle de sport garde ses cotes du règlement.",
+    pourquoi:"Une LIMITE, pas une cible : le générateur tire ses profondeurs librement sous "
+      + "ce plafond. Une composition qui le dépasse est invalide, et il en cherche une autre — "
+      + "aucune forme de repli (décrochement, fusion, porte-à-faux) n'est appliquée. La salle "
+      + "de sport garde ses cotes du règlement.",
     agit:"Jette la variante ; plafonne la poignée de redimensionnement." },
-  { id:"longueur", dom:"mass", rang:"dure", titre:"Longueur d'un segment de bâtiment", k:"longMax",
-    unite:"m au plus, murs compris", min:15, max:120, pas:1, source:"projet",
-    lu:"src/mass/gen.js — decrocher() · juge.js — dures()",
-    pourquoi:"Au-delà, le corps se découpe en segments accolés d'au plus cette longueur, "
-      + "décalés l'un de l'autre : un décrochement. Les segments forment un seul bâtiment — "
-      + "pas de mur au contact — et la surface utile de chaque étage est inchangée. La salle "
-      + "de sport et les ouvrages du second temps, qui ont leurs cotes, n'y sont pas soumis.",
-    agit:"Découpe les corps trop longs ; jette ce qui y échappe." },
-  { id:"decroche", dom:"mass", rang:"dure", titre:"— profondeur du décrochement", k:"decroche",
-    unite:"m", min:0.5, max:10, pas:0.5, source:"projet", lu:"src/mass/gen.js — decrocher()",
-    pourquoi:"Le décalage entre deux segments voisins, perpendiculairement à la façade.",
-    agit:"" },
   { id:"facade", dom:"mass", rang:"dure", titre:"Toutes les salles de classe en façade",
     val:"un corps qui porte des classes n'a pas plus de deux salles de profondeur",
     source:"projet — jour naturel", lu:"src/mass/model.js — profFacade()",
@@ -488,11 +473,6 @@ export var REGLES = [
     lu:"src/mass/juge.js — qualites()",
     pourquoi:"Un corps rangé sur l'axe du périmètre, une limite, une route ou un autre corps "
       + "est préféré à égalité du reste. Rien n'oblige à s'aligner.", agit:"" },
-  { id:"aplomb", dom:"mass", rang:"pref", titre:"Porte-à-faux", k:"pafMax",
-    unite:"m — au-delà, on avertit", min:0, max:15, pas:0.5, source:"projet",
-    lu:"src/mass/juge.js — qualites() · checks.js",
-    pourquoi:"Autorisé. Préférer l'aplomb à égalité du reste, et signaler un débord important.",
-    agit:"" },
   { id:"pente", dom:"mass", rang:"pref", titre:"Terrassement", k:"penteMax",
     unite:"m de dénivelé sous une emprise", min:0.5, max:6, pas:0.1,
     source:"relevé — terrain maillé", lu:"src/mass/juge.js — qualites()",
