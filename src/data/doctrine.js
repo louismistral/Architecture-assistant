@@ -394,7 +394,7 @@ export var REGLES = [
       + "projet d'école, il vous appartient. Elle ne descend pas sous la largeur minimale.",
     agit:"Le générateur tire ses profondeurs entre ce minimum et le maximum." },
   { id:"profmax", dom:"mass", rang:"dure", titre:"Dimensions maximales d'un volume", k:"profMax",
-    unite:"m au plus, en longueur comme en largeur", min:11, max:60, pas:0.5,
+    unite:"m au plus hors tout, en longueur comme en largeur", min:12, max:60, pas:0.5,
     source:"projet · règlement art. 2.10 pour la salle de sport",
     lu:"src/mass/juge.js — dures() · gen.js — cotes()",
     pourquoi:"Aucun volume, à aucun étage ni au sous-sol, ne dépasse cette cote dans l'une ou "
