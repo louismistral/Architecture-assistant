@@ -125,6 +125,19 @@ distances et la cour —, `volInt()` l'intérieur où l'on pave le programme, `m
 du plan et de la 3D. La dalle de 40 cm (`RULES.haut.dalle`) s'ajoute à la hauteur libre. Toutes
 les cotes de corps passent par `auModule()` (0,50 m).
 
+## Chaque volume a son nombre d'étages
+
+Le parti propose une silhouette, et une fois sur deux les corps secondaires tirent leur nombre
+d'étages entre un et le maximum. `monter()` partage alors les surfaces DU HAUT VERS LE BAS : le
+dernier niveau entre ceux qui y montent, au prorata de leur poids ; à chaque niveau inférieur,
+un corps reprend ce qu'il porte au-dessus, puis sa part du reste. Un corps haut a donc une
+emprise plus grande, un corps bas prend le reste du rez, et tout mélange de hauteurs se loge
+d'aplomb. Seule exigence : ceux qui montent jusqu'à un niveau pèsent au moins 1,3 fois la part
+que ce niveau représente du rez — sans quoi un seul corps haut porterait tous les étages. Quand
+aucune variante ainsi tirée ne tient, le générateur rejoue avec tous les corps à pleine hauteur.
+Ici les 1ᵉʳ et 2ᵉ étages ont presque la même surface : on obtient surtout des R+2 à côté de rez
+seuls, plus rarement des R+1.
+
 ## Une seule limite géométrique : 28 m de profondeur
 
 La profondeur d'un corps (sa petite cote) ne dépasse jamais `DOC.profMax`, 28 m. C'est une
