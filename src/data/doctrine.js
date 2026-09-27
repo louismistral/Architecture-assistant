@@ -128,7 +128,7 @@ export var DOC = {
      d'essais, jusqu'où l'on mesure une cour devant une façade, la longueur et
      la largeur d'une passerelle. */
   essais: 40,
-  essaisParti: 4,
+  essaisParti: 10,
   courFond: 30,
   passMax: 24,
   passLarg: 3
@@ -589,13 +589,13 @@ export var SCRIPTS = [
     agit:"le plan et la 3D — c'est la proposition architecturale elle-même",
     hasard:"graine du massing (`MASS.graine`), distincte de celle du mixer" },
 
-  { dom:"mass", f:"src/mass/gen.js — figure()", n:"Les douze partis",
-    lit:"le parti choisi, le nombre de niveaux à loger",
-    decide:"la FIGURE : combien de corps, comment ils se tiennent, comment la pile se "
-      + "dégrade en montant",
-    agit:"l'allure générale. « Auto » les essaie tous et garde ceux qui rendent une "
-      + "variante valide",
-    hasard:"oui — nombre de corps, poids, angles, positions et profondeur" },
+  { dom:"mass", f:"src/mass/partis.js", n:"Les douze partis",
+    lit:"le parti choisi, la surface de chaque niveau, la profondeur tirée",
+    decide:"la FIGURE exacte — bras de volumes accolés, bâtiments séparés — et, pour chaque "
+      + "volume, son nombre d'étages et son emprise ; puis vérifie que la figure a bien la "
+      + "structure de son parti (un U a une base et deux ailes qui tiennent un vide…)",
+    agit:"l'allure générale, posée d'un bloc sur le site : rien ne la déforme ensuite",
+    hasard:"oui — longueur des ailes, asymétrie, nombre de volumes, hauteurs, écarts, angle" },
 
   { dom:"mass", f:"src/mass/gen.js — monter()", n:"Le partage des surfaces",
     lit:"la surface bâtie de chaque niveau, les poids des corps",
@@ -654,8 +654,8 @@ export var TIRAGES = [
       + "la suite des essais, et le parti retenu est tiré parmi ceux des variantes non "
       + "dominées — c'est ce qui garde la diversité." },
   { dom:"mass", quoi:"La figure",
-    comment:"nombre de corps, poids relatifs, angles, positions, profondeur entre le minimum "
-      + "et le maximum : tirés dans des bornes propres à chaque parti." },
+    comment:"dans les directives de son parti : longueur et asymétrie des ailes, nombre de "
+      + "volumes, hauteurs, écarts, profondeur — l'identité du parti reste, sa forme varie." },
   { dom:"mass", quoi:"L'orientation",
     comment:"la figure suit l'axe du périmètre, l'optimum soleil-vue, ou un angle libre ; "
       + "dans les partis libres, chaque corps choisit la sienne." },
