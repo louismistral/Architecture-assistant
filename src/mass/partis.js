@@ -32,6 +32,11 @@ import { RULES } from "../data/rules.js";
 import { auModule } from "./model.js";
 
 var M2 = function(){ return 2 * RULES.haut.mur; };
+/* Deux distances, qui ne se confondent pas : l'écart que la figure VISE entre
+   deux bâtiments — la distance souhaitée, jamais sous la distance incendie —,
+   et la distance INCENDIE, seule à juger qu'une figure tient. */
+function FEU(){ return RULES.dist.entre; }
+function ECART(){ return Math.max(FEU(), DOC.distVoulue); }
 function entre(r, a, b){ return a + r() * (b - a); }
 function ent(r, a, b){ return Math.floor(entre(r, a, b + .999)); }
 
@@ -60,7 +65,7 @@ function programme(slots, A, d){
     S.forEach(function(s){ s.f += D * s.p / W; });
   }
   if(report > 1) return false;
-  var hi = DOC.profMax - M2(), ok = true;
+  var ok = true;
   for(k = 0; k < H; k++){
     var P = 0;
     slots.forEach(function(s){ if(s.haut > k) P += s.f; });
@@ -72,26 +77,28 @@ function programme(slots, A, d){
     });
   }
   slots.forEach(function(s){
+    /* Les fourchettes de l'utilisateur ne bloquent rien : elles comptent dans
+       la note. Seule une cote nulle n'est pas un volume. */
     var w0 = auModule(s.f / d);
-    if(w0 > hi + .01 || w0 < DOC.largeurMin - .01) ok = false;
+    if(!(w0 > 0)) ok = false;
     s.w = w0; s.d = d;
     s.lv = s.lv.map(function(e){
       var dd = d, ww = auModule(e.a / d);
       if(s.gradin && e.k > 0){                 /* une terrasse se retire en profondeur */
         ww = w0; dd = auModule(e.a / w0);
       }
-      if(Math.min(ww, dd) < DOC.largeurMin - .01) ok = false;
+      if(!(Math.min(ww, dd) > 0)) ok = false;
       return { k:e.k, w:ww, d:dd, a:e.a };
     });
   });
   return ok;
 }
 
-/* Combien de volumes il faut au moins dans chaque classe de hauteur pour
-   qu'aucun ne dépasse la cote maximale : `hauts` pour ceux qui montent au
-   dernier étage, `bas` pour ceux qui restent au rez. */
+/* Combien de volumes il faut dans chaque classe de hauteur pour que chacun
+   reste dans la LARGEUR souhaitée : `hauts` pour ceux qui montent au dernier
+   étage, `bas` pour ceux qui restent au rez. */
 function besoins(A, d, r){
-  var cap = (DOC.profMax - M2()) * d * .96;
+  var cap = Math.max(1, DOC.largeurMax - M2()) * d * .96;
   var H = A.length;
   var hauts = H > 1 ? Math.ceil(A[1] / cap) : 0;
   var bas = Math.ceil((A[0] - (H > 1 ? A[1] : 0)) / cap);
@@ -165,7 +172,7 @@ var FIG = {
     G.forEach(function(g, k){
       var L = longueur(g), x0 = -L / 2 + entre(r, -12, 12);
       bras(g, 0, x0, y, 1, "b" + (k + 1), "barre");
-      y += D + DOC.distMin + entre(r, 4, 16);
+      y += D + ECART() + entre(r, 4, 16);
     });
     return true;
   },
@@ -203,7 +210,7 @@ var FIG = {
     var LB = bras(base, 0, 0, 0, 1, "b1", "base");
     var h1 = bras(ailes[0], 1, D / 2, D / 2, 1, "b1", "cote1");
     var h2 = bras(ailes[1], 1, LB - D / 2, D / 2, 1, "b1", "cote2");
-    var LT = longueur(haut), y = D / 2 + Math.max(h1, h2) + DOC.distMin + entre(r, 1, 8) + D / 2;
+    var LT = longueur(haut), y = D / 2 + Math.max(h1, h2) + ECART() + entre(r, 1, 8) + D / 2;
     bras(haut, 0, (LB - LT) / 2 + entre(r, -6, 6), y, 1, "b2", "haut");
     return true;
   },
@@ -213,8 +220,8 @@ var FIG = {
     /* deux ou trois rangs, décalés d'un demi-pas une fois sur deux : une trame,
        pas une grille rigide */
     var rangs = S.length <= 4 ? 2 : r() < .5 ? 2 : 3, cols = Math.ceil(S.length / rangs);
-    var gx = DOC.distMin + entre(r, 1, 6), gy = DOC.distMin + entre(r, 1, 6);
-    var jeu = Math.min(gx, gy) - DOC.distMin;          /* le jitter ne mange pas l'écart */
+    var gx = ECART() + entre(r, 1, 6), gy = ECART() + entre(r, 1, 6);
+    var jeu = Math.min(gx, gy) - ECART();          /* le jitter ne mange pas l'écart */
     var larg = 0, dec = r() < .5;
     S.forEach(function(s){ larg = Math.max(larg, Lout(s)); });
     S.forEach(function(s, k){
@@ -268,7 +275,7 @@ var FIG = {
         if(t < .4 || g.length === 1) bras(g, 0, 0, 0, 1, bat, "file");
         else if(t < .75){ bras(g.slice(0, 1), 0, 0, 0, 1, bat, "coude");
                           bras(g.slice(1), 1, D / 2, D / 2, 1, bat, "coude"); }
-        else g.forEach(function(s2, j){ bras([s2], 0, j * (Lout(s2) + DOC.distMin + 2), 0, 1,
+        else g.forEach(function(s2, j){ bras([s2], 0, j * (Lout(s2) + ECART() + 2), 0, 1,
                                               bat + "-" + j, "seul"); });
         var th = off + (k / nG) * 2 * Math.PI + entre(r, -.5, .5), rot = entre(r, -1.2, 1.2);
         var cx = Math.cos(th) * R, cy = Math.sin(th) * R, mx = 0, my = 0;
@@ -294,7 +301,7 @@ var FIG = {
     rangs.forEach(function(g, k){
       g.forEach(function(s){ s.gradin = s.haut > 1; });
       bras(g, 0, -longueur(g) / 2 + entre(r, -8, 8), y, 1, "t" + (k + 1), "rang" + k);
-      y += D + DOC.distMin + entre(r, 2, 10);
+      y += D + ECART() + entre(r, 2, 10);
     });
     return true;
   },
@@ -308,7 +315,7 @@ var FIG = {
     var nB = Math.max(2, Math.min(4, Math.round(reste.length * entre(r, .5, 1))));
     var B = repartir(reste, Math.min(nB, reste.length), r);
     var D = Dout(d), L = bras(dos, 0, 0, 0, 1, "b1", "dos");
-    var pas = D + DOC.distMin + entre(r, 0, 6), place = L - D;
+    var pas = D + ECART() + entre(r, 0, 6), place = L - D;
     /* autant de branches que le dos en peut porter, deux au moins */
     var n = Math.min(B.length, Math.floor(place / pas) + 1);
     if(n < 2) return false;
@@ -345,7 +352,7 @@ function ecartsTiennent(S){
       var e = ecartRects(rectDe(S[i]), rectDe(S[j]));
       var meme = S[i].bat === S[j].bat;
       if(e < -.15) return false;
-      if(e < DOC.distMin - .01 && !meme) return false;
+      if(e < FEU() - .01 && !meme) return false;
     }
   }
   return true;
@@ -385,14 +392,14 @@ export function signature(pid, S, d){
       var a1 = role(S, "aile1"), a2 = role(S, "aile2"), base = role(S, "base");
       if(!a1.length || !a2.length || !base.length) return false;
       /* les deux ailes tiennent un vide entre elles, d'au moins la distance */
-      return longueurBras(base) - 2 * D >= DOC.distMin && longueurBras(a1) >= D && longueurBras(a2) >= D;
+      return longueurBras(base) - 2 * D >= FEU() && longueurBras(a1) >= D && longueurBras(a2) >= D;
     case "cour":
       var c1 = role(S, "cote1"), c2 = role(S, "cote2"), b0 = role(S, "base"), h0 = role(S, "haut");
       if(!c1.length || !c2.length || !b0.length || !h0.length) return false;
       /* le vide que les quatre côtés tiennent : entre les ailes, de la base au
          bâtiment qui ferme la cour */
       var vide = (longueurBras(b0) - 2 * D) * (h0[0].y - D);
-      return vide >= DOC.courMin && longueurBras(b0) - 2 * D >= DOC.distMin;
+      return vide >= DOC.courMin && longueurBras(b0) - 2 * D >= FEU();
     case "pavillons": return B.length >= 3 && B.length === S.length;
     case "hameau":
       var ang = [];

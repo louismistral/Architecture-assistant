@@ -63,7 +63,7 @@ export function resumeCourant(){
     var d = jugementCourant();
     if(d){
       note = d.total;
-      crit = d.crit.map(function(c){ return { id:c.id, n:c.n, pts:c.pts, niv:c.niv }; });
+      crit = d.crit.map(function(c){ return { id:c.id, n:c.n, pts:c.pts, niv:c.niv, rang:c.rang, txt:c.txt, actif:c.actif }; });
     }
   }catch(_){}
   var vm = {}, vx = {};

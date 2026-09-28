@@ -31,7 +31,7 @@ import { lies, rectSol } from "./gen.js";
 import { courProgramme, courUtile, dures, terrainLibre } from "./juge.js";
 import { isAccepted } from "../mix/accept.js";
 import {
-  fixAire, fixAuto, fixCarrer, fixEcarter, fixElargir, fixPile, fixProfondeur,
+  fixAire, fixAuto, fixCarrer, fixEcarter, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
 import { MASS, bilan, niveaux, pontRect, profBornes, secondTemps,
@@ -47,10 +47,7 @@ var COUR = courProgramme();
 var DUR = {
   perim:    { ref:"2.3",      fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
   existant: { ref:"2.3",      fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
-  dist:     { ref:"AEAI 2.4", fix:function(){ return [fixEcarter()]; } },
-  largeur:  { ref:"",         fix:function(i){ return [fixElargir(i, DOC.largeurMin), fixRelancer()]; } },
-  prof:     { ref:"",         fix:function(i){ return [fixElargir(i, profBornes().lo), fixRelancer()]; } },
-  profmax:  { ref:"2.10",     fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
+  dist:     { ref:"AEAI 15-15", fix:function(){ return [fixEcarter()]; } },
   facade:   { ref:"",         fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
   module:   { ref:"",         fix:function(){ return [fixAire()]; } },
   cour:     { ref:"2.10",     fix:function(){ return [fixRelancer(),
@@ -115,12 +112,12 @@ export function massCheck(){
       if(e < 0 || v.ph || V[j].ph || lies(v, V[j]) || DOC.ombreK <= 0) continue;
       if(visAVis(rc, o) <= 8) continue;
       var req = Math.max(volHaut(v), volHaut(V[j])) * DOC.ombreK;
-      if(req > DOC.distMin && e < req - .05){
+      if(req > RULES.dist.entre && e < req - .05){
         var manque = (req - e) / req;
         dit(manque > .25 ? "w" : "i", "jour:" + v.id + "|" + V[j].id,
           nm + " et " + n2.toLowerCase() + " sont à " + dec(e) + " m pour "
           + dec(req) + " m d'écart utile — " + dec(DOC.ombreK) + " fois la hauteur "
-          + "du plus haut. Seuls les " + dec(DOC.distMin) + " m sont dus ; en deçà de "
+          + "du plus haut. Seuls les " + dec(RULES.dist.entre) + " m de la distance incendie sont dus ; en deçà de "
           + "l’écart utile, les façades qui se font face perdent du jour.", "2.9",
           nm + " · " + n2, i, { fix:[fixEcarter(), fixRelancer()] });
       }

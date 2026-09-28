@@ -64,6 +64,21 @@ function ligne(r, onChange, etat){
   sm.appendChild(el("b", "doc-r__t", r.titre));
   var e = etat ? etat(r) : null;
   if(e) sm.appendChild(etatChip(r, e));
+  /* Un critère NOTÉ se désactive : le score se recalibre sur les autres. */
+  if(DOC["on_" + r.id] !== undefined){
+    var on = document.createElement("input");
+    on.type = "checkbox"; on.checked = DOC["on_" + r.id] !== 0;
+    on.title = "Compter ce critère dans le score";
+    on.setAttribute("aria-label", "Compter « " + r.titre + " » dans le score");
+    on.addEventListener("click", function(ev){ ev.stopPropagation(); });
+    on.addEventListener("change", function(){
+      docSet("on_" + r.id, on.checked ? 1 : 0);
+      d.classList.toggle("is-inactif", !on.checked);
+      if(onChange) onChange();
+    });
+    sm.insertBefore(on, sm.firstChild);
+    if(!on.checked) d.classList.add("is-inactif");
+  }
   var v = el("span", "doc-r__v mono");
   if(r.k) v.textContent = valTxt(r);
   else v.textContent = r.val || "—";
@@ -128,10 +143,10 @@ export function doctrineSection(dom, rejouer, extra, etat){
       + "NOUS imposons : des arbitrages, des préférences et des poids, sans lesquels "
       + "aucun tirage ne rendrait autre chose qu'un remplissage. Rien n'est opposable, "
       + "tout se règle — et le tirage se rejoue sans quitter ce volet."
-    : "Trois rangs, et aucun point. Le générateur jette toute variante qui enfreint une "
-      + "CONTRAINTE DURE, écarte celles qu'une autre bat sur les PRIORITÉS FORTES, et ne "
-      + "départage par les PRÉFÉRENCES que des variantes égales sur les fortes. Le parti est "
-      + "tiré parmi tous ceux qui rendent une variante valide : la diversité est voulue. "
+    : "Générer, vérifier, noter, classer. Toute variante qui enfreint une CONTRAINTE "
+      + "DURE est supprimée : elle n'a pas de score. Les autres reçoivent un score sur 100 "
+      + "— 100 si elles satisfont tous les critères cochés —, où une PRIORITÉ FORTE pèse "
+      + "plus qu'une PRÉFÉRENCE ; décocher un critère recalibre la note sur ceux qui restent. "
       + "Chaque ligne dit ce qu'elle pense de la composition à l'écran."));
 
   /* La barre d'action : rejouer, et rétablir. Elle est EN TÊTE parce qu'on y
@@ -156,7 +171,10 @@ export function doctrineSection(dom, rejouer, extra, etat){
   p.appendChild(bar);
 
   /* --- ce qu'on regarde en ce moment : la note, ou la pile ---------------- */
-  if(extra) p.appendChild(extra);
+  /* `extra` peut être une fonction : la note se refait alors à chaque réglage
+     — cocher, décocher, changer une valeur recalibre le score à l'écran. */
+  var ex = typeof extra === "function" ? extra() : extra;
+  if(ex) p.appendChild(ex);
 
   /* --- les contraintes, de la plus dure à la plus molle ------------------- */
   var L = reglesDe(dom);
@@ -168,6 +186,7 @@ export function doctrineSection(dom, rejouer, extra, etat){
     lot.forEach(function(r){ sec.appendChild(ligne(r, function(){
       var b = document.querySelector(".doc-bar .btn--quiet");
       if(b) b.disabled = !docModifie();
+      if(ex && typeof extra === "function"){ var n = extra(); ex.replaceWith(n); ex = n; }
     }, etat)); });
     p.appendChild(sec);
   });

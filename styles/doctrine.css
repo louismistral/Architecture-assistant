@@ -110,3 +110,5 @@
   .doc-r__v{max-width:100%;margin-left:0;flex:1 0 100%}
 }
 .doc .vm-noteb{max-inline-size:880px}
+.doc-r.is-inactif>.doc-r__h{opacity:.55}
+.doc-r__h>input[type=checkbox]{flex:none;margin:0}

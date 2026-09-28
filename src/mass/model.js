@@ -82,15 +82,15 @@ export function massVols(list){
 }
 
 /* ---------- la profondeur, et ses deux bornes --------------------------------
-   La profondeur d'un corps est sa PETITE cote. Elle se choisit entre deux bornes
-   de la doctrine : `DOC.profMin`, réglage de l'utilisateur qui ne descend pas
-   sous la largeur minimale absolue, et `DOC.profMax`. Le générateur tire la
-   sienne entre les deux ; `juge.js` jette ce qui en sort. */
+   La profondeur d'un corps est sa PETITE cote, sa largeur la grande. Les deux
+   fourchettes sont des paramètres de l'utilisateur (`DOC.profMin/profMax`,
+   `DOC.largeurMin/largeurMax`), notés par `juge.js` — jamais bloquants. */
 export function profBornes(){
-  var lo = Math.max(DOC.profMin, DOC.largeurMin);
-  /* `DOC.profMax` se mesure HORS TOUT, murs compris — la cote qu'on lit au plan.
-     La borne des cotes intérieures en retire donc les deux murs. */
-  return { lo:lo, hi:Math.max(lo, DOC.profMax - 2 * RULES.haut.mur) };
+  /* La profondeur SOUHAITÉE de l'utilisateur, hors tout (murs compris), ramenée
+     aux cotes intérieures. Un paramètre, pas une règle : le générateur y tire
+     ses profondeurs, et en sortir ne fait que baisser la note. */
+  var m = 2 * RULES.haut.mur, lo = Math.max(1, DOC.profMin - m);
+  return { lo:lo, hi:Math.max(lo, DOC.profMax - m) };
 }
 /* TOUTES LES CLASSES EN FAÇADE. Un corps qui porte des salles de classe n'a pas
    plus de deux salles de profondeur — prises à leur surface BÂTIE, la

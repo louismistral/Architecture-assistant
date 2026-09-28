@@ -37,7 +37,7 @@ import { jugementCourant } from "../mass/juge.js";
 import { DOC } from "../data/doctrine.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massSet, massVols, niveaux, partiOf, profBornes,
+  massSet, massVols, niveaux, partiOf,
   volHaut, volNiv
 } from "../mass/model.js";
 import { doctrineSection, etatDe, jugementBloc } from "./doctrine.js";
@@ -206,14 +206,37 @@ function blocTirage(){
   bm.type = "button";
   bm.title = "Ne touche pas au programme : mêmes postes, mêmes surfaces, mêmes "
            + "niveaux, même répartition. Une autre solution architecturale.";
+  /* Shuffle massing montre la PROPOSITION SUIVANTE du classement ; au bout du
+     classement, il en tire un nouveau. */
   bm.addEventListener("click", function(){
-    massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
-    regenere();
+    var P = MASS.vol.props, k = MASS.vol.rang;
+    if(P && k != null && k + 1 < P.length) massVols(P[k + 1]);
+    else {
+      massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
+      regenere();
+    }
     planFit();
     redessine();
   });
   r.appendChild(bm);
   b.appendChild(r);
+
+  /* LE SCORE de la proposition à l'écran : sur 100, calculé sur les seules
+     variantes qui respectent toutes les règles dures. */
+  if(MASS.vol.length){
+    var j = jugementCourant(), sc = el("div", "mass-score");
+    if(j && j.total != null){
+      sc.appendChild(el("b", "mass-score__n mono", j.total + "/100"));
+      sc.appendChild(el("span", null, "✓ toutes les règles dures respectées"
+        + (MASS.vol.props ? " · proposition " + (MASS.vol.rang + 1) + " sur "
+          + MASS.vol.props.length + (MASS.parti === "auto" ? " — la meilleure de chaque parti" : "")
+          : "")));
+    } else {
+      sc.appendChild(el("b", "mass-score__n mono is-bas", "—"));
+      sc.appendChild(el("span", null, "une règle dure n'est pas respectée : pas de score"));
+    }
+    b.appendChild(sc);
+  }
 
   var n = el("p", "mass-note");
   n.appendChild(el("b", null, "Shuffle programme "));
@@ -387,17 +410,14 @@ function cote(host, lb, v, k){
   var e0 = basDe(v);
   var i = document.createElement("input");
   i.type = "number"; i.className = "mono";
-  /* La profondeur est PLAFONNÉE ici aussi. Le générateur ne la franchit pas ;
-     la main ne doit pas pouvoir la franchir non plus, sans quoi la règle ne
-     serait qu'une préférence du tirage. */
-  i.min = String(DOC.largeurMin); i.max = String(profBornes().hi);
-  i.step = String(DOC.module);
+  /* Libre : les dimensions souhaitées ne bloquent pas, elles se notent. Seul
+     le module s'applique à la main comme au générateur. */
+  i.min = String(DOC.module); i.step = String(DOC.module);
   i.value = String(e0[k]);
   i.addEventListener("change", function(){
     var x = parseFloat(String(i.value).replace(",", "."));
-    if(!isFinite(x) || x < DOC.largeurMin){ i.value = String(e0[k]); return; }
+    if(!isFinite(x) || x < DOC.module){ i.value = String(e0[k]); return; }
     x = auModule(x);
-    if(x > profBornes().hi){ x = profBornes().hi; }      /* longueur comme largeur */
     i.value = String(x);
     /* Toute la pile suit la cote du rez : un massing dont chaque étage aurait
        sa propre largeur ne serait plus un volume, mais une pile d'objets. */
@@ -636,5 +656,5 @@ export function massDoctrine(){
       saveSoon();
     }
     if(massNav) massNav("volumetrie");
-  }, jugementBloc(j), etatDe(j));
+  }, function(){ return jugementBloc(jugementCourant()); }, etatDe(j));
 }

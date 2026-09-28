@@ -29,9 +29,9 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, horsModule, horsSol, pontRect, postesDe, profBornes,
+import { CONTACT, MASS, horsModule, horsSol, pontRect, niveaux, postesDe,
   profFacade, volRect } from "./model.js";
-import { ecartVols, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
+import { ecartVols, intact, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
 
 var DEG = Math.PI / 180;
 function nomV(v, k){ return v.nom || (v.fix ? "Salle de sport" : "Volume " + (k + 1)); }
@@ -139,32 +139,35 @@ export function dures(vols, vite){
       dit("perim", -1, "Une passerelle franchit le recul du PACom.");
   });
 
-  /* les distances : entre bâtiments, à tous les étages ; à l'existant */
+  /* la distance INCENDIE — seule distance bloquante : entre bâtiments, à tous
+     les étages ; et à l'existant. La distance souhaitée, elle, se note. */
+  var FEU = RULES.dist.entre;
   for(i = 0; i < vols.length && !stop(); i++){
     for(j = i + 1; j < vols.length && !stop(); j++){
       var e = ecartVols(vols[i], vols[j]), L = lies(vols[i], vols[j]);
-      if(e < DOC.distMin - .01 && !(L && e >= -CONTACT))
+      if(e < FEU - .01 && !(L && e >= -CONTACT))
         dit("dist", i, nomV(vols[i], i) + " et " + nomV(vols[j], j).toLowerCase()
-          + (e < 0 ? " s'interpénètrent." : " sont à " + dec(e) + " m, pour "
-            + dec(DOC.distMin) + " m au moins."), 0, j);
+          + (e < 0 ? " s'interpénètrent." : " sont à " + dec(e) + " m : la distance "
+            + "incendie est de " + dec(FEU) + " m."), 0, j);
     }
     rectsHors(vols[i]).forEach(function(rc){
       if(stop()) return;
-      var OB = obstaclesPres(rc, DOC.distMin);
+      var OB = obstaclesPres(rc, FEU);
       for(var k = 0; k < OB.length; k++){
         var eb = ecartPoly(rc, OB[k]);
-        if(eb < DOC.distMin - .01){
+        if(eb < FEU - .01){
           dit("existant", i, nomV(vols[i], i) + (eb < 0 ? " recouvre un bâtiment existant."
-            : " est à " + dec(eb) + " m d'un bâtiment existant, pour "
-              + dec(DOC.distMin) + " m au moins."));
+            : " est à " + dec(eb) + " m d'un bâtiment existant : la distance incendie est de "
+              + dec(FEU) + " m."));
           return;
         }
       }
     });
   }
 
-  /* les cotes : largeur, profondeur, classes en façade, module */
-  var B = profBornes(), PF = profFacade();
+  /* les cotes : classes en façade, module. Les dimensions souhaitées ne
+     bloquent rien — elles se notent (`qualites()`). */
+  var PF = profFacade();
   for(i = 0; i < vols.length && !stop(); i++){
     var v = vols[i], cla = portClasses(v), vu = {};
     v.lv.forEach(function(e){
@@ -173,20 +176,7 @@ export function dures(vols, vite){
       if(horsModule(e.w) || horsModule(e.d))
         une("module", nomV(v, i) + " — " + dec(e.w) + " × " + dec(e.d) + " m : hors du module de "
           + dec(DOC.module) + " m.");
-      /* Aucun volume ne dépasse la cote maximale, dans l'une ou l'autre direction,
-         à aucun étage ni au sous-sol — la salle de sport a ses cotes du règlement. */
-      var lg = Math.max(e.w, e.d);
-      if(!v.fix && lg > B.hi + .01)
-        une("profmax", nomV(v, i) + " fait " + dec(e.w + 2 * RULES.haut.mur) + " × "
-          + dec(e.d + 2 * RULES.haut.mur) + " m hors tout " + (sol ? "" : "au sous-sol ")
-          + ": au-delà des " + dec(DOC.profMax) + " m.");
       if(!sol || v.fix) return;
-      if(pt < DOC.largeurMin - .01)
-        une("largeur", nomV(v, i) + " ne fait que " + dec(pt) + " m de large, pour "
-          + dec(DOC.largeurMin) + " m au moins.");
-      else if(pt < B.lo - .01)
-        une("prof", nomV(v, i) + " a " + dec(pt) + " m de profondeur, pour " + dec(B.lo)
-          + " m au moins.");
       if(cla && pt > PF + .01)
         une("facade", nomV(v, i) + " porte des classes sur " + dec(pt) + " m de profondeur : "
           + "au-delà de " + dec(PF) + " m — deux salles —, une salle n'a plus de façade.");
@@ -320,7 +310,49 @@ export function qualites(vols){
   var cp = bat ? fac / bat : 0;
   var cu = courUtile(vols);
 
+  /* vos DIMENSIONS souhaitées : la largeur (grand côté) et la profondeur (petit
+     côté) de chaque volume d'école, murs compris, au rez */
+  var m2 = 2 * RULES.haut.mur, dn = 0, dok = 0;
+  E.forEach(function(v){
+    if(v.fix) return;
+    var r = rectSol(v), L = Math.max(r.w, r.d), P = Math.min(r.w, r.d);
+    dn++;
+    if(L >= DOC.largeurMin - .01 && L <= DOC.largeurMax + .01
+       && P >= DOC.profMin - .01 && P <= DOC.profMax + .01) dok++;
+  });
+  var dsh = dn ? dok / dn : 1;
+  /* votre DISTANCE souhaitée entre bâtiments distincts */
+  var pn = 0, pok = 0;
+  E.forEach(function(v, i){
+    E.forEach(function(o, j){
+      if(j <= i || lies(v, o)) return;
+      pn++;
+      if(ecartVols(v, o) >= DOC.distVoulue - .01) pok++;
+    });
+  });
+  var psh = pn ? pok / pn : 1;
+  /* le PARTI : la figure posée est-elle restée celle qui a été construite */
+  var part = intact(vols);
+  /* le PROGRAMME : l'écart de surface, niveau par niveau */
+  var dem = 0, ec = 0;
+  niveaux().forEach(function(n){
+    var po = 0;
+    vols.forEach(function(v){ if(v.ph) return; v.lv.forEach(function(e){ if(e.i === n.i) po += e.w * e.d; }); });
+    dem += n.A; ec += Math.abs(po - n.A);
+  });
+  var dev = dem ? ec / dem : 0;
+
   var fortes = [
+    { id:"dims", n:"Dimensions souhaitées", niv: dsh >= 1 ? 2 : dsh >= .5 ? 1 : 0, q: 2 * dsh - 1,
+      txt: dok + " volume" + (dok > 1 ? "s" : "") + " sur " + dn + " dans vos fourchettes" },
+    { id:"distv", n:"Distance souhaitée entre bâtiments", niv: psh >= 1 ? 2 : psh >= .5 ? 1 : 0,
+      q: 2 * psh - 1,
+      txt: !pn ? "un seul bâtiment" : pok + " écart" + (pok > 1 ? "s" : "") + " sur " + pn
+        + " à " + dec(DOC.distVoulue) + " m au moins" },
+    { id:"parti", n:"Respect du parti", niv: part ? 2 : 0, q: part ? 1 : -1,
+      txt: part ? "la figure garde la structure de son parti" : "la figure a été déformée" },
+    { id:"prog", n:"Organisation du programme", niv: palier(dev, .01, .03), q: lin(dev, .01, .03),
+      txt: "écart de surface " + dec(Math.round(dev * 1000) / 10) + " %" },
     { id:"soleil", n:"Orientation solaire", niv:so.niv, q:so.q,
       txt:"façades longues à " + Math.round(so.moy) + "° du sud en moyenne" },
     { id:"vue", n:"Vue vers le nord-ouest", niv:vu.niv, q:vu.q,
@@ -423,31 +455,18 @@ function bat(a, b){
   return mieux;
 }
 function niv(L){ return L.map(function(x){ return x.niv; }); }
-/* `cands` : `[{ vols, pid, q }]`. LA DIVERSITÉ D'ABORD : le parti est tiré parmi
-   tous ceux qui ont rendu une variante valide — sans quoi le même parti, le
-   mieux orienté, gagnerait chaque tirage. PUIS les priorités, au sein de ce
-   parti : on écarte les variantes qu'une autre bat sur les priorités fortes,
-   puis, entre égales, sur les préférences, et l'on tire parmi ce qui reste. */
-export function choisir(cands, r){
-  var ps = [];
-  cands.forEach(function(x){ if(ps.indexOf(x.pid) < 0) ps.push(x.pid); });
-  var pid = ps[Math.floor(r() * ps.length)];
-  var L = cands.filter(function(x){ return x.pid === pid; });
-  L.forEach(function(c){ c.f = niv(c.q.fortes); c.p = niv(c.q.prefs); });
-  var F = L.filter(function(x){
-    return !L.some(function(y){ return y !== x && bat(y.f, x.f); }); });
-  var G = {}, out = [], k;
-  F.forEach(function(x){ (G[x.f.join()] = G[x.f.join()] || []).push(x); });
-  for(k in G){
-    var g = G[k];
-    g.forEach(function(x){
-      if(!g.some(function(y){ return y !== x && bat(y.p, x.p); })) out.push(x);
-    });
-  }
-  var c = out[Math.floor(r() * out.length)];
-  c.vols.front = out.length;
-  c.vols.partis = ps.length;
-  return c;
+/* LE CLASSEMENT. `cands` : `[{ vols, pid, q }]`, toutes valides. Chacune reçoit
+   son score sur 100 ; on garde la MEILLEURE de chaque parti — la diversité —,
+   et l'on range tout par score décroissant. Le générateur montre la première,
+   « Shuffle massing » passe à la suivante. Avec un seul parti, on garde ses
+   meilleures variantes, dans l'ordre. */
+export function classer(cands, parParti){
+  cands.forEach(function(c){ c.score = noter([], c.q).total; });
+  cands.sort(function(a, b){ return b.score - a.score; });
+  if(!parParti) return cands.slice(0, 8);
+  var vu = {}, out = [];
+  cands.forEach(function(c){ if(!vu[c.pid]){ vu[c.pid] = 1; out.push(c); } });
+  return out;
 }
 
 /* ---------- la composition à l'écran ---------------------------------------- */
@@ -471,29 +490,22 @@ function poidsDe(id){
 }
 function majuscule(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
 export function noter(d, q){
-  var crit = [], G = [["forte", q.fortes], ["pref", q.prefs]], plein = 0;
-  /* SUR 100 : une composition qui répond pleinement à tout — chaque critère à
-     q = +1, aucune contrainte dure enfreinte — vaut exactement 100. Les poids
-     des rangs ne sont que des proportions entre critères. */
-  G.forEach(function(g){ plein += g[1].length * poidsDe(g[0]); });
-  var K = plein ? 100 / plein : 0;
-  reglesDe("mass").forEach(function(r){
-    if(r.rang !== "dure") return;
-    var n = d.filter(function(x){ return x.k === r.id && !x.pile; }).length;
-    crit.push({ id:r.id, n:majuscule(r.titre.replace(/^— /, "")), rang:"dure", niv: n ? 0 : 2,
-                txt: n ? d.filter(function(x){ return x.k === r.id; })[0].msg : "respectée",
-                pts: n ? -n * poidsDe("dure") : 0 });
-  });
-  G.forEach(function(g){
+  /* LE SCORE SUR 100. Les règles dures n'y entrent pas : une variante qui en
+     enfreint une n'a pas de score, elle n'existe pas. Chaque critère ACTIF
+     rend une qualité q ∈ [−1, 1], ramenée à [0, 1] ; son rang dit ce qu'il pèse
+     (une priorité forte plus qu'une préférence). La moyenne pondérée, fois
+     100 : tout au mieux vaut 100, quel que soit le nombre de critères actifs. */
+  var crit = [], som = 0, pois = 0;
+  [["forte", q.fortes], ["pref", q.prefs]].forEach(function(g){
     g[1].forEach(function(c){
-      crit.push({ id:c.id, n:c.n, rang:g[0], niv:c.niv, txt:c.txt,
-                  pts: Math.round(c.q * poidsDe(g[0]) * K * 10) / 10 });
+      var actif = DOC["on_" + c.id] !== 0;
+      var w = actif ? poidsDe(g[0]) : 0, sc = Math.max(0, Math.min(1, (c.q + 1) / 2));
+      som += w * sc; pois += w;
+      crit.push({ id:c.id, n:c.n, rang:g[0], niv:c.niv, txt:c.txt, actif:actif,
+                  pts: Math.round(sc * 100) });
     });
   });
-  var tot = 0;
-  crit.forEach(function(c){ tot += c.pts; });
-  /* 100 est le plafond : rien ne rapporte plus que répondre pleinement à tout. */
-  return { total:Math.min(100, Math.round(tot)), crit:crit };
+  return { total: d.length ? null : (pois ? Math.round(100 * som / pois) : 100), crit:crit };
 }
 export function jugementCourant(){
   if(!MASS.vol.length) return null;

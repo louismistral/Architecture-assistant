@@ -35,7 +35,7 @@ import {
 import { CONTACT, MASS, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
   sousSol, volEtage, volRect } from "./model.js";
 export { lies };
-import { angleSoleilVue, choisir, courUtile, dures, ensembles, oublier, qualites }
+import { angleSoleilVue, classer, courUtile, dures, ensembles, noter, oublier, qualites }
   from "./juge.js";
 import { PARTIS_FIGURES, composer } from "./partis.js";
 
@@ -190,7 +190,7 @@ export function relier(vols){
       });
       if(i1 < 0) return;
       var p = { a:A.id, b:B.id, i:i1 }, rc = pontRect(p, vols);
-      if(!rc || rc.long > DOC.passMax || rc.long < DOC.distMin - .01) return;
+      if(!rc || rc.long > DOC.passMax || rc.long < RULES.dist.entre - .01) return;
       if(margeAu(PER, rc) < RULES.dist.retrait - .01) return;
       var bute = vols.some(function(o){
         return o !== A && o !== B && ecart(rc, rectSol(o)) < .5; });
@@ -312,14 +312,14 @@ export function admissible(v, vols, x, y, a){
     if(o === v) continue;
     /* Deux parties d'un même bâtiment ne se recouvrent pas ; deux bâtiments se
        tiennent à la distance minimale. */
-    var e = ecartVols(v, o, P, DOC.distMin);
-    if(e < DOC.distMin - .01 && !(lies(v, o) && e >= -CONTACT)) return false;
+    var e = ecartVols(v, o, P, RULES.dist.entre);
+    if(e < RULES.dist.entre - .01 && !(lies(v, o) && e >= -CONTACT)) return false;
   }
   var H = rectsHors(v, P);
   for(i = 0; i < H.length; i++){
-    var OB = obstaclesPres(H[i], DOC.distMin);
+    var OB = obstaclesPres(H[i], RULES.dist.entre);
     for(j = 0; j < OB.length; j++)
-      if(ecartPoly(H[i], OB[j]) < DOC.distMin - .01) return false;
+      if(ecartPoly(H[i], OB[j]) < RULES.dist.entre - .01) return false;
   }
   return true;
 }
@@ -334,7 +334,9 @@ export function toutDedans(vols){
    corps de la parcelle pour gagner deux mètres. */
 function reparer(vols){
   var pas, i, j, B = bbox(PER);
-  var cible = DOC.distMin + .35;
+  /* La réparation vise la distance SOUHAITÉE, jamais moins que la distance
+     incendie. */
+  var cible = Math.max(RULES.dist.entre, DOC.distVoulue) + .35;
   var N = horsSol(), HN = {};
   N.forEach(function(n){ HN[n.i] = n.h; });
   var HV = vols.map(function(v){
@@ -484,7 +486,7 @@ function implanter(S, N, r, th0){
 /* La figure est-elle restée celle qu'on a construite ? Chaque volume à sa place
    dans le repère posé, au décimètre près. C'est la garde contre toute retouche
    qui la déformerait. */
-function intact(vols){
+export function intact(vols){
   var T = vols.T;
   if(!T) return true;
   var c = Math.cos(T.a), s = Math.sin(T.a);
@@ -611,21 +613,27 @@ export function genMass(graine){
   var plafond = 10 * Math.max(1, Math.round(DOC.essais));
   while(valides.length < 4 && t < plafond){ essai(lot[t % lot.length]); t++; }
 
-  /* LA DERNIÈRE GARDE. Les ouvrages du second temps se posent sur la variante
-     retenue : on revérifie alors TOUTES les règles dures. S'ils en font
-     enfreindre une, ils ne sont pas posés (le contrôle le dit) ; si la variante
-     elle-même ne tient plus, elle est abandonnée et l'on en tire une autre.
-     Rien de ce qui enfreint une règle dure n'arrive jusqu'à l'écran. */
-  var n0 = valides.length;
-  while(valides.length){
-    var ch = choisir(valides, r);
-    poserSecond(ch.vols, r);
-    if(dures(ch.vols, false).length) retirerSecond(ch.vols);
-    if(!dures(ch.vols, false).length){
-      ch.vols.valides = n0;
-      return ch.vols;
-    }
-    valides.splice(valides.indexOf(ch), 1);
+  /* LE CLASSEMENT, PUIS LA DERNIÈRE GARDE. Les variantes valides reçoivent leur
+     score sur 100 ; en Auto on garde la meilleure de chaque parti. Sur chacune,
+     dans l'ordre, les ouvrages du second temps se posent et TOUTES les règles
+     dures sont revérifiées : s'ils en font enfreindre une, ils ne sont pas
+     posés ; si la variante ne tient plus, elle quitte le classement. Rien de ce
+     qui enfreint une règle dure n'arrive à l'écran. La première est montrée ;
+     les suivantes attendent « Shuffle massing ». */
+  var n0 = valides.length, props = [];
+  classer(valides, partis.length > 1).forEach(function(c){
+    poserSecond(c.vols, r);
+    if(dures(c.vols, false).length) retirerSecond(c.vols);
+    if(dures(c.vols, false).length) return;
+    /* le second temps compte dans la note (terrain, cour) : on la recalcule */
+    c.vols.score = noter([], qualites(c.vols)).total;
+    c.vols.valides = n0;
+    props.push(c.vols);
+  });
+  props.sort(function(a, b){ return b.score - a.score; });
+  if(props.length){
+    props.forEach(function(v, k){ v.rang = k; v.props = props; });
+    return props[0];
   }
   /* AUCUNE variante ne tient : on ne propose RIEN. Une composition qui enfreint
      une contrainte dure n'est pas une option, même « la moins fautive ». Le

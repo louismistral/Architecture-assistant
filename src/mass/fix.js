@@ -85,17 +85,6 @@ export function fixProfondeur(i){
     "à surface exacte : il s'allonge d'autant qu'il s'amincit",
     function(){ return reformer(v, function(){ return p; }); });
 }
-export function fixElargir(i, mini){
-  var v = vol(i);
-  if(!v || v.fix) return null;
-  return acte("Élargir " + nomDe(v, i) + " à " + dec(mini) + " m",
-    "à surface exacte : il se raccourcit d'autant",
-    function(){
-      return reformer(v, function(e){
-        return Math.min(e.w, e.d) === e.d ? mini : (e.w * e.d) / mini;
-      });
-    });
-}
 export function fixCarrer(i){
   var v = vol(i), p = profCible();
   if(!v || v.fix) return null;

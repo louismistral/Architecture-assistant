@@ -204,3 +204,9 @@
 
 .plan-ech, .plan-nord{ fill:none; stroke:var(--ink-3); stroke-width:.35; }
 .plan-ech__t{ font-size:2.6px; fill:var(--ink-3); font-family:var(--mono); }
+
+/* Le score de la proposition à l'écran. */
+.mass-score{ display:flex; align-items:baseline; gap:var(--s-3); margin:var(--s-3) 0 0; flex-wrap:wrap; }
+.mass-score__n{ font-size:var(--t-lg); color:var(--ok); }
+.mass-score__n.is-bas{ color:var(--danger); }
+.mass-score span{ font-size:var(--t-2xs); color:var(--ink-2); }
