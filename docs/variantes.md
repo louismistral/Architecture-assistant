@@ -9,6 +9,7 @@ src/net/supa.js        le client : jeton, session, REST           (aucune dépen
 src/net/compte.js      l'identité, l'équipe, ses membres
 src/net/reglages.js    les décisions de projet partagées
 src/net/variantes.js   poser, lister, charger, supprimer
+src/net/recherche.js   la recherche automatique — tirer beaucoup, garder peu
 src/core/empreinte.js  l'empreinte des fichiers du dépôt
 src/views/variantes.js le panneau, les modaux, le profil
 styles/variantes.css   leur dessin
@@ -157,6 +158,42 @@ en verrouillant une table.
 
 **Charger une variante change donc aussi les réglages du groupe** — c'est
 nécessaire : sans cela la variante ne se reproduirait pas.
+
+## La recherche automatique — « algo search »
+
+Tirer cinquante fois à la main pour garder les trois meilleures, c'est le geste
+qu'on faisait déjà. Le bouton **Recherche automatique**, sous « Enregistrer »,
+le fait seul. On y décide quatre choses :
+
+| on décide | par défaut |
+|---|---|
+| ce qu'on rebat : le **programme** (répartition du mixer, pile comprise), le **massing**, ou les deux | les deux |
+| les partis essayés — aucun coché : celui à l'écran ; plusieurs : on tourne sur la liste | aucun |
+| combien d'essais, et combien on en garde | 30 · 3 |
+| ce qu'on garde : **sans erreur rouge** (mixer et massing), **un seul par parti** | oui · oui |
+
+On garde les meilleures **notes du juge** (`mass/juge.js — noter()`), sur 100 ;
+à note égale, la moins fautive. La note se lit, elle ne choisit pas la
+composition : le générateur choisit toujours par la hiérarchie. La recherche,
+elle, trie ce que le générateur a rendu, et c'est exactement ce qu'on faisait
+à l'œil.
+
+- **Elle ne connaît pas d'autre tirage que les deux boutons** : `repartir()` et
+  `genMass()`. Une variante trouvée est une variante qu'on aurait pu tirer
+  soi-même, et elle se rejoue par ses graines.
+- **Elle travaille sur l'état vivant et le remet tel quel** à la fin, graine du
+  programme comprise : chercher n'est pas composer. Ce qu'on toucherait pendant
+  la recherche serait donc perdu — le formulaire le dit.
+- **Les résultats vont au groupe**, en un seul envoi, avec l'étiquette
+  `algo search` dans la colonne `tags` (migration `20260928120000`). Le panneau
+  les marque et propose un filtre — Toutes · algo search · À la main — dès
+  qu'il sépare quelque chose.
+- Un essai coûte près d'une seconde, presque tout au massing. La page reste
+  vivante entre deux essais, la progression se lit dans le panneau, et
+  « Arrêter » garde ce qui a été trouvé jusque-là.
+
+En « Auto », `MASS.parti` vaut `auto` : c'est la composition (`MASS.vol.parti`)
+qui dit quel parti a été tiré, et c'est elle qui distingue et nomme.
 
 ## Charger écrase, donc charger prévient
 
