@@ -214,6 +214,125 @@ export function airePosable(recul){
   return POSABLE[recul];
 }
 
+/* LA LIGNE DE RECUL : les points à exactement `m` du bord, dedans. Le contrôle
+   ne la trace jamais — il MESURE, `bordDist()` ≥ m, et c'est tout le recul du
+   PACom —, si bien qu'une ligne obtenue autrement, en décalant le polygone à
+   la main, aurait fait un second recul qui ne coïncide pas avec le premier. On
+   la construit donc en géomètre, et c'est `bordDist()` qui tranche :
+
+   1. chaque côté poussé de `m` vers l'intérieur. À un angle saillant, deux
+      côtés poussés se coupent ; à un angle rentrant, le recul tourne autour du
+      sommet, en arc de rayon `m`, pris tous les cinq degrés ;
+   2. cette courbe brute se recoupe là où un côté court ou un goulet rapproche
+      deux bords : on la coupe à chacun de ses croisements ;
+   3. on ne garde que les morceaux dont le milieu est à `m` du bord, au
+      centimètre — les autres sont plus près d'un AUTRE côté, et ne sont pas le
+      recul ;
+   4. on les raboute bout à bout.
+
+   Un goulet de moins de 2·m sépare la surface posable en deux : on rend donc
+   une LISTE de polylignes fermées, dans le sens direct. Calculée une fois par
+   recul. */
+var RECUL = {};
+export function ligneRecul(m){
+  if(RECUL[m]) return RECUL[m];
+  var P = PER.slice(), i, j, k, s = 0;
+  if(P.length > 1 && P[0][0] === P[P.length - 1][0] && P[0][1] === P[P.length - 1][1]) P.pop();
+  for(i = 0; i < P.length; i++){
+    var p0 = P[i], p1 = P[(i + 1) % P.length];
+    s += p0[0] * p1[1] - p1[0] * p0[1];
+  }
+  if(s < 0) P.reverse();          /* sens direct : l'intérieur à gauche de chaque côté */
+  var n = P.length, brut = [];
+  function gauche(a, b){
+    var l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    return [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
+  }
+  /* 1 — la courbe brute */
+  for(k = 0; k < n; k++){
+    var A = P[(k - 1 + n) % n], B = P[k], C = P[(k + 1) % n];
+    var n1 = gauche(A, B), n2 = gauche(B, C);
+    var tour = Math.atan2(n1[0] * n2[1] - n1[1] * n2[0], n1[0] * n2[0] + n1[1] * n2[1]);
+    if(tour < -1e-9){
+      /* rentrant : l'arc, de la normale d'un côté à celle du suivant */
+      var t1 = Math.atan2(n1[1], n1[0]), pas = Math.max(1, Math.ceil(-tour / (Math.PI / 36)));
+      for(j = 0; j <= pas; j++){
+        var t = t1 + tour * j / pas;
+        brut.push([B[0] + m * Math.cos(t), B[1] + m * Math.sin(t)]);
+      }
+    } else {
+      /* saillant ou plat : les deux côtés poussés se coupent là */
+      var q = 1 + n1[0] * n2[0] + n1[1] * n2[1];
+      if(q > 1e-6) brut.push([B[0] + m * (n1[0] + n2[0]) / q, B[1] + m * (n1[1] + n2[1]) / q]);
+    }
+  }
+  /* 2 — ses croisements. Un point de croisement est UN objet, partagé par les
+     deux segments qu'il coupe : c'est ce qui permet de rabouter ensuite. */
+  var L = brut.length, coupes = [];
+  for(i = 0; i < L; i++) coupes.push([]);
+  for(i = 0; i < L; i++){
+    for(j = i + 2; j < L; j++){
+      if(i === 0 && j === L - 1) continue;
+      var a0 = brut[i], a1 = brut[(i + 1) % L], b0 = brut[j], b1 = brut[(j + 1) % L];
+      var rx = a1[0] - a0[0], ry = a1[1] - a0[1], sx = b1[0] - b0[0], sy = b1[1] - b0[1];
+      var den = rx * sy - ry * sx;
+      if(Math.abs(den) < 1e-12) continue;
+      var qx = b0[0] - a0[0], qy = b0[1] - a0[1];
+      var ta = (qx * sy - qy * sx) / den, tb = (qx * ry - qy * rx) / den;
+      if(ta <= 1e-9 || ta >= 1 - 1e-9 || tb <= 1e-9 || tb >= 1 - 1e-9) continue;
+      var X = [a0[0] + rx * ta, a0[1] + ry * ta];
+      coupes[i].push({ t:ta, p:X });
+      coupes[j].push({ t:tb, p:X });
+    }
+  }
+  /* 3 — les morceaux qui SONT le recul */
+  var bons = [];
+  for(i = 0; i < L; i++){
+    var pts = [brut[i]];
+    coupes[i].sort(function(x, y){ return x.t - y.t; })
+             .forEach(function(c){ pts.push(c.p); });
+    pts.push(brut[(i + 1) % L]);
+    for(k = 0; k + 1 < pts.length; k++){
+      var u = pts[k], v = pts[k + 1];
+      if(Math.hypot(v[0] - u[0], v[1] - u[1]) < 1e-6) continue;
+      if(Math.abs(bordDist(PER, (u[0] + v[0]) / 2, (u[1] + v[1]) / 2) - m) < .01) bons.push([u, v]);
+    }
+  }
+  /* 4 — rabouter */
+  function cle(p){ return p[0].toFixed(6) + "," + p[1].toFixed(6); }
+  var depart = {}, pris = [], out = [];
+  bons.forEach(function(b, x){ (depart[cle(b[0])] = depart[cle(b[0])] || []).push(x); });
+  bons.forEach(function(b, x){
+    if(pris[x]) return;
+    var boucle = [b[0]], cur = x;
+    while(cur >= 0 && !pris[cur]){
+      pris[cur] = true;
+      boucle.push(bons[cur][1]);
+      cur = -1;
+      (depart[cle(boucle[boucle.length - 1])] || []).forEach(function(y){
+        if(cur < 0 && !pris[y]) cur = y;
+      });
+    }
+    if(boucle.length > 3 && cle(boucle[0]) === cle(boucle[boucle.length - 1]))
+      out.push(sansAlignes(boucle));
+  });
+  RECUL[m] = out;
+  return out;
+}
+/* Les sommets alignés d'une polyligne fermée : un côté coupé par un
+   croisement qui n'a rien retenu reste un seul côté. */
+function sansAlignes(P){
+  var out = [P[0]], i;
+  for(i = 1; i < P.length - 1; i++){
+    var a = out[out.length - 1], b = P[i], c = P[i + 1];
+    var cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    var dt = (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]);
+    if(Math.abs(cr) > 1e-9 || dt <= 0) out.push(b);
+  }
+  out.push(P[P.length - 1]);
+  return out;
+}
+
 /* ---------- séparation de deux rectangles ----------------------------------
    Axe séparateur (SAT) : la distance entre deux rectangles tournés, négative
    quand ils se recouvrent. C'est la mesure que demandent les 6 m de l'AEAI, et

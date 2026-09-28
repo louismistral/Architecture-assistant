@@ -27,8 +27,8 @@ import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4pro
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
-import { MASS, cellules, famTok, filtreDe, hauteurEtage, mursDe, niveaux,
-  pontRect, volInt, volRect } from "../mass/model.js";
+import { MASS, cellules, etagesDe, famTok, filtreDe, mursDe, niveaux, pontEtage,
+  volInt, volRect } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
@@ -208,7 +208,7 @@ function boiteLibre(M, P, z0, z1, c, a, edge){
 
 /* ---------- les volumes, refaits à chaque image ----------------------------- */
 function volMesh(){
-  var M = Mesh(), N = niveaux();
+  var M = Mesh();
   var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus");
   /* Le monochrome est BLANC, et blanc pur : c'est la maquette de concours, où
      la masse se lit à l'ombre et à l'arête, jamais à la teinte. Un vert délavé
@@ -216,25 +216,15 @@ function volMesh(){
      reste gris : c'est le contexte, il ne doit pas se disputer le regard avec
      le projet. */
   var cMono = cssRGB("--site-mono"), cEnt = teinte("--ink-4", .5);
-  MASS.vol.forEach(function(v, k){
-    var as = assise(rectBas(v)).z - ZBAS;
+  MASS.vol.forEach(function(v){
     var sel = MASS.sel === v.id;
-    var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
-    var z = as;
-    /* Les sous-sols descendent sous l'assise, les étages montent depuis elle. */
-    var sous = 0;
-    lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
-    z = as - sous;
-    lv.forEach(function(e){
-      var n = N[e.i];
-      if(!n) return;
-      /* Un ouvrage du second temps porte SA hauteur : une piscine indépendante
-         ne prend pas les 7,45 m que la salle de sport impose au rez de l'école. */
-      var h = hauteurEtage(e, n);
-      var vis = MASS.etage < 0 || MASS.etage === e.i;
-      var z0 = z; z += h;
-      if(!vis) return;
-      var rc = volRect(v, e), q = coins(rc);
+    /* Les sous-sols descendent sous l'assise, les étages montent depuis elle, et
+       un ouvrage du second temps porte SA hauteur : `etagesDe()` le dit une
+       fois, pour la 3D comme pour l'export vers Rhino. */
+    etagesDe(v).forEach(function(s){
+      var e = s.e, n = s.n, h = s.h, z0 = s.z0 - ZBAS;
+      if(MASS.etage >= 0 && MASS.etage !== e.i) return;
+      var q = coins(s.rc);
       var edge = sel ? cSel : cEdge;
       /* Un ouvrage du SECOND TEMPS se lit PÂLE : il occupe le terrain, mais il
          ne sera pas bâti avec l'école. Le plan le dit en pointillé, comme le
@@ -268,14 +258,9 @@ function volMesh(){
      premier volume qu'elles relient. */
   (MASS.pont || []).forEach(function(p){
     if(MASS.etage >= 0 && MASS.etage !== p.i) return;
-    var r = pontRect(p), A = null;
-    MASS.vol.forEach(function(v){ if(v.id === p.a) A = v; });
-    if(!r || !A || !N[p.i]) return;
-    var z = assise(rectBas(A)).z - ZBAS;
-    A.lv.forEach(function(e){
-      if(N[e.i] && N[e.i].lvl >= 0 && e.i < p.i) z += hauteurEtage(e, N[e.i]);
-    });
-    boite(M, coins(r), z, z + N[p.i].h - .12, cMono, 1, cEdge);
+    var s = pontEtage(p);
+    if(!s) return;
+    boite(M, coins(s.rc), s.z0 - ZBAS, s.z0 - ZBAS + s.h - .12, cMono, 1, cEdge);
   });
   return M;
 }

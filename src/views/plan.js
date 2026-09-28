@@ -19,8 +19,8 @@ import { dec, fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volRect }
-  from "../mass/model.js";
+import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
+  volRect } from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 
@@ -185,7 +185,7 @@ function dessineVol(g, v, k){
       "class":"plan-vol__n", "text-anchor":"middle",
       transform: "rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " "
                + rc.x.toFixed(2) + " " + Y(rc.y).toFixed(2) + ")" });
-    t.textContent = (v.nom ? v.nom : v.fix ? "Sport" : "V" + (k + 1))
+    t.textContent = volNom(v, k)
       + " · " + fmt(Math.round(ri.w * ri.d)) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);

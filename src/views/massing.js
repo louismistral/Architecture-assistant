@@ -34,6 +34,7 @@ import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
 import { admissible, genMass, rectSol } from "../mass/gen.js";
+import { objMassing } from "../mass/export.js";
 import { jugementCourant } from "../mass/juge.js";
 import { DOC } from "../data/doctrine.js";
 import {
@@ -172,7 +173,7 @@ function seedMass(){ return (MASS.graine >>> 0).toString(36); }
 
 /* ---------- le rail de gauche ------------------------------------------------
    Dans l'ordre où l'on s'en sert : ce qu'on tire, comment on compose, ce qu'on
-   regarde, ce que le contrôle en dit. */
+   regarde, ce que le contrôle en dit, ce qu'on emporte. */
 function dessineRail(){
   if(!railEl) return;
   while(railEl.firstChild) railEl.removeChild(railEl.firstChild);
@@ -183,6 +184,7 @@ function dessineRail(){
   railEl.appendChild(blocSel());
   railEl.appendChild(blocBilan());
   railEl.appendChild(blocAlertes());
+  railEl.appendChild(blocExport());
 }
 
 function bloc(titre, chip){
@@ -683,6 +685,37 @@ function alPanneau(x, assume){
   });
   box.appendChild(bo);
   return box;
+}
+
+/* --- ce qu'on emporte ---
+   Le massing se poursuit dans Rhino, sur le relevé du géomètre. Le fichier est
+   écrit par `mass/export.js` ; ici, on ne fait que le donner. La ligne sous le
+   bouton dit les deux cases de l'import qui décident de tout : une case mal
+   cochée, et le projet se couche sur le flanc ou arrive sur un seul calque. */
+function blocExport(){
+  var b = bloc("Exporter");
+  var t = el("button", "btn", "Exporter pour Rhino (.obj)");
+  t.type = "button";
+  t.addEventListener("click", telecharger);
+  b.appendChild(t);
+  b.appendChild(el("p", "mass-note", "Coordonnées du relevé DOC/site_plan.3dm, en "
+    + "centimètres, Z vers le haut : le fichier s’y pose en place. À l’import, ne coche "
+    + "pas « Map OBJ Y to Rhino Z » et coche « Import OBJ groups as layers » — un calque "
+    + "par niveau, plus le périmètre et le recul de " + dec(RULES.dist.retrait, 0)
+    + " m, drapés sur le terrain."));
+  return b;
+}
+function telecharger(){
+  var url = URL.createObjectURL(new Blob([objMassing()], { type:"text/plain" }));
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "saxon-massing-" + seedMass() + ".obj";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  /* Révoquer dans la foulée du clic coupe le téléchargement dans certains
+     navigateurs : on lui laisse le temps de partir. */
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 40000);
 }
 
 /* ---------- le volet « Contraintes » ----------------------------------------

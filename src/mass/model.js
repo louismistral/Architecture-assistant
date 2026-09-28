@@ -354,6 +354,44 @@ export function etageZ(v, e){
   }
   return z;
 }
+/* LES ÉTAGES D'UN VOLUME, À LEUR ALTITUDE : l'emprise de chacun, murs compris,
+   son pied et sa tête en mètres ABSOLUS. Le rez se pose sur l'assise — la
+   moyenne du terrain sous l'emprise du plus bas étage hors sol —, les étages
+   montent depuis elle, les sous-sols descendent sous elle. La 3D et l'export
+   la lisent ici : deux calculs auraient fini par poser le même bâtiment à deux
+   altitudes. */
+export function etagesDe(v){
+  var N = niveaux(), out = [], sous = 0;
+  var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
+  lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
+  var z = assise(volSol(v) || volRect(v, v.lv[0])).z - sous;
+  lv.forEach(function(e){
+    var n = N[e.i];
+    if(!n) return;
+    /* Un ouvrage du second temps porte SA hauteur : une piscine indépendante
+       ne prend pas les 7,45 m que la salle de sport impose au rez de l'école. */
+    var h = hauteurEtage(e, n);
+    out.push({ e:e, n:n, rc:volRect(v, e), z0:z, z1:z + h, h:h });
+    z += h;
+  });
+  return out;
+}
+/* Une passerelle à son altitude : au niveau qu'elle dessert, posée sur le pied
+   de cet étage dans le premier des deux volumes qu'elle relie. */
+export function pontEtage(p){
+  var r = pontRect(p), A = null, N = niveaux(), s = null;
+  MASS.vol.forEach(function(v){ if(v.id === p.a) A = v; });
+  if(!r || !A || !N[p.i]) return null;
+  etagesDe(A).forEach(function(x){ if(x.e.i === p.i) s = x; });
+  if(!s) return null;
+  return { rc:r, z0:s.z0, z1:s.z0 + N[p.i].h, h:N[p.i].h };
+}
+/* Le nom d'un volume, tel que le plan l'écrit : le sien s'il en a un, « Sport »
+   pour la salle aux cotes imposées, sinon son rang. L'export le reprend, pour
+   qu'on retrouve dans Rhino le V3 qu'on a lu au plan. */
+export function volNom(v, k){
+  return v.nom ? v.nom : v.fix ? "Sport" : "V" + (k + 1);
+}
 
 /* ---------- le bilan : ce que le massing doit au programme -------------------
    La question que l'outil doit savoir répondre à tout moment : la surface
