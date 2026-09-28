@@ -149,7 +149,9 @@ export function applyStack(lvls, plates){
   setStack(-lo, hi, plates);
 }
 export function applyBlocks(list){
-  if(!list || !list.length) return;
+  /* Une liste VIDE est un état : tout au bac. Seule l'absence de liste — un
+     fichier d'avant — laisse la répartition telle quelle. */
+  if(!list) return;
   resetBlocks();
   var reste = {};
   BLOCKS.forEach(function(b){ reste[b.key] = b.q; });
