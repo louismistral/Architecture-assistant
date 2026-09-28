@@ -142,12 +142,14 @@ passage, donc il vaut « u au dernier calcul ».)
 |---|---|
 | les variantes | la composition à l'écran |
 | les 8 surfaces à préciser | les écarts assumés |
-| la part de circulation | les trois interrupteurs du mixer |
+| la largeur du couloir | les réglages du mixer et leurs dés |
 | la doctrine réglée | |
 
 Les trois réglages partagés sont des **décisions de projet** : si l'un travaille
-à 0,18 de circulation et l'autre à 0,20, leurs deux variantes ne se comparent
-plus. La composition, elle, est un **geste de travail** — travailler n'est pas
+avec un couloir de 2,40 m et l'autre de 3 m, leurs deux variantes ne se comparent
+plus. (La colonne `circulation` de `team_settings` porte cette largeur depuis que
+la circulation se déduit des pièces ; une part enregistrée avant, 0,18, est hors
+des bornes d'une largeur et se refuse d'elle-même.) La composition, elle, est un **geste de travail** — travailler n'est pas
 publier, et un Shuffle de l'un ne doit pas changer l'écran de l'autre en pleine
 phrase.
 

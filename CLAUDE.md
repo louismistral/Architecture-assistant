@@ -113,7 +113,7 @@ contraintes             programme sur       sur le site coupes
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :
 l'onglet Site venait après le Plan, donc la typologie décidait du volume.
 
-Trois onglets existent ; seule la **Typologie** reste à construire.
+Les quatre onglets existent ; la **Typologie** est vide, à construire.
 
 **Les variantes ne sont PAS un onglet.** Une variante enregistre l'état du projet
 sous un nom et le recharge à l'identique : elle TRAVERSE les trois onglets au lieu
@@ -129,7 +129,7 @@ d'architecture, est resté où il était.
 
 | onglet | volets |
 |---|---|
-| Cahier des charges | Surfaces · Contraintes |
+| Cahier des charges | Surfaces · Contraintes · Adjacences |
 | Programme mixer | Répartition · **Contraintes** |
 | Massing | Volumétrie · **Contraintes** |
 
@@ -139,7 +139,8 @@ arbitré (`docs/doctrine.md`).
 
 URL : `#<onglet>/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a un
 regroupement. Les liens qui ont circulé — `#adjacences`, `#programme/adjacences`,
-`#programme/fam` — restent valables. Un volet s'ajoute dans `SUBS_BY` plus une branche dans
+`#programme/fam` — restent valables ; les deux premiers mènent au volet Adjacences, redevenu
+un volet à part entière (une carte par grappe, en cascade — `docs/concours.md`). Un volet s'ajoute dans `SUBS_BY` plus une branche dans
 `render()` ; le bouton, l'ARIA et le routage suivent tout seuls. Le volet d'un onglet se nomme
 TOUJOURS avec son onglet (`setSub(id, tab)`) : deux onglets ont un volet « contraintes », et le
 régler sans dire où ne faisait rien.
@@ -160,34 +161,44 @@ Le règlement chiffre chaque local. **Une surface de programme ne se change pas.
 Totaux par chapitre (m² nets) : école 2'616 · sport 1'751 · UAPE 316 · technique 942 ·
 infrastructures 900 · extérieurs 500. **Bâti scolaire** = les quatre premiers, 5'625 m².
 
-## Règle seconde : la circulation est une part de la surface BÂTIE
+## Règle seconde : la circulation se déduit des PIÈCES
 
-Elle n'est chiffrée nulle part au règlement : c'est une hypothèse de projet, et elle vaut plus de
-mille mètres carrés.
+Elle n'est chiffrée nulle part au règlement : c'est une hypothèse de projet. Un couloir dessert
+des portes, pas des mètres carrés : la salle de sport double, une pièce de 896 m², n'en demande
+pas autant au m² que neuf WC de 2 m².
 
 ```
-bâti = utile / (1 − part)        circulation = bâti − utile
+front   = √(surface d'une pièce)          le côté qu'elle ouvre sur le couloir
+couloirs = Σ front × largeur ÷ 2           un couloir dessert ses deux rives
+cages   = 1 ou 2 par niveau × 24 m²        deux au-delà de 900 m² d'étage (AEAI)
 ```
 
-Une part de 0,18 ajoute donc **22 %** à la surface utile, et non 18 %. Elle ne porte que sur le
-**bâti scolaire** — les quatre premiers chapitres ; la piscine, le chauffage à distance, la cour
-et son préau n'ont pas de couloirs à nous.
+Les petites pièces d'un poste (sous 12 m²) forment un bloc à une porte ; un grand local
+n'ouvre jamais plus de 12 m. À 2,40 m de couloir : 508 m de front, **754 m²** de circulation
+(610 de couloirs, 144 de cages sur trois niveaux supposés), soit **12 %** du bâti scolaire,
+6'379 m². La part devient un RÉSULTAT. Elle ne porte que sur le **bâti scolaire** — les quatre
+premiers chapitres ; la piscine, le chauffage à distance, la cour et son préau n'ont pas de
+couloirs à nous.
 
-Elle se règle **dans le cahier des charges, volet Surfaces, et là seulement** ; tous les onglets
-suivants la lisent.
+La **largeur du couloir** se règle **dans le cahier des charges, volet Surfaces, et là
+seulement** ; tous les onglets suivants la lisent.
 
-- Valeur par défaut et bornes : `RULES.circ` dans `src/data/rules.js`.
-- Valeur vivante `CIRC` et les m² qui en découlent (`CIRCA` / `BUILTG` / `GRANDG`) :
-  `src/core/model.js` seul. `setCirc()` est le seul écrivain.
-- **Elle se répartit sur les chapitres et les familles** au prorata de ce qu'ils pèsent dans le
-  bâti scolaire — `ch.circ` / `ch.gross`, `f.circ` / `f.gross`, calculés dans `recompute()` et
-  nulle part ailleurs. Les parts se resomment exactement à `CIRCA`. Le volet Surfaces affiche le
-  BÂTI de chaque chapitre, la décomposition à côté, et dessine la circulation **à l'échelle** :
-  un bloc hachuré, sans couleur de famille.
+- Largeur par défaut, bornes, rangs, seuil de bloc, front maximal, cage, pile supposée :
+  `RULES.circ` dans `src/data/rules.js`.
+- Valeur vivante `COULOIR`, et ce qui en découle (`CIRCA` = `CIRCH` + `CIRCV`, `CIRC` la part,
+  `BUILTG` / `GRANDG`), avec `frontDe` / `couloirDe` / `cagesDe` : `src/core/model.js` seul.
+  `setCirc()` est le seul écrivain.
+- **Chaque chapitre et chaque famille porte les couloirs de SES pièces**, et sa part des cages
+  au prorata du bâti — `ch.circ` / `ch.gross`, `f.circ` / `f.gross`, dans `recompute()` et
+  nulle part ailleurs. Les parts se resomment exactement à `CIRCA`.
+- **Le mixer la compte niveau par niveau**, sur les pièces que chacun porte, avec ses cages
+  (`flCircDe()` dans `mix/floors.js`) : le cahier l'ESTIME sur trois niveaux, le mixer la
+  COMPTE sur sa pile.
 
 > Elle se réglait auparavant dans DEUX outils, sous le même mot et avec deux arithmétiques
 > opposées : 15 % ajoutés à l'utile dans le générateur de volumétrie, 18 % du bâti dans le plan.
-> L'écart valait 200 m².
+> Puis elle fut une part unique, 18 % du bâti — 1'235 m², le même taux au m² pour une salle de
+> sport que pour un bloc sanitaire.
 
 ## Règle troisième : une source par décision
 
@@ -211,6 +222,9 @@ c'est un défaut.
   voisin, à côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js`, engendré — voir `docs/releve.md`.
+- **Un réglage du mixer et son dé** (la pile, un plateau, le lien d'un poste, une adjacence
+  active) : `src/mix/opts.js` seul ; `shuffle.js` le lit, la vue le montre là où il se voit.
+  Toucher une valeur la fige : son dé s'éteint.
 - **L'état qui survit à un rechargement** : `snapshot()` / `restore()` dans
   `src/mix/store.js` seuls. Un seul objet dit ce qu'est « l'état du projet », et
   deux choses le lisent — l'enregistrement local et une variante partagée. Les
@@ -228,13 +242,19 @@ c'est un défaut.
 Aucun test automatisé. Ces trois snapshots en tiennent lieu — **à jouer avant tout push**, et
 surtout après une résolution de conflit.
 
+Ils fixent la seed (`seed(1)`) avant de répartir : même « ordonné » (`alea:false`), le tirage
+départage au hasard les postes de même surface, et sans seed fixée deux lancements du même code
+ne rendaient pas la même répartition — on ne pouvait pas comparer avant et après.
+
 La répartition :
 
 ```bash
 node --input-type=module -e "
 Promise.all([import('./src/mix/floors.js'),import('./src/mix/shuffle.js'),
-             import('./src/mix/checks.js'),import('./src/mix/prog.js')]).then(([F,S,C,P])=>{
+             import('./src/mix/checks.js'),import('./src/mix/prog.js'),
+             import('./src/core/rand.js')]).then(([F,S,C,P,R])=>{
   console.log('liens orphelins :', P.LIENS_ORPHELINS);
+  R.seed(1);
   S.repartir({ alea:false, etages:true });
   F.FLOORS.forEach(function(f,i){
     console.log(F.flName(i), Math.round(F.flNet(i)) + '/' + Math.round(F.usable(i)) + ' m²',
@@ -250,7 +270,9 @@ La volumétrie — le générateur, le bilan de surface et le contrôle, sur les
 ```bash
 node --input-type=module -e "
 Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
-             import('./src/mass/model.js'),import('./src/mass/checks.js')]).then(([S,G,M,C])=>{
+             import('./src/mass/model.js'),import('./src/mass/checks.js'),
+             import('./src/core/rand.js')]).then(([S,G,M,C,R])=>{
+  R.seed(1);
   S.repartir({ alea:false, etages:true });
   ['auto','compact','barre','barres','L','U','cour','pavillons','hameau',
    'terrasses','peigne','libre'].forEach(function(p){
@@ -270,7 +292,9 @@ lecture (le générateur choisit par la hiérarchie, pas par la note) :
 ```bash
 node --input-type=module -e "
 Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
-             import('./src/mass/model.js'),import('./src/mass/juge.js')]).then(([S,G,M,J])=>{
+             import('./src/mass/model.js'),import('./src/mass/juge.js'),
+             import('./src/core/rand.js')]).then(([S,G,M,J,R])=>{
+  R.seed(1);
   S.repartir({ alea:false, etages:true });
   M.massSet('parti','auto');
   M.massVols(G.genMass(11));

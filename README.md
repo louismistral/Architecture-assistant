@@ -30,11 +30,11 @@ et surfaces   programme sur       sur le site coupes
 ```
 
 L'ancien ordre faisait l'inverse : l'onglet Site venait APRÈS le Plan, donc on dessinait
-la typologie d'un niveau avant d'avoir choisi le volume. Seule la typologie reste à
-construire.
+la typologie d'un niveau avant d'avoir choisi le volume. La typologie a son onglet, vide :
+elle reste à construire.
 
-L'application rend donc aujourd'hui **trois vues, de deux natures** : une vue de
-*document*, qu'on lit, et deux *outils*, qu'on opère. `document.body.dataset.kind` commute la
+L'application rend donc aujourd'hui **quatre vues, de deux natures** : une vue de
+*document*, qu'on lit, et des *outils*, qu'on opère. `document.body.dataset.kind` commute la
 mise en page :
 
 | gabarit | vue | mise en page |
@@ -47,10 +47,10 @@ total vivant, les onglets et la bascule de thème. **Tout contenu éditorial app
 vue qu'il décrit.**
 
 La vue courante est dans le fragment d'URL (`#mixer/repartition`, `#mixer/contraintes`,
-`#massing/volumetrie`, `#programme/surfaces/fam`) : rechargeable et partageable.
-L'identifiant de l'onglet reste `programme` ; les formes qui ont circulé avant —
-`#adjacences`, `#programme/adjacences` et `#programme/fam` — restent valables et mènent au
-volet qui les a reprises.
+`#massing/volumetrie`, `#programme/surfaces/fam`, `#typologie`) : rechargeable et
+partageable. L'identifiant de l'onglet reste `programme` ; les formes qui ont circulé avant
+— `#adjacences`, `#programme/adjacences` et `#programme/fam` — restent valables et mènent au
+volet qui les porte.
 
 ### Chaque onglet a ses volets, et les deux outils ont le leur
 
@@ -59,7 +59,7 @@ qu'ils **font**, et les **contraintes** qui gouvernent ce qu'ils font.
 
 | onglet | volets |
 |---|---|
-| Cahier des charges | Surfaces · Contraintes |
+| Cahier des charges | Surfaces · Contraintes · Adjacences |
 | Programme mixer | Répartition · Contraintes |
 | Massing | Volumétrie · Contraintes |
 
@@ -71,24 +71,24 @@ le hasard décide, et inventorient les scripts qui génèrent. Le volet du massi
 tête la **note de la composition à l'écran**, critère par critère : c'est la réponse à
 « pourquoi obtient-on ce résultat », et c'est là qu'on le corrige.
 
-### Le cahier des charges, en deux volets
+### Le cahier des charges, en trois volets
 
-Ils étaient trois, empilés sur une seule page avant cela : revenir d'une adjacence à la
-surface qu'elle commente demandait quatre écrans de défilement. Ce sont deux lectures du
-même règlement, pas deux étapes ; la chronologie du concours est dans les onglets, pas ici.
+Ce sont trois lectures du même règlement, pas trois étapes ; la chronologie du concours
+est dans les onglets, pas ici.
 
-1. **Surfaces** — le programme des locaux à l'échelle, les huit postes « à préciser » et
-   **la part de circulation**, saisissables sur place. Volet d'ouverture, et le seul où
-   l'on saisit quelque chose. La circulation y est dessinée **à l'échelle** avec les
-   locaux — un bloc hachuré, sans couleur de famille — et comptée dans la somme de
-   chaque chapitre : le titre donne le bâti, la ligne à côté d'où il vient.
+1. **Surfaces** — le programme des locaux, les huit postes « à préciser » et **la largeur
+   du couloir**, saisissables sur place. Volet d'ouverture, et le seul où l'on saisit
+   quelque chose. Le programme s'y lit en **nomenclature** : un tableau, un ensemble par
+   groupe de lignes — son bâti, ses postes, ses pièces, programme et circulation —, et en
+   marge de chaque poste un carré **à l'échelle commune**, ou un carré par pièce. La
+   circulation a sa ligne hachurée dans chaque ensemble ; elle se déduit des pièces (voir
+   `CLAUDE.md`, règle seconde).
 2. **Contraintes** — site, hauteurs libres, protection incendie, parasismique, mobilité,
-   second temps, tout lu dans `src/data/rules.js` ; puis le **schéma fonctionnel** des
-   adjacences, d'où le mixer tire ses préférences de placement. Les adjacences ont été un
-   onglet, puis un volet : une proximité exigée entre deux locaux n'est pas d'une autre
-   nature qu'une hauteur libre ou une distance au voisin. Le schéma est **à l'échelle et en
-   mètres** : un local vaut sa surface dans ses deux côtés, et porte les cotes que le
-   règlement impose quand il en donne. L'alignement vient des colonnes, pas des cotes.
+   second temps, tout lu dans `src/data/rules.js`.
+3. **Adjacences** — le **schéma fonctionnel**, une carte par grappe, rangées en cascade à la
+   même échelle. Le schéma est **en mètres** : un local vaut sa surface dans ses deux
+   côtés, et porte les cotes que le règlement impose quand il en donne. Ce que le mixer en
+   tient — quelle adjacence est active — se décide au mixer.
 
 ### L'onglet Programme mixer
 
@@ -101,14 +101,18 @@ Il prend les surfaces et les organise sur des niveaux. Rien d'autre.
   plateau dit ce qui tient ; la bande qui la dépasse dit ce qui ne tient pas.
 - Ce qui ne pèse pas sur le plateau — cour, piscine, chauffage à distance — a sa propre
   bande, sous un filet, hors du compte.
-- **Shuffle** tire une répartition, et peut aussi proposer un nombre de niveaux ; une
-  **graine** la rend rejouable à l'identique.
-- On glisse un bloc d'un niveau à l'autre. Divisé — interrupteur « Voir les pièces » —,
-  il porte les refends tiretés de ses pièces : en tirer une hors du bloc, c'est le
-  scinder. Deux parts d'un même
-  poste qui se retrouvent au même niveau se refondent. Au clavier, sur le bloc au foyer :
-  flèches haut et bas pour changer de niveau, Maj pour n'emmener qu'une pièce, Suppr pour
-  le renvoyer au bac.
+- **Shuffle** tire une répartition ; une **seed** la rend rejouable à l'identique. Chaque
+  réglage a sa valeur et son **dé** : allumé, le Shuffle décide ; éteint, la valeur est
+  la nôtre. Le nombre de niveaux se règle sur la pile, le plateau sur son niveau, le lien
+  d'un poste sur son bloc, les adjacences au flanc — avec un dé maître par famille.
+- Un poste est **lié** — un bloc, ses pièces ensemble à un seul niveau — ou **délié** —
+  ses pièces indépendantes, dessinées séparées. Une **adjacence active** met ses deux
+  postes au même niveau et les déplace ensemble ; éteinte, ils sont indépendants.
+- On glisse un bloc d'un niveau à l'autre, et avec lui ce que ses adjacences actives lui
+  tiennent au même niveau ; on tire une pièce d'un poste délié pour la scinder. Deux parts
+  d'un même poste qui se retrouvent au même niveau se refondent. Au clavier, sur le bloc au
+  foyer : flèches haut et bas pour changer de niveau, Maj pour n'emmener qu'une pièce,
+  Suppr pour le renvoyer au bac.
 
 ## Structure
 
@@ -119,8 +123,8 @@ styles/
   base.css            corps de page, [hidden], l'anneau de focus unique, infobulle
   appbar.css          chrome permanent, les deux gabarits, chapô du cahier des charges, replis
   controls.css        LE bouton, LE groupe de boutons, LA pastille de verdict
-  program.css         panneaux, diagrammes, contraintes, rangs de section, récapitulatif
-  schema.css          adjacences
+  program.css         panneaux, nomenclature, contraintes, rangs de section, récapitulatif
+  schema.css          adjacences : cartes des grappes, en cascade
   mixer.css           le mixer : pile, canevas d'un niveau, blocs, pièces, bac
   massing.css         le massing : rail, plan et 3D, alertes
   doctrine.css        le volet Contraintes des outils : règles repliées, note, scripts
@@ -146,7 +150,7 @@ src/
     svg.js            fabrique d'éléments SVG
     geometry.js       surfaces → blocs, empilage, proportions admissibles
     treemap.js        pavage squarifié — un bloc vaut sa surface
-    rand.js           tirage reproductible à graine (mulberry32)
+    rand.js           tirage reproductible à seed (mulberry32)
     empreinte.js      l'empreinte des fichiers du dépôt — dit qu'une variante a vieilli
     gl.js             WebGL minimal : matrices, programme, tampons (dont statiques), caméra
   mix/                répartir le programme sur les niveaux
@@ -157,7 +161,8 @@ src/
     checks.js         contrôle d'une répartition → écarts, avec leur code et leurs remèdes
     fix.js            les remèdes : déplacer, vider, agrandir un plateau, poser un WC
     accept.js         les écarts qu'on assume — « laisser comme ça »
-    opts.js           les trois interrupteurs : tirer la pile, grouper, voir les pièces
+    opts.js           les réglages et leur dé : la pile, les plateaux, le lien des
+                      postes, les adjacences actives
     store.js          persistance : surfaces précisées, circulation, pile, répartition,
                       écarts assumés
   mass/               poser le programme en volumes, sur le terrain relevé
@@ -178,8 +183,9 @@ src/
     doctrine.js       le volet Contraintes des DEUX outils : les règles rangées par
                       dureté et réglables, la note d'une composition, les piles
                       admissibles, ce que le hasard décide, l'inventaire des scripts
-    diagram.js        diagrammes à l'échelle et barre d'échelle
-    schema.js         schéma fonctionnel : grappes rayonnantes, locaux à l'échelle
+    diagram.js        barre d'échelle, trames de hachure
+    schema.js         schéma fonctionnel : une carte par grappe rayonnante, locaux à
+                      l'échelle
     mixer.js          l'onglet Programme mixer
     massing.js        l'onglet Massing : rail de commandes, plan et 3D côte à côte
     plan.js           la vue en plan : relevé, volumes, sélection, déplacement, rotation
@@ -217,9 +223,10 @@ concurrents dont la divergence n'était pas intentionnelle.
 
 **Un concept, un mot.** Les huit postes que le règlement ne chiffre pas sont « à préciser »
 — partout, et « fixée » une fois la valeur donnée. Les postes mentionnés mais jamais
-comptés sont « hors bilan ». La circulation est **une part de la surface bâtie**, une
-seule fois, dans un seul module : elle se réglait dans deux onglets, sous le même mot, avec
-deux arithmétiques opposées — 15 % ajoutés à l'utile d'un côté, 18 % du bâti de l'autre.
+comptés sont « hors bilan ». La circulation **se déduit des pièces**, une seule fois, dans
+un seul module : elle se réglait dans deux onglets, sous le même mot, avec deux
+arithmétiques opposées — 15 % ajoutés à l'utile d'un côté, 18 % du bâti de l'autre. La
+**seed** est la seed, partout dans l'interface : le mot « graine » n'y figure plus.
 
 **Les surfaces du programme sont fixes.** On change les proportions d'une pièce ou d'un
 volume — à surface exacte, `validDims` — jamais ses m². Le mixer déduit ses parts du
@@ -227,8 +234,10 @@ programme ; il ne les réécrit pas.
 
 **Une proposition hors règles est autorisée, jamais silencieuse.** `src/mix/checks.js` la
 dit : rouge pour une règle écrite au règlement ou à l'AEAI, ambre pour une règle de projet
-ou une marge qui se discute. Le plateau, le nombre de niveaux et la part de circulation
-sont des choix de projet : leur dépassement est ambre. Rien n'est empêché.
+ou une marge qui se discute. Le plateau, le nombre de niveaux et la circulation sont des
+choix de projet : leur dépassement est ambre. Une adjacence active qui ne tient pas est
+rouge : c'est une exigence du règlement que nous avons choisi de tenir. Rien n'est
+empêché.
 
 **Un écart dit aussi ce qui le réparerait.** On le clique, il propose le geste — `fix.js`
 le fabrique, `checks.js` le nomme à côté de la règle qu'il répare — ou « laisser comme
@@ -246,17 +255,19 @@ survol n'existe ni au doigt, ni au clavier, ni sur mobile.
 ## Où modifier quoi
 
 - **Le programme** (surfaces, nombres, familles, notes) : `src/data/program.js` seul. Tous
-  les totaux, diagrammes, listes et parts du mixer en découlent.
+  les totaux, la nomenclature, les cartes et les parts du mixer en découlent.
 - **Les contraintes du concours** (distances, hauteurs libres, protection incendie, nappe,
-  stationnement, part de circulation par défaut) : `src/data/rules.js` seul. La section
+  stationnement, largeur de couloir par défaut) : `src/data/rules.js` seul. La section
   Contraintes, les règles de niveau et le contrôle du mixer en découlent.
   `src/data/site.js` ne porte que du relevé.
 - **Les adjacences** : `src/data/schema.js` seul. `src/mix/prog.js` ne fait que dire quel
   nœud du schéma correspond à quel poste du programme, et le signale si un nom change.
 - **Les familles et leurs couleurs** : `src/data/families.js` pour les libellés,
   `styles/tokens.css` pour les valeurs. Les deux fichiers sont liés par l'id de famille.
-- **Un volet du cahier des charges** : une entrée dans `SUBS` (`src/core/viewstate.js`) et une
-  branche dans `render()`. Le bouton et le routage par hash suivent tout seuls.
+- **Un volet** : une entrée dans `SUBS_BY` (`src/core/viewstate.js`) et une branche dans
+  `render()`. Le bouton et le routage par hash suivent tout seuls.
+- **Un réglage du mixer et son dé** : `src/mix/opts.js` seul ; le tirage le lit dans
+  `shuffle.js`, la vue le montre là où il se voit.
 - **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`), un bouton dans
   `index.html`, et une branche dans `render()` (`src/views/render.js`).
 - **L'état de vue** : `src/core/viewstate.js` — lu partout, écrit seulement par `main.js`.

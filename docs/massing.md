@@ -60,7 +60,7 @@ voudrait dire.
   niveaux, même répartition ; seule la solution architecturale change : nombre de corps,
   position, orientation, proportions, forme, hauteurs, retraits, terrasses.
 
-Deux graines distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
+Deux seeds distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
 `MASS.graine`. Les confondre ferait qu'on ne peut plus changer l'une sans perdre l'autre.
 
 **La seed du massing se lit et se retape.** Elle s'affiche sous « Shuffle massing », libellée
@@ -80,7 +80,7 @@ chaque ligne disant ce qu'elle pense de la composition à l'écran :
 
 | rang | effet | règles |
 |---|---|---|
-| **règles dures** | une seule enfreinte : la variante est SUPPRIMÉE, sans score (`dures()`) | périmètre et recul de 5 m (choix de projet) à tous les étages, passerelles comprises · **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 → AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · classes en façade (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
+| **règles dures** | une seule enfreinte : la variante est SUPPRIMÉE, sans score (`dures()`) | périmètre et recul de 5 m (choix de projet) à tous les étages, passerelles comprises · **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 → AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · classes en façade (`profFacade()`, deux salles et leur couloir : 19,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
 | **priorités fortes** | comptent dans le score, poids 40 | dimensions souhaitées · distance souhaitée · respect du parti · organisation du programme · orientation solaire · vue au nord-ouest · lumière entre bâtiments · compacité · cour généreuse |
 | **préférences** | comptent dans le score, poids 15 | alignement · terrassement · élancement · connexions · nappe et sous-sol · accès et stationnement |
 
@@ -178,8 +178,8 @@ Aucune cote de volume n'est plus une règle dure — seule la salle de sport dou
 orientent `besoins()` et `profBornes()` et comptent dans le critère « Dimensions souhaitées ».
 Aucune forme de repli n'est appliquée : ni décrochement, ni fusion, ni règle de porte-à-faux.
 
-Avec les réglages par défaut, un corps d'école vise au plus 28 × 18,5 m (les classes en façade), soit environ
-520 m² par étage, et le rez en demande quatre fois plus. `genMass()` calcule donc le nombre de
+Avec les réglages par défaut, un corps d'école vise au plus 28 × 19,5 m (les classes en façade), soit environ
+550 m² par étage, et le rez en demande quatre fois plus. `genMass()` calcule donc le nombre de
 corps nécessaire (`nMin`) et chaque parti en pose au moins autant — en rangs pour les barres
 et les terrasses, le long de chaque aile pour le L, le U et la cour. Le sous-sol se répartit
 sous plusieurs corps, et la piscine et le local CAD ne se réunissent que si l'ouvrage commun

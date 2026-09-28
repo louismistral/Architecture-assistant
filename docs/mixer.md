@@ -10,7 +10,8 @@ src/mix/shuffle.js    la NOTE de niveau, le tirage, la proposition de pile
 src/mix/checks.js     contrôle d'une répartition → écarts, avec code et remèdes
 src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
 src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
-src/mix/opts.js       les trois interrupteurs
+src/mix/opts.js       les réglages et leur dé : la pile, les plateaux, le lien des postes,
+                      les adjacences actives
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
 src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le glisser
 ```
@@ -22,7 +23,7 @@ pas.
 
 ## Le tirage note avant de poser
 
-Chaque niveau candidat reçoit une note : la place qui y reste, les adjacences exigées déjà
+Chaque niveau candidat reçoit une note : la place qui y reste, les adjacences ACTIVES déjà
 satisfaites, la grappe qui y pèse, la famille d'usage, ce que l'usage scolaire veut au rez
 et ce qu'il veut à l'étage. Un bruit de Gumbel d'amplitude `DOC.temperature` s'y ajoute, et
 le meilleur gagne. À température nulle le tirage est déterministe et rend la meilleure
@@ -36,7 +37,7 @@ répartition ; plus elle monte, plus il propose des variantes. Tous les poids so
 > fait.
 
 Le tirage est la seule proposition : « Répartir », son jumeau ordonné, donnait la même chose
-à l'ordre des chapitres près, et la graine rend le tirage aussi rejouable.
+à l'ordre des chapitres près, et la seed rend le tirage aussi rejouable.
 
 ## La pile se déduit du site
 
@@ -50,16 +51,30 @@ prend une, les plus compactes d'abord. **Une variante tirée est donc une varian
 > rapport avec le site, et le sous-sol se décidait à PILE OU FACE — ce qui contredisait
 > frontalement l'analyse de nappe du projet.
 
-C'est pourquoi l'interrupteur « Shuffle niveaux » est **enclenché par défaut** : l'éteindre
-revient à proposer une école de plain-pied de 3'400 m² d'emprise.
+C'est pourquoi le **dé de la pile est allumé par défaut** : l'éteindre avant d'avoir composé
+la pile revient à proposer une école de plain-pied de 3'400 m² d'emprise.
 
-## Le plateau suit la répartition
+## Le plateau suit la répartition — si son dé est allumé
 
 Comme la hauteur de niveau suit le programme qu'il porte. Le plateau sert de CAPACITÉ
 pendant la pose — c'est lui qui répartit —, puis `ajusterPlateaux()` le ramène à ce que le
 niveau porte vraiment, borné par l'emprise. Il restait sinon figé à la valeur estimée, et le
 contrôle criait au débordement sur une pile que l'outil venait lui-même de proposer. Le vrai
 plafond n'a jamais été le plateau : il est l'emprise.
+
+Un plateau dont le dé est ÉTEINT est une décision : le tirage s'en sert comme capacité et ne
+le corrige pas. S'il déborde, le contrôle le dit. Taper une valeur dans le champ éteint le dé.
+
+## La circulation d'un niveau se compte sur ses pièces
+
+Elle se règle au cahier des charges (la largeur du couloir), mais chaque niveau la COMPTE
+sur ce qu'il porte : les couloirs devant ses pièces, et une ou deux cages d'escalier selon
+le seuil de la protection incendie (`flCircDe()` dans `floors.js`, l'arithmétique dans
+`core/model.js`). Les parts d'un même poste se regroupent d'abord : neuf WC posés en trois
+parts au même niveau restent un bloc sanitaire à une porte. Un niveau sans bâti scolaire
+n'a ni couloir ni cage. Le plateau, les cages et les pourcentages comparent ce bâti réel ;
+seule la PRÉVISION de capacité pendant la pose (`usable()`) prend la part que le programme
+entier donne, faute de mieux avant que les pièces soient posées.
 
 ## L'unité pédagogique
 
@@ -106,13 +121,23 @@ l'écart, les pièces en cause le portent (`issFocus` dans la vue, `keys` sur l'
 conflit et devoir ensuite chercher les pièces à la main, c'était tout le travail laissé à
 faire.
 
-**Les contraintes de connexion ne sont jamais dures.** Le tirage les prend comme des
-préférences — un poste va d'abord au niveau où se trouve déjà ce que le règlement lui demande
-de toucher — et le contrôle dit après coup ce qui n'a pas pu tenir.
+**Une adjacence active est une règle, une adjacence éteinte n'est rien.** Chaque lien du
+schéma fonctionnel s'allume ou s'éteint au flanc du mixer. Active, elle met ses deux postes
+au même niveau — le tirage la note d'un poids qui écrase toute autre raison (`DOC.adjDur`),
+débordement compris — et le contrôle la marque en ROUGE quand elle ne tient pas, avec trois
+remèdes : déplacer l'un, déplacer l'autre, ou l'éteindre. Éteinte, elle ne pèse rien et le
+contrôle n'en dit rien : les deux postes sont indépendants. Par défaut, les adjacences
+exigées sont actives et les mutualisations éteintes.
+
+> Avant : toutes les adjacences étaient des préférences pondérées (`adjPoids` 26, `adjOpt`
+> 0,35), et le tirage y renonçait dès qu'un niveau était plein.
+
+Pour un poste réparti sur plusieurs niveaux, « même niveau » veut dire que les deux postes
+PARTAGENT au moins un niveau — c'est ce que le contrôle vérifiait déjà.
 
 ## Tout se fait sur le dessin
 
-Un bloc se glisse d'un niveau à l'autre ; ouvert, il montre ses pièces et l'on tire hors de
+Un bloc se glisse d'un niveau à l'autre ; délié, il montre ses pièces et l'on tire hors de
 lui celle qu'on veut ailleurs — la scission n'est pas un geste de plus, c'est le déplacement
 d'une pièce. Deux parts d'un même poste qui se retrouvent au même niveau se refondent
 (`fuse`), donc se tromper ne coûte rien.
@@ -120,9 +145,15 @@ d'une pièce. Deux parts d'un même poste qui se retrouvent au même niveau se r
 > Un menu faisait cela avant : « déplacer vers » listait les niveaux et « scinder » demandait
 > « combien sur combien », alors que la pile et le bloc étaient là, sous les yeux.
 
+**Un bloc entier emmène ce que ses adjacences actives lui tiennent** — sa grappe, au MÊME
+niveau que lui (`moveGroupe` dans `floors.js`) : monter six salles de classe du premier au
+deuxième emmène les WC et les vestiaires du premier, pas ceux du rez. Un poste lié part
+entier, où qu'il soit. Une pièce seule ne dérange rien. Le fantôme du glisser dit combien de
+pièces liées suivent.
+
 Le clavier fait les mêmes gestes sur le bloc au foyer : flèches haut et bas pour changer de
-niveau — le bac étant le cran sous le rez —, Maj pour n'emmener qu'une pièce, Suppr pour
-renvoyer au bac.
+niveau — le bac étant le cran sous le rez —, Maj pour n'emmener qu'une pièce (d'un poste
+délié), Suppr pour renvoyer au bac.
 
 Une pile neuve n'a qu'un **rez-de-chaussée** ; le premier tirage en propose une déduite du
 site. On l'édite là où elle se dessine : « + Ajouter un étage » en tête de pile, « + Creuser
@@ -130,28 +161,49 @@ un sous-sol » au pied, une corbeille sur chaque niveau qui le retire en renvoya
 au bac (`addFloorTop`, `addFloorBottom`, `delFloorAt`). Retirer un niveau du MILIEU est
 permis : les cotes se renumérotent derrière, la pile reste contiguë, et le rez reste le rez.
 
-## Les trois interrupteurs
+## Les réglages, et leur dé
 
-Dans la barre du haut, persistés avec le reste.
+Chaque réglage a une **valeur**, et par-dessus un **dé** (`mix/opts.js`). Dé allumé, le
+Shuffle décide ; dé éteint, la valeur est la nôtre et le tirage la respecte. **Toucher une
+valeur la fige** : son dé s'éteint. Chacun se règle là où il se voit :
 
-- **Shuffle niveaux** — le tirage propose aussi la pile, déduite de l'aire posable de la
-  parcelle, de ce que le règlement cloue au rez et du contingent de classes. Enclenché par
-  défaut (voir plus haut).
-- **Grouper les liés** — déplacer une pièce emmène toute sa GRAPPE de proximité, la composante
-  connexe des adjacences exigées (`grappeDe` dans `prog.js`, `moveGroupe` dans `floors.js`).
-  Une mutualisation possible n'en fait pas partie : elle est offerte, pas due. La grappe de la
-  salle de sport compte quatorze postes — elle est grande parce que le règlement le dit, et
-  c'est ce que l'interrupteur donne à voir. Éteint, une grappe peut s'éparpiller sur trois
-  étages, et le contrôle le dira. L'enclencher AGIT sur ce qui est déjà posé : `regrouper()`
-  ramène chaque grappe au niveau où elle pèse déjà le plus, pour défaire le moins de travail
-  possible. Sans cela l'interrupteur annonçait une règle sans l'appliquer.
-- **Voir les pièces** — le bloc est DIVISÉ en ses pièces, à la surface unitaire du poste, par
-  des traits tiretés qui vont d'un bord à l'autre : un refend de plan, qui sépare sans clore.
-  C'est la prise de la scission. Des rectangles cernés donnaient à lire dix-huit objets rangés
-  dans une boîte plutôt qu'un poste découpé. La trame est PLEINE — on préfère un partage exact
-  à des cellules parfaitement carrées, sinon la dernière rangée semble inachevée. Rien n'est
-  divisé pour un poste que le règlement ne coupe pas, ni quand une pièce deviendrait trop
-  petite pour être visée.
+| réglage | où | dé par défaut |
+|---|---|---|
+| le nombre de niveaux | en tête de la pile | allumé — le tirage propose la pile |
+| le plateau d'un niveau | sur le niveau, à côté du champ | allumé, niveau par niveau |
+| le lien d'un poste | sur son bloc, et dans la liste du flanc | éteint ; les postes sont déliés |
+| une adjacence | au flanc, lien par lien | éteint ; exigées actives, mutualisations éteintes |
+
+Au flanc, **« Ce que tire le Shuffle »** porte un dé MAÎTRE par famille : il bascule toute
+la famille d'un coup, et se lit « mixte » quand elle est partagée. « Tout lier » et « Tout
+délier » y sont aussi, et la liste des quinze postes qui ont le choix — pour les blocs trop
+petits pour porter leurs commandes, et pour le clavier. Le panneau **« Adjacences »** liste
+les vingt-quatre liens du schéma, chacun avec son interrupteur, sa citation du règlement et
+son dé ; « Exigées », « Toutes » et « Aucune » les règlent d'un coup, et un lien actif qui ne
+tient pas porte la marque du contrôle.
+
+Ce que tire un dé allumé se tire AVANT la pose, sur la même seed (`tirerReglages()` dans
+`shuffle.js`) : un poste lié avec la probabilité `DOC.pLie`, une adjacence active avec
+`DOC.pAdj`. La valeur tirée devient la valeur du réglage — on la lit sur le bloc et au flanc,
+et on la garde en éteignant le dé. Une proposition se rejoue donc à l'identique, liens et
+adjacences compris.
+
+**Lié ou délié.** LIÉ, les pièces d'un poste vont ensemble, en un bloc, à un seul niveau — le
+« groupé » du cahier des charges ; lier un poste rassemble ce qui est posé au niveau où il pèse
+le plus (`rassembler`). DÉLIÉ, elles sont indépendantes : dessinées SÉPARÉES, chacune dans son
+cadre, côte à côte parce qu'elles sont au même niveau — le « détaillé » —, déplacées une à une,
+et le tirage peut les répartir sur plusieurs niveaux. Un poste d'une seule pièce, ou dont le
+règlement impose les cotes, n'a pas le choix (`lienLibre()` dans `prog.js`). Allumer une
+adjacence agit aussi sur ce qui est posé : le plus léger des deux postes rejoint le plus lourd,
+si la règle de niveau l'y admet (`rapprocherLien`).
+
+La barre du haut ne garde que ce qui agit sur l'ensemble : **Shuffle**, **Tout au bac**, et la
+**Seed**, qu'on retape pour rejouer une proposition.
+
+> Avant : trois interrupteurs dans la barre — « Shuffle niveaux », « Grouper les liés »,
+> « Voir les pièces ». Le premier est devenu le dé de la pile, le deuxième les adjacences
+> actives, le troisième le lien de chaque poste. L'ancien format enregistré (`{ niv, grp,
+> pcs }`) se relit : `niv` redevient le dé de la pile.
 
 ## À savoir
 

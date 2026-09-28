@@ -69,13 +69,26 @@ et ont leur propre bande dans le dessin d'un niveau.
 Minergie A ou P, ou CECB A/A · toitures disponibles pour le photovoltaïque · eaux de
 toiture infiltrées sur site · intégration au bâtiment et aux jardins de l'ancien Casino.
 
-## Le cahier des charges, volet Contraintes
+## Le cahier des charges, volets Contraintes et Adjacences
 
-`src/views/constraints.js` affiche ce qui précède, puis le **schéma fonctionnel** des
-adjacences (`src/views/schema.js`, lu dans `src/data/schema.js`).
+`src/views/constraints.js` affiche ce qui précède, au volet **Contraintes**. Le **schéma
+fonctionnel** des adjacences (`src/views/schema.js`, lu dans `src/data/schema.js`) a son
+volet, **Adjacences** (`#programme/adjacences` ; `#adjacences` y mène).
 
-Les adjacences ont été un onglet, puis un volet : une proximité exigée entre deux locaux
-n'est pas d'une autre nature qu'une hauteur libre ou une distance au voisin.
+Les adjacences ont été un onglet, puis un volet, puis la fin des contraintes, sur une
+planche unique où trois petites grappes flottaient dans le vide de la grande. Chaque
+**grappe a maintenant sa carte** : son local central (« Autour de… »), ses locaux, sa
+surface, les pôles qu'elle traverse, le dessin, et ses exigences citées, repliées. Les
+cartes se rangent **en cascade** : une grille à rangs de 4 px où chaque carte prend autant
+de rangs que sa hauteur en demande, `grid-auto-flow: dense` laissant les petites se tasser
+dans les trous. Toutes sont à la **même échelle** — la plus grande grappe tient la largeur,
+la suivante une colonne —, et le corps des noms se déduit de l'échelle pour rester à 10 px
+à l'écran. Une carte qui déborde d'une colonne de moins d'un sixième s'y tient, réduite
+d'autant ; au-delà, elle prend toute la largeur. Les postes sans voisin exigé ferment la
+cascade.
+
+Le cahier des charges dit ce que le règlement EXIGE. Ce que nous en tenons — quelle
+adjacence est active — se décide au mixer, lien par lien (`docs/mixer.md`).
 
 Le schéma est **à l'échelle et en mètres** : une unité de dessin vaut un mètre, un local de
 144 m² est un carré de 12 m de côté, et l'aire du rectangle vaut ses m² dans ses DEUX côtés
@@ -93,7 +106,7 @@ branche a à loger ; quand le tour ne suffit plus, on écarte tout d'un coup —
 comme les autres : tracés en travers, infléchis vers le centre. Le trait ne dit que la
 nature de l'exigence ; la couleur reste celle de la famille d'usage.
 
-Chaque grappe porte son compte, sa surface et **les pôles qu'elle traverse**. Les colonnes
+Chaque carte porte son compte, sa surface et **les pôles que sa grappe traverse**. Les colonnes
 par pôle d'avant alignaient tout et donnaient à lire l'organigramme du programme plutôt que
 les proximités qu'il exige — on ne voyait pas que la grappe de la salle de sport tient
 dix-sept locaux et traverse trois pôles.
