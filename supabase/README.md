@@ -12,6 +12,7 @@ Le détail de ce qu'elles posent, et pourquoi, est dans `docs/variantes.md`.
 20260922141841_helpers_hors_api.sql      les aides hors du schéma exposé
 20260922152235_plusieurs_groupes.sql     rejoindre, quitter, renommer, les gardes
 20260922152453_transfert_atomique.sql    transmettre la propriété en un appel
+20260928120000_variante_tags.sql         les étiquettes d'une variante (« algo search »)
 ```
 
 Pour les rejouer sur un projet neuf, avec la CLI Supabase :

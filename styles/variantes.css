@@ -322,3 +322,38 @@
 /* Le profil et un groupe tiennent sur UNE colonne : la boîte large de la
    variante y étirait des lignes de trois mots sur neuf cents pixels. */
 .vm__box--etroit{inline-size:min(620px,94vw)}
+
+/* ---------- la recherche automatique ----------
+   L'étiquette sur la carte, le filtre, le suivi dans le panneau, le formulaire
+   dans le modal. Mêmes pilules que les onglets de groupe : c'est le même geste,
+   choisir ce qu'on regarde. */
+.vc__tag{
+  align-self:flex-start;padding:1px var(--s-2);
+  font-size:var(--t-2xs);color:var(--ink-2);
+  border:1px solid var(--rule);border-radius:var(--r-full);
+}
+.vp-filtre{display:flex;flex-wrap:wrap;gap:var(--s-1)}
+.vp-filtre__b{
+  padding:var(--s-1) var(--s-3);cursor:pointer;
+  font:inherit;font-size:var(--t-2xs);color:var(--ink-2);
+  background:transparent;border:1px solid var(--rule);border-radius:var(--r-full);
+}
+.vp-filtre__b.is-on{color:var(--ink);font-weight:600;background:var(--rule-soft);border-color:var(--rule-strong)}
+.vp-rech{
+  display:flex;flex-direction:column;gap:var(--s-2);padding:var(--s-3);
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-lg);
+}
+.vp-rech__h{display:flex;align-items:center;gap:var(--s-3);font-size:var(--t-sm)}
+.vp-rech__h b{flex:1;font-weight:600}
+.vp-rech__h span{color:var(--ink-3);font-size:var(--t-xs)}
+.vp-rech progress{inline-size:100%;accent-color:var(--ink-2)}
+.vp-rech__top{margin:0;padding-inline-start:var(--s-5);font-size:var(--t-xs);color:var(--ink-2)}
+.vp-rech__top li{display:flex;justify-content:space-between;gap:var(--s-3)}
+.vp-rech__top b{color:var(--ok);font-weight:500}
+.vr-case{display:flex;align-items:flex-start;gap:var(--s-2);padding-block:var(--s-1);font-size:var(--t-sm);cursor:pointer}
+.vr-case input{margin-block-start:3px}
+.vr-case small{display:block;font-size:var(--t-2xs);color:var(--ink-3)}
+.vr-partis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0 var(--s-3);margin-block-start:var(--s-2)}
+.vr-nbs{display:flex;flex-wrap:wrap;gap:var(--s-4)}
+.vr-nb{display:flex;flex-direction:column;gap:var(--s-1);font-size:var(--t-xs);color:var(--ink-2)}
+.vr-nb input{inline-size:8ch}

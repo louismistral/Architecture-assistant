@@ -32,7 +32,9 @@ import { CPT, MEMBRES_PAR_EQUIPE, annulerInvite, choisirEquipe, connexion,
          sortir, transfererPropriete } from "../net/compte.js";
 import { REG, tirerReglages } from "../net/reglages.js";
 import { VARIANTES, charger, chargerVariantes, enregistrer, nomPropose,
-         onVariantes, renommer, supprimer } from "../net/variantes.js";
+         onVariantes, poserTrouvees, renommer, supprimer } from "../net/variantes.js";
+import { BORNES, RECH, TAG_RECHERCHE, rechercher } from "../net/recherche.js";
+import { MASS, PARTIS, partiOf } from "../mass/model.js";
 import { supaOn } from "../net/supa.js";
 
 var SVGNS = "http://www.w3.org/2000/svg";
@@ -41,6 +43,9 @@ var apresCharge = null;          /* rendu à refaire quand on a chargé */
 var reference = null;            /* l'état au dernier enregistrement ou chargement */
 var occupe = false, message = "";
 var vueEquipe = null;            /* le groupe dont la liste est à l'écran */
+var cherche = null;              /* la recherche en cours : { i, n, top, arreter } */
+var chercheEl = null, bilanRech = "";
+var filtre = "tout";             /* tout · algo · main */
 
 export function setApresCharge(fn){ apresCharge = fn; }
 
@@ -375,6 +380,7 @@ function carte(v){
   if(v.score != null) note.classList.add(v.score >= 0 ? "is-haut" : "is-bas");
   t.appendChild(note);
   d.appendChild(t);
+  if(estTrouvee(v)) d.appendChild(el("span", "vc__tag", TAG_RECHERCHE));
 
   var a = el("div", "vc__a");
   a.appendChild(btn("btn btn--primary vc__load", vieux.length ? "Charger quand même" : "Charger",
@@ -389,6 +395,31 @@ function carte(v){
 
   c.appendChild(d);
   return c;
+}
+
+function estTrouvee(v){ return (v.tags || []).indexOf(TAG_RECHERCHE) >= 0; }
+
+/* Le filtre ne paraît que s'il sépare quelque chose : un choix entre « tout »
+   et « tout » n'en est pas un. */
+function filtres(){
+  var n = VARIANTES.filter(estTrouvee).length;
+  if(!n || n === VARIANTES.length) return null;
+  var nav = el("div", "vp-filtre");
+  nav.setAttribute("role", "group");
+  nav.setAttribute("aria-label", "Filtrer les variantes");
+  [["tout", "Toutes"], ["algo", TAG_RECHERCHE + " · " + n], ["main", "À la main"]].forEach(function(f){
+    var b = btn("vp-filtre__b" + (filtre === f[0] ? " is-on" : ""), f[1], function(){
+      filtre = f[0]; peindre();
+    });
+    b.setAttribute("aria-pressed", String(filtre === f[0]));
+    nav.appendChild(b);
+  });
+  return nav;
+}
+function visibles(){
+  if(filtre === "algo") return VARIANTES.filter(estTrouvee);
+  if(filtre === "main") return VARIANTES.filter(function(v){ return !estTrouvee(v); });
+  return VARIANTES;
 }
 
 /* ---------- peindre ---------- */
@@ -416,14 +447,26 @@ function peindre(){
   var save = btn("vp-save", null, function(){ faireEnregistrer(); });
   save.appendChild(el("span", "vp-save__p", "+"));
   save.appendChild(el("span", null, occupe ? "Un instant…" : "Enregistrer la composition à l'écran"));
-  save.disabled = occupe;
+  save.disabled = occupe || !!cherche;
   b.appendChild(save);
+
+  var rb = btn("vp-save", null, ouvrirRecherche);
+  rb.appendChild(el("span", "vp-save__p", "⟳"));
+  rb.appendChild(el("span", null, "Recherche automatique"));
+  rb.disabled = occupe || !!cherche;
+  b.appendChild(rb);
+  if(cherche){ chercheEl = el("div", "vp-rech"); b.appendChild(chercheEl); majCherche(); }
+  else chercheEl = null;
+  if(bilanRech) b.appendChild(el("p", "vp-note", bilanRech));
 
   if(!VARIANTES.length){
     b.appendChild(el("p", "vp-note", "Aucune variante dans ce groupe. Compose au mixer et au massing, puis enregistre."));
   }
+  var fl = filtres();
+  if(fl) b.appendChild(fl);
+  else filtre = "tout";
   var liste = el("div", "vp-liste");
-  VARIANTES.forEach(function(v){ liste.appendChild(carte(v)); });
+  visibles().forEach(function(v){ liste.appendChild(carte(v)); });
   b.appendChild(liste);
   majBoutons();
 }
@@ -464,6 +507,155 @@ async function faireCharger(v){
     if(apresCharge) apresCharge();
   }catch(e){ message = e.message; }
   occupe = false; peindre();
+}
+
+/* ---------- la recherche ----------
+   Le formulaire dit les quatre choses qu'on décide : ce qu'on rebat, combien
+   de fois, ce qu'on garde, combien. Il se referme au lancement : la recherche
+   se suit dans le panneau, là où ses résultats arrivent. */
+function caseA(txt, on, aide){
+  var l = el("label", "vr-case");
+  var i = el("input"); i.type = "checkbox"; i.checked = !!on;
+  l.appendChild(i);
+  var t = el("span", null, txt);
+  if(aide) t.appendChild(el("small", null, aide));
+  l.appendChild(t);
+  l.champ = i;
+  return l;
+}
+function nombre(id, lab, v, b){
+  var w = el("label", "vr-nb");
+  w.htmlFor = id;
+  w.appendChild(el("span", null, lab));
+  var i = el("input", "mono");
+  i.id = id; i.type = "number"; i.min = b[0]; i.max = b[1]; i.step = 1; i.value = v;
+  w.appendChild(i);
+  w.champ = i;
+  return w;
+}
+/* Un essai de massing coûte près d'une seconde : le dire avant de lancer. */
+var SEC_PAR_ESSAI = 0.8;
+function duree(n){
+  var s = n * SEC_PAR_ESSAI;
+  return s < 90 ? "≈ " + Math.max(1, Math.round(s)) + " s" : "≈ " + Math.round(s / 60) + " min";
+}
+
+function ouvrirRecherche(){
+  var box = boite(true);
+  teteModal(box, el("h3", "vm__titre", "Recherche automatique"),
+    el("p", "vm__meta", "Tirer beaucoup, garder les meilleures notes. Elles arrivent au groupe, étiquetées « " + TAG_RECHERCHE + " »."),
+    "Recherche automatique");
+  var body = el("div", "vm__body vm__body--un");
+
+  var s1 = el("section", "vm-sec");
+  s1.appendChild(el("h4", null, "Ce qu'on rebat à chaque essai"));
+  var cP = caseA("Le programme", RECH.programme, "la répartition du mixer, pile comprise");
+  var cM = caseA("Le massing", RECH.massing, "la volumétrie, à programme égal");
+  s1.appendChild(cP); s1.appendChild(cM);
+  body.appendChild(s1);
+
+  var s2 = el("section", "vm-sec");
+  s2.appendChild(el("h4", null, "Les partis essayés"));
+  s2.appendChild(el("p", "vp-note", "Aucun coché : le parti à l'écran (" + partiOf(MASS.parti).n + "). Plusieurs : on tourne sur la liste."));
+  var grille = el("div", "vr-partis");
+  var cases = PARTIS.map(function(p){
+    var c = caseA(p.n, RECH.partis.indexOf(p.id) >= 0);
+    c.title = p.d;
+    c.pid = p.id;
+    grille.appendChild(c);
+    return c;
+  });
+  s2.appendChild(grille);
+  body.appendChild(s2);
+
+  var s3 = el("section", "vm-sec");
+  s3.appendChild(el("h4", null, "Combien"));
+  var ligneN = el("div", "vr-nbs");
+  var nE = nombre("vrEssais", "Essais", RECH.essais, BORNES.essais);
+  var nG = nombre("vrGarder", "On en garde", RECH.garder, BORNES.garder);
+  ligneN.appendChild(nE); ligneN.appendChild(nG);
+  s3.appendChild(ligneN);
+  var est = el("p", "vp-note", "");
+  function majEst(){ est.textContent = "Durée : " + duree(+nE.champ.value || 0) + ". Ne touche à rien pendant ce temps : l'écran est remis tel quel à la fin."; }
+  nE.champ.addEventListener("input", majEst); majEst();
+  s3.appendChild(est);
+  body.appendChild(s3);
+
+  var s4 = el("section", "vm-sec");
+  s4.appendChild(el("h4", null, "Ce qu'on garde"));
+  s4.appendChild(el("p", "vp-note", "Les meilleures notes du juge, sur 100 — à note égale, la moins fautive."));
+  var cE = caseA("Sans erreur rouge", RECH.sansErreur, "ni au mixer, ni au massing");
+  var cD = caseA("Un seul par parti", RECH.distincts, "pour ne pas garder trois fois le même peigne");
+  s4.appendChild(cE); s4.appendChild(cD);
+  body.appendChild(s4);
+  box.appendChild(body);
+
+  var pied = el("footer", "vm__pied");
+  var dit3 = el("span", "vm__dit", "");
+  var go = btn("btn btn--primary", "Lancer", function(){
+    if(!cP.champ.checked && !cM.champ.checked){
+      dit3.textContent = "Coche au moins le programme ou le massing."; return;
+    }
+    RECH.programme = cP.champ.checked;
+    RECH.massing = cM.champ.checked;
+    RECH.partis = cases.filter(function(c){ return c.champ.checked; }).map(function(c){ return c.pid; });
+    RECH.essais = +nE.champ.value;
+    RECH.garder = +nG.champ.value;
+    RECH.sansErreur = cE.champ.checked;
+    RECH.distincts = cD.champ.checked;
+    fermerModal();
+    lancerRecherche();
+  });
+  pied.appendChild(go);
+  pied.appendChild(dit3);
+  box.appendChild(pied);
+  montrer();
+  go.focus();
+}
+
+function majCherche(){
+  if(!chercheEl || !cherche) return;
+  while(chercheEl.firstChild) chercheEl.removeChild(chercheEl.firstChild);
+  var h = el("div", "vp-rech__h");
+  h.appendChild(el("b", null, cherche.enreg ? "Enregistrement…" : "Recherche"));
+  h.appendChild(el("span", "mono", cherche.i + " / " + cherche.n));
+  if(!cherche.enreg) h.appendChild(btn("btn", "Arrêter", cherche.arreter));
+  chercheEl.appendChild(h);
+  var pr = el("progress");
+  pr.max = cherche.n; pr.value = cherche.i;
+  chercheEl.appendChild(pr);
+  if(cherche.top.length){
+    var l = el("ol", "vp-rech__top");
+    cherche.top.forEach(function(t){
+      var li = el("li");
+      li.appendChild(el("span", null, partiOf(t.pid).n));
+      li.appendChild(el("b", "mono", (t.row.score > 0 ? "+" : "") + t.row.score));
+      l.appendChild(li);
+    });
+    chercheEl.appendChild(l);
+  } else chercheEl.appendChild(el("p", "vp-note", "Rien de retenu pour l'instant."));
+}
+
+async function lancerRecherche(){
+  var stop = false;
+  cherche = { i:0, n:RECH.essais, top:[], arreter:function(){ stop = true; } };
+  bilanRech = ""; message = "";
+  peindre();
+  try{
+    var r = await rechercher(RECH, function(i, n, top){
+      cherche.i = i; cherche.n = n; cherche.top = top.slice(); majCherche();
+    }, function(){ return stop; });
+    if(apresCharge) apresCharge();            /* l'état est remis : on le redessine */
+    cherche.enreg = true; majCherche();
+    var poses = await poserTrouvees(r.trouves, TAG_RECHERCHE);
+    bilanRech = r.trouves.length
+      ? poses.length + " variante" + (poses.length > 1 ? "s" : "") + " trouvée" + (poses.length > 1 ? "s" : "")
+        + " en " + r.essais + " essais, enregistrée" + (poses.length > 1 ? "s" : "") + " au groupe."
+      : "Aucun des " + r.essais + " essais ne passe ce qu'on garde. Élargis les filtres ou tire davantage.";
+    if(poses.length) filtre = "algo";
+  }catch(e){ message = e.message; }
+  cherche = null;
+  peindre();
 }
 
 /* ---------- les modaux ---------- */

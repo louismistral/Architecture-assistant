@@ -26,7 +26,7 @@ import { curSeed } from "../core/rand.js";
 import { FLOORS } from "../mix/floors.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import { restore, saveSoon, snapshot } from "../mix/store.js";
-import { MASS, bilanTotal, volCoins } from "../mass/model.js";
+import { MASS, bilanTotal, partiOf, volCoins } from "../mass/model.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { jugementCourant } from "../mass/juge.js";
 import { CPT } from "./compte.js";
@@ -95,7 +95,7 @@ export function nomPropose(){
 /* ---------- la base ---------- */
 var CHAMPS = "id,name,created_at,updated_at,author_id,seed_program,seed_massing,parti," +
              "fingerprint,score,floors,bodies,area_required,area_placed,area_gross," +
-             "verdict,criteria,thumbnail";
+             "verdict,criteria,thumbnail,tags";
 
 export async function chargerVariantes(){
   if(!CPT.equipe){ VARIANTES = []; signale(); return VARIANTES; }
@@ -118,6 +118,28 @@ export async function enregistrer(nom){
   var r = await insertApi("variant", row);
   await chargerVariantes();
   return r && r[0];
+}
+
+/* Les trouvailles d'une recherche (`net/recherche.js`), en un seul envoi :
+   chacune porte l'état et le résumé du moment où elle a été tirée — pas celui
+   de l'écran, que la recherche a remis en place. */
+export async function poserTrouvees(trouves, tag){
+  if(!CPT.equipe || !CPT.profil) throw new Error("aucune équipe");
+  if(!trouves.length) return [];
+  var rows = trouves.map(function(t, k){
+    var row = Object.assign({}, t.row);
+    row.team_id = CPT.equipe.id;
+    row.author_id = CPT.profil.id;
+    /* L'étiquette dit d'où elle vient ; le nom n'a pas à le redire. */
+    row.name = partiOf(t.pid || row.parti).n + " · " +
+               (row.score > 0 ? "+" : "") + row.score + " · n° " + (k + 1);
+    row.tags = [tag];
+    row.state = t.state;
+    return row;
+  });
+  var r = await insertApi("variant", rows);
+  await chargerVariantes();
+  return r || [];
 }
 
 export async function renommer(id, nom){
