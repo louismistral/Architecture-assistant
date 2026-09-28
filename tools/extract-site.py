@@ -5,9 +5,19 @@ Le fichier Rhino `DOC/site_plan.3dm` est la SOURCE : ce script en tire les
 mesures et rien d'autre. Aucune règle de projet n'est écrite ici — elles vivent
 dans src/data/rules.js.
 
-Coordonnées : le fichier est en CENTIMÈTRES, en système suisse LV95. Le dessin
-de l'application est en MÈTRES, origine au coin sud-ouest du périmètre du
-concours — c'est l'origine qu'avait déjà site.js, et elle ne bouge pas.
+Coordonnées : le fichier est en CENTIMÈTRES — 17'680 unités font les 176,8 m
+du périmètre, 46'550 les 465,50 m d'une courbe de niveau. Ses X et Y ont
+l'allure de coordonnées suisses LV95 (2'588'337 / 1'090'758), mais ce sont des
+centimètres : du LV95 en centimètres aurait neuf chiffres (≈ 257'900'000). Ce
+n'est donc PAS du LV95 exploitable tel quel ; c'est le repère du fichier, et il
+suffit pour s'y superposer. Le dessin de l'application est en MÈTRES, origine
+au coin sud-ouest du périmètre du concours — c'est l'origine qu'avait déjà
+site.js, et elle ne bouge pas.
+
+Cette origine est ÉCRITE dans site.js (`RHINO`) : l'export du massing (.obj) en
+a besoin pour retomber en place sur le relevé, et la conversion ne vit qu'ici.
+Un point (x, y, z) du dessin, en mètres, est dans le fichier en
+(x0 + U·x, y0 + U·y, U·z) — l'altitude n'est pas décalée.
 
     python3 tools/extract-site.py
 """
@@ -61,9 +71,10 @@ for p in PERC[1:]:
         clean.append(p)
 X0 = min(p[0] for p in clean)
 Y0 = min(p[1] for p in clean)
+U = 100.0       # unités du fichier par mètre : il compte en centimètres
 
-def L(p):   return (round((p[0]-X0)/100.0, 1), round((p[1]-Y0)/100.0, 1))
-def LZ(p):  return round(p[2]/100.0, 2)
+def L(p):   return (round((p[0]-X0)/U, 1), round((p[1]-Y0)/U, 1))
+def LZ(p):  return round(p[2]/U, 2)
 
 def poly(g, close=False, mind=0.25):
     """Une polyligne en mètres locaux, sommets confondus retirés."""
@@ -142,9 +153,9 @@ esc = garde(layer("escaliers"))
 vol3d = []
 for o in BY.get("batiments 3d", []):
     b = o.Geometry.GetBoundingBox()
-    cx = ((b.Min.X + b.Max.X)/2 - X0)/100.0
-    cy = ((b.Min.Y + b.Max.Y)/2 - Y0)/100.0
-    vol3d.append((cx, cy, round(b.Min.Z/100.0, 2), round(b.Max.Z/100.0, 2)))
+    cx = ((b.Min.X + b.Max.X)/2 - X0)/U
+    cy = ((b.Min.Y + b.Max.Y)/2 - Y0)/U
+    vol3d.append((cx, cy, round(b.Min.Z/U, 2), round(b.Max.Z/U, 2)))
 
 def hauteur(p):
     cx = sum(q[0] for q in p)/len(p); cy = sum(q[1] for q in p)/len(p)
@@ -293,8 +304,10 @@ HEAD = '''/* ===================================================================
    script, et on le rejoue.
 
    Le dessin est en MÈTRES, origine au coin sud-ouest du périmètre du concours.
-   Le fichier Rhino, lui, est en centimètres et en coordonnées suisses LV95 ;
-   la conversion vit dans le script et nulle part ailleurs.
+   Le fichier Rhino, lui, est en centimètres, dans un repère qui a l'allure du
+   LV95 sans en être (voir le script) ; la conversion vit dans le script et
+   nulle part ailleurs, et `RHINO`, en fin de fichier, en garde l'origine pour
+   le chemin inverse.
 
      per   le périmètre du concours (%d m² au polygone ; 11'740 m² au règlement,
            qui ne compte pas les bords de route)
@@ -328,7 +341,13 @@ export var NAPPE = 462.25;   /* msm — relevé du géomètre. Les distances d�
                                  elles vivent dans src/data/rules.js. */
 export var PER = SITE.per, PERAIRE = %d;
 export var VANG = %.5f;   /* axe principal du périmètre : %.1f° */
-''' % (round(aire), -0.10996, math.degrees(-0.10996)))
+
+/* Le repère du fichier Rhino, pour le chemin inverse : un point (x, y, z) du
+   dessin, en mètres, y tombe en (x0 + u·x, y0 + u·y, u·z) — des centimètres,
+   l'altitude sans décalage. C'est ce que lit l'export du massing (.obj) pour
+   se poser en place sur le relevé. */
+export var RHINO = { x0: %.2f, y0: %.2f, u: %d };
+''' % (round(aire), -0.10996, math.degrees(-0.10996), X0, Y0, U))
 
 print("écrit :", OUT)
 print("  périmètre", len(PER), "sommets ·", round(aire), "m²")

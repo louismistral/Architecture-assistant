@@ -6,8 +6,10 @@
    script, et on le rejoue.
 
    Le dessin est en MÈTRES, origine au coin sud-ouest du périmètre du concours.
-   Le fichier Rhino, lui, est en centimètres et en coordonnées suisses LV95 ;
-   la conversion vit dans le script et nulle part ailleurs.
+   Le fichier Rhino, lui, est en centimètres, dans un repère qui a l'allure du
+   LV95 sans en être (voir le script) ; la conversion vit dans le script et
+   nulle part ailleurs, et `RHINO`, en fin de fichier, en garde l'origine pour
+   le chemin inverse.
 
      per   le périmètre du concours (12781 m² au polygone ; 11'740 m² au règlement,
            qui ne compte pas les bords de route)
@@ -37,3 +39,9 @@ export var NAPPE = 462.25;   /* msm — relevé du géomètre. Les distances d�
                                  elles vivent dans src/data/rules.js. */
 export var PER = SITE.per, PERAIRE = 12781;
 export var VANG = -0.10996;   /* axe principal du périmètre : -6.3° */
+
+/* Le repère du fichier Rhino, pour le chemin inverse : un point (x, y, z) du
+   dessin, en mètres, y tombe en (x0 + u·x, y0 + u·y, u·z) — des centimètres,
+   l'altitude sans décalage. C'est ce que lit l'export du massing (.obj) pour
+   se poser en place sur le relevé. */
+export var RHINO = { x0: 2588337.89, y0: 1090758.30, u: 100 };
