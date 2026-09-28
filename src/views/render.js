@@ -7,7 +7,7 @@ import { curSub, setSub, subBtnId, subsOf, view, writeHash } from "../core/views
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
-import { FREE, SLINK, SNODE } from "../data/schema.js";
+import { FREE } from "../data/schema.js";
 import { drawMass, massDoctrine, massPanel, setMassNav } from "./massing.js";
 import { drawMix, mixDoctrine, mixPanel, setMixNav } from "./mixer.js";
 import { saveSoon } from "../mix/store.js";
@@ -17,7 +17,7 @@ import {
   introSection, legendBlock, renderBar, renderLegend, setAreaHandler,
   setCircHandler, varBlock
 } from "./legend.js";
-import { drawSchema, linkKey, linkList } from "./schema.js";
+import { SMAP, cartesGrappes, dessinGrappe, etalon, linkKey, linkList } from "./schema.js";
 import { tip } from "./tooltip.js";
 
 /* Une surface saisie dans le cahier des charges est écrite dans le modèle, puis
@@ -220,14 +220,15 @@ export function render(){
 
   if(curSub() === "contraintes"){
     host.appendChild(sectHead("2", "Contraintes",
-      "Le cadre : site, hauteurs libres, protection incendie, séisme, mobilité, second temps, "
-      + "et les proximités exigées entre locaux."));
+      "Le cadre : site, hauteurs libres, protection incendie, séisme, mobilité, second temps."));
     host.appendChild(constraintsSection());
-    /* Les adjacences étaient un volet à part, et un onglet avant cela. Ce sont
-       des contraintes : une proximité exigée entre deux locaux n'est pas d'une
-       autre nature qu'une hauteur libre ou une distance au voisin. Elles
-       ferment donc les contraintes, là où on les cherche. */
-    host.appendChild(adjacencesSection());
+    return;
+  }
+  /* Les adjacences fermaient les contraintes, sur une planche unique : on les
+     lisait après quatre écrans de tableaux, et trois petites grappes flottaient
+     dans le vide de la grande. Elles ont leur volet, une carte par grappe. */
+  if(curSub() === "adjacences"){
+    adjacencesVolet(host);
     return;
   }
 
@@ -332,40 +333,108 @@ export function render(){
 }
 
 /* ---------- adjacences ----------
-   C'était un onglet de premier rang, puis un volet. Ce sont des contraintes :
-   une proximité exigée entre deux locaux n'est pas d'une autre nature qu'une
-   hauteur libre ou une distance au voisin. Elles ferment donc les contraintes.
-   L'onglet suivant, le mixer, s'en sert comme de préférences de placement. */
-function adjacencesSection(){
-  var p0 = el("section","panel");
-  var hd = el("div","panel-head");
-  hd.appendChild(el("h3", null, "Adjacences — schéma fonctionnel"));
-  hd.appendChild(el("span","pct mono",
-    SLINK.length + " liens · " + SNODE.length + " locaux"));
-  p0.appendChild(hd);
-  p0.appendChild(el("p","panel-sub",
-    "Les locaux que le règlement demande de placer côte à côte, groupés en "
-    + "GRAPPES : chaque grappe est un ensemble qui se tient, et elle rayonne autour "
-    + "de son local le plus lié. Une grappe traverse les pôles quand le règlement le "
-    + "veut, et le titre le dit. Le dessin est en mètres : chaque rectangle vaut sa "
-    + "surface, dans ses deux côtés, et porte les cotes que le règlement impose quand "
-    + "il en donne. Un local trop petit pour écrire son nom le range dessous."));
-  p0.appendChild(linkKey());
-  var sw = el("div","schema-wrap");
-  p0.appendChild(sw);
-  var det = el("details","disclose");
-  det.appendChild(el("summary", null, SLINK.length + " exigences, citées au règlement"));
-  det.appendChild(linkList());
-  var fr = el("div","unpriced");
-  fr.appendChild(el("b", null, "Sans proximité exigée — "));
-  fr.appendChild(document.createTextNode(FREE.join(" · ")));
-  fr.appendChild(el("span","note", "ces postes ne sont pas oubliés du schéma : "
-    + "le règlement ne leur impose aucun voisin."));
-  det.appendChild(fr);
-  p0.appendChild(det);
-  /* Le schéma se dessine une fois son conteneur mesurable. */
-  requestAnimationFrame(function(){ drawSchema(sw); });
-  return p0;
+   C'était un onglet de premier rang, puis un volet, puis la fin des
+   contraintes, sur une planche unique. C'est de nouveau un volet, et chaque
+   GRAPPE — un ensemble de locaux que le règlement veut ensemble, de proche en
+   proche — y a sa carte. L'onglet suivant, le mixer, s'en sert comme de règles
+   de placement, qu'on y active ou non.
+
+   Les cartes se rangent en CASCADE : chacune prend la hauteur que son dessin
+   demande, la grande grappe prend toute la largeur si elle en a besoin, et les
+   petites se tassent dans les trous (`grid-auto-flow: dense`). Toutes sont à la
+   même échelle : un local se compare à un autre d'une carte à l'autre. */
+function adjacencesVolet(host){
+  host.appendChild(sectHead("3", "Adjacences",
+    "Les locaux que le règlement demande de placer côte à côte, groupés en GRAPPES : "
+    + "chaque grappe se tient, et rayonne autour de son local le plus lié. Le dessin est "
+    + "en mètres, à la même échelle sur toutes les cartes : un local vaut sa surface, dans "
+    + "ses deux côtés. Un local trop petit pour écrire son nom le range dessous."));
+  var bar = el("div","adj-bar");
+  bar.appendChild(linkKey());
+  host.appendChild(bar);
+  var grid = el("div","adj-grid");
+  host.appendChild(grid);
+  /* Les cartes se dessinent une fois la grille mesurable : leur échelle et le
+     nombre de colonnes dépendent de sa largeur. */
+  requestAnimationFrame(function(){ cartesAdj(grid, bar); });
+}
+
+var ADJ_COL = 300, ADJ_ROW = 4;
+function cartesAdj(grid, bar){
+  var W = grid.clientWidth || 900;
+  var gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
+  var n = Math.max(1, Math.floor((W + gap) / (ADJ_COL + gap)));
+  var colW = (W - gap * (n - 1)) / n, PADC = 32;
+  /* L'échelle commune : la plus grande grappe tient toute la largeur, et la
+     suivante une seule colonne — sans quoi toutes les cartes prenaient la
+     largeur entière et la cascade n'était plus qu'une pile. Bornée pour que
+     les petites ne deviennent pas des timbres. Le corps des noms suit
+     l'échelle et change donc l'encombrement : trois passes suffisent. */
+  function echelle(T){
+    var larg = T.map(function(t){ return t.w; }).sort(function(a, b){ return b - a; });
+    var e = (W - PADC) / larg[0];
+    if(n > 1 && larg.length > 1) e = Math.min(e, (colW - PADC) / larg[1]);
+    return Math.max(1.6, Math.min(4.2, e));
+  }
+  var k = echelle(cartesGrappes(echelle(cartesGrappes(3))));
+  /* Le dessin et les noms sont à la MÊME échelle : une carte qui en déborde
+     d'un cheveu se réduit dans sa colonne, les noms avec elle. */
+  var T = cartesGrappes(k);
+  bar.appendChild(etalon(k));
+
+  T.forEach(function(t){
+    var c = el("article","adj-card");
+    /* Une carte qui déborde d'une colonne de moins d'un sixième s'y tient, son
+       dessin réduit d'autant : prendre toute la largeur pour dix pixels
+       laissait une colonne vide à côté d'elle, sur toute sa hauteur. */
+    if(t.w * k + PADC > colW * 1.15) c.classList.add("is-wide");
+    var hd = el("header","adj-card__h");
+    hd.appendChild(el("span","adj-card__eyebrow", "Autour de"));
+    hd.appendChild(el("h3", null, SMAP[t.hub].n));
+    var exi = 0, opt = 0, sep = 0;
+    t.liens.forEach(function(lk){ if(lk.sep) sep++; else if(lk.opt) opt++; else exi++; });
+    hd.appendChild(el("p","adj-card__s mono",
+      t.ids.length + " locaux · " + fmt(Math.round(t.aire)) + " m²"));
+    hd.appendChild(el("p","adj-card__p", t.pols.join(" · ")));
+    var cnt = el("p","adj-card__n");
+    cnt.appendChild(document.createTextNode(exi + " adjacence" + (exi > 1 ? "s" : "") + " exigée" + (exi > 1 ? "s" : "")));
+    if(opt) cnt.appendChild(document.createTextNode(" · " + opt + " mutualisation" + (opt > 1 ? "s" : "") + " possible" + (opt > 1 ? "s" : "")));
+    if(sep) cnt.appendChild(document.createTextNode(" · " + sep + " indépendance" + (sep > 1 ? "s" : "")));
+    hd.appendChild(cnt);
+    c.appendChild(hd);
+    var fig = el("div","adj-card__fig");
+    fig.appendChild(dessinGrappe(t, k));
+    c.appendChild(fig);
+    var det = el("details","disclose adj-card__det");
+    det.appendChild(el("summary", null, t.liens.length + " exigence" + (t.liens.length > 1 ? "s" : "")
+      + ", citée" + (t.liens.length > 1 ? "s" : "") + " au règlement"));
+    det.appendChild(linkList(t.liens));
+    det.addEventListener("toggle", function(){ caler(c); });
+    c.appendChild(det);
+    grid.appendChild(c);
+  });
+
+  /* Les postes sans voisin exigé ferment la cascade : les citer est la seule
+     façon de dire que les cartes sont complètes. */
+  var fr = el("article","adj-card adj-card--free");
+  var fh = el("header","adj-card__h");
+  fh.appendChild(el("span","adj-card__eyebrow", "Sans proximité exigée"));
+  fh.appendChild(el("h3", null, FREE.length + " postes libres"));
+  fh.appendChild(el("p","adj-card__p",
+    "Pas oubliés : le règlement ne leur impose aucun voisin. Le mixer les pose où il y a la place."));
+  fr.appendChild(fh);
+  var ul = el("ul","adj-free");
+  FREE.forEach(function(n){ ul.appendChild(el("li", null, n)); });
+  fr.appendChild(ul);
+  grid.appendChild(fr);
+
+  Array.prototype.forEach.call(grid.children, caler);
+}
+/* La cascade : chaque carte occupe autant de rangs de 4 px que sa hauteur en
+   demande. La grille les empile au plus serré, colonne par colonne. */
+function caler(c){
+  var gap = parseFloat(getComputedStyle(c.parentNode).columnGap) || 16;
+  c.style.gridRowEnd = "span " + Math.ceil((c.getBoundingClientRect().height + gap) / ADJ_ROW);
 }
 
 /* ---------- récapitulatif ----------

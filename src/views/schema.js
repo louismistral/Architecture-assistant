@@ -44,18 +44,25 @@ import { FREE, SLINK, SNODE, SPOLE } from "../data/schema.js";
    L'ancien schéma plaçait les siens à la main, et n'alignait rien. */
 var RGAP = 8;                        /* jour entre deux anneaux d'une grappe */
 var AGAP = 6;                        /* jour entre deux locaux d'un même anneau */
-var CLGAP = 14, CAPH = 9, PAD = 4;   /* jour entre grappes, bandeau, marge */
-var FSCAP = 3.4;                     /* corps du titre d'une grappe */
+var PAD = 4;                         /* marge autour d'une grappe */
 var HMIN = 0.9;                      /* filet du seul cas sans surface : le hors bilan */
-var FS = 3.4, FSSM = 2.8;            /* corps du nom, corps de la surface */
+/* Le corps du nom et celui de la surface, en MÈTRES du dessin. Ils se
+   déduisent de l'échelle des cartes (`corps()`), pour que les noms gardent la
+   même taille à l'écran quelle que soit celle-ci : posés en mètres fixes, ils
+   tombaient à sept pixels dès que l'échelle baissait pour tenir une colonne. */
+var FS = 3.4, FSSM = 2.8;
 var LINEH = FS * 1.12, SUBH = FSSM * 1.4;
+var CORPS_PX = 10.5, CORPS_SM_PX = 9;
+function corps(k){
+  FS = CORPS_PX / k; FSSM = CORPS_SM_PX / k;
+  LINEH = FS * 1.12; SUBH = FSSM * 1.4;
+}
 
 /* La table des nœuds est construite au chargement : `linkList()` la lit pour
    nommer les deux bouts d'un lien, et elle est appelée AVANT le premier dessin.
-   `layout()` n'y ajoute que la géométrie. */
+   `cartesGrappes()` n'y ajoute que la géométrie. */
 export var SMAP = {};
 SNODE.forEach(function(nd){ SMAP[nd.id] = nd; });
-export var SCH_W = 0, SCH_H = 0;
 
 /* La surface d'un nœud est la somme des postes qu'il désigne, relue à chaque
    fois : un poste « à préciser » se change dans le cahier des charges et le
@@ -248,10 +255,10 @@ function mesurer(){
   });
 }
 
-/* Ce qu'une grappe annonce d'elle-même : son compte, sa surface, et les pôles
-   qu'elle TRAVERSE — car elle en traverse, et c'est précisément ce que des
-   colonnes par pôle ne pouvaient pas montrer. */
-function legende(T){
+/* Ce qu'une grappe annonce d'elle-même : son local central, son compte, sa
+   surface, et les pôles qu'elle TRAVERSE — car elle en traverse, et c'est
+   précisément ce que des colonnes par pôle ne pouvaient pas montrer. */
+function infos(T){
   var aire = 0, pols = [];
   T.ids.forEach(function(id){
     aire += nodeArea(SMAP[id]).a;
@@ -259,16 +266,19 @@ function legende(T){
     if(pols.indexOf(pp) < 0) pols.push(pp);
   });
   pols.sort(function(a, b){ return PORD[a] - PORD[b]; });
-  return T.ids.length + " LOCAUX LIÉS · " + fmt(Math.round(aire)) + " M² · "
-    + pols.map(function(id){
-        var n = id;
-        SPOLE.forEach(function(x){ if(x.id === id) n = x.n; });
-        return n.toUpperCase();
-      }).join(" · ");
+  T.aire = aire;
+  T.pols = pols.map(function(id){
+    var n = id;
+    SPOLE.forEach(function(x){ if(x.id === id) n = x.n; });
+    return n;
+  });
+  T.liens = SLINK.filter(function(lk){ return T.ids.indexOf(lk.a) >= 0; });
+  return T;
 }
 
-/* Le cadre d'une grappe, nom rangé dessous compris. */
-function cadre(T){
+/* Le cadre d'une grappe, nom rangé dessous compris. Le titre n'y est plus : il
+   est l'en-tête HTML de sa carte, et non un texte posé dans le dessin. */
+function bornes(T){
   var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   T.ids.forEach(function(id){
     var nd = SMAP[id], lw = Math.max(nd.bw, nd.labW);
@@ -277,45 +287,26 @@ function cadre(T){
     if(nd.y < y0) y0 = nd.y;
     if(nd.y + nd.bh + nd.labH > y1) y1 = nd.y + nd.bh + nd.labH;
   });
-  T.cap = legende(T);
-  T.x0 = x0 - PAD; T.y0 = y0 - PAD - CAPH;
-  /* Le cadre tient aussi son propre titre : plus large que le dessin pour une
-     grappe de deux locaux, il sortait de la planche et se rognait. */
-  T.w = Math.max(x1 - x0 + 2 * PAD, T.cap.length * FSCAP * 0.6 + 2 * PAD);
-  T.h = y1 - y0 + 2 * PAD + CAPH;
+  T.x0 = x0 - PAD; T.y0 = y0 - PAD;
+  T.w = x1 - x0 + 2 * PAD;
+  T.h = y1 - y0 + 2 * PAD;
+  /* Le centre de la grappe : les branches s'infléchissent vers lui. */
+  T.ox = 0; T.oy = 0;
   return T;
 }
 
-function layout(){
+/* ---------- une carte par grappe -------------------------------------------
+   Les grappes étaient rangées sur UNE planche, par étagères, derrière la plus
+   grande : la planche prenait la largeur de celle-ci, et les trois petites
+   flottaient dans un grand vide. Chacune est désormais une carte, et les
+   cartes se rangent en cascade (volet Adjacences). La plus liée d'abord. */
+export function cartesGrappes(k){
+  if(k > 0) corps(k);
   mesurer();
   var adj = graphe();
-  var maps = grappes(adj).map(function(ids){ return cadre(poser(arbre(ids, adj))); });
-  /* La plus grande grappe donne la largeur de la planche ; les autres se
-     rangent derrière elle, par étagères. Une seule rangée aurait doublé la
-     largeur et divisé par deux le corps des noms. */
-  maps.sort(function(a, b){ return b.w * b.h - a.w * a.h; });
-  var large = 0;
-  maps.forEach(function(m){ if(m.w > large) large = m.w; });
-  var x = 0, y = 0, hRang = 0, W = 0;
-  maps.forEach(function(m){
-    /* On ne casse une étagère que si la grappe la dépasse VRAIMENT : un ou
-       deux mètres de plus élargissent la planche d'un cheveu, une étagère de
-       plus lui coûte toute une hauteur de grappe. */
-    if(x > 0 && x + m.w > large + CLGAP + 0.5){ x = 0; y += hRang + CLGAP; hRang = 0; }
-    m.dx = x - m.x0; m.dy = y - m.y0;
-    m.ox = m.dx; m.oy = m.dy;              /* le centre de la grappe, une fois posée */
-    m.ids.forEach(function(id){
-      var nd = SMAP[id];
-      nd.cx += m.dx; nd.cy += m.dy; nd.x += m.dx; nd.y += m.dy;
-    });
-    m.px = x; m.py = y;
-    if(x + m.w > W) W = x + m.w;
-    if(m.h > hRang) hRang = m.h;
-    x += m.w + CLGAP;
-  });
-  SCH_W = W;
-  SCH_H = y + hRang;
-  return maps;
+  return grappes(adj).map(function(ids){
+    return infos(bornes(poser(arbre(ids, adj))));
+  }).sort(function(a, b){ return b.ids.length - a.ids.length || b.aire - a.aire; });
 }
 
 /* ---------- les branches ---------------------------------------------------
@@ -372,37 +363,22 @@ function branches(maps){
   return out;
 }
 
-export function drawSchema(host){
-  while(host.firstChild) host.removeChild(host.firstChild);
-  var maps = layout();
-  var eff = Math.max(host.clientWidth || 900, 900) / (SCH_W + 12);
-  var fs = FS, fsSm = FSSM, fsCap = FSCAP;
-
-  var REF = 100, cRef = Math.sqrt(REF), foot = cRef + 12;
-  var svg = s("svg", { viewBox: "-6 -3 " + (SCH_W + 12) + " " + (SCH_H + 8 + foot),
+/* Le dessin d'UNE grappe, à `k` pixels par mètre. L'échelle est commune à
+   toutes les cartes : c'est ce qui permet de comparer deux locaux de deux
+   grappes différentes, et c'est pourquoi le corps des noms, posé en mètres,
+   est le même partout. */
+export function dessinGrappe(T, k){
+  var fs = FS, fsSm = FSSM;
+  var svg = s("svg", { viewBox: T.x0.toFixed(2) + " " + T.y0.toFixed(2) + " "
+      + T.w.toFixed(2) + " " + T.h.toFixed(2),
+    width: Math.round(T.w * k), height: Math.round(T.h * k),
     preserveAspectRatio: "xMinYMin meet", role: "img",
-    "aria-label": "Schéma fonctionnel : les locaux groupés en grappes de proximité, "
-      + "chacune autour du local le plus lié, reliés par les adjacences que le "
-      + "règlement exige." });
-
-  /* --- le cadre d'une grappe, et ce qu'elle regroupe ---
-     Une grappe se lit d'abord comme un tout : elle porte son compte, sa
-     surface, et les pôles qu'elle traverse — car elle en traverse, et c'est
-     précisément ce que les colonnes par pôle ne pouvaient pas montrer. */
-  var gp = s("g", null);
-  maps.forEach(function(m){
-    gp.appendChild(s("rect", { x: m.px, y: m.py, width: m.w, height: m.h, rx: 3,
-      fill: "var(--rule-soft)", "fill-opacity": ".5", stroke: "none" }));
-    var cap = s("text", { x: m.px + PAD, y: m.py + CAPH - 3,
-      "font-size": fsCap, fill: "var(--ink-3)", "letter-spacing": ".1" });
-    cap.textContent = m.cap;
-    gp.appendChild(cap);
-  });
-  svg.appendChild(gp);
+    "aria-label": T.ids.length + " locaux liés autour de " + SMAP[T.hub].n
+      + ", reliés par les adjacences que le règlement exige." });
 
   /* --- branches --- */
   var gl = s("g", { fill: "none" });
-  branches(maps).forEach(function(r){
+  branches([T]).forEach(function(r){
     var lk = r.lk;
     var e = s("path", { d: r.d,
       stroke: lk.opt ? "var(--ink-4)" : "var(--ink-2)",
@@ -424,9 +400,9 @@ export function drawSchema(host){
   });
   svg.appendChild(gl);
 
-  /* --- cartes --- */
-  SNODE.forEach(function(nd){
-    var A = nodeArea(nd);
+  /* --- locaux --- */
+  T.ids.forEach(function(id){
+    var nd = SMAP[id], A = nodeArea(nd);
     var col = nd.f ? "var(" + FMAP[nd.f].c + ")" : "var(--ink-3)";
     var grp = s("g", { "class": "blk", tabindex: "0" });
     /* Le rayon d'angle suit la hauteur : à 1,5 fixe, un rectangle de trois
@@ -449,10 +425,9 @@ export function drawSchema(host){
        il est assez haut, rangée juste dessous sinon. */
     var lines = nd.lines, blk = lines.length * LINEH + SUBH;
     var top0 = nd.labIn ? nd.cy - blk / 2 : nd.y + nd.bh + 1;
-    var ink = nd.labIn ? "var(--ink)" : "var(--ink)";
     lines.forEach(function(ln, i){
       var t = s("text", { x: nd.cx, y: top0 + fs * 0.8 + i * LINEH, "text-anchor": "middle",
-        "font-size": fs, fill: ink, "font-weight": 500 });
+        "font-size": fs, fill: "var(--ink)", "font-weight": 500 });
       t.textContent = ln;
       grp.appendChild(t);
     });
@@ -469,27 +444,22 @@ export function drawSchema(host){
     grp.setAttribute("aria-label", nd.n + (A.hors ? ", hors bilan" : ", " + fmt(A.a) + " mètres carrés"));
     svg.appendChild(grp);
   });
+  return svg;
+}
 
-  /* --- l'étalon : ce que vaut un rectangle -----------------------------------
-     Les surfaces sont écrites sur chaque carte, mais rien ne calibrait l'œil.
-     Un rectangle de référence, posé au pied de la planche, le fait. */
-  var fy = SCH_H + 12;
-  var gf = s("g", null);
-  gf.appendChild(s("rect", { x: 0, y: fy, width: cRef, height: cRef, rx: 1.2,
+/* L'étalon : ce que vaut un rectangle, à l'échelle des cartes. Les surfaces
+   sont écrites sur chaque local, mais rien ne calibrait l'œil. */
+export function etalon(k){
+  var REF = 100, c = Math.sqrt(REF), px = Math.max(4, Math.round(c * k));
+  var d = el("span","adj-etalon");
+  var sv = s("svg", { width: px + 2, height: px + 2, viewBox: "-1 -1 " + (c + 2 / k) + " " + (c + 2 / k),
+    "aria-hidden": "true" });
+  sv.appendChild(s("rect", { x: 0, y: 0, width: c, height: c, rx: 1.2,
     fill: "var(--ink-4)", "fill-opacity": ".18", stroke: "var(--ink-3)",
     "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
-  var ft = s("text", { x: cRef + 4, y: fy + cRef / 2 + fsSm * 0.4, "font-size": fsSm,
-    fill: "var(--ink-3)", "font-family": "'IBM Plex Mono', monospace" });
-  ft.textContent = fmt(REF) + " m² · " + fmt(cRef) + " × " + fmt(cRef) + " m";
-  gf.appendChild(ft);
-  var f2 = s("text", { x: cRef + 46, y: fy + cRef / 2 + fs * 0.35, "font-size": fs,
-    fill: "var(--ink-3)" });
-  f2.textContent = "le dessin est en mètres : un local vaut sa surface, dans ses deux côtés";
-  gf.appendChild(f2);
-  svg.appendChild(gf);
-
-  host.appendChild(svg);
-  return eff;
+  d.appendChild(sv);
+  d.appendChild(el("span","mono", fmt(REF) + " m² · " + fmt(c) + " × " + fmt(c) + " m"));
+  return d;
 }
 
 /* ---------- légende et liste ----------------------------------------------- */
@@ -526,9 +496,9 @@ export function linkKey(){
   return d;
 }
 
-export function linkList(){
+export function linkList(list){
   var ul = el("ul","links");
-  SLINK.forEach(function(lk){
+  (list || SLINK).forEach(function(lk){
     var li = el("li");
     var ic = el("div","ic");
     var sv = s("svg", { width: 13, height: 3, viewBox: "0 0 13 3" });

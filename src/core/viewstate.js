@@ -35,9 +35,11 @@ export var TABS = [
    charges, empilés sur une seule page avant cela : quatre écrans de défilement
    pour revenir d'une adjacence à la surface qu'elle commente.
 
-   Les adjacences ne sont plus un volet du programme : une proximité exigée
-   entre deux locaux n'est pas d'une autre nature qu'une hauteur libre ou une
-   distance au voisin. C'est une contrainte, et elle se lit avec les autres.
+   Les adjacences ont été un onglet, puis un volet, puis la fin des
+   contraintes. Elles sont de nouveau un volet : rangées sous les contraintes,
+   elles se lisaient après quatre écrans de tableaux, et une planche unique
+   laissait trois petites grappes flotter dans le vide de la grande. Chaque
+   grappe a maintenant sa carte, et les cartes demandent leur propre page.
 
    Le volet « Contraintes » d'un OUTIL est d'une autre nature que celui du
    cahier des charges : là on lit ce que le règlement impose, ici on lit — et
@@ -46,7 +48,8 @@ export var TABS = [
 export var SUBS_BY = {
   programme: [
     { id:"surfaces",    label:"Surfaces"    },
-    { id:"contraintes", label:"Contraintes" }
+    { id:"contraintes", label:"Contraintes" },
+    { id:"adjacences",  label:"Adjacences"  }
   ],
   mixer: [
     { id:"repartition", label:"Répartition" },
@@ -58,8 +61,9 @@ export var SUBS_BY = {
   ]
 };
 /* Un volet qui a disparu mène à celui qui l'a repris : les liens ont circulé,
-   ils restent valables. */
-var SALIAS = { adjacences:"contraintes" };
+   ils restent valables. Aucun n'a disparu aujourd'hui : `adjacences`, qui a
+   été un alias des contraintes, est redevenu un volet à part entière. */
+var SALIAS = {};
 
 export var view = {
   tab: "programme",
@@ -111,7 +115,7 @@ export function readHash(){
   var t = seg[0], known = false, named = false, i;
   /* `#adjacences` a circulé comme lien du temps où c'était un onglet : il reste
      valable et mène au volet. */
-  if(t === "adjacences"){ view.tab = "programme"; view.subs.programme = "contraintes"; return true; }
+  if(t === "adjacences"){ view.tab = "programme"; view.subs.programme = "adjacences"; return true; }
   for(i = 0; i < TABS.length; i++) if(TABS[i].id === t) known = true;
   if(known) view.tab = t;
   /* `#programme/fam` a circulé lui aussi, sans volet : le segment peut être un
