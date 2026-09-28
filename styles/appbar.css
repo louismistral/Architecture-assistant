@@ -56,7 +56,10 @@
 @media (max-width:760px){
   .appbar{padding-inline:var(--s-4);gap:var(--s-2) var(--s-3)}
   .appbar__tabs{order:3;margin-left:0;width:100%}
-  .appbar__tabs .btn{flex:1 1 0;min-width:0}
+  /* Quatre destinations ne tiennent pas en 390 px sans rogner leurs noms : elles
+     remplissent la largeur quand elles y tiennent, et défilent sinon — le
+     groupe défile déjà, et l'onglet courant est ramené sous les yeux. */
+  .appbar__tabs .btn{flex:1 0 auto;padding-inline:var(--s-2)}
   .appbar__theme{order:2;margin-left:auto}
 }
 

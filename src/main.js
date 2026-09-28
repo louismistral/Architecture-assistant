@@ -60,7 +60,15 @@ function paintTabs(){
     b.el.tabIndex = on ? 0 : -1;
   });
   var cur = tabBtns.filter(function(b){ return view.tab === b.t.id; })[0];
-  if(cur) document.getElementById("panels").setAttribute("aria-labelledby", cur.el.id);
+  if(cur){
+    document.getElementById("panels").setAttribute("aria-labelledby", cur.el.id);
+    /* Sur un écran étroit, le groupe d'onglets défile : l'onglet courant ne doit
+       pas rester hors du cadre. */
+    var g = cur.el.parentNode;
+    if(g.scrollWidth > g.clientWidth){
+      g.scrollLeft = Math.max(0, cur.el.offsetLeft - (g.clientWidth - cur.el.offsetWidth) / 2);
+    }
+  }
 }
 
 export function goTo(id, focusPanel){

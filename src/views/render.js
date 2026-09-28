@@ -186,6 +186,17 @@ export function render(){
     return;
   }
 
+  /* La typologie — plans et coupes — viendra après le volume. L'onglet est là
+     pour que la chronologie soit entière ; il ne promet rien d'autre. */
+  if(view.tab === "typologie"){
+    var tv = el("section","tab-vide");
+    tv.appendChild(el("h2", null, "Typologie"));
+    tv.appendChild(el("p", null, "Plans et coupes, dessinés dans les volumes que le massing a posés. "
+      + "Cet onglet est à construire."));
+    panelsEl.appendChild(tv);
+    return;
+  }
+
   /* ================= Programme =================
      Trois lectures du même règlement : les surfaces qu'il donne, le cadre qu'il
      impose, les proximités qu'il exige. Elles étaient empilées sur une seule

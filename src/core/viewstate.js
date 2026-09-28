@@ -1,16 +1,16 @@
 /* État de la vue — source unique de vérité.
 
-   TROIS destinations. Les onglets ne sont pas un sommaire : ils sont la
+   QUATRE destinations. Les onglets ne sont pas un sommaire : ils sont la
    CHRONOLOGIE du concours. Chacun se sert de ce que le précédent a décidé.
 
-       Cahier des charges  →  Programme mixer  →  Massing  →  (Typologie)
+       Cahier des charges  →  Programme mixer  →  Massing  →  Typologie
        contraintes            répartition du     volumétrie   plans et coupes
        et surfaces            programme sur      sur le site
                               les niveaux
 
    L'ancien ordre faisait l'inverse : on dessinait le Plan d'un niveau avant
-   d'avoir choisi le Site, donc la typologie décidait du volume. Seule la
-   typologie reste à construire.
+   d'avoir choisi le Site, donc la typologie décidait du volume. La typologie
+   a son onglet, vide : elle reste à construire.
 
    CHAQUE ONGLET A SES VOLETS, et chacun garde le sien. Le cahier des charges
    avait seul des volets ; les deux outils en ont désormais deux — ce qu'ils
@@ -28,7 +28,10 @@
 export var TABS = [
   { id:"programme", label:"Cahier des charges", kind:"doc"  },
   { id:"mixer",     label:"Programme mixer", kind:"tool" },
-  { id:"massing",   label:"Massing", kind:"tool" }
+  { id:"massing",   label:"Massing", kind:"tool" },
+  /* À construire. L'onglet existe pour que la chronologie soit entière, et
+     qu'on sache où la typologie viendra : après le volume, jamais avant. */
+  { id:"typologie", label:"Typologie", kind:"tool" }
 ];
 
 /* Les volets, onglet par onglet. Ils étaient trois pour le seul cahier des

@@ -155,3 +155,10 @@ g.blk{cursor:default}
   .subtabs{width:100%}
   .subtabs .btn{flex:1 1 0;min-width:0}
 }
+
+/* --- un onglet à construire ------------------------------------------------
+   Il dit ce qu'il sera, en une phrase, et rien de plus. */
+.tab-vide{max-width:64ch;margin:var(--s-8) auto;padding:var(--s-6);text-align:center;
+  border:1px dashed var(--rule-strong);border-radius:var(--r-lg)}
+.tab-vide h2{margin:0 0 var(--s-2);font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106}
+.tab-vide p{margin:0;font-size:var(--t-sm);color:var(--ink-2)}
