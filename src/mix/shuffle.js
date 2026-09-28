@@ -219,13 +219,21 @@ function poser(p, cand, alea, pose){
     return { f:f, s: noteNiveau(p, f, pose) + bruit(alea) };
   }).sort(function(a, b){ return b.s - a.s; });
 
+  /* Les niveaux où une adjacence ACTIVE a déjà posé son partenaire : là, la
+     place ne décide pas. Une adjacence active est une règle — le poste y va,
+     quitte à déborder, et le contrôle dira le débordement. Sans cela, un niveau
+     plein renvoyait la salle ACM un étage au-dessus du dépôt qui la sert. */
+  var durs = {};
+  (VOIS[key] || []).forEach(function(v){
+    if(adjActive(v.id)) (pose[v.o] || []).forEach(function(g){ durs[g] = 1; });
+  });
   var want = {}, rest = q, i;
   if(p.solid || estLie(key)){
     want[notes[0].f] = q; rest = 0;
   } else {
     for(i = 0; i < notes.length && rest > 0; i++){
       var f = notes[i].f;
-      var tient = u > 0 ? Math.floor(Math.max(0, libre(f)) / u) : rest;
+      var tient = durs[f] ? rest : (u > 0 ? Math.floor(Math.max(0, libre(f)) / u) : rest);
       var n = Math.min(rest, capParNiveau(p, f), Math.max(0, tient));
       if(n <= 0) continue;
       want[f] = (want[f] || 0) + n;
@@ -472,10 +480,20 @@ export function repartir(opts){
   /* 2 — ce qui doit suivre un autre poste : la scène suit la salle de sport.
          L'ancre est une contrainte de niveau, pas une préférence : on restreint
          donc les candidats au niveau de l'ancre quand il est admissible. */
-  ancres.sort(function(a, b){ return b.a - a.a; }).forEach(function(r){
+  /* Une ancre qui n'est pas encore posée fait ATTENDRE ce qui la suit : le
+     dépôt ACM suit la salle ACM, qui n'est posée qu'avec le reste. Posé
+     avant elle, il choisissait son niveau seul, et elle ne l'y rejoignait pas
+     toujours. */
+  var enAttente = [];
+  function suivre(r){
     var anc = ancreDe(r.p);
     var chez = (pose[anc] || []).filter(function(f){ return r.cand.indexOf(f) >= 0; });
     poser(r.p, chez.length ? chez : r.cand, alea, pose);
+  }
+  ancres.sort(function(a, b){ return b.a - a.a; }).forEach(function(r){
+    var anc = ancreDe(r.p);
+    if(!pose[anc] && libres.some(function(x){ return x.p.key === anc; })){ enAttente.push(r); return; }
+    suivre(r);
   });
 
   /* 3 — le reste, du plus gros au plus petit : un grand poste décide, un petit
@@ -485,6 +503,7 @@ export function repartir(opts){
          déjà sans qu'on le sache. */
   shuffled(libres).sort(function(a, b){ return b.a - a.a; })
                   .forEach(function(r){ poser(r.p, r.cand, alea, pose); });
+  enAttente.forEach(suivre);
 
   equilibrerWC();
 

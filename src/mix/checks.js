@@ -219,9 +219,9 @@ export function mixCheck(){
       + " m² au " + flName(k).toLowerCase()
       + " : deux cages d'escalier compartimentées exigées", "2.6", "", k,
       { code:"cage:" + F.lvl,
-        note: "Deux cages ne se posent pas dans le mixer : elles se dessinent à la "
-          + "typologie. Ici, seul alléger le niveau change quelque chose — un plateau "
-          + "plus petit, ou une partie du programme montée d\u2019un étage." });
+        note: "Leurs mètres carrés sont déjà comptés dans la circulation du niveau ; "
+          + "elles se dessinent à la typologie. Ici, seul alléger le niveau change quelque "
+          + "chose — un plateau plus petit, ou une partie du programme montée d\u2019un étage." });
   });
 
   /* --- un niveau vide sous un niveau chargé ------------------------------- */
