@@ -31,11 +31,14 @@ export var RULES = {
   },
 
   /* --- distances retenues pour l'implantation ---------------------------- */
-  /* `entre` vient de l'AEAI ; `retrait` est le recul du PACom sur le
-     périmètre constructible — une contrainte DURE, tenue par tous les étages,
-     porte-à-faux compris. `couverture` est la terre qu'un sous-sol excavé doit
-     garder au-dessus de la nappe. */
-  dist: { retrait: 5, entre: 6, couverture: 3.0 },
+  /* `entre` est la distance de sécurité INCENDIE entre deux bâtiments — le
+     règlement (art. 2.3) renvoie aux directives AEAI 15-15 sans donner de
+     chiffre ; 5 m est leur cas de base (deux façades à couche extérieure
+     incombustible). C'est la seule distance BLOQUANTE entre bâtiments.
+     `retrait` est un recul de projet sur le périmètre (le règlement ne fixe pas
+     de distance aux limites). `couverture` est la terre qu'un sous-sol excavé
+     garde au-dessus de la nappe — hypothèse de projet. */
+  dist: { retrait: 5, entre: 5, couverture: 3.0 },
 
   /* --- hauteurs ---------------------------------------------------------- */
   /* `libre` : hauteurs libres EXIGÉES par le règlement, par famille ou par

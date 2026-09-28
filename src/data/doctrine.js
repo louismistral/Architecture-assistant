@@ -92,14 +92,17 @@ export var DOC = {
      des poids : elles disent où finit « favorable » et où commence
      « défavorable ». Voir `src/mass/juge.js`. */
 
-  /* Dures. `profMax` borne les DEUX cotes d'un volume (longueur et largeur).
-     `distMin` ne descend pas sous les 6 m de l'AEAI (RULES.dist.entre) :
-     on peut en demander PLUS, le générateur ne vise pas six mètres. La
-     profondeur d'un corps est sa PETITE cote ; `profMin` est le réglage de
-     l'utilisateur, `largeurMin` son plancher absolu. La cour se mesure en
-     surface utile libre devant une façade d'école (500 m² + 120 m² de préau). */
-  distMin: 6,
+  /* Dures : la distance INCENDIE entre bâtiments vit dans RULES.dist.entre
+     (5 m, AEAI 15-15) et ne se règle pas ici. Tout ce qui suit est un
+     PARAMÈTRE de l'utilisateur, noté et jamais bloquant : la distance
+     souhaitée entre bâtiments, et les dimensions souhaitées d'un volume —
+     sa largeur (le grand côté) et sa profondeur (le petit côté), murs compris.
+     Le générateur tire ses cotes dans ces fourchettes ; en sortir baisse la
+     note. La cour se mesure en surface utile libre devant une façade d'école
+     (500 m² + 120 m² de préau). */
+  distVoulue: 6,
   largeurMin: 11,
+  largeurMax: 28,
   profMin: 11,
   profMax: 28,
   courMin: 620,
@@ -133,6 +136,12 @@ export var DOC = {
   passMax: 24,
   passLarg: 3
 };
+
+/* Chaque critère NOTÉ du massing peut être désactivé : `on_<id>` vaut 1 ou 0.
+   La note se recalibre sur les critères actifs — le meilleur reste 100. */
+export var NOTES_MASS = ["dims", "distv", "soleil", "vue", "jour", "compa", "courq", "parti", "prog",
+                         "align", "pente", "elan", "connex", "terrain", "nappe"];
+NOTES_MASS.forEach(function(id){ DOC["on_" + id] = 1; });
 
 /* Les valeurs de départ, pour « Rétablir ». Un réglage qu'on ne peut pas
    défaire n'est pas un réglage. */
@@ -198,12 +207,11 @@ function rangIdx(id){
   for(var i = 0; i < RANGS.length; i++) if(RANGS[i].id === id) return i;
   return RANGS.length;
 }
-/* LE MASSING n'a que trois rangs. `poids` n'est qu'une ÉCHELLE D'AFFICHAGE :
-   chaque critère rend une qualité entre −1 et +1 ; les poids des rangs forte et
-   pref disent leur PROPORTION dans la NOTE, ramenée SUR 100 — une composition
-   qui répond pleinement à tout vaut 100 (`juge.js — noter()`). Une contrainte
-   dure respectée vaut 0, chaque écart coûte 100. Le générateur ne lit pas la
-   note : il choisit par la hiérarchie. */
+/* LE MASSING a trois rangs. Une contrainte DURE ne se note pas : enfreinte, la
+   variante est jetée. Les priorités FORTES et les PRÉFÉRENCES font le SCORE sur
+   100 des variantes valides (`juge.js — noter()`) ; `poids` dit seulement ce
+   qu'un rang pèse contre l'autre — il ne s'affiche pas. Le générateur cherche
+   le score le plus haut. */
 /* Rangs : une contrainte DURE
    rend une variante invalide, une priorité FORTE écarte les variantes qu'une
    autre bat, une PRÉFÉRENCE ne départage que des variantes égales sur les
@@ -366,43 +374,24 @@ export var REGLES = [
      composition à l'écran. */
   { id:"perim", dom:"mass", rang:"dure", titre:"Périmètre constructible et recul PACom",
     val:"5 m de recul, tous les étages, porte-à-faux et passerelles compris",
-    source:"PACom · règlement art. 2.3", lu:"src/mass/gen.js — admissible()",
+    source:"projet — le règlement (art. 2.3) ne fixe pas de distance aux limites",
+    lu:"src/mass/gen.js — admissible()",
     pourquoi:"Tout le bâti reste dans le périmètre du concours, à 5 m au moins de sa "
       + "limite. Un porte-à-faux qui franchit le recul est du bâti hors limite.",
     agit:"Condition d'existence d'une variante. Le recul vit dans RULES.dist.retrait." },
-  { id:"dist", dom:"mass", rang:"dure", titre:"Distance entre bâtiments", k:"distMin",
-    unite:"m au moins", min:6, max:40, pas:0.5, source:"AEAI DPI 16-15",
-    lu:"src/mass/gen.js — admissible()",
-    pourquoi:"Un minimum, pas une cible : deux corps peuvent être bien plus loin. "
-      + "Mesurée à tous les étages. Un corps ACCOLÉ (salle de sport intégrée) fait un "
-      + "seul bâtiment avec son voisin et n'y est pas soumis.",
+  { id:"dist", dom:"mass", rang:"dure", titre:"Distance incendie entre bâtiments",
+    val:"5 m — RULES.dist.entre", source:"règlement art. 2.3 → directive AEAI 15-15",
+    lu:"src/mass/gen.js — admissible() · juge.js — dures()",
+    pourquoi:"La seule distance BLOQUANTE entre deux bâtiments. Le règlement renvoie aux "
+      + "distances de sécurité incendie AEAI sans les chiffrer ; 5 m est le cas de base "
+      + "(deux façades à couche extérieure incombustible). Quelle que soit la distance "
+      + "souhaitée, celle-ci n'est jamais enfreinte.",
     agit:"Jette toute variante où deux bâtiments sont plus près." },
   { id:"existant", dom:"mass", rang:"dure", titre:"Bâtiments existants",
-    val:"rien dessus, et la même distance minimale", source:"règlement art. 2.3 · AEAI",
+    val:"rien dessus, et la distance incendie", source:"règlement art. 2.3 · AEAI 15-15",
     lu:"src/mass/gen.js — admissible()",
     pourquoi:"On ne construit pas sur l'ancien Casino ni à côté de lui sans la distance "
       + "incendie.", agit:"Jette la variante." },
-  { id:"largeur", dom:"mass", rang:"dure", titre:"Largeur minimale d'un corps", k:"largeurMin",
-    unite:"m, sur les deux cotes", min:6, max:20, pas:0.5, source:"projet",
-    lu:"src/mass/juge.js — dures()",
-    pourquoi:"Plancher absolu, à tous les étages : en deçà, un corps n'accueille plus une "
-      + "salle et sa circulation.", agit:"Jette la variante ; borne la profondeur minimale." },
-  { id:"prof", dom:"mass", rang:"dure", titre:"Profondeur minimale d'un corps", k:"profMin",
-    unite:"m", min:6, max:28, pas:0.5, source:"paramètre de l'utilisateur",
-    lu:"src/mass/gen.js — cotes() · src/mass/juge.js — dures()",
-    pourquoi:"La profondeur est la petite cote d'un corps. C'est le premier choix d'un "
-      + "projet d'école, il vous appartient. Elle ne descend pas sous la largeur minimale.",
-    agit:"Le générateur tire ses profondeurs entre ce minimum et le maximum." },
-  { id:"profmax", dom:"mass", rang:"dure", titre:"Dimensions maximales d'un volume", k:"profMax",
-    unite:"m au plus hors tout, en longueur comme en largeur", min:12, max:60, pas:0.5,
-    source:"projet · règlement art. 2.10 pour la salle de sport",
-    lu:"src/mass/juge.js — dures() · gen.js — cotes()",
-    pourquoi:"Aucun volume, à aucun étage ni au sous-sol, ne dépasse cette cote dans l'une ou "
-      + "l'autre direction. C'est une LIMITE, pas une cible : le générateur choisit les "
-      + "proportions librement dessous et pose autant de corps que le programme en demande ; "
-      + "une composition qui la franchit est invalide. Seule exception : la salle de sport "
-      + "double, dont le règlement fixe les cotes à 28 × 32 m.",
-    agit:"Jette la variante ; plafonne la poignée de redimensionnement." },
   { id:"facade", dom:"mass", rang:"dure", titre:"Toutes les salles de classe en façade",
     val:"un corps qui porte des classes n'a pas plus de deux salles de profondeur",
     source:"projet — jour naturel", lu:"src/mass/model.js — profFacade()",
@@ -436,6 +425,33 @@ export var REGLES = [
       + "sur trois environ l'accole au corps principal, et elle fait alors partie du bâtiment.",
     agit:"Jette toute variante qui la surmonte ou la déforme." },
 
+  { id:"dims", dom:"mass", rang:"forte", titre:"Dimensions souhaitées des volumes",
+    val:"largeur et profondeur dans vos fourchettes, murs compris", source:"paramètre de l'utilisateur",
+    lu:"src/mass/partis.js — programme() · juge.js — qualites()",
+    pourquoi:"Vos fourchettes : le générateur y tire ses cotes. Un volume qui en sort n'est "
+      + "pas jeté, il baisse la note. La salle de sport et le second temps, qui ont leurs "
+      + "cotes, ne comptent pas.", agit:"" },
+  { id:"largeurMin", dom:"mass", rang:"forte", titre:"— largeur minimale", k:"largeurMin",
+    unite:"m (grand côté)", min:1, max:200, pas:0.5, source:"paramètre", lu:"", pourquoi:"", agit:"" },
+  { id:"largeurMax", dom:"mass", rang:"forte", titre:"— largeur maximale", k:"largeurMax",
+    unite:"m (grand côté)", min:1, max:300, pas:0.5, source:"paramètre", lu:"", pourquoi:"", agit:"" },
+  { id:"profMin", dom:"mass", rang:"forte", titre:"— profondeur minimale", k:"profMin",
+    unite:"m (petit côté)", min:1, max:100, pas:0.5, source:"paramètre", lu:"", pourquoi:"", agit:"" },
+  { id:"profMax", dom:"mass", rang:"forte", titre:"— profondeur maximale", k:"profMax",
+    unite:"m (petit côté)", min:1, max:100, pas:0.5, source:"paramètre", lu:"", pourquoi:"", agit:"" },
+  { id:"distv", dom:"mass", rang:"forte", titre:"Distance souhaitée entre bâtiments", k:"distVoulue",
+    unite:"m au moins", min:0, max:80, pas:0.5, source:"paramètre de l'utilisateur",
+    lu:"src/mass/partis.js — écarts de la figure · juge.js — qualites()",
+    pourquoi:"Oriente la composition — les écarts entre bâtiments d'une figure la visent — et "
+      + "la note. Jamais bloquante : la distance incendie, elle, l'est toujours.", agit:"" },
+  { id:"parti", dom:"mass", rang:"forte", titre:"Respect du parti",
+    val:"la figure garde la structure de son parti", source:"projet",
+    lu:"src/mass/partis.js — signature() · gen.js — intact()",
+    pourquoi:"Une figure générée l'a par construction ; une composition retouchée à la main "
+      + "peut la perdre.", agit:"" },
+  { id:"prog", dom:"mass", rang:"forte", titre:"Organisation du programme",
+    val:"chaque niveau loge sa surface", source:"programme", lu:"src/mass/model.js — bilan()",
+    pourquoi:"L'écart entre la surface posée et la surface demandée, niveau par niveau.", agit:"" },
   { id:"soleil", dom:"mass", rang:"forte", titre:"Orientation solaire", k:"orientBon",
     unite:"° du sud au plus — favorable", min:5, max:80, pas:5, source:"règlement art. 2.9",
     lu:"src/mass/juge.js — qualites()",
@@ -497,7 +513,8 @@ export var REGLES = [
       + "laissent du terrain posable doit pouvoir les accueillir, avec la cour.", agit:"" },
   { id:"nappe", dom:"mass", rang:"pref", titre:"Nappe et sous-sol",
     val:"3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol",
-    source:"règlement art. 2.3", lu:"src/mass/gen.js — enterrer() · juge.js — qualites()",
+    source:"projet — la nappe (461,77–462,25 m) est au règlement art. 2.3, les 3,00 m non",
+    lu:"src/mass/gen.js — enterrer() · juge.js — qualites()",
     pourquoi:"Même lecture qu'avant, sans l'inverser : l'altitude moyenne du terrain sous "
       + "le corps qui porte un sous-sol doit dépasser la nappe (462,25 m) d'au moins "
       + "3,00 m (RULES.dist.couverture). Le terrain va de 463,3 à 466,7 m : seul le tiers "
