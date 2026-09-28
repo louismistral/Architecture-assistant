@@ -123,7 +123,3 @@ export function resetOpts(){
   dePile = true; dePlat = {}; lies = {}; deL = {}; adjOn = {}; deA = {};
   version++;
 }
-
-/* Le nom d'avant, pour les appelants qui ne connaissent que lui : c'est le
-   même réglage, lu en direct. */
-export { dePile as tirerNiveaux };

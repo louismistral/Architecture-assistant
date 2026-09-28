@@ -29,7 +29,7 @@ import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
 import { repartir } from "../mix/shuffle.js";
 import { saveSoon } from "../mix/store.js";
-import { tirerNiveaux } from "../mix/opts.js";
+import { dePile } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
@@ -214,7 +214,7 @@ function blocTirage(){
   bp.title = "Rebat la répartition du programme dans les étages — c'est le tirage "
            + "du mixer. La volumétrie s'y adapte.";
   bp.addEventListener("click", function(){
-    repartir({ alea:true, etages: tirerNiveaux });
+    repartir({ alea:true, etages: dePile });
     regenere();
     redessine();
   });

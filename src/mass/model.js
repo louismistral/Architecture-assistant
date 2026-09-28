@@ -23,7 +23,7 @@
    et ne cherche qu'une autre solution architecturale. Ils ont donc deux graines
    distinctes : celle du mixer vit dans `core/rand.js`, celle du massing ici.
    ========================================================================= */
-import { CIRC, FMAP, ITEMS } from "../core/model.js";
+import { COULOIR, FMAP, ITEMS } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
 import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
@@ -93,9 +93,12 @@ export function profBornes(){
   return { lo:lo, hi:Math.max(lo, DOC.profMax - m) };
 }
 /* TOUTES LES CLASSES EN FAÇADE. Un corps qui porte des salles de classe n'a pas
-   plus de deux salles de profondeur — prises à leur surface BÂTIE, la
-   circulation y est —, sans quoi une salle se retrouve au milieu, sans fenêtre.
-   La cote vient du programme, au module. */
+   plus de deux salles de profondeur, et le couloir qui les dessert entre elles,
+   sans quoi une salle se retrouve au milieu, sans fenêtre. La salle est prise au
+   carré de sa surface, comme son front sur le couloir, et le couloir à la
+   largeur réglée au cahier des charges : 2 × √72 + 2,40 ≈ 19,5 m au module. La
+   cote vient du programme, pas d'un réglage. Elle se prenait sur une PART de
+   circulation (2 × √(72 / 0,82)) quand la circulation en était une. */
 export function profFacade(){
   var u = 0;
   ITEMS.forEach(function(it){
@@ -103,7 +106,7 @@ export function profFacade(){
     if(!u || it.nb > u.nb) u = it;
   });
   if(!u) return DOC.profMax;
-  return auModule(2 * Math.sqrt(u.u / (1 - CIRC)));
+  return auModule(2 * Math.sqrt(u.u) + COULOIR);
 }
 /* LE MODULE : toute cote de corps est un multiple de `DOC.module` (0,50 m). Une
    seule fonction arrondit, le générateur, les remèdes et la main l'appellent. */
