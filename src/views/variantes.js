@@ -148,8 +148,12 @@ function vignette(thumb){
 /* ---------- le travail non enregistré ----------
    Charger écrase ce qui est à l'écran. On ne le fait pas sans le dire — mais
    on ne le dit que si c'est vrai : un avertissement permanent ne serait plus
-   lu par personne. */
-function sig(){ try{ return JSON.stringify(snapshot()); }catch(_){ return ""; } }
+   lu par personne. L'horodatage de l'instantané n'est pas l'état : deux
+   signatures prises à une milliseconde d'écart différeraient toujours. */
+function sig(){
+  try{ var s = snapshot(); delete s.updatedAt; return JSON.stringify(s); }
+  catch(_){ return ""; }
+}
 export function marqueReference(){ reference = sig(); }
 function travailEnCours(){ return reference !== null && reference !== sig(); }
 
