@@ -339,7 +339,13 @@ function dessine(arr, mode){
 
 /* ---------- la caméra --------------------------------------------------------
    Orbite : tirer tourne, la molette recule, le bouton du milieu ou Maj
-   déplacent le point visé. Trois gestes, et rien à apprendre. */
+   déplacent le point visé. Trois gestes, et rien à apprendre.
+
+   Le modèle SUIT LA MAIN : tirer vers la gauche le fait tourner vers la
+   gauche. C'est donc la caméra qui part dans l'autre sens — `az` croît quand
+   le curseur va à gauche. Le tirage horizontal faisait l'inverse, et l'on
+   tournait le projet à rebours de son geste ; le vertical était juste, il ne
+   change pas. */
 export function camTourne(dAz, dEl){
   CAM.az += dAz;
   CAM.el = Math.max(.05, Math.min(1.5, CAM.el + dEl));
@@ -382,7 +388,7 @@ function wire3d(){
     var dx = e.clientX - drag3.x, dy = e.clientY - drag3.y;
     drag3.x = e.clientX; drag3.y = e.clientY;
     if(drag3.pan) camPan(dx, dy);
-    else camTourne(dx * .006, dy * .004);
+    else camTourne(-dx * .006, dy * .004);
     vue3dDraw();
     if(onChange3) onChange3("cam");
   });
