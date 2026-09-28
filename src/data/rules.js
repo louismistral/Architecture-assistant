@@ -58,15 +58,44 @@ export var RULES = {
     }
   },
 
-  /* --- part de circulation ----------------------------------------------- */
-  /* Hypothèse de PROJET, pas un chiffre du règlement : la part de la surface
-     bâtie qui n'est pas un local du programme — couloirs, escaliers, paliers,
-     sas, gaines. Elle se règle dans le cahier des charges, parmi les surfaces à
-     préciser, et c'est de là que tous les onglets suivants la lisent.
-     Convention, une seule dans tout le projet : c'est une part de la surface
-     BÂTIE, donc bâti = utile / (1 − part). Une part de 0,18 ajoute 22 % à la
-     surface utile, et non 18 %. */
-  circ: { def: 0.18, min: 0.05, max: 0.45 },
+  /* --- circulation ------------------------------------------------------- */
+  /* Hypothèse de PROJET, pas un chiffre du règlement : la surface bâtie qui
+     n'est pas un local du programme — couloirs, escaliers, paliers. Elle se
+     règle dans le cahier des charges, parmi les surfaces à préciser, et c'est
+     de là que tous les onglets suivants la lisent.
+
+     Elle était une PART de la surface bâtie, 18 % : la salle de sport double,
+     une pièce de 896 m², recevait donc autant de couloir au mètre carré que
+     neuf WC de 2 m². Un couloir ne dessert pas des mètres carrés, il dessert des
+     PORTES. La circulation se déduit maintenant des pièces :
+
+       couloir = Σ front de chaque pièce × largeur ÷ rangs desservis
+       front   = √(surface de la pièce), le côté qu'elle ouvre sur le couloir
+       cages   = une ou deux par niveau (`feu.cageSeuil`), `cage` m² chacune
+
+     La part de la surface bâtie devient un RÉSULTAT, qu'on affiche. */
+  circ: {
+    /* largeur du couloir, en mètres — la seule saisie. 2,40 m : le couloir
+       d'école courant, où deux classes se croisent. */
+    couloir: { def: 2.40, min: 1.50, max: 4.00 },
+    /* un couloir dessert deux rangées de locaux, une de chaque côté : il ne
+       compte que pour moitié devant chacune */
+    rangs: 2,
+    /* sous cette surface unitaire, les pièces d'un même poste se groupent en un
+       bloc qui n'ouvre qu'une porte : neuf WC de 2 m² sont un bloc sanitaire,
+       pas neuf façades sur le couloir */
+    bloc: 12,
+    /* au-delà de ce front, un grand local n'en demande pas davantage : on entre
+       dans une salle de sport par une porte, pas par ses 32 m de long */
+    frontMax: 12,
+    /* une cage d'escalier compartimentée, palier et ascenseur compris, en m²
+       par niveau */
+    cage: 24,
+    /* la pile que le cahier des charges suppose AVANT le mixer, pour compter ses
+       cages : un rez et deux étages, ce que le règlement admet pour les classes.
+       Le mixer, lui, compte les cages de la pile qu'il porte. */
+    niveaux: 3
+  },
 
   /* --- 2.6 protection incendie, AEAI DPI 16-15 art. 2.4 et 3.4 (écoles) --- */
   feu: {
