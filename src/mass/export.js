@@ -38,6 +38,7 @@
    s'écrit dans le fichier est en ASCII : un nom de calque accentué arrive
    mutilé selon la version de Rhino.
    ========================================================================= */
+import { dec } from "../core/format.js";
 import { RULES } from "../data/rules.js";
 import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain } from "./geom.js";
@@ -172,7 +173,7 @@ export function objMassing(o){
     "#   Perimetre     perimetre du concours, polyligne fermee drapee sur le terrain",
     "#   " + (gRecul + "            ").slice(0, 14) + "recul PACom de " + String(recul).replace(".", ",")
       + " m, polyligne(s) fermee(s) drapee(s) sur le terrain",
-    "# Non modelises : l'acrotere (" + RULES.haut.acrotere.toFixed(2).replace(".", ",")
+    "# Non modelises : l'acrotere (" + dec(RULES.haut.acrotere)
       + " m), le programme a l'interieur des volumes.",
     "# " + MASS.vol.length + " volumes, " + nEt + " etages, " + nPont + " passerelles.",
     ""

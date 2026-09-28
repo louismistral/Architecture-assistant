@@ -35,11 +35,7 @@ import {
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
 import { MASS, bilan, niveaux, pontRect, profBornes, secondTemps,
-  volHaut } from "./model.js";
-
-function nom(v, k){
-  return v.nom || (v.fix ? "Salle de sport double" : "Volume " + (k + 1));
-}
+  volHaut, volTitre as nom } from "./model.js";
 
 var COUR = courProgramme();
 

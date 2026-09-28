@@ -15,7 +15,7 @@
    et le ou les REMÈDES qui le résoudraient (`fix.js`). Dire ce qui ne va pas
    sans dire ce qui le réparerait laisse tout le travail à faire.
    ========================================================================= */
-import { fmt } from "../core/format.js";
+import { dec, fmt } from "../core/format.js";
 import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import {
@@ -103,9 +103,9 @@ export function mixCheck(){
       + "se passent de lumière naturelle", "2.10", p.n, b.fl,
       { code:"jour:" + p.key, keys: [p.key], fix: fixDeplacer(p.key, nivCible(p, b.fl)) });
   });
-  if(sub) add("w", "Nappe phréatique relevée à " + RULES.site.nappe[1].toFixed(2).replace(".", ",")
+  if(sub) add("w", "Nappe phréatique relevée à " + dec(RULES.site.nappe[1])
     + " m : la marge sous le terrain naturel va de 1,0 m à l'ouest à 4,5 m à l'est — un sous-sol "
-    + "excavé demande " + RULES.dist.couverture.toFixed(2).replace(".", ",")
+    + "excavé demande " + dec(RULES.dist.couverture)
     + " m de couverture, il n'est tenable qu'au tiers est du périmètre", "2.3", "", null,
     { code:"nappe", fix: fixCombler() });
 
@@ -142,7 +142,7 @@ export function mixCheck(){
     var reste = FLOORS[b.fl].plate - aOf(b.key, b.q);
     for(var k = b.fl + 1; k < FLOORS.length; k++){
       if(FLOORS[k].plate > reste + 0.5 && flCount(k)){
-        add("e", p.n + " demande " + p.hlibre.toFixed(2).replace(".", ",")
+        add("e", p.n + " demande " + dec(p.hlibre)
           + " m de hauteur libre : rien ne se pose dessus. Le " + flName(k).toLowerCase()
           + " ne dispose que des " + fmt(Math.round(Math.max(0, reste)))
           + " m² laissés libres à côté d'elle", "2.10", flName(k), k,

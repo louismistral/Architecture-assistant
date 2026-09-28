@@ -23,14 +23,12 @@
    contrediraient à chaque clic.
    ========================================================================= */
 import { dec } from "../core/format.js";
+import { acte } from "../mix/fix.js";
 import { repartir } from "../mix/shuffle.js";
 import {
   admissible, ecarter, genMass, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
 import { MASS, auModule, massSet, massVols, niveaux, profBornes, profFacade, volEtage }
   from "./model.js";
-
-/* Un remède : ce qu'on propose, ce que ça coûte, et ce que ça fait. */
-export function acte(label, hint, run){ return { label:label, hint:hint, run:run }; }
 
 function vol(i){ return (i >= 0 && MASS.vol[i]) ? MASS.vol[i] : null; }
 /* Ce qu'on rejoue quand la géométrie d'un volume a changé : rien ne garantit

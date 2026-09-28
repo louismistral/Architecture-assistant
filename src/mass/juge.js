@@ -30,11 +30,10 @@ import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
 import { CONTACT, MASS, horsModule, horsSol, pontRect, niveaux, postesDe,
-  profFacade, volRect } from "./model.js";
+  profFacade, volRect, volTitre as nomV } from "./model.js";
 import { ecartVols, intact, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
 
 var DEG = Math.PI / 180;
-function nomV(v, k){ return v.nom || (v.fix ? "Salle de sport" : "Volume " + (k + 1)); }
 function ecole(vols){ return vols.filter(function(v){ return !v.ph; }); }
 
 /* ---------- la part de classes d'un corps -----------------------------------

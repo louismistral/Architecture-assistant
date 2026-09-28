@@ -395,6 +395,11 @@ export function pontEtage(p){
 export function volNom(v, k){
   return v.nom ? v.nom : v.fix ? "Sport" : "V" + (k + 1);
 }
+/* Le même nom, en toutes lettres : pour les messages du contrôle et du juge,
+   qui ne peuvent pas écrire « V3 sort du périmètre ». */
+export function volTitre(v, k){
+  return v.nom || (v.fix ? "Salle de sport" : "Volume " + (k + 1));
+}
 
 /* ---------- le bilan : ce que le massing doit au programme -------------------
    La question que l'outil doit savoir répondre à tout moment : la surface

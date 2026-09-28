@@ -605,9 +605,9 @@ function floorNode(i){
 
   /* La hauteur n'est pas un réglage : elle est une conséquence du programme
      porté par le niveau, et c'est elle qui donnera sa silhouette au volume. */
-  var h = el("span","mix-fl__h mono", flHeight(i).toFixed(2).replace(".", ",") + " m");
-  h.title = "Hauteur de niveau : " + flLibre(i).toFixed(2).replace(".", ",")
-    + " m libres + " + RULES.haut.dalle.toFixed(2).replace(".", ",") + " m de dalle";
+  var h = el("span","mix-fl__h mono", dec(flHeight(i)) + " m");
+  h.title = "Hauteur de niveau : " + dec(flLibre(i))
+    + " m libres + " + dec(RULES.haut.dalle) + " m de dalle";
   bar.appendChild(h);
 
   bar.appendChild(el("span","spacer"));

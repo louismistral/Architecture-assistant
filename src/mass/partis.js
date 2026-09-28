@@ -30,6 +30,7 @@
 import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import { auModule } from "./model.js";
+import { coins, ecart } from "./geom.js";
 
 var M2 = function(){ return 2 * RULES.haut.mur; };
 /* Deux distances, qui ne se confondent pas : l'écart que la figure VISE entre
@@ -330,26 +331,10 @@ var FIG = {
    volumes d'un même bâtiment ne se recouvrent pas. Vérifié sur la figure, avant
    même qu'elle soit posée. */
 function rectDe(s){ return { x:s.x, y:s.y, w:Lout(s), d:Dout(s.d), a:s.a }; }
-function ecartRects(a, b){
-  var A = coinsL(a), B = coinsL(b), axes = [a.a, a.a + Math.PI / 2, b.a, b.a + Math.PI / 2];
-  var best = -Infinity;
-  axes.forEach(function(t){
-    var ax = [Math.cos(t), Math.sin(t)], a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
-    A.forEach(function(p){ var q = p[0] * ax[0] + p[1] * ax[1]; a0 = Math.min(a0, q); a1 = Math.max(a1, q); });
-    B.forEach(function(p){ var q = p[0] * ax[0] + p[1] * ax[1]; b0 = Math.min(b0, q); b1 = Math.max(b1, q); });
-    best = Math.max(best, Math.max(b0 - a1, a0 - b1));
-  });
-  return best;
-}
-function coinsL(rc){
-  var c = Math.cos(rc.a), s = Math.sin(rc.a), hw = rc.w / 2, hd = rc.d / 2;
-  return [[rc.x - hw * c + hd * s, rc.y - hw * s - hd * c], [rc.x + hw * c + hd * s, rc.y + hw * s - hd * c],
-          [rc.x + hw * c - hd * s, rc.y + hw * s + hd * c], [rc.x - hw * c - hd * s, rc.y - hw * s + hd * c]];
-}
 function ecartsTiennent(S){
   for(var i = 0; i < S.length; i++){
     for(var j = i + 1; j < S.length; j++){
-      var e = ecartRects(rectDe(S[i]), rectDe(S[j]));
+      var e = ecart(rectDe(S[i]), rectDe(S[j]));
       var meme = S[i].bat === S[j].bat;
       if(e < -.15) return false;
       if(e < FEU() - .01 && !meme) return false;
@@ -369,7 +354,7 @@ function paralleles(S){
 function boite(S){
   var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, a = 0;
   S.forEach(function(s){
-    coinsL(rectDe(s)).forEach(function(p){
+    coins(rectDe(s)).forEach(function(p){
       x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]);
     });
     a += Lout(s) * Dout(s.d);
