@@ -50,6 +50,26 @@ connaît pas, sur des fichiers de mille lignes.
 - la branche mergée se supprime ;
 - si la session impose son propre nom de branche, on la renomme ou on la merge vite.
 
+### Le déroulé d'une tâche
+
+Plusieurs sessions tournent en parallèle, en local comme dans le cloud, et **tout changement
+fini doit se voir sur le site en ligne** — donc finir veut dire : sur `main`.
+
+1. **Avant de commencer** — si la demande est ambiguë, on pose la question jusqu'à ce qu'elle
+   soit claire. Pas une ligne avant.
+2. **Partir d'un `main` à jour** — `git fetch origin main`, puis
+   `git checkout -b prénom/sujet origin/main`.
+3. **Travailler**, en s'aidant des plugins et skills utiles à la tâche.
+4. **Vérifier** — il n'y a pas de build : les trois snapshots de la section *Vérifier* en
+   tiennent lieu. S'ils ne passent pas, on ne va pas plus loin.
+5. **Commiter, puis se rebaser sur le dernier `main`** — `git fetch origin main`,
+   `git rebase origin/main`, résoudre les conflits (`site.js` : voir plus haut), **rejouer les
+   snapshots** après toute résolution.
+6. **Pousser et merger dans `main`** — la tâche n'est finie que là.
+
+**Ne jamais perdre de travail** : une branche qui porte des commits non mergés ne se supprime
+pas — ni en local, ni sur `origin`. Seule une branche entièrement mergée s'efface.
+
 ### Se partager le travail
 
 Par **onglet**, pas par fichier — le découpage existe déjà.
