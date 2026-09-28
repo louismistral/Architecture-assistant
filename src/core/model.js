@@ -29,7 +29,7 @@ CHAP.forEach(function(ch, ci){
 
 FAM.forEach(function(f){ f.items.sort(function(a,b){ return b.tot - a.tot; }); });
 
-export var PROG = 6489, ESTT = 0, GRAND = 6489, BUILT = 5089, GAP = 1.2;
+export var PROG = 6489, ESTT = 0, GRAND = 6489, BUILT = 5089;
 export var ITEMS = [], VARITEMS = [];
 CHAP.forEach(function(ch){ ch.items.forEach(function(it){ ITEMS.push(it); if(it.est) VARITEMS.push(it); }); });
 export var ITEMBYKEY = {}; ITEMS.forEach(function(it){ ITEMBYKEY[it.key] = it; });

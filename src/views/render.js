@@ -1,4 +1,5 @@
 import { dec, el, fmt } from "../core/format.js";
+import { s as svgEl } from "../core/svg.js";
 import {
   ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, COULOIR, ESTT, FMAP, GRAND, GRANDG, PROG,
   setCirc, setItemArea
@@ -12,7 +13,7 @@ import { drawMass, massDoctrine, massPanel, setMassNav } from "./massing.js";
 import { drawMix, mixDoctrine, mixPanel, setMixNav } from "./mixer.js";
 import { saveSoon } from "../mix/store.js";
 import { constraintsSection } from "./constraints.js";
-import { drawDiagram, panelsEl, ppm, refreshPpm, scaleBar } from "./diagram.js";
+import { CIRCPAT, hatchDefs, panelsEl, scaleBar } from "./diagram.js";
 import {
   introSection, legendBlock, renderBar, renderLegend, setAreaHandler,
   setCircHandler, varBlock
@@ -56,29 +57,6 @@ function allerAuVolet(sub){
 setMixNav(allerAuVolet);
 setMassNav(allerAuVolet);
 
-export function scheduleList(items, showChap){
-  var ul = el("ul","schedule");
-  items.forEach(function(it){
-    var li = el("li");
-    var sw = el("i","sw"); sw.style.backgroundColor = "var(" + FMAP[it.f].c + ")";
-    if(it.f === "tec") sw.classList.add("is-hatched");
-    li.appendChild(sw);
-    var nm = el("div","nm");
-    nm.appendChild(el("b", null, it.n));
-    if(it.est){
-      nm.appendChild(document.createTextNode(" "));
-      nm.appendChild(el("span","esttag", it.set ? "fixée" : "à préciser"));
-    }
-    var sub = (showChap ? it.chap : "") + (showChap && it.note ? " · " : "") + (it.note || "");
-    if(sub) nm.appendChild(el("span","note", sub));
-    li.appendChild(nm);
-    li.appendChild(el("span","qty", it.nb + " × " + fmt(it.u)));
-    li.appendChild(el("span","val", fmt(it.tot) + " m²"));
-    ul.appendChild(li);
-  });
-  return ul;
-}
-
 /* ---------- barre de vue de la section des surfaces ----------
    Le regroupement et le niveau de détail étaient dans le chrome global, au même
    rang que la navigation : un réglage ressemblait à une destination, et le
@@ -107,10 +85,10 @@ function programmeBar(){
 
   bar.appendChild(group("Grouper par", "Regroupement du programme",
     [["chap","Chapitres"],["fam","Familles"]], "group", render));
-  bar.appendChild(group("Détail", "Niveau de détail des diagrammes",
-    [["agg","Groupé"],["unit","Détaillé"]], "mode", render));
+  bar.appendChild(group("À l’échelle", "Ce que dessine la colonne à l’échelle",
+    [["agg","Un carré par poste"],["unit","Un carré par pièce"]], "mode", render));
   bar.appendChild(el("span","spacer"));
-  bar.appendChild(scaleBar());
+  bar.appendChild(scaleBar(NOMEN_K, 20));
   return bar;
 }
 
@@ -184,7 +162,6 @@ function sectHead(n, titre, sous){
 }
 
 export function render(){
-  refreshPpm();
   while(panelsEl.firstChild) panelsEl.removeChild(panelsEl.firstChild);
   tip.style.opacity = "0";
   renderBar();
@@ -240,96 +217,177 @@ export function render(){
   host.appendChild(legendBlock());
   host.appendChild(programmeBar());
 
-  var W = (host.clientWidth || panelsEl.clientWidth || 900) / ppm;
-  var fs = 11 / ppm, fsSm = 9.5 / ppm;
+  host.appendChild(nomenclature());
+  host.appendChild(totalsSection());
+  host.appendChild(sourcesSection());
+}
 
-  /* `circ` est la part de circulation que porte le groupe, au prorata de ce
-     qu'il pèse dans le bâti scolaire ; `gross` est sa somme, circulation
-     comprise. Les deux viennent du modèle : rien n'est recalculé ici. */
+/* ---------- la nomenclature ------------------------------------------------
+   Le volet dessinait chaque ensemble comme une planche de carrés sur un
+   quadrillage de 10 m, sous un titre qui portait cinq chiffres, et repliait la
+   liste des postes sous un décompte. Le dessin devenait l'illustration de sa
+   propre légende : on survolait les carrés pour lire ce que la liste cachait.
+
+   La liste est désormais la vue : UN tableau, un ensemble par groupe de
+   lignes, et chaque ligne porte en marge un carré À L'ÉCHELLE — la même pour
+   toutes, `NOMEN_K` pixels par mètre —, ou une rangée de carrés, un par pièce.
+   On compare encore les tailles d'un coup d'œil, et l'on lit les chiffres sans
+   les chercher. La circulation a sa ligne dans chaque ensemble, hachurée.
+
+   `circ` est la part de circulation que porte le groupe — les couloirs de SES
+   pièces et sa part des cages ; `gross` est sa somme, circulation comprise. Les
+   deux viennent du modèle : rien n'est recalculé ici. */
+var NOMEN_K = 1.6, NOMEN_GW = 168;
+function nomenclature(){
   var groups = view.group === "chap"
     ? CHAP.map(function(c){ return { name:c.name, sub:c.sub, total:c.total, circ:c.circ,
-        gross:c.gross, items:c.items, mix:c.mix, off:c.off, col:null }; })
+        gross:c.gross, items:c.items, off:c.off, col:null }; })
     : FAM.filter(function(f){ return f.items.length; }).map(function(f){
         return { name:f.name, sub:f.d.charAt(0).toUpperCase() + f.d.slice(1) + ".", total:f.total,
-                 circ:f.circ, gross:f.gross, items:f.items, mix:null, off:[], col:f.c };
+                 circ:f.circ, gross:f.gross, items:f.items, off:[], col:f.c };
       });
+  var fam = view.group === "fam";
+
+  var wrap = el("div","nomen");
+  wrap.appendChild(hatchDefs());
+  var tb = el("table","nomen__t");
+  tb.appendChild(el("caption","vh", "Programme des locaux, par "
+    + (fam ? "famille d’usage" : "chapitre") + " : nombre, surface unitaire, surface et part, "
+    + "avec un dessin à l’échelle de chaque poste"));
+  var thd = el("thead"), tr0 = el("tr");
+  [["Poste",""],["À l’échelle",""],["Nombre","n"],["Unité","n"],["Surface","n"],["Part","n"]]
+    .forEach(function(c){ var th = el("th", c[1], c[0]); th.scope = "col"; tr0.appendChild(th); });
+  thd.appendChild(tr0); tb.appendChild(thd);
 
   groups.forEach(function(gp){
-    var p = el("section","panel");
-    var head = el("div","panel-head");
-    var r = el("i","panel-rule");
-    if(gp.col) r.style.backgroundColor = "var(" + gp.col + ")";
-    head.appendChild(r);
-    head.appendChild(el("h3", null, gp.name));
-    /* Le chiffre du chapitre est sa surface BÂTIE : le programme plus la part de
-       circulation qu'il porte. Il n'affichait que le programme, alors que le
-       reste de l'application — le mixer, les plateaux, les hauteurs — travaille
-       sur le bâti. La décomposition suit, pour qu'on voie d'où vient l'écart. */
-    head.appendChild(el("span","tot mono", fmt(Math.round(gp.gross)) + " m²"));
+    var body = el("tbody"), trg = el("tr","nomen__g"), th = el("th");
+    th.colSpan = 6; th.scope = "rowgroup";
+    var hd = el("div","nomen__gh");
+    var nm = el("span","nomen__gn");
+    if(gp.col){ var sw = el("i","sw"); sw.style.backgroundColor = "var(" + gp.col + ")"; nm.appendChild(sw); }
+    nm.appendChild(document.createTextNode(gp.name));
+    hd.appendChild(nm);
+    /* Le chiffre du groupe est sa surface BÂTIE : le programme plus la
+       circulation qu'il porte. Le reste de l'application — le mixer, les
+       plateaux, les hauteurs — travaille sur le bâti. */
+    hd.appendChild(el("span","nomen__gt mono", fmt(Math.round(gp.gross)) + " m²"));
+    th.appendChild(hd);
+    var pieces = gp.items.reduce(function(a, i){ return a + i.nb; }, 0);
+    th.appendChild(el("span","nomen__gs",
+      gp.items.length + " postes · " + pieces + " pièces · " + fmt(gp.total) + " m² de programme"
+      + (gp.circ > 0.5 ? " + " + fmt(Math.round(gp.circ)) + " m² de circulation" : "")
+      + " · " + Math.round(gp.gross / GRANDG * 100) + " % du total"));
+    if(gp.sub) th.appendChild(el("span","nomen__gd", gp.sub));
+    trg.appendChild(th); body.appendChild(trg);
+
+    gp.items.forEach(function(it){ body.appendChild(ligne(it, gp, fam)); });
     if(gp.circ > 0.5){
-      head.appendChild(el("span","pct mono",
-        fmt(gp.total) + " + " + fmt(Math.round(gp.circ)) + " de circulation"));
+      body.appendChild(ligne({ n:"Circulation", nb:1, u:gp.circ, tot:gp.circ, f:null, circ:1,
+        note:"couloirs de " + dec(COULOIR) + " m devant ses pièces, et sa part des cages d’escalier" }, gp, fam));
     }
-    head.appendChild(el("span","pct mono", Math.round(gp.gross / GRANDG * 100) + " % du total"));
-    p.appendChild(head);
-    if(gp.sub) p.appendChild(el("p","panel-sub", gp.sub));
-    if(gp.mix && gp.mix.length > 1){
-      var mb = el("div","mixbar");
-      gp.mix.forEach(function(m){
-        var i2 = el("i");
-        i2.style.flex = m.v + " 0 0";
-        i2.style.backgroundColor = "var(" + m.f.c + ")";
-        i2.title = m.f.name + " — " + fmt(m.v) + " m²";
-        mb.appendChild(i2);
-      });
-      p.appendChild(mb);
-    }
-    var d = el("div","diagram");
-    p.appendChild(d);
-
-    /* La liste répétait intégralement le diagramme, jusqu'à dix-sept lignes
-       par chapitre : le dessin devenait une illustration de sa propre légende.
-       Elle reste — c'est le seul accès aux petits postes non étiquetés — mais
-       repliée derrière son propre décompte. */
-    var det = el("details","disclose");
-    det.appendChild(el("summary", null,
-      gp.items.length + " postes · " + fmt(gp.total) + " m²"
-      + (gp.circ > 0.5 ? " de programme" : "")));
-    det.appendChild(scheduleList(gp.items, view.group === "fam"));
+    /* « Non chiffré au programme » désignait DEUX statuts opposés à 30 cm
+       d'écart : ces postes-ci n'ont aucune surface et ne comptent dans aucun
+       total, tandis que les huit postes « à préciser » en ont une et sont dans
+       les 7'025 m². */
     if(gp.off && gp.off.length){
-      var o = el("div","unpriced");
-      /* « Non chiffré au programme » désignait DEUX statuts opposés à 30 cm
-         d'écart : ces postes-ci n'ont aucune surface et ne comptent dans aucun
-         total, tandis que les huit postes « à préciser » en ont une et sont
-         dans les 7'025 m². L'écart se chiffrait en centaines de m². */
-      o.appendChild(el("b", null, "Hors bilan — "));
-      o.appendChild(document.createTextNode(gp.off.join(" · ")));
-      o.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
-      det.appendChild(o);
+      var tro = el("tr","nomen__off"), td = el("td");
+      td.colSpan = 6;
+      td.appendChild(el("b", null, "Hors bilan — "));
+      td.appendChild(document.createTextNode(gp.off.join(" · ")));
+      td.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
+      tro.appendChild(td); body.appendChild(tro);
     }
-    p.appendChild(det);
-
-    host.appendChild(p);
-    drawDiagram(d, gp.items, W, fs, fsSm, Math.round(gp.circ),
-      "couloirs de " + dec(COULOIR) + " m devant ses pièces, et sa part des cages d’escalier");
-    d.querySelector("svg").setAttribute("aria-label",
-      gp.name + " — " + fmt(Math.round(gp.gross)) + " m² représentés à l’échelle, dont "
-      + fmt(gp.total) + " m² de programme"
-      + (gp.circ > 0.5 ? " et " + fmt(Math.round(gp.circ)) + " m² de circulation" : ""));
+    tb.appendChild(body);
   });
+  var sc = el("div","nomen__scroll");
+  sc.appendChild(tb);
+  wrap.appendChild(sc);
 
-  if(view.group === "fam" && ALL_OFF.length){
-    var box = el("section","panel panel--plain");
+  if(fam && ALL_OFF.length){
     var o2 = el("div","unpriced");
     o2.appendChild(el("b", null, "Hors bilan — "));
     o2.appendChild(document.createTextNode(ALL_OFF.join(" · ")));
     o2.appendChild(el("span","note", "mentionnés au règlement, jamais comptés dans les totaux."));
-    box.appendChild(o2);
-    host.appendChild(box);
+    wrap.appendChild(o2);
   }
+  return wrap;
+}
 
-  host.appendChild(totalsSection());
-  host.appendChild(sourcesSection());
+/* Une ligne de la nomenclature : le nom, sa note, le dessin, les chiffres. */
+function ligne(it, gp, fam){
+  var tr = el("tr", it.circ ? "is-circ" : null);
+  var tn = el("td","nomen__nm"), inn = el("div","nomen__in");
+  var sw = el("i","sw");
+  if(it.circ) sw.classList.add("sw--circ");
+  else {
+    sw.style.backgroundColor = "var(" + FMAP[it.f].c + ")";
+    if(it.f === "tec") sw.classList.add("is-hatched");
+    if(it.est) sw.classList.add("sw--dashed");
+  }
+  inn.appendChild(sw);
+  var t = el("div");
+  var b = el("b", null, it.n);
+  t.appendChild(b);
+  if(it.est){
+    t.appendChild(document.createTextNode(" "));
+    t.appendChild(el("span","esttag", it.set ? "fixée" : "à préciser"));
+  }
+  var sub = (fam && it.chap ? it.chap : "") + (fam && it.chap && it.note ? " · " : "") + (it.note || "");
+  if(sub) t.appendChild(el("span","note", sub));
+  inn.appendChild(t);
+  tn.appendChild(inn); tr.appendChild(tn);
+
+  var tg = el("td","nomen__gl");
+  tg.appendChild(glyphe(it));
+  tr.appendChild(tg);
+  tr.appendChild(el("td","n", it.circ ? "—" : String(it.nb)));
+  tr.appendChild(el("td","n", it.circ ? "—" : fmt(it.u) + " m²"));
+  tr.appendChild(el("td","n", fmt(Math.round(it.tot)) + " m²"));
+  var tp = el("td","n"), pt = el("div","nomen__part"), bar = el("i");
+  var part = gp.gross > 0 ? it.tot / gp.gross : 0;
+  bar.style.width = Math.max(1, part * 60).toFixed(1) + "px";
+  pt.appendChild(bar);
+  pt.appendChild(document.createTextNode(Math.round(part * 100) + " %"));
+  tp.appendChild(pt); tr.appendChild(tp);
+  return tr;
+}
+
+/* Le dessin d'un poste, à l'échelle commune : un carré de sa surface — ou ses
+   cotes quand le règlement les impose, la salle double fait 32 × 28 m —, ou
+   une rangée de carrés, un par pièce. La couleur est celle de la famille, la
+   hachure celle du technique et de la circulation, le tireté celui des
+   surfaces à préciser : les mêmes conventions que partout ailleurs. */
+function glyphe(it){
+  var K = NOMEN_K, GW = NOMEN_GW;
+  var col = it.circ ? "var(--ink-4)" : "var(" + FMAP[it.f].c + ")";
+  var fill = it.circ ? "url(#" + CIRCPAT + ")" : (it.f === "tec" ? "url(#" + CIRCPAT + "-tec)" : col);
+  var op = it.circ || it.f === "tec" ? "1" : (it.est ? "0.1" : "var(--fill-op)");
+  function carre(g, x, y, w, h){
+    var r = svgEl("rect", { x: x + .5, y: y + .5, width: Math.max(1, w - .5), height: Math.max(1, h - .5),
+      fill: fill, "fill-opacity": op, stroke: col, "stroke-width": 1 });
+    if(it.est) r.setAttribute("stroke-dasharray", "3 2");
+    g.appendChild(r);
+  }
+  var g = svgEl("g", { "class": "blk" }), W, H;
+  if(view.mode === "agg" || it.nb === 1 || it.circ){
+    var w = it.w ? it.w * K : Math.sqrt(it.tot) * K, h = it.h ? it.h * K : w;
+    w = Math.max(2, Math.min(w, GW)); h = Math.max(2, h);
+    carre(g, 0, 0, w, h);
+    W = w + 1; H = h + 1;
+  } else {
+    var c = Math.max(2, Math.sqrt(it.u) * K), gap = c < 5 ? 1 : 2;
+    var per = Math.max(1, Math.floor((GW + gap) / (c + gap))), rows = Math.ceil(it.nb / per);
+    for(var i = 0; i < it.nb; i++) carre(g, (i % per) * (c + gap), Math.floor(i / per) * (c + gap), c, c);
+    W = Math.min(it.nb, per) * (c + gap); H = rows * (c + gap);
+  }
+  var svg = svgEl("svg", { width: Math.ceil(W), height: Math.ceil(H), viewBox: "0 0 " + Math.ceil(W) + " " + Math.ceil(H),
+    role: "img", "aria-label": it.n + ", " + fmt(Math.round(it.tot)) + " m² à l’échelle" });
+  var quoi = it.circ ? "Hors des huit familles d’usage" : FMAP[it.f].name;
+  g.setAttribute("data-tip", it.n + (it.est ? "  (à préciser)" : "") + "|"
+    + (it.nb > 1 ? it.nb + " × " + fmt(it.u) + " m² = " : "") + fmt(Math.round(it.tot)) + " m²"
+    + (it.w && it.h ? " · " + it.w + " × " + it.h + " m" : "") + "|" + quoi + (it.note ? " · " + it.note : ""));
+  svg.appendChild(g);
+  return svg;
 }
 
 /* ---------- adjacences ----------

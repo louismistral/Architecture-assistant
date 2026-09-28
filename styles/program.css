@@ -10,33 +10,54 @@
 .panel-head .tot{font-family:var(--mono);font-size:var(--t-num-sm);font-weight:500;font-variant-numeric:tabular-nums}
 .panel-head .pct{font-size:var(--t-xs);color:var(--ink-3);font-family:var(--mono)}
 .panel-sub{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--s-1);max-width:64ch}
-.mixbar{display:flex;gap:1px;height:4px;margin:var(--s-2) 0 var(--s-4);border-radius:var(--r-sm);overflow:hidden}
-.mixbar i{display:block}
-
-.diagram{width:100%;overflow:hidden}
-.diagram svg{display:block;width:100%;height:auto}
 g.blk{cursor:default}
 
-/* --- liste des postes, repliée sous son décompte --- */
-.schedule{
-  list-style:none;margin:var(--s-3) 0 0;padding:0;
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(318px,1fr));gap:0 var(--s-6);
+/* --- la nomenclature ------------------------------------------------------
+   Le tableau EST la vue des surfaces : un ensemble par groupe de lignes, et
+   un dessin à l'échelle en marge de chaque poste. Sous 620 px, le tableau
+   défile dans son cadre plutôt que d'écraser ses colonnes de chiffres. */
+.nomen{margin-top:var(--s-4)}
+.hatchdefs{position:absolute;width:0;height:0}
+.nomen__scroll{overflow-x:auto}
+.nomen__t{width:100%;border-collapse:collapse;font-size:var(--t-xs);min-width:620px}
+.nomen__t thead th{
+  text-align:left;font-size:var(--t-3xs);letter-spacing:var(--track-caps);text-transform:uppercase;
+  color:var(--ink-3);font-weight:600;font-variation-settings:"wdth" 88;
+  padding:var(--s-2);border-bottom:1px solid var(--ink);background:var(--paper);
 }
-.schedule li{
-  display:grid;grid-template-columns:10px 1fr auto auto;align-items:baseline;gap:0 var(--s-2);
-  padding:var(--s-2) 0;border-top:1px solid var(--rule-soft);font-size:var(--t-sm);
-}
-.schedule .sw{width:10px;height:10px;border-radius:var(--r-sm);position:relative;top:1px}
-.schedule .nm{min-width:0}
-.schedule .nm b{font-weight:500}
+.nomen__t th.n,.nomen__t td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nomen__t td{padding:var(--s-2);border-bottom:1px solid var(--rule-soft);vertical-align:middle}
+.nomen__t tbody tr:not(.nomen__g):hover td{background:var(--panel)}
+.nomen__g th{padding:var(--s-6) var(--s-2) var(--s-2);text-align:left;font-weight:400;border-bottom:1px solid var(--rule)}
+.nomen__t tbody:first-of-type .nomen__g th{padding-top:var(--s-4)}
+.nomen__gh{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s-3)}
+.nomen__gn{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--t-md);font-weight:600;
+  font-variation-settings:"wdth" 106;letter-spacing:-.01em;color:var(--ink)}
+.nomen__gt{font-size:var(--t-md);font-weight:500;color:var(--ink)}
+.nomen__gs{display:block;margin-top:2px;font-size:var(--t-2xs);color:var(--ink-3)}
+.nomen__gd{display:block;font-size:var(--t-2xs);color:var(--ink-3);max-width:72ch}
+.nomen__nm{min-width:200px}
+.nomen__in{display:grid;grid-template-columns:10px 1fr;gap:var(--s-2);align-items:baseline}
+.nomen__in b{font-weight:500}
+.nomen__in .note{display:block;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.nomen .sw{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm);position:relative;top:1px}
+.nomen .sw--dashed{background:none!important;border:1px dashed var(--ink-3)}
+.nomen .sw--circ{border:1px solid var(--ink-4);background-image:repeating-linear-gradient(45deg,
+  var(--hatch-ink) 0 1px, transparent 1px 4px)}
+.nomen__gl{width:180px}
+.nomen__gl svg{display:block}
+.nomen__t tr.is-circ td{color:var(--ink-2)}
+.nomen__part{display:flex;align-items:center;justify-content:flex-end;gap:var(--s-2)}
+.nomen__part i{display:block;height:4px;border-radius:var(--r-sm);background:var(--ink-4)}
+.nomen__off td{font-size:var(--t-xs);color:var(--ink-2);border-bottom:0}
+.nomen__off b{color:var(--ink);font-weight:500}
+.nomen__off .note{display:block;font-size:var(--t-2xs);color:var(--ink-3);margin-top:2px}
+
 .esttag{
   display:inline-block;font-size:var(--t-3xs);letter-spacing:.06em;text-transform:uppercase;
   font-weight:600;font-variation-settings:"wdth" 88;color:var(--ink-3);
   border:1px dashed var(--ink-4);border-radius:var(--r-sm);padding:0 var(--s-1);vertical-align:1px;
 }
-.schedule .note{display:block;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
-.schedule .qty{font-family:var(--mono);font-size:var(--t-2xs);color:var(--ink-3);white-space:nowrap}
-.schedule .val{font-family:var(--mono);font-size:var(--t-sm);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 .unpriced{
   margin-top:var(--s-3);padding-top:var(--s-3);border-top:1px dashed var(--rule);
@@ -64,7 +85,6 @@ g.blk{cursor:default}
 }
 .totals .sw{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm);margin-right:var(--s-2)}
 
-@media (max-width:560px){.schedule{grid-template-columns:1fr}}
 
 /* --- rang de section ------------------------------------------------------
    L'onglet Programme se lit en trois temps — contraintes, surfaces, adjacences.

@@ -22,7 +22,7 @@
    `view.tab`   quelle vue est à l'écran        → pilote body[data-view]
    `view.subs`  le volet retenu, PAR onglet
    `view.group` regroupement dans Surfaces       → chapitres ou familles
-   `view.mode`  niveau de détail des diagrammes → groupé ou détaillé
+   `view.mode`  ce que dessine la nomenclature   → un carré par poste ou par pièce
 */
 
 export var TABS = [
