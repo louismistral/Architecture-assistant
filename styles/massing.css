@@ -41,6 +41,17 @@
 }
 .mass-deux{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
 .mass-deux .btn{ width:100%; }
+/* La seed, dans la colonne du « Shuffle massing » qu'elle rejoue : le champ du
+   mixer, au même dessin. */
+.mass-seed{ grid-column:2; display:flex; align-items:center; }
+.mass-seed .segcap{ padding-inline:0 var(--s-2); }
+.mass-seed input{
+  flex:1 1 auto; min-width:0;
+  font:inherit; font-family:var(--mono); font-size:var(--t-xs);
+  padding:var(--s-1) var(--s-2); min-height:var(--ctl-h);
+  border:1px solid var(--rule); border-radius:var(--r-md);
+  background:var(--panel); color:var(--ink);
+}
 
 /* Les partis : une grille de boutons plutôt qu'une liste déroulante. On les
    compare du regard, et l'on voit d'un coup combien il y en a. */

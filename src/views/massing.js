@@ -24,6 +24,7 @@
    d'étude : à quoi ce programme ressemblerait-il, physiquement, sur ce site ?
    ========================================================================= */
 import { dec, el, fmt } from "../core/format.js";
+import { parseSeed } from "../core/rand.js";
 import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
 import { repartir } from "../mix/shuffle.js";
@@ -153,6 +154,21 @@ function redessine(){
   if(camEl) camEl.textContent = camLabel();
   saveSoon();
 }
+/* Rejouer le massing sur une seed : celle que tire « Shuffle massing », ou
+   celle qu'on retape. UN seul chemin pour les deux — sans quoi une seed
+   retapée pourrait rendre autre chose que ce que le tirage avait montré. */
+function rejouerMassing(g){
+  massSet("graine", g);
+  regenere();
+  planFit();
+  redessine();
+}
+/* La seed suivante. Jamais nulle : `setMass()` ne relit pas un zéro, et la
+   volumétrie enregistrée ne se retrouverait plus. */
+function graineSuivante(){ return (MASS.graine * 1103515245 + 12345) >>> 8 || 1; }
+/* Elle s'écrit comme celle du mixer, en base 36 : c'est l'écriture que
+   `parseSeed()` relit. */
+function seedMass(){ return (MASS.graine >>> 0).toString(36); }
 
 /* ---------- le rail de gauche ------------------------------------------------
    Dans l'ordre où l'on s'en sert : ce qu'on tire, comment on compose, ce qu'on
@@ -207,18 +223,19 @@ function blocTirage(){
   bm.title = "Ne touche pas au programme : mêmes postes, mêmes surfaces, mêmes "
            + "niveaux, même répartition. Une autre solution architecturale.";
   /* Shuffle massing montre la PROPOSITION SUIVANTE du classement ; au bout du
-     classement, il en tire un nouveau. */
+     classement, il tire une nouvelle seed. La seed reste donc la même tant qu'on
+     parcourt le classement qu'elle a produit : elle et le rang désignent la
+     proposition à l'écran. */
   bm.addEventListener("click", function(){
     var P = MASS.vol.props, k = MASS.vol.rang;
-    if(P && k != null && k + 1 < P.length) massVols(P[k + 1]);
-    else {
-      massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
-      regenere();
-    }
-    planFit();
-    redessine();
+    if(P && k != null && k + 1 < P.length){
+      massVols(P[k + 1]);
+      planFit();
+      redessine();
+    } else rejouerMassing(graineSuivante());
   });
   r.appendChild(bm);
+  r.appendChild(champSeed());
   b.appendChild(r);
 
   /* LE SCORE de la proposition à l'écran : sur 100, calculé sur les seules
@@ -246,6 +263,42 @@ function blocTirage(){
     + "bâtie : nombre de volumes, position, orientation, proportions, hauteurs, retraits."));
   b.appendChild(n);
   return b;
+}
+/* LA SEED du massing, sous le bouton qu'elle rejoue. Sans elle, une
+   implantation tirée ne se retrouvait plus : on tirait dix fois, la troisième
+   était la bonne, et elle n'existait plus. C'est le champ du mixer à
+   l'identique — base 36, retapée puis Entrée, et la même volumétrie revient,
+   pourvu que le programme et le parti soient les mêmes. Elle s'appelle
+   « Seed » à l'écran ; dans le code, elle reste `MASS.graine`. */
+function champSeed(){
+  var s = el("div", "mass-seed");
+  s.appendChild(el("span", "segcap", "Seed"));
+  var inp = document.createElement("input");
+  inp.type = "text"; inp.className = "mono"; inp.value = seedMass();
+  inp.size = 7; inp.spellcheck = false; inp.autocomplete = "off";
+  inp.setAttribute("aria-label", "Seed du tirage massing — retape-la pour rejouer "
+    + "la même volumétrie");
+  inp.title = "Retape une seed et rejoue la volumétrie à l’identique";
+  /* Entrée rejoue, et le rail se redessine : l'ancien champ sort du document
+     et peut encore lancer son « change ». Un tirage suffit. */
+  var joue = false;
+  function rejouer(clavier){
+    if(joue) return;
+    var g = parseSeed(String(inp.value).replace(/^\s*seed[\s:]+/i, ""));
+    if(!g){ inp.value = seedMass(); return; }
+    joue = true;
+    rejouerMassing(g);
+    /* Au clavier, on reste dans le champ : on retape souvent deux seeds de
+       suite pour les comparer. */
+    var neuf = clavier && railEl ? railEl.querySelector(".mass-seed input") : null;
+    if(neuf) neuf.focus();
+  }
+  inp.addEventListener("change", function(){ rejouer(false); });
+  inp.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); rejouer(true); }
+  });
+  s.appendChild(inp);
+  return s;
 }
 
 /* --- le parti --- */
@@ -651,7 +704,7 @@ export function massDoctrine(){
   var j = jugementCourant();
   return doctrineSection("mass", function(){
     if(aPoser() > 0){
-      massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
+      massSet("graine", graineSuivante());
       regenere();
       saveSoon();
     }
