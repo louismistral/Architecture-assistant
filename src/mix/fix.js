@@ -18,6 +18,7 @@ import {
   onFloor, place, setPlate, setStack, split, trayBlocks, usable
 } from "./floors.js";
 import { WCRE, lvRange } from "./niv.js";
+import { setAdj, setDeAdj } from "./opts.js";
 import { PMAP, aOf, qOf } from "./prog.js";
 
 /* Un remède : ce qu'on propose, ce que ça coûte, et ce que ça fait. */
@@ -76,6 +77,18 @@ export function fixDeplacer(key, fl, quoi){
     function(){ place(key, mkWant(fl, qOf(key))); return true; });
 }
 function mkWant(fl, q){ var o = {}; o[fl] = q; return o; }
+
+/* ---------- éteindre une adjacence ----------------------------------------
+   Le remède d'une adjacence active qui ne tient pas n'est pas toujours de
+   déplacer : on a pu l'allumer sans le vouloir, ou le programme ne lui laisse
+   pas la place. L'éteindre rend les deux postes indépendants — c'est un choix,
+   et il se reprend au flanc du mixer. Son dé s'éteint avec elle, sans quoi le
+   prochain Shuffle la rallumerait peut-être. */
+export function fixEteindre(id){
+  return acte("Éteindre cette adjacence",
+    "les deux postes deviennent indépendants ; elle se rallume au flanc du mixer",
+    function(){ setAdj(id, false); setDeAdj(id, false); return true; });
+}
 
 /* ---------- vider, remplir ------------------------------------------------ */
 export function fixVider(k){

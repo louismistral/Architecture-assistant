@@ -23,8 +23,9 @@ import {
 } from "./floors.js";
 import { isAccepted } from "./accept.js";
 import {
-  fixCombler, fixDeplacer, fixPlateau, fixEtage, fixReste, fixVider, fixWC, nivCible
+  fixCombler, fixDeplacer, fixEteindre, fixPlateau, fixEtage, fixReste, fixVider, fixWC, nivCible
 } from "./fix.js";
+import { adjActive } from "./opts.js";
 import { CLSRE, NIV, UNITE, WCRE, nivHit } from "./niv.js";
 import { PMAP, PROX, aOf } from "./prog.js";
 
@@ -108,20 +109,25 @@ export function mixCheck(){
     + " m de couverture, il n'est tenable qu'au tiers est du périmètre", "2.3", "", null,
     { code:"nappe", fix: fixCombler() });
 
-  /* --- adjacences du règlement -------------------------------------------- */
+  /* --- adjacences actives -------------------------------------------------
+     Une adjacence ACTIVE demande ses deux postes au même niveau : c'est un
+     choix qu'on a fait, lien par lien, et il ne tient pas — rouge. Une
+     adjacence éteinte ne dit rien : les deux postes sont indépendants, et
+     c'est aussi un choix. */
   PROX.forEach(function(l){
-    if(l.opt) return;                        /* une mutualisation possible reste possible */
+    if(!adjActive(l.id)) return;
     var A = nivDe(l.a), B = nivDe(l.b);
     if(!A.length || !B.length) return;       /* pas encore posé : rien à dire */
     var d = Infinity;
     A.forEach(function(fa){ B.forEach(function(fb){ d = Math.min(d, Math.abs(fa - fb)); }); });
     if(d === 0) return;
-    add(d >= 2 ? "e" : "w",
+    add("e",
       PMAP[l.a].n + " et " + PMAP[l.b].n + " sont séparés de "
         + d + " niveau" + (d > 1 ? "x" : "") + " — « " + l.q + " »",
       "adjacences", PMAP[l.a].n, A[0],
       { code:"adj:" + l.a + "|" + l.b, keys: [l.a, l.b],
-        fix: [fixDeplacer(l.a, B[0]), fixDeplacer(l.b, A[0])] });
+        fix: [fixDeplacer(l.a, B[0]), fixDeplacer(l.b, A[0]), fixEteindre(l.id)],
+        note: "L’adjacence est active au mixer : l’éteindre rend les deux postes indépendants." });
   });
 
   /* --- gabarit : rien ne se bâtit au-dessus d'une grande hauteur libre ----- */

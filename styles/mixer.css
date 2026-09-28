@@ -315,3 +315,111 @@
 }
 /* L'addition du niveau : utile + circulation = bâti. */
 .mix-fl__circ{color:var(--ink-3);padding-inline:var(--s-1)}
+
+/* --- le dé d'un réglage, et le lien d'un poste ------------------------------
+   Des commandes discrètes, qui reviennent sur chaque niveau et chaque bloc :
+   elles ne prennent pas l'aplat noir d'un bouton enfoncé, qui ferait de la
+   pile une rangée de pastilles. Allumé, le dé est cerné d'encre ; éteint, il
+   devient un cadenas, en retrait. */
+.btn.mix-de,.btn.mix-lien{
+  min-height:var(--tap-min);padding:0 var(--s-2);gap:var(--s-1);
+  font-size:var(--t-2xs);color:var(--ink-3);background:var(--panel);
+}
+.btn.mix-de svg,.btn.mix-lien svg{display:block;flex:none}
+.btn.mix-de[aria-pressed="true"],.btn.mix-de[aria-pressed="mixed"]{
+  background:var(--panel);color:var(--ink);border-color:var(--ink);
+}
+.btn.mix-de[aria-pressed="mixed"]{border-style:dashed}
+.btn.mix-lien[aria-pressed="true"]{background:var(--panel);color:var(--ink);border-color:var(--ink-3)}
+.btn.mix-de--compact,.btn.mix-lien--compact{min-width:var(--tap-min);padding:0 var(--s-1)}
+
+/* La pile porte son propre dé, en tête. */
+.mix-pilehd{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);
+  padding-bottom:var(--s-2);
+}
+.mix-pilehd .label{margin:0}
+.mix-pilehd__n{font-size:var(--t-xs);color:var(--ink-2)}
+.mix-pilehd__h{font-size:var(--t-2xs);color:var(--ink-3)}
+
+/* Sur un bloc, le lien et le dé se posent en haut à droite, au-dessus de tout. */
+.mixblk__ctl{
+  position:absolute;top:2px;right:2px;z-index:1;display:flex;gap:2px;
+}
+.mixblk__ctl .btn{min-height:calc(var(--tap-min) - var(--s-1));background:var(--panel-veil)}
+.mixblk.has-pcs .mixblk__lb{padding-right:calc(2 * var(--tap-min) + var(--s-1))}
+.mixblk:not(.has-pcs) .mixblk__lb{padding-right:calc(2 * var(--tap-min))}
+
+/* DÉLIÉ : le bloc n'est plus une surface divisée mais un rang de pièces
+   séparées, chacune dans son cadre et sa couleur, côte à côte parce qu'elles
+   sont au même niveau — le « détaillé » du cahier des charges. Le bloc
+   lui-même ne garde que son nom, qui reste la prise de toute la part. */
+.mixblk.is-delie{background:none;border-color:transparent}
+.mixblk.is-delie.is-hatched{background-image:none}
+.mixblk.is-delie.is-delie-plein{border-style:dotted;background:none}
+.mixblk.is-delie .mixblk__pcs{gap:2px;margin:0}
+.mixblk.is-delie .mixpc{
+  border:1px solid var(--c);border-radius:var(--r-sm);
+  background-color:color-mix(in srgb, var(--c) calc(var(--fill-op) * 100%), var(--paper));
+}
+.mixblk.is-delie.is-hatched .mixpc{
+  background-image:repeating-linear-gradient(45deg,
+    var(--hatch-ink) 0 1.5px, transparent 1.5px 5px);
+}
+.mixblk.is-delie.is-est .mixpc{border-style:dashed}
+.mixblk.is-delie:hover{border-width:1px}
+.mixblk.is-delie .mixpc:hover{border-width:2px}
+
+/* --- ce que tire le Shuffle ------------------------------------------------ */
+.mix-regl h3,.mix-adj h3{margin:0 0 var(--s-1)}
+.mix-regl__n{margin:0 0 var(--s-2);font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.mix-regl__l{list-style:none;margin:0;padding:0;display:grid}
+.mix-regl__l li{
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--s-1) var(--s-2);
+  padding:var(--s-2) 0;border-top:1px solid var(--rule-soft);
+}
+.mix-regl__t b{display:block;font-size:var(--t-xs);font-weight:500}
+.mix-regl__t span{display:block;font-size:var(--t-3xs);color:var(--ink-3)}
+.mix-regl__g{grid-column:1 / -1;width:max-content}
+.mix-regl__g .btn{min-height:var(--tap-min);font-size:var(--t-2xs)}
+.mix-regl__det{margin-top:var(--s-2)}
+.mix-postes{list-style:none;margin:var(--s-2) 0 0;padding:0;display:grid}
+.mix-postes li{
+  display:grid;grid-template-columns:9px 1fr auto auto;align-items:center;gap:var(--s-2);
+  padding:var(--s-1) 0;border-top:1px solid var(--rule-soft);font-size:var(--t-2xs);
+}
+.mix-postes .sw{width:9px;height:9px;border-radius:var(--r-sm)}
+.mix-postes__n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* --- les adjacences -------------------------------------------------------- */
+.mix-adj__c{font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-adj__g{width:max-content;margin-bottom:var(--s-2)}
+.mix-adj__g .btn{min-height:var(--tap-min);font-size:var(--t-2xs)}
+.mix-adj__l{list-style:none;margin:0;padding:0;display:grid}
+.mix-adj__l li{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:var(--s-2);
+  padding:var(--s-2) 0;border-top:1px solid var(--rule-soft);
+}
+.mix-adj__l li:not(.is-on) .mix-adj__t{color:var(--ink-3)}
+.mix-adj__t{min-width:0;font-size:var(--t-2xs);line-height:var(--lh-snug)}
+.mix-adj__t b{font-weight:500;margin-right:var(--s-1)}
+.mix-adj__t q{display:block;font-size:var(--t-3xs);color:var(--ink-3);font-style:italic;quotes:"«\00a0" "\00a0»"}
+.mix-adj__l li.is-bad{box-shadow:inset 2px 0 0 var(--danger);padding-left:var(--s-2)}
+.mix-adj__bad{display:block;font-size:var(--t-3xs);color:var(--danger)}
+
+/* L'interrupteur d'une adjacence : un rail et son curseur. L'état se lit aussi
+   à la couleur du nom, et dans le libellé accessible. */
+.mix-sw{
+  appearance:none;position:relative;flex:none;cursor:pointer;
+  width:calc(var(--s-5) + var(--s-2));height:var(--s-4);margin-top:1px;
+  border:1px solid var(--rule-strong);border-radius:var(--r-full);background:var(--rule-soft);
+  transition:background-color var(--dur-2) var(--ease),border-color var(--dur-2) var(--ease);
+}
+.mix-sw__k{
+  position:absolute;top:1px;left:1px;width:calc(var(--s-4) - 4px);height:calc(var(--s-4) - 4px);
+  border-radius:var(--r-full);background:var(--panel);box-shadow:var(--sh-1);
+  transition:transform var(--dur-2) var(--ease);
+}
+.mix-sw[aria-checked="true"]{background:var(--ink);border-color:var(--ink)}
+.mix-sw[aria-checked="true"] .mix-sw__k{transform:translateX(var(--s-4))}
+@media (prefers-reduced-motion:reduce){.mix-sw,.mix-sw__k{transition:none}}

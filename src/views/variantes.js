@@ -725,8 +725,8 @@ export function ouvrirModal(v){
 
   var s2 = el("section", "vm-sec");
   s2.appendChild(el("h4", null, "Ce qui rejoue la variante"));
-  s2.appendChild(ligne("Graine du programme", (v.seed_program >>> 0).toString(36)));
-  s2.appendChild(ligne("Graine du massing", (v.seed_massing >>> 0).toString(36)));
+  s2.appendChild(ligne("Seed du programme", (v.seed_program >>> 0).toString(36)));
+  s2.appendChild(ligne("Seed du massing", (v.seed_massing >>> 0).toString(36)));
   s2.appendChild(ligne("Parti", v.parti || "—"));
   body.appendChild(s2);
 

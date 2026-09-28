@@ -19,7 +19,7 @@
    ========================================================================= */
 import { curSeed, rng, seed } from "../core/rand.js";
 import { repartir } from "../mix/shuffle.js";
-import { tirerNiveaux } from "../mix/opts.js";
+import { dePile } from "../mix/opts.js";
 import { restore, snapshot } from "../mix/store.js";
 import { genMass } from "../mass/gen.js";
 import { MASS, empreintePile, massSet, massVols } from "../mass/model.js";
@@ -78,7 +78,7 @@ export async function rechercher(opts, progres, arret){
       if(arret && arret()) break;
       if(o.programme){
         seed(null);
-        repartir({ alea:true, etages: tirerNiveaux });
+        repartir({ alea:true, etages: dePile });
       }
       if(o.partis.length) massSet("parti", o.partis[i % o.partis.length]);
       if(o.massing) massSet("graine", ((rng() * 0x100000000) >>> 0) || 1);

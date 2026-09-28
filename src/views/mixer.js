@@ -17,14 +17,17 @@
    de choisir un niveau dans une liste et un nombre dans une autre, alors que
    la pile et le bloc étaient là, sous les yeux. Deux blocs d'un même poste qui
    se retrouvent au même niveau se refondent en un (`fuse`), donc rien ne se
-   perd à se tromper. Trois interrupteurs gouvernent ces gestes (`mix/opts.js`)
-   : le tirage propose-t-il aussi la pile, ce que le règlement veut côte à côte
-   se déplace-t-il ensemble, et un bloc montre-t-il ses pièces.
+   perd à se tromper.
 
-   Ce qui agit sur l'ENSEMBLE est dans la barre du haut ; ce qui agit sur UN
-   niveau — son plateau, son retrait — est sur le niveau lui-même ; et l'on
-   ajoute un niveau à l'endroit où il apparaîtra, en tête ou au pied de la
-   pile.
+   Chaque RÉGLAGE a sa valeur et son DÉ (`mix/opts.js`) : dé allumé, le Shuffle
+   décide ; dé éteint, la valeur est la nôtre et le tirage la respecte. Toucher
+   une valeur, c'est la choisir : son dé s'éteint. Chacun se règle là où il se
+   voit — le nombre de niveaux sur la pile, le plateau sur son niveau, le lien
+   d'un poste sur son bloc, les adjacences au flanc —, et les dés maîtres de
+   chaque famille sont au flanc aussi.
+
+   La barre du haut ne porte que ce qui agit sur l'ENSEMBLE : Shuffle, Tout au
+   bac, et la seed qui rejoue une proposition.
    ========================================================================= */
 import { dec, el, fmt } from "../core/format.js";
 import { CIRC, CIRCA, COULOIR, FMAP } from "../core/model.js";
@@ -40,11 +43,15 @@ import {
   FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
   addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt, flCirc, flCircDe,
   flCount, flHeight, flLibre, flName, flNet, floorCost, grappeBlocs, horsAt,
-  lvlOf, move, moveGroupe, onFloor, regrouper, setPlate, split, toTray,
+  lvlOf, move, moveGroupe, onFloor, rapprocherLien, rassembler, setPlate, split, toTray,
   trayArea, trayBlocks, usable
 } from "../mix/floors.js";
-import { grouper, pieces, setGrouper, setPieces, setTirer, tirerNiveaux } from "../mix/opts.js";
-import { PMAP, aOf, posesDedans, qOf, uOf } from "../mix/prog.js";
+import {
+  adjActive, adjDefaut, deAdj, deLien, dePile, dePlateau, estLie, etatDes, lienId, liens,
+  setAdj, setDeAdj, setDeLien, setDePile, setDePlateau, setDes, setLie
+} from "../mix/opts.js";
+import { PMAP, aOf, lienLibre, posables, posesDedans, qOf, uOf } from "../mix/prog.js";
+import { SMAP } from "./schema.js";
 import { pilesAdmissibles, repartir } from "../mix/shuffle.js";
 import { saveSoon, setChip } from "../mix/store.js";
 
@@ -54,6 +61,7 @@ var AIRE = 70;
 var TINY_W = 46, TINY_H = 21;
 
 var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null, circEl = null;
+var reglEl = null, adjEl = null, dernierCheck = [];
 var ghostEl = null;
 var selU = null, drag = null, wired = false;
 /* Le code de l'écart déplié, s'il y en a un. Un seul à la fois : ouvrir le
@@ -66,67 +74,21 @@ export function mixPanel(){
   var p = el("section","mix");
 
   /* --- barre d'outils ----------------------------------------------------
-     Tout ce qui agit sur l'ensemble est ici, en un seul rang : proposer,
-     grouper, vider. Ce qui agit sur UN niveau — son plateau, son retrait — est
-     sur le niveau lui-même. Les commandes de pile vivaient sous la pile, à
-     quatre cents pixels de ce qu'elles modifiaient. */
+     Ce qui agit sur l'ENSEMBLE, et rien d'autre : proposer, vider, rejouer.
+     Les trois interrupteurs qui s'y tenaient — « Shuffle niveaux », « Grouper
+     les liés », « Voir les pièces » — sont devenus des réglages, chacun avec son
+     dé, là où ils se voient. */
   var bar = el("div","controls mix-bar");
 
   /* Le tirage est la seule proposition : « Répartir », son jumeau ordonné,
-     donnait la même chose à l'ordre des chapitres près, et la graine rend le
+     donnait la même chose à l'ordre des chapitres près, et la seed rend le
      tirage aussi rejouable qu'un ordre fixe. */
-  var g = el("div","btn-group");
-  g.setAttribute("role","group");
-  g.setAttribute("aria-label","Proposer une répartition");
-  var bAle = el("button","btn","Shuffle");
+  var bAle = el("button","btn btn--primary","Shuffle");
   bAle.type = "button";
-  bAle.title = "Une répartition tirée au sort, rejouable par sa graine";
+  bAle.title = "Une répartition tirée au sort, rejouable par sa seed. Les réglages "
+             + "dont le dé est éteint sont respectés.";
   bAle.addEventListener("click", function(){ proposer(); });
-  g.appendChild(bAle);
-  var bNiv = el("button","btn","Shuffle niveaux");
-  bNiv.type = "button";
-  bNiv.setAttribute("aria-pressed", String(tirerNiveaux));
-  bNiv.title = "Le tirage déduit aussi la pile : surface bâtie à loger, plateau du rez, "
-             + "et ce que le règlement admet en sous-sol";
-  bNiv.addEventListener("click", function(){
-    setTirer(!tirerNiveaux);
-    bNiv.setAttribute("aria-pressed", String(tirerNiveaux));
-    saveSoon();
-  });
-  g.appendChild(bNiv);
-  bar.appendChild(g);
-
-  /* L'interrupteur garde un libellé fixe et ne dit son état que par
-     `aria-pressed` : « Grouper les liés » se lit pareil dans les deux sens. */
-  var bGrp = el("button","btn","Grouper les liés");
-  bGrp.type = "button";
-  bGrp.setAttribute("aria-pressed", String(grouper));
-  bGrp.title = "Déplacer une pièce emmène tout ce que le règlement lui demande de toucher";
-  bGrp.addEventListener("click", function(){
-    setGrouper(!grouper);
-    bGrp.setAttribute("aria-pressed", String(grouper));
-    /* Enclencher la règle la fait porter sur ce qui est DÉJÀ posé : sinon elle
-       s'annonçait sans rien changer, et une grappe éparpillée le restait. */
-    if(grouper) regrouper();
-    selU = null; openIss = null; issFocus = null;
-    drawMix(); saveSoon();
-  });
-  bar.appendChild(bGrp);
-
-  /* Un bloc est un poste entier — dix-huit salles de classe posées d'un coup.
-     Ouvert, il montre ses dix-huit salles, et chacune se prend séparément :
-     c'est là que se fait la scission, sur le bloc et non dans un menu. */
-  var bPcs = el("button","btn","Voir les pièces");
-  bPcs.type = "button";
-  bPcs.setAttribute("aria-pressed", String(pieces));
-  bPcs.title = "Découpe chaque bloc en ses pièces : une pièce se glisse seule, "
-             + "le bloc entier se prend par son nom";
-  bPcs.addEventListener("click", function(){
-    setPieces(!pieces);
-    bPcs.setAttribute("aria-pressed", String(pieces));
-    drawMix(); saveSoon();
-  });
-  bar.appendChild(bPcs);
+  bar.appendChild(bAle);
 
   var bVide = el("button","btn","Tout au bac");
   bVide.type = "button";
@@ -136,12 +98,10 @@ export function mixPanel(){
   });
   bar.appendChild(bVide);
 
-  /* La graine est ce qui rend une proposition retrouvable : sans elle, on tire
+  /* La seed est ce qui rend une proposition retrouvable : sans elle, on tire
      dix fois et la troisième, qui était la bonne, n'existe plus. Elle ferme la
-     rangée : c'est le seul CHAMP parmi des boutons, et elle se tenait entre
-     deux d'entre eux — le « Shuffle » qu'elle sert et l'interrupteur suivant se
-     lisaient de part et d'autre d'une saisie. Les gestes d'abord, ce qui les
-     rejoue ensuite. */
+     rangée : c'est le seul CHAMP parmi des boutons. Les gestes d'abord, ce qui
+     les rejoue ensuite. */
   seedEl = el("div","mix-seed");
   bar.appendChild(seedEl);
 
@@ -161,13 +121,20 @@ export function mixPanel(){
 
   grid.appendChild(main);
 
+  /* Le flanc, dans l'ordre où l'on s'en sert : ce que le Shuffle tire, ce qui
+     ne va pas, ce qui reste à poser, les adjacences qu'on active, et la
+     circulation qu'on lit. */
   var side = el("aside","mix-side");
-  circEl = el("section","mix-circ");
-  side.appendChild(circEl);
+  reglEl = el("section","mix-regl");
+  side.appendChild(reglEl);
   issuesEl = el("section","mix-issues");
   side.appendChild(issuesEl);
   trayEl = el("section","mix-tray");
   side.appendChild(trayEl);
+  adjEl = el("section","mix-adj");
+  side.appendChild(adjEl);
+  circEl = el("section","mix-circ");
+  side.appendChild(circEl);
   grid.appendChild(side);
   p.appendChild(grid);
 
@@ -177,7 +144,7 @@ export function mixPanel(){
     document.body.appendChild(ghostEl);
   }
   if(!wired) wireMix();
-  /* Une graine existe dès le premier affichage : sans elle, la première
+  /* Une seed existe dès le premier affichage : sans elle, la première
      proposition ne serait pas rejouable. */
   if(!curSeed) seed(null);
   return p;
@@ -185,7 +152,7 @@ export function mixPanel(){
 
 function proposer(){
   seed(null);
-  repartir({ alea: true, etages: tirerNiveaux });
+  repartir({ alea: true, etages: dePile });
   selU = null; openIss = null; issFocus = null;
   drawMix();
   saveSoon();
@@ -225,6 +192,236 @@ function drawCirc(){
   s.appendChild(b);
 }
 
+/* ---------- le dé d'un réglage, et le lien d'un poste -----------------------
+   Deux petites commandes qui reviennent partout — sur la pile, sur chaque
+   niveau, sur chaque bloc, au flanc. Des icônes DESSINÉES plutôt que des
+   caractères : le projet n'a pas de fonte d'icônes, et les glyphes de dé ou de
+   chaîne d'Unicode ne sont pas dessinés partout. L'état se dit aussi en toutes
+   lettres — « tiré », « figé », « lié », « délié » — : l'icône seule ne le
+   dirait ni au lecteur d'écran, ni à qui ne l'a jamais vue. */
+function icone(d, extra){
+  var v = svg("svg", { width:14, height:14, viewBox:"0 0 16 16", "aria-hidden":"true",
+    fill:"none", stroke:"currentColor", "stroke-width":1.4, "stroke-linecap":"round",
+    "stroke-linejoin":"round" });
+  d.forEach(function(x){ v.appendChild(svg("path", { d:x })); });
+  (extra || []).forEach(function(c){
+    v.appendChild(svg("circle", { cx:c[0], cy:c[1], r:1.1, fill:"currentColor", stroke:"none" }));
+  });
+  return v;
+}
+function iconeDe(){
+  return icone(["M3.5 2.5h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"],
+    [[5.6,5.6],[10.4,5.6],[8,8],[5.6,10.4],[10.4,10.4]]);
+}
+function iconeCadenas(){
+  return icone(["M4 7.5h8v6H4z", "M5.8 7.5V5.4a2.2 2.2 0 0 1 4.4 0v2.1"]);
+}
+function iconeLien(lie){
+  return lie
+    ? icone(["M6.6 9.4l2.8-2.8", "M5.2 11.8a2.2 2.2 0 0 1-3.1-3.1l2-2a2.2 2.2 0 0 1 3.1 0",
+             "M10.8 4.2a2.2 2.2 0 0 1 3.1 3.1l-2 2a2.2 2.2 0 0 1-3.1 0"])
+    : icone(["M4.4 12.6a2.2 2.2 0 0 1-3.1-3.1l2-2a2.2 2.2 0 0 1 3.1 0",
+             "M11.6 3.4a2.2 2.2 0 0 1 3.1 3.1l-2 2a2.2 2.2 0 0 1-3.1 0", "M7 7l2 2"]);
+}
+/* Le dé : `etat` vaut true (tiré au Shuffle), false (figé) ou "mixed" pour un
+   dé maître dont la famille est partagée. Cliquer inverse — un maître mixte
+   s'allume. `compact` : l'icône seule, sur un bloc où la place manque ; le nom
+   de l'état reste dans le libellé accessible. */
+function deBtn(etat, quoi, fn, compact){
+  var on = etat === true, mixte = etat === "mixed";
+  var b = el("button","btn mix-de" + (compact ? " mix-de--compact" : ""));
+  b.type = "button";
+  b.setAttribute("aria-pressed", mixte ? "mixed" : String(on));
+  b.appendChild(on || mixte ? iconeDe() : iconeCadenas());
+  if(!compact) b.appendChild(el("span","mix-de__t", mixte ? "mixte" : (on ? "tiré" : "figé")));
+  var lab = quoi + (mixte ? " : en partie tiré au Shuffle — cliquer pour tout laisser au hasard"
+    : on ? " : tiré au Shuffle — cliquer pour le figer"
+         : " : figé — cliquer pour le laisser au Shuffle");
+  b.setAttribute("aria-label", lab);
+  b.title = lab;
+  b.addEventListener("click", function(e){ e.stopPropagation(); fn(!on); });
+  return b;
+}
+/* Le lien d'un poste. Lier, c'est rassembler ce qui est posé ; délier, c'est
+   rendre ses pièces indépendantes. Toucher au lien le fige : son dé s'éteint. */
+function lienBtn(key, compact){
+  var lie = estLie(key), p = PMAP[key];
+  var b = el("button","btn mix-lien" + (compact ? " mix-lien--compact" : ""));
+  b.type = "button";
+  b.setAttribute("aria-pressed", String(lie));
+  b.appendChild(iconeLien(lie));
+  if(!compact) b.appendChild(el("span", null, lie ? "lié" : "délié"));
+  var lab = p.n + (lie ? " : lié — ses pièces vont ensemble à un niveau. Cliquer pour les délier"
+                       : " : délié — ses pièces sont indépendantes. Cliquer pour les lier");
+  b.setAttribute("aria-label", lab);
+  b.title = lab;
+  b.addEventListener("click", function(e){
+    e.stopPropagation();
+    setLie(key, !lie); setDeLien(key, false);
+    if(!lie) rassembler(key);
+    drawMix(); saveSoon();
+  });
+  return b;
+}
+
+/* ---------- ce que tire le Shuffle -------------------------------------------
+   Les quatre familles de réglages, et leur dé MAÎTRE : il bascule toute la
+   famille d'un coup, et se lit « mixte » quand elle est partagée. Chaque
+   réglage garde sa place — la pile, le niveau, le bloc — : ce panneau ne fait
+   que les rassembler, et dire où ils sont. */
+function postesLibres(){ return posables().filter(function(p){ return lienLibre(p.key); }); }
+function drawRegl(){
+  if(!reglEl) return;
+  var s = reglEl;
+  while(s.firstChild) s.removeChild(s.firstChild);
+  s.appendChild(el("h3","label","Ce que tire le Shuffle"));
+  s.appendChild(el("p","mix-regl__n",
+    "Dé allumé, le Shuffle décide ; éteint, la valeur est la tienne et il la respecte. "
+    + "Toucher une valeur la fige."));
+  var lvls = FLOORS.map(function(F){ return F.lvl; });
+  var postes = postesLibres().map(function(p){ return p.key; });
+  var ids = liens().map(lienId);
+  var nLies = postes.filter(estLie).length, nAct = ids.filter(adjActive).length;
+
+  var ul = el("ul","mix-regl__l");
+  function ligne(titre, ou, cat, list, extra){
+    var li = el("li");
+    var t = el("div","mix-regl__t");
+    t.appendChild(el("b", null, titre));
+    t.appendChild(el("span", null, ou));
+    li.appendChild(t);
+    li.appendChild(deBtn(etatDes(cat, list), titre, function(on){
+      setDes(cat, list, on); drawMix(); saveSoon();
+    }));
+    if(extra) li.appendChild(extra);
+    ul.appendChild(li);
+  }
+  ligne("Nombre de niveaux", "sur la pile", "pile", null);
+  ligne("Plateaux", "sur chaque niveau · " + lvls.filter(dePlateau).length + " tirés sur " + lvls.length,
+    "plateau", lvls);
+  var gl = el("div","btn-group mix-regl__g");
+  gl.setAttribute("role","group");
+  gl.setAttribute("aria-label","Lier ou délier tous les postes");
+  [["Tout lier", true], ["Tout délier", false]].forEach(function(x){
+    var b = el("button","btn", x[0]);
+    b.type = "button";
+    b.addEventListener("click", function(){
+      postes.forEach(function(k){
+        setLie(k, x[1]); setDeLien(k, false);
+        if(x[1]) rassembler(k);
+      });
+      drawMix(); saveSoon();
+    });
+    gl.appendChild(b);
+  });
+  ligne("Lien des postes", "sur chaque bloc · " + nLies + " lié" + (nLies > 1 ? "s" : "")
+    + " sur " + postes.length, "lien", postes, gl);
+  ligne("Adjacences", "ci-dessous · " + nAct + " active" + (nAct > 1 ? "s" : "") + " sur " + ids.length,
+    "adj", ids);
+  s.appendChild(ul);
+
+  /* Les postes un à un : sur un bloc trop petit pour porter ses commandes, et
+     au clavier, c'est ici qu'on les trouve. Un seul repli, qui dit ce qu'il
+     contient. */
+  var det = el("details","disclose mix-regl__det");
+  det.appendChild(el("summary", null, postes.length + " postes qui se lient ou se délient"));
+  var pl = el("ul","mix-postes");
+  postesLibres().forEach(function(p){
+    var li = el("li");
+    var sw = el("i","sw");
+    sw.style.backgroundColor = "var(" + FMAP[p.f].c + ")";
+    if(p.f === "tec") sw.classList.add("is-hatched");
+    li.appendChild(sw);
+    li.appendChild(el("span","mix-postes__n", p.n + " ×" + qOf(p.key)));
+    li.appendChild(lienBtn(p.key, false));
+    li.appendChild(deBtn(deLien(p.key), "Lien de " + p.n, function(on){
+      setDeLien(p.key, on); drawMix(); saveSoon();
+    }, true));
+    pl.appendChild(li);
+  });
+  det.appendChild(pl);
+  s.appendChild(det);
+}
+
+/* ---------- les adjacences, lien par lien ------------------------------------
+   Le cahier des charges dit ce que le règlement EXIGE ; ici on décide ce que
+   NOUS tenons. Active, une adjacence met ses deux postes au même niveau et les
+   déplace ensemble ; éteinte, ils sont indépendants. L'allumer agit sur ce qui
+   est posé : le plus léger rejoint le plus lourd. */
+function drawAdj(){
+  if(!adjEl) return;
+  var s = adjEl;
+  while(s.firstChild) s.removeChild(s.firstChild);
+  var ids = liens().map(lienId), nAct = ids.filter(adjActive).length;
+  var hd = el("div","mix-issues__hd");
+  hd.appendChild(el("h3","label","Adjacences"));
+  hd.appendChild(el("span","mono mix-adj__c", nAct + " active" + (nAct > 1 ? "s" : "") + " sur " + ids.length));
+  s.appendChild(hd);
+  s.appendChild(el("p","mix-regl__n",
+    "Active, l’adjacence met ses deux postes au même niveau et les déplace ensemble. "
+    + "Éteinte, ils sont indépendants."));
+
+  var g = el("div","btn-group mix-adj__g");
+  g.setAttribute("role","group");
+  g.setAttribute("aria-label","Activer les adjacences d’un coup");
+  [["Exigées", null], ["Toutes", true], ["Aucune", false]].forEach(function(x){
+    var b = el("button","btn", x[0]);
+    b.type = "button";
+    b.title = x[1] === null ? "Les adjacences que le règlement exige, sans les mutualisations"
+            : x[1] ? "Toutes, mutualisations comprises" : "Aucune : tous les postes sont indépendants";
+    b.addEventListener("click", function(){
+      ids.forEach(function(id){
+        var on = x[1] === null ? adjDefaut(id) : x[1];
+        setAdj(id, on); setDeAdj(id, false);
+        if(on) rapprocherLien(id);
+      });
+      drawMix(); saveSoon();
+    });
+    g.appendChild(b);
+  });
+  s.appendChild(g);
+
+  /* Une adjacence active qui ne tient pas porte la marque du contrôle. */
+  var casse = {};
+  dernierCheck.forEach(function(x){
+    if(!x.ok && x.code.indexOf("adj:") === 0) casse[x.code.slice(4)] = 1;
+  });
+  var ul = el("ul","mix-adj__l");
+  liens().forEach(function(lk){
+    var id = lienId(lk), on = adjActive(id);
+    var li = el("li", on ? "is-on" : null);
+    var sw = el("button","mix-sw");
+    sw.type = "button";
+    sw.setAttribute("role","switch");
+    sw.setAttribute("aria-checked", String(on));
+    var A = SMAP[lk.a], B = SMAP[lk.b];
+    var nom = (A ? A.n : lk.a) + (lk.sep ? " ⊣ " : " ↔ ") + (B ? B.n : lk.b);
+    sw.setAttribute("aria-label", nom + (on ? " : active" : " : éteinte"));
+    sw.appendChild(el("span","mix-sw__k"));
+    sw.addEventListener("click", function(){
+      setAdj(id, !on); setDeAdj(id, false);
+      if(!on) rapprocherLien(id);
+      drawMix(); saveSoon();
+    });
+    li.appendChild(sw);
+    var t = el("div","mix-adj__t");
+    t.appendChild(el("b", null, nom));
+    if(lk.opt) t.appendChild(el("span","esttag", lk.sep ? "mutualisation · indépendance" : "mutualisation"));
+    t.appendChild(el("q", null, lk.q));
+    /* La paire exacte de postes que le contrôle a relevée. */
+    var bris = Object.keys(casse).some(function(c){
+      var k = c.split("|");
+      return (A && A.k && B && B.k) && ((A.k.indexOf(k[0]) >= 0 && B.k.indexOf(k[1]) >= 0)
+        || (A.k.indexOf(k[1]) >= 0 && B.k.indexOf(k[0]) >= 0));
+    });
+    if(on && bris){ li.classList.add("is-bad"); t.appendChild(el("span","mix-adj__bad","ne tient pas — voir le contrôle")); }
+    li.appendChild(t);
+    li.appendChild(deBtn(deAdj(id), nom, function(v){ setDeAdj(id, v); drawMix(); saveSoon(); }, true));
+    ul.appendChild(li);
+  });
+  s.appendChild(ul);
+}
+
 /* ---------- rendu --------------------------------------------------------- */
 export function drawMix(){
   if(!stackEl) return;
@@ -234,23 +431,25 @@ export function drawMix(){
   drawStack();
   drawIssues();
   drawTray();
+  drawRegl();
+  drawAdj();
 }
 
 function drawSeed(){
   if(!seedEl) return;
   while(seedEl.firstChild) seedEl.removeChild(seedEl.firstChild);
   var lb = seedLabel();
-  seedEl.appendChild(el("span","segcap","Graine"));
+  seedEl.appendChild(el("span","segcap","Seed"));
   var inp = document.createElement("input");
   inp.type = "text"; inp.className = "mono"; inp.value = lb;
   inp.size = 7;
-  inp.setAttribute("aria-label", "Graine du tirage — retape-la pour rejouer une proposition");
-  inp.title = "Retape une graine et rejoue la proposition à l’identique";
+  inp.setAttribute("aria-label", "Seed du tirage — retape-la pour rejouer une proposition");
+  inp.title = "Retape une seed et rejoue la proposition à l’identique";
   function rejouer(){
     var s = parseSeed(inp.value);
     if(s === null){ inp.value = seedLabel(); return; }
     seed(s);
-    repartir({ alea:true, etages: tirerNiveaux });
+    repartir({ alea:true, etages: dePile });
     selU = null; drawMix(); saveSoon();
   }
   inp.addEventListener("change", rejouer);
@@ -328,6 +527,16 @@ function addRow(label, hint, fn){
 
 function drawStack(){
   while(stackEl.firstChild) stackEl.removeChild(stackEl.firstChild);
+  /* Le nombre de niveaux se règle SUR la pile : son dé dit si le Shuffle la
+     propose, ou s'il garde celle qu'on a composée. */
+  var ph = el("div","mix-pilehd");
+  ph.appendChild(el("span","label","Pile"));
+  ph.appendChild(el("span","mix-pilehd__n mono", FLOORS.length + " niveau" + (FLOORS.length > 1 ? "x" : "")));
+  ph.appendChild(deBtn(dePile, "Nombre de niveaux", function(on){ setDePile(on); drawMix(); saveSoon(); }));
+  ph.appendChild(el("span","mix-pilehd__h", dePile
+    ? "le Shuffle propose la pile, déduite du site"
+    : "le Shuffle garde cette pile ; on l’édite en tête et au pied"));
+  stackEl.appendChild(ph);
   stackEl.appendChild(addRow("Ajouter un étage",
     "Un niveau de plus au-dessus du dernier. Rien n\u2019y monte tout seul.",
     addFloorTop));
@@ -371,6 +580,12 @@ function floorNode(i){
   pl.appendChild(inp);
   pl.appendChild(el("span","mix-fl__u","m² de plateau"));
   bar.appendChild(pl);
+  /* Le dé du plateau, à côté du plateau : allumé, le Shuffle le déduit de la
+     pile et le ramène à ce que le niveau porte ; éteint, c'est notre valeur, et
+     elle sert de capacité. Taper un plateau l'éteint. */
+  bar.appendChild(deBtn(dePlateau(F.lvl), "Plateau du " + flName(i).toLowerCase(), function(on){
+    setDePlateau(F.lvl, on); drawMix(); saveSoon();
+  }));
 
   /* Utile, circulation, bâti : l'ADDITION en toutes lettres. Le niveau
      n'écrivait que ses deux bouts — « 2'236 m² utiles · 2'727 m² bâtis » — et
@@ -526,7 +741,7 @@ function paintFloor(host, i){
 var PC_W = 9, PC_H = 7;
 function pieceGrid(b, r){
   var p = PMAP[b.key];
-  if(!pieces || p.solid || b.q < 2) return null;
+  if(p.solid || b.q < 2) return null;
   var w = r.w - 2, h = r.h - 16;
   if(w < 3 * PC_W || h < 2 * PC_H) return null;
   /* Le nombre de colonnes se déduit de la forme du rectangle : il n'est pas un
@@ -569,9 +784,17 @@ function blockNode(b, r){
      L'aplat reprend l'opacité de la légende (`--fill-op`), comme les rectangles
      SVG des diagrammes du programme : c'est la MÊME couleur, lue pareil. */
   var col = "var(" + FMAP[p.f].c + ")";
-  d.style.backgroundColor = "color-mix(in srgb, " + col
-    + " calc(var(--fill-op) * 100%), var(--paper))";
-  d.style.borderColor = col;
+  /* LIÉ, le poste est UN bloc : ses pièces vont ensemble, on ne les voit pas
+     une à une — c'est le « groupé » du cahier des charges. DÉLIÉ, ses pièces
+     sont indépendantes et dessinées SÉPARÉES, côte à côte parce qu'elles sont
+     au même niveau, mais chacune avec son cadre — le « détaillé ». */
+  var libre = lienLibre(b.key), delie = libre && !estLie(b.key);
+  d.style.setProperty("--c", col);
+  if(!delie){
+    d.style.backgroundColor = "color-mix(in srgb, " + col
+      + " calc(var(--fill-op) * 100%), var(--paper))";
+    d.style.borderColor = col;
+  }
   if(p.f === "tec") d.classList.add("is-hatched");
   if(p.est) d.classList.add("is-est");
   if(b.u === selU) d.classList.add("is-sel");
@@ -587,8 +810,23 @@ function blockNode(b, r){
   lb.appendChild(el("b", null, p.n + (b.q > 1 ? " ×" + b.q : "")));
   lb.appendChild(el("span","mixblk__a mono", fmt(Math.round(a)) + " m²"));
   d.appendChild(lb);
-  var g = pieceGrid(b, r);
+  var g = delie ? pieceGrid(b, r) : null;
   if(g){ d.appendChild(g); d.classList.add("has-pcs"); }
+  if(delie){
+    d.classList.add("is-delie");
+    /* Trop petit pour dessiner ses pièces : le bloc reste un bloc, cerné de la
+       couleur du poste, et son lien dit qu'il est délié. */
+    if(!g){ d.classList.add("is-delie-plein"); d.style.borderColor = col; }
+  }
+  /* Le lien et son dé, SUR le bloc : c'est là que le poste se voit. */
+  if(libre && !d.classList.contains("is-tiny") && r.w >= 64 && r.h >= 28){
+    var ct = el("div","mixblk__ctl");
+    ct.appendChild(lienBtn(b.key, true));
+    ct.appendChild(deBtn(deLien(b.key), "Lien de " + p.n, function(on){
+      setDeLien(b.key, on); drawMix(); saveSoon();
+    }, true));
+    d.appendChild(ct);
+  }
   d.setAttribute("data-tip", p.n + (b.q > 1 ? " ×" + b.q : "")
     + (p.est ? "  (à préciser)" : "") + "|"
     + b.q + " × " + fmt(uOf(b.key)) + " m² = " + fmt(Math.round(a)) + " m²|"
@@ -597,7 +835,8 @@ function blockNode(b, r){
     + ", " + fmt(Math.round(a)) + " mètres carrés, "
     + (b.fl === TRAY ? "au bac" : flName(b.fl))
     + ". Flèches haut et bas pour changer de niveau"
-    + (b.q > 1 && !p.solid ? ", majuscule pour n’en détacher qu’une pièce" : ""));
+    + (delie && b.q > 1 ? ", majuscule pour n’en détacher qu’une pièce" : "")
+    + (libre ? ". " + (delie ? "Délié" : "Lié") : ""));
   return d;
 }
 
@@ -610,6 +849,7 @@ function blockNode(b, r){
 function drawIssues(){
   while(issuesEl.firstChild) issuesEl.removeChild(issuesEl.firstChild);
   var list = mixCheck(), v = mixVerdict(list);
+  dernierCheck = list;
   var hd = el("div","mix-issues__hd");
   hd.appendChild(el("h3","label","Contrôle"));
   if(v.e) hd.appendChild(el("i","chip chip--danger", v.e + " conflit" + (v.e > 1 ? "s" : "")));
@@ -783,18 +1023,14 @@ function drawTray(){
   }
 }
 
-/* Déplacer, avec ou sans sa grappe. Un seul point de passage : le glisser, le
-   glisser et le clavier doivent obéir à l'interrupteur de la même façon. */
-function bouger(u, fl){
-  return grouper ? moveGroupe(u, fl) : move(u, fl);
-}
-/* Ce qu'un déplacement groupé emmènerait en plus — pour le dire avant. */
-function combien(u){
-  if(!grouper) return 0;
+/* Ce qu'un déplacement emmènerait en plus — pour le dire avant. Un bloc
+   entier emmène ce que ses adjacences actives lui tiennent, au même niveau que
+   lui ; une pièce seule ne dérange rien. */
+function combien(u, seul){
   var b = blockOf(u);
-  if(!b) return 0;
+  if(!b || seul) return 0;
   var n = 0;
-  grappeBlocs(u).forEach(function(x){ if(x.u !== u && x.fl !== b.fl) n += x.q; });
+  grappeBlocs(u).forEach(function(x){ if(x.u !== u) n += x.q; });
   return n;
 }
 
@@ -821,11 +1057,12 @@ function pousser(u, fl, unePiece){
   var b = blockOf(u);
   if(!b || fl === null || fl === b.fl) return;
   var key = b.key, cu = u;
-  if(unePiece && b.q > 1){
-    var nb = split(u, 1);
-    if(nb) cu = nb.u;
-  }
-  bouger(cu, fl);
+  /* Une pièce seule ne se détache que d'un poste délié : un poste lié part
+     entier, c'est ce que « lié » veut dire. */
+  if(unePiece && !estLie(key)){
+    if(b.q > 1){ var nb = split(u, 1); if(nb) cu = nb.u; }
+    move(cu, fl);
+  } else moveGroupe(cu, fl);
   drawMix(); saveSoon();
   refocus(key, fl);
 }
@@ -840,12 +1077,17 @@ function wireMix(){
     var i = parseInt(t.dataset.plate, 10);
     var v = parseFloat(String(t.value).replace(",", "."));
     if(!setPlate(i, v)){ t.value = String(FLOORS[i] ? FLOORS[i].plate : ""); return; }
+    /* Taper un plateau, c'est le choisir : son dé s'éteint, et le prochain
+       Shuffle le respecte. */
+    setDePlateau(FLOORS[i].lvl, false);
     drawMix(); saveSoon();
   });
 
   document.addEventListener("pointerdown", function(e){
     var node = e.target.closest ? e.target.closest(".mixblk,.mixchip") : null;
     if(!node || e.button !== 0) return;
+    /* Le lien et le dé posés sur un bloc sont des boutons, pas des prises. */
+    if(e.target.closest("button:not(.mixchip)")) return;
     /* Une cellule tirée n'emmène qu'elle : c'est là que se fait la scission. */
     var pc = e.target.closest ? e.target.closest(".mixpc") : null;
     drag = { u: parseInt(node.dataset.u, 10), pc: !!pc,
@@ -862,8 +1104,8 @@ function wireMix(){
       var b = blockOf(drag.u);
       if(b){
         while(ghostEl.firstChild) ghostEl.removeChild(ghostEl.firstChild);
-        var seul = drag.pc && b.q > 1;
-        var suite = combien(drag.u);
+        var seul = drag.pc && b.q > 1 && !estLie(b.key);
+        var suite = combien(drag.u, drag.pc);
         ghostEl.appendChild(document.createTextNode(
           PMAP[b.key].n + (seul ? " ×1" : (b.q > 1 ? " ×" + b.q : ""))
           + " · " + fmt(Math.round(seul ? uOf(b.key) : areaOf(b))) + " m²"
@@ -911,7 +1153,7 @@ function wireMix(){
      un niveau dans une liste alors que la pile était là, sous les yeux. */
   document.addEventListener("keydown", function(e){
     var node = e.target.closest ? e.target.closest(".mixblk,.mixchip") : null;
-    if(!node) return;
+    if(!node || e.target.closest("button:not(.mixchip)")) return;
     var u = parseInt(node.dataset.u, 10), b = blockOf(u);
     if(!b) return;
     var cible;
@@ -949,7 +1191,7 @@ export function setMixNav(f){ mixNav = f; }
 export function mixDoctrine(){
   return doctrineSection("mix", function(){
     seed(null);
-    repartir({ alea: true, etages: tirerNiveaux });
+    repartir({ alea: true, etages: dePile });
     selU = null; openIss = null; issFocus = null;
     saveSoon();
     /* On revient sur la répartition : régler une contrainte sans voir ce

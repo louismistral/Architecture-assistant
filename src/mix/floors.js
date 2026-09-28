@@ -12,7 +12,9 @@
    ========================================================================= */
 import { CIRC, ITEMBYKEY, cagesDe, couloirDe, frontDe } from "../core/model.js";
 import { RULES } from "../data/rules.js";
-import { PMAP, aOf, grappeDe, posables, qOf } from "./prog.js";
+import { lvRange } from "./niv.js";
+import { estLie } from "./opts.js";
+import { PMAP, PROX, aOf, grappeDe, posables, qOf } from "./prog.js";
 
 export var TRAY = -1;
 
@@ -193,52 +195,86 @@ export function place(key, want){
 }
 export function toTray(){ BLOCKS.forEach(function(b){ b.fl = TRAY; }); }
 
-/* Déplacer une part AVEC tout ce que le règlement lui attache : la grappe de
-   proximité, telle que `prog.js` la déduit du schéma fonctionnel. C'est l'autre
-   moitié de l'option « grouper les liés » — sans elle, on pouvait poser la
-   salle de sport au rez et sa scène au 2ᵉ étage sans s'en apercevoir. */
+/* Déplacer une part AVEC ce qui lui est attaché : les postes que des
+   adjacences ACTIVES tiennent à elle — sa grappe, telle que `prog.js` la déduit
+   des liens allumés —, pour ce qui se trouve au MÊME niveau qu'elle. Monter six
+   salles de classe du premier au deuxième emmène les WC et les vestiaires du
+   premier, pas ceux du rez. Un poste LIÉ part tout entier, où qu'il soit. */
 export function moveGroupe(u, fl){
   var b = blockOf(u);
   if(!b) return false;
-  var keys = {}, n = 0;
+  var de = b.fl, keys = {}, n = 0;
   grappeDe(b.key).forEach(function(k){ keys[k] = 1; });
   BLOCKS.slice().forEach(function(x){
-    if(!keys[x.key]) return;
-    if(x.fl === fl) return;
+    if(!keys[x.key] || x.fl === fl) return;
+    if(x !== b && x.fl !== de && !estLie(x.key)) return;
+    if(fl !== TRAY && !admis(x.key, fl)) return;       /* la règle de niveau passe avant */
     x.fl = fl; n++;
   });
   Object.keys(keys).forEach(fuse);
   return n > 0;
 }
-/* Rassembler CE qui doit se tenir : chaque grappe de proximité se retrouve sur
-   un seul niveau — celui où elle pèse déjà le plus, pour défaire le moins de
-   travail possible. C'est le geste qu'on attend en enclenchant l'interrupteur :
-   sans lui, il annonçait une règle sans l'appliquer à ce qui était déjà posé. */
-export function regrouper(){
-  var fait = {}, n = 0;
-  BLOCKS.slice().forEach(function(b){
-    if(b.fl === TRAY) return;
-    var keys = grappeDe(b.key);
-    if(keys.length < 2) return;
-    var id = keys.slice().sort().join("|");
-    if(fait[id]) return;
-    fait[id] = 1;
-    var set = {}, aire = {};
-    keys.forEach(function(k){ set[k] = 1; });
-    BLOCKS.forEach(function(x){
-      if(!set[x.key] || x.fl === TRAY) return;
-      aire[x.fl] = (aire[x.fl] || 0) + areaOf(x);
+/* Le niveau `fl` est-il admis pour ce poste ? Un déplacement groupé n'emmène
+   pas la scène au sous-sol parce qu'on y a descendu un dépôt. */
+function admis(key, fl){
+  var lr = lvRange(PMAP[key]), l = lvlOf(fl);
+  return l >= lr.min && l <= lr.max;
+}
+/* Le niveau où un ensemble de postes pèse le plus — là où les rassembler défait
+   le moins de travail. */
+function ouPese(set){
+  var aire = {}, k, cible = -1, max = -1;
+  BLOCKS.forEach(function(x){
+    if(!set[x.key] || x.fl === TRAY) return;
+    aire[x.fl] = (aire[x.fl] || 0) + areaOf(x);
+  });
+  for(k in aire) if(aire[k] > max){ max = aire[k]; cible = parseInt(k, 10); }
+  return cible;
+}
+/* LIER un poste agit sur ce qui est posé : ses parts se rassemblent au niveau
+   où il pèse déjà le plus. Sans cela, l'état « lié » s'annonçait sans rien
+   changer, et un poste lié restait éparpillé sur trois étages. */
+export function rassembler(key){
+  var set = {}; set[key] = 1;
+  var cible = ouPese(set), n = 0;
+  if(cible < 0) return 0;
+  BLOCKS.forEach(function(x){ if(x.key === key && x.fl !== TRAY && x.fl !== cible){ x.fl = cible; n++; } });
+  fuse(key);
+  return n;
+}
+/* ACTIVER une adjacence agit aussi sur ce qui est posé : si ses deux postes ne
+   partagent aucun niveau, le plus léger rejoint le plus lourd — là où celui-ci
+   pèse le plus —, si la règle de niveau l'y admet ; sinon l'inverse. Rien ne
+   bouge s'ils se touchent déjà, ni si aucun des deux ne peut aller chez l'autre :
+   le contrôle le dira. */
+export function rapprocherLien(id){
+  var n = 0;
+  PROX.forEach(function(l){
+    if(l.id !== id) return;
+    var na = niveauxDe(l.a), nb = niveauxDe(l.b);
+    if(!na.length || !nb.length) return;
+    if(na.some(function(f){ return nb.indexOf(f) >= 0; })) return;
+    var lourd = aireDe(l.a) >= aireDe(l.b) ? l.a : l.b, leger = lourd === l.a ? l.b : l.a;
+    [[leger, lourd], [lourd, leger]].some(function(c){
+      var set = {}; set[c[1]] = 1;
+      var cible = ouPese(set);
+      if(cible < 0 || !admis(c[0], cible)) return false;
+      BLOCKS.forEach(function(x){ if(x.key === c[0] && x.fl !== TRAY && x.fl !== cible){ x.fl = cible; n++; } });
+      fuse(c[0]);
+      return true;
     });
-    var cible = -1, max = -1, k;
-    for(k in aire) if(aire[k] > max){ max = aire[k]; cible = parseInt(k, 10); }
-    if(cible < 0) return;
-    BLOCKS.forEach(function(x){
-      if(!set[x.key] || x.fl === TRAY || x.fl === cible) return;
-      x.fl = cible; n++;
-    });
-    keys.forEach(fuse);
   });
   return n;
+}
+function niveauxDe(key){
+  var out = [];
+  BLOCKS.forEach(function(x){ if(x.key === key && x.fl !== TRAY && out.indexOf(x.fl) < 0) out.push(x.fl); });
+  return out;
+}
+function aireDe(key){
+  var a = 0;
+  BLOCKS.forEach(function(x){ if(x.key === key && x.fl !== TRAY) a += areaOf(x); });
+  return a;
 }
 
 /* Les parts qu'un déplacement groupé emmènerait, la part elle-même comprise. */
@@ -247,7 +283,9 @@ export function grappeBlocs(u){
   if(!b) return [];
   var keys = {};
   grappeDe(b.key).forEach(function(k){ keys[k] = 1; });
-  return BLOCKS.filter(function(x){ return keys[x.key]; });
+  return BLOCKS.filter(function(x){
+    return keys[x.key] && (x === b || x.fl === b.fl || estLie(x.key));
+  });
 }
 
 /* ---------- éditer la pile ------------------------------------------------

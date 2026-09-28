@@ -206,7 +206,7 @@ export function doctrineSection(dom, rejouer, extra, etat){
     });
     dt.appendChild(ul);
     dt.appendChild(el("p", "cons__note", "Tout le reste est décidé par les contraintes "
-      + "ci-dessus. Une graine rejoue un tirage à l'identique : sans elle, on tire dix "
+      + "ci-dessus. Une seed rejoue un tirage à l'identique : sans elle, on tire dix "
       + "fois et la troisième, qui était la bonne, n'existe plus."));
     p.appendChild(dt);
   }

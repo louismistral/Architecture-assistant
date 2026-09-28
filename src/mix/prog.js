@@ -16,6 +16,7 @@ import { ITEMBYKEY, ITEMS } from "../core/model.js";
 import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
 import { SLINK, SNODE } from "../data/schema.js";
+import { adjActive, adjVersion, lienId } from "./opts.js";
 
 /* Hors enveloppe scolaire : le second temps (piscine, chauffage à distance) et
    les extérieurs (cour, préau). Ils n'ont pas de couloirs à nous et ne pèsent
@@ -86,34 +87,42 @@ function keysOf(node){
   var nd = SMAPK[node];
   return ((nd && nd.k) || []).filter(function(k){ return !!PMAP[k] && !PMAP[k].dedans; });
 }
-/* PROX : « ces deux postes se tiennent ». Un lien optionnel du schéma (une
-   mutualisation possible) reste optionnel ici : on le signale, on ne
-   l'impose pas. */
+/* PROX : « ces deux postes se tiennent », un par paire de postes. Un lien du
+   schéma qui désigne plusieurs postes — les WC élèves sont garçons ET filles —
+   en donne plusieurs, qui portent tous son `id` : c'est le lien qu'on active,
+   pas la paire. Actif ou non, cela se lit dans `opts.js` (`adjActive`). */
 export var PROX = [];
 SLINK.forEach(function(lk){
   var A = keysOf(lk.a), B = keysOf(lk.b);
   A.forEach(function(a){
     B.forEach(function(b){
-      if(a !== b) PROX.push({ a:a, b:b, q:lk.q, opt:lk.opt ? 1 : 0 });
+      if(a !== b) PROX.push({ a:a, b:b, q:lk.q, opt:lk.opt ? 1 : 0, id:lienId(lk) });
     });
   });
 });
+/* Les paires d'un lien. */
+export function paires(id){ return PROX.filter(function(l){ return l.id === id; }); }
 
 /* ---------- grappes de proximité -------------------------------------------
-   Deux postes que le règlement veut côte à côte, et de proche en proche : la
-   composante connexe des adjacences EXIGÉES. Une mutualisation possible n'en
-   fait pas partie — elle est offerte, pas due.
+   Deux postes qu'une adjacence ACTIVE tient ensemble, et de proche en proche :
+   la composante connexe des liens actifs. Par défaut ce sont les adjacences
+   exigées — une mutualisation possible n'en fait pas partie : elle est offerte,
+   pas due —, et chaque lien s'allume ou s'éteint au mixer.
 
-   C'est ce qui permet de déplacer ensemble tout ce qui se tient : la salle de
-   sport entraîne sa scène, ses engins, son rangement, son nettoyage, ses
-   vestiaires, et, par le foyer et la cuisine, le réfectoire et l'UAPE. La
-   grappe est grande parce que le règlement le dit ; c'est précisément ce que
-   l'option donne à voir. */
-var GRAPPE = {};
-(function(){
+   C'est ce qui se déplace ensemble : la salle de sport entraîne sa scène, ses
+   engins, son rangement, son nettoyage, ses vestiaires, et, par le foyer et la
+   cuisine, le réfectoire et l'UAPE. La grappe est grande parce que le règlement
+   le dit ; éteindre un lien la coupe là.
+
+   Elle se recalcule quand un lien change (`adjVersion`), jamais à chaque appel :
+   la note du tirage la lit des centaines de fois. */
+var GRAPPE = {}, GRV = -1;
+function grappes(){
+  if(GRV === adjVersion()) return GRAPPE;
+  GRV = adjVersion(); GRAPPE = {};
   var adj = {};
   PROX.forEach(function(l){
-    if(l.opt) return;
+    if(!adjActive(l.id)) return;
     (adj[l.a] = adj[l.a] || []).push(l.b);
     (adj[l.b] = adj[l.b] || []).push(l.a);
   });
@@ -129,10 +138,18 @@ var GRAPPE = {};
     }
     comp.forEach(function(x){ GRAPPE[x] = comp; });
   });
-})();
+  return GRAPPE;
+}
 /* La grappe d'un poste — lui seul s'il n'est accroché à rien. */
-export function grappeDe(key){ return GRAPPE[key] || [key]; }
+export function grappeDe(key){ return grappes()[key] || [key]; }
 export function grappeTaille(key){ return grappeDe(key).length; }
+
+/* Un poste a-t-il le choix d'être lié ou délié ? Une seule pièce n'a rien à
+   lier, et un poste dont le règlement impose les cotes est d'un seul tenant. */
+export function lienLibre(key){
+  var p = PMAP[key];
+  return !!p && !p.solid && !p.dedans && qOf(key) > 1;
+}
 
 /* Surface utile totale du programme posable, et sa part bâtie. */
 export function netTotal(){

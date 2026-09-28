@@ -22,9 +22,15 @@
        débordaient d'un étage à l'autre par simple remplissage. Aucune école qui
        existe ne fait cela : un degré tient sur un niveau.
 
-   Les contraintes de CONNEXION ne sont toujours jamais dures. Elles sont des
-   préférences notées, et `src/mix/checks.js` dit après coup ce qui n'a pas pu
-   tenir. C'est la règle du projet : rien n'est empêché, rien n'est silencieux.
+   Les adjacences sont un CHOIX, lien par lien (`opts.js`) : active, elle met
+   ses deux postes au même niveau — d'un poids qui écrase toute autre raison ;
+   éteinte, elle ne pèse rien. Le tirage ne refuse toujours rien : quand une
+   adjacence active ne peut pas tenir, il pose quand même, et `checks.js` le dit
+   en rouge. Rien n'est empêché, rien n'est silencieux.
+
+   Au-dessus des réglages, leurs DÉS : un réglage dont le dé est allumé est
+   tiré à chaque Shuffle — la pile, le plateau d'un niveau, le lien d'un poste,
+   une adjacence —, un réglage dont le dé est éteint est respecté tel quel.
 
    Tous les poids, seuils et plafonds de ce fichier vivent dans
    `src/data/doctrine.js`, et se règlent dans le volet « Contraintes » du mixer.
@@ -41,10 +47,13 @@ import { RULES } from "../data/rules.js";
 import { airePosable } from "../mass/geom.js";
 import {
   BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBuilt, flCount,
-  flNet, fuse, grade, nextUid, onFloor, place, setPlate, setStack, toTray, usable
+  flNet, fuse, grade, lvlOf, nextUid, onFloor, place, setPlate, setStack, toTray, usable
 } from "./floors.js";
 import { CLSRE, UNITE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange } from "./niv.js";
-import { PMAP, PROX, aOf, grappeDe, posables, qOf, uOf } from "./prog.js";
+import {
+  adjActive, deAdj, deLien, dePlateau, estLie, liens, lienId, setAdj, setLie
+} from "./opts.js";
+import { PMAP, PROX, aOf, grappeDe, lienLibre, posables, qOf, uOf } from "./prog.js";
 
 /* Indices de niveaux qu'un poste peut occuper, dans la pile courante. */
 export function rangeOf(p){
@@ -65,18 +74,18 @@ function libre(i){ return usable(i) - flNet(i); }
    parcourue des centaines de fois par tirage, et elle ne bouge pas. */
 var VOIS = {};
 PROX.forEach(function(l){
-  (VOIS[l.a] = VOIS[l.a] || []).push({ o:l.b, opt:l.opt });
-  (VOIS[l.b] = VOIS[l.b] || []).push({ o:l.a, opt:l.opt });
+  (VOIS[l.a] = VOIS[l.a] || []).push({ o:l.b, id:l.id });
+  (VOIS[l.b] = VOIS[l.b] || []).push({ o:l.a, id:l.id });
 });
 
 /* Ce qui fait du bruit, et ce qui demande le calme. Aucun article ne l'écrit :
    c'est de l'usage scolaire, et c'est assumé comme tel dans la doctrine. */
 var BRUYANT = /Salle de sport double|Scène|^Cuisine|Réfectoire|foyer/;
 
-/* Ce poste est-il attaché à un autre par une proximité EXIGÉE ? */
+/* Ce poste est-il attaché à un autre par une adjacence ACTIVE ? */
 function attache(key){
   var l = VOIS[key] || [], i;
-  for(i = 0; i < l.length; i++) if(!l[i].opt) return true;
+  for(i = 0; i < l.length; i++) if(adjActive(l[i].id)) return true;
   return false;
 }
 function aireFam(f, i){
@@ -115,22 +124,22 @@ function noteNiveau(p, f, pose){
   if(l <= 0) s -= DOC.debordPoids;
   else s += DOC.placePoids * Math.min(1, l / Math.max(1, besoin));
 
-  /* 2 — les adjacences exigées déjà posées. Au même niveau elles rapportent
-     plein ; à un niveau d'écart, la moitié ; au-delà, elles coûtent. */
+  /* 2 — les adjacences ACTIVES déjà posées : le niveau où est son partenaire,
+     d'un poids qui écrase le reste — c'est une règle, pas une préférence. Plus
+     c'est loin, plus ça coûte. Une adjacence éteinte ne pèse rien : les deux
+     postes sont indépendants. */
   (VOIS[p.key] || []).forEach(function(v){
+    if(!adjActive(v.id)) return;
     var ls = pose[v.o];
     if(!ls || !ls.length) return;
     var d = Infinity;
     ls.forEach(function(g){ d = Math.min(d, Math.abs(g - f)); });
-    var w = DOC.adjPoids * (v.opt ? DOC.adjOpt : 1);
-    /* Plus c'est loin, plus ça coûte : une pénalité plate faisait qu'un dépôt
-       descendait au sous-sol pour quatorze points de commodité technique en
-       laissant la salle qu'il dessert deux niveaux plus haut. */
-    s += d === 0 ? w : (d === 1 ? w * 0.25 : -w * 0.5 * d);
+    s += d === 0 ? DOC.adjDur : -DOC.adjDur * d;
   });
 
   /* 3 — la grappe : là où elle pèse déjà, elle appelle le reste. C'est la même
-     notion que « Grouper les liés » déplace d'un bloc dans la vue. */
+     notion que la vue déplace d'un bloc — les postes que des adjacences
+     actives tiennent ensemble. */
   var gr = grappeDe(p.key);
   if(gr.length > 1){
     var set = {}, tot = 0, ici;
@@ -202,7 +211,7 @@ function etagesDeClasses(){
    Les niveaux candidats sont notés, triés, et remplis dans cet ordre : au mieux
    d'abord, le débord ensuite. Un poste aux cotes imposées ne se coupe pas — il
    va entier au meilleur niveau, quitte à le faire déborder, et le contrôle le
-   dira. Le mixer ne refuse rien. */
+   dira ; un poste LIÉ non plus, par choix. Le mixer ne refuse rien. */
 function poser(p, cand, alea, pose){
   var key = p.key, q = qOf(key), u = uOf(key);
   if(q <= 0 || !cand.length) return;
@@ -211,7 +220,7 @@ function poser(p, cand, alea, pose){
   }).sort(function(a, b){ return b.s - a.s; });
 
   var want = {}, rest = q, i;
-  if(p.solid){
+  if(p.solid || estLie(key)){
     want[notes[0].f] = q; rest = 0;
   } else {
     for(i = 0; i < notes.length && rest > 0; i++){
@@ -259,7 +268,8 @@ function equilibrerWC(){
 
   function repartir(re, minPar){
     posables().forEach(function(p){
-      if(!re.test(p.n)) return;
+      /* Un poste lié reste d'un seul tenant, là où le tirage l'a posé. */
+      if(!re.test(p.n) || estLie(p.key)) return;
       var cand = rangeOf(p), q = qOf(p.key), want = {}, rest = q, frac = [];
       if(q <= 0 || !cand.length) return;
       cand.forEach(function(f){
@@ -296,7 +306,7 @@ function equilibrerWC(){
     var don = null;
     BLOCKS.forEach(function(b){
       if(don || b.fl === TRAY || b.fl === i) return;
-      if(!WCRE.test(PMAP[b.key].n) || b.q < 1 || has[b.fl] <= 1) return;
+      if(!WCRE.test(PMAP[b.key].n) || b.q < 1 || has[b.fl] <= 1 || estLie(b.key)) return;
       if(rangeOf(PMAP[b.key]).indexOf(i) < 0) return;
       don = b;
     });
@@ -390,6 +400,8 @@ export function pilesAdmissibles(){
 }
 export function proposerPile(alea){
   var P = pilesAdmissibles(), choix = P[0];
+  var garde = {};
+  FLOORS.forEach(function(F){ garde[F.lvl] = F.plate; });
   if(alea && P.length > 1){
     /* Les plus compactes d'abord : les poids décroissent géométriquement, donc
        la pile la plus basse reste la plus probable sans que les autres soient
@@ -399,14 +411,46 @@ export function proposerPile(alea){
     var r = rng() * tot;
     for(i = 0; i < P.length; i++){ r -= w[i]; if(r <= 0){ choix = P[i]; break; } }
   }
-  setStack(choix.sous, choix.up, choix.plates);
+  /* Un plateau dont le dé est éteint garde la valeur qu'on lui a donnée, si sa
+     cote existe encore dans la pile tirée. */
+  var lo = -choix.sous, plates = choix.plates.map(function(pl, j){
+    var l = lo + j;
+    return (!dePlateau(l) && garde[l] > 0) ? garde[l] : pl;
+  });
+  setStack(choix.sous, choix.up, plates);
   return FLOORS.length;
+}
+/* La pile est figée, mais des plateaux sont au hasard : ils reprennent ceux de
+   la pile admissible de même forme, quand il y en a une. Sinon ils gardent leur
+   valeur le temps de la pose, et `ajusterPlateaux()` les ramène ensuite à ce
+   que chaque niveau porte. */
+function plateauxDeLaPile(){
+  var sous = Math.max(0, -lvlOf(0)), up = Math.max(0, lvlOf(FLOORS.length - 1)), m = null;
+  pilesAdmissibles().forEach(function(P){ if(!m && P.sous === sous && P.up === up) m = P; });
+  if(!m) return;
+  FLOORS.forEach(function(F, i){ if(dePlateau(F.lvl) && m.plates[i] > 0) F.plate = m.plates[i]; });
+}
+
+/* Ce que les dés allumés laissent au hasard, tiré AVANT la pose et sur la même
+   seed : une proposition se rejoue à l'identique, liens et adjacences compris.
+   La valeur tirée devient la valeur du réglage — elle se lit sur le bloc et au
+   flanc du mixer, et l'on peut la figer en éteignant le dé. */
+function tirerReglages(){
+  posables().forEach(function(p){
+    if(lienLibre(p.key) && deLien(p.key)) setLie(p.key, rng() < DOC.pLie);
+  });
+  liens().forEach(function(lk){
+    var id = lienId(lk);
+    if(deAdj(id)) setAdj(id, rng() < DOC.pAdj);
+  });
 }
 
 /* ---------- la répartition ------------------------------------------------ */
 export function repartir(opts){
   var alea = !!(opts && opts.alea);
+  if(alea) tirerReglages();
   if(opts && opts.etages) proposerPile(alea);
+  else plateauxDeLaPile();
 
   toTray();
   var pose = {};                      /* key → niveaux retenus */
@@ -455,8 +499,8 @@ export function repartir(opts){
       delFloorAt(FLOORS.length - 1);
     }
     tasserSommet();
-    ajusterPlateaux();
   }
+  ajusterPlateaux();
 }
 
 /* Un dernier étage qui ne porte que ses sanitaires n'est pas un étage : c'est
@@ -491,6 +535,9 @@ function tasserSommet(){
 function ajusterPlateaux(){
   var emprise = airePosable(RULES.dist.retrait) * DOC.plateauPart;
   FLOORS.forEach(function(F, i){
+    /* Un plateau figé est une décision : on ne le corrige pas. S'il déborde,
+       le contrôle le dit. */
+    if(!dePlateau(F.lvl)) return;
     var besoin = flBuilt(i);
     if(besoin <= 0) return;
     var p = Math.min(Math.max(PLATE_MIN, Math.ceil(besoin / 10) * 10),
