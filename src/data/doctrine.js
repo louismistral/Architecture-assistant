@@ -61,14 +61,23 @@ export var DOC = {
   temperature: 0.30,
 
   /* Les poids de la note de niveau. Ils se comparent entre eux, et c'est tout
-     ce qui compte : `adjPoids` à 26 contre `famPoids` à 10 veut dire qu'une
-     proximité exigée pèse deux fois et demie la cohérence de famille. */
+     ce qui compte : `grappePoids` à 20 contre `famPoids` à 10 veut dire qu'une
+     grappe pèse deux fois la cohérence de famille. */
   placePoids: 30,      /* la place qui reste au niveau */
   debordPoids: 45,     /* poser là ferait déborder le plateau */
-  adjPoids: 26,        /* une adjacence exigée satisfaite au même niveau */
-  adjOpt: 0.35,        /* une mutualisation possible ne pèse qu'un tiers */
   grappePoids: 20,     /* la grappe de proximité pèse déjà à ce niveau */
   famPoids: 10,        /* la famille d'usage pèse déjà à ce niveau */
+  /* Une adjacence ACTIVE n'est plus une préférence : les deux postes vont au
+     même niveau. Elle se note encore — le tirage n'a pas d'autre langage —, mais
+     d'un poids qui écrase toute autre raison, débordement compris. Éteinte, elle
+     ne pèse rien : les deux postes sont indépendants. Chaque lien s'active ou non
+     au mixer. Ce n'est pas un réglage : c'est ce qui fait d'elle une règle. */
+  adjDur: 400,
+
+  /* Ce que tire le dé d'un réglage laissé au hasard — un poste lié ou délié,
+     une adjacence active ou non. La probabilité d'obtenir le premier. */
+  pLie: 0.5,
+  pAdj: 0.5,
 
   /* L'unité pédagogique : un degré tient sur un niveau, avec ses dégagements.
      Au-delà, on fait un couloir d'hôpital. Dix-huit classes ne se répartissent
@@ -305,25 +314,36 @@ export var REGLES = [
     agit:"Groupe les classes, ET fixe le nombre minimum d'étages de la pile : vingt et une "
       + "salles à onze par niveau en demandent deux." },
 
-  { id:"adj", dom:"mix", rang:"forte", titre:"Adjacence exigée", k:"adjPoids",
-    unite:"points", min:0, max:120, pas:2,
-    source:"règlement — schéma fonctionnel", lu:"src/mix/shuffle.js — noteNiveau()",
-    pourquoi:"Les proximités du schéma (`src/data/schema.js`) ne sont jamais dures : le "
-      + "tirage les prend comme des préférences, et `checks.js` dit après coup ce qui n'a "
-      + "pas tenu. C'est la règle du projet — rien n'est empêché, rien n'est silencieux.",
-    agit:"Plus le poids monte, plus la répartition se tasse sur peu de niveaux." },
+  { id:"adj", dom:"mix", rang:"ferme", titre:"Adjacence active : même niveau",
+    val:"chaque lien du schéma s'active ou non, au mixer — à la main, ou au dé",
+    source:"règlement — schéma fonctionnel", lu:"src/mix/shuffle.js — noteNiveau() · src/mix/opts.js",
+    pourquoi:"Les proximités du schéma (`src/data/schema.js`) étaient toutes des préférences, "
+      + "et le tirage y renonçait dès qu'un niveau était plein. Elles sont désormais un "
+      + "CHOIX, lien par lien : active, l'adjacence met les deux postes au même niveau et les "
+      + "déplace ensemble ; éteinte, ils sont indépendants. Par défaut, les adjacences exigées "
+      + "sont actives et les mutualisations éteintes. `checks.js` marque en rouge une "
+      + "adjacence active qui ne tient pas.",
+    agit:"Rassemble ce qu'on a voulu ensemble, au prix de débordements que le contrôle dira." },
 
-  { id:"adjopt", dom:"mix", rang:"pref", titre:"Mutualisation possible", k:"adjOpt",
-    unite:"× le poids d'une adjacence", min:0, max:1, pas:0.05,
-    source:"règlement — liens optionnels", lu:"src/mix/shuffle.js — noteNiveau()",
-    pourquoi:"Une mutualisation est offerte, pas due. Elle ne se compte pas comme une exigence.",
-    agit:"Rapproche, sans jamais l'imposer, ce que le règlement suggère de partager." },
+  { id:"p-lie", dom:"mix", rang:"guide", titre:"Dé d'un poste : lié", k:"pLie",
+    unite:"probabilité", min:0, max:1, pas:0.05,
+    source:"projet", lu:"src/mix/shuffle.js — tirerReglages()",
+    pourquoi:"Un poste dont le dé est allumé est tiré lié ou délié à chaque Shuffle. Lié, ses "
+      + "pièces vont ensemble à un seul niveau ; délié, elles sont indépendantes.",
+    agit:"À 0, un poste tiré est toujours délié ; à 1, toujours lié." },
+
+  { id:"p-adj", dom:"mix", rang:"guide", titre:"Dé d'une adjacence : active", k:"pAdj",
+    unite:"probabilité", min:0, max:1, pas:0.05,
+    source:"projet", lu:"src/mix/shuffle.js — tirerReglages()",
+    pourquoi:"Une adjacence dont le dé est allumé est tirée active ou non à chaque Shuffle.",
+    agit:"À 0, une adjacence tirée est toujours éteinte ; à 1, toujours active." },
 
   { id:"grappe", dom:"mix", rang:"forte", titre:"Cohésion d'une grappe", k:"grappePoids",
     unite:"points", min:0, max:120, pas:2,
     source:"projet", lu:"src/mix/shuffle.js — noteNiveau()",
-    pourquoi:"Une grappe est la composante connexe des adjacences exigées : celle de la "
-      + "salle de sport compte quatorze postes. La casser coûte, la tenir rapporte.",
+    pourquoi:"Une grappe est la composante connexe des adjacences ACTIVES : celle de la "
+      + "salle de sport compte quatorze postes quand toutes les exigences le sont. La casser "
+      + "coûte, la tenir rapporte.",
     agit:"Rassemble ce qui se tient. À zéro, une grappe s'éparpille sur trois étages." },
 
   { id:"cla-haut", dom:"mix", rang:"pref", titre:"Les classes préfèrent l'étage", k:"classeEtage",
@@ -568,10 +588,11 @@ export var SCRIPTS = [
   { dom:"mix", f:"src/mix/shuffle.js", n:"Le tirage de répartition",
     lit:"le programme (`prog.js`), les règles de niveau (`niv.js`), les adjacences "
       + "(`schema.js`), la part de circulation, l'aire posable de la parcelle",
-    decide:"le nombre de sous-sols et d'étages, l'emprise de chaque plateau, et quel poste "
+    decide:"ce que les dés allumés laissent au hasard — le nombre de sous-sols et d'étages, "
+      + "l'emprise des plateaux, les postes liés, les adjacences actives —, puis quel poste "
       + "va à quel niveau, en combien de parts",
     agit:"tout le reste de l'application : le massing relit ces niveaux, la typologie les relira",
-    hasard:"graine du mixer (`core/rand.js`) · température" },
+    hasard:"seed du mixer (`core/rand.js`) · température · les dés de chaque réglage" },
 
   { dom:"mix", f:"src/mix/niv.js", n:"Les règles de niveau",
     lit:"`data/rules.js` et le nom de chaque poste",
@@ -593,18 +614,18 @@ export var SCRIPTS = [
     hasard:"aucun" },
 
   { dom:"mix", f:"src/core/rand.js", n:"Le générateur pseudo-aléatoire du mixer",
-    lit:"une graine de 32 bits, affichée et re-saisissable",
+    lit:"une seed de 32 bits, affichée et re-saisissable",
     decide:"toute la variation de la répartition",
-    agit:"rend une proposition REJOUABLE : sans graine, on tire dix fois et la troisième, "
+    agit:"rend une proposition REJOUABLE : sans seed, on tire dix fois et la troisième, "
       + "qui était la bonne, n'existe plus",
-    hasard:"mulberry32 · graine affichée en base 36" },
+    hasard:"mulberry32 · seed affichée en base 36" },
 
   { dom:"mass", f:"src/mass/gen.js", n:"Le générateur de volumétrie",
     lit:"les niveaux du mixer, le relevé du site, `rules.js`, la doctrine ci-dessus",
     decide:"combien de corps, où, dans quelle direction, à quelle profondeur, jusqu'à quel "
       + "étage, accolés ou reliés",
     agit:"le plan et la 3D — c'est la proposition architecturale elle-même",
-    hasard:"graine du massing (`MASS.graine`), distincte de celle du mixer" },
+    hasard:"seed du massing (`MASS.graine`), distincte de celle du mixer" },
 
   { dom:"mass", f:"src/mass/partis.js", n:"Les douze partis",
     lit:"le parti choisi, la surface de chaque niveau, la profondeur tirée",
@@ -655,10 +676,21 @@ export function scriptsDe(dom){
 /* ---------- ce que le hasard décide, en toutes lettres -----------------------
    Un générateur dont on ne sait pas ce qu'il tire est un générateur qu'on subit. */
 export var TIRAGES = [
-  { dom:"mix", quoi:"Le nombre de niveaux",
+  { dom:"mix", quoi:"Le nombre de niveaux — si son dé est allumé",
     comment:"toutes les piles admissibles sont construites — celles dont le plateau déduit "
       + "tient dans l'emprise et dont les étages ne dépassent pas le plafond —, puis l'une "
-      + "d'elles est tirée, les plus compactes d'abord. Ce n'est plus un pile ou face." },
+      + "d'elles est tirée, les plus compactes d'abord. Dé éteint, la pile reste celle qu'on "
+      + "a composée." },
+  { dom:"mix", quoi:"L'emprise d'un plateau — niveau par niveau",
+    comment:"dé allumé, le plateau d'un niveau est déduit de la pile tirée, puis ramené à ce "
+      + "que le niveau porte ; dé éteint, il reste la valeur saisie, et c'est elle qui sert de "
+      + "capacité." },
+  { dom:"mix", quoi:"Lié ou délié — poste par poste",
+    comment:"dé allumé, un poste est tiré lié (ses pièces ensemble, à un seul niveau) avec la "
+      + "probabilité `pLie`, délié sinon ; dé éteint, il garde l'état qu'on lui a donné." },
+  { dom:"mix", quoi:"Les adjacences actives — lien par lien",
+    comment:"dé allumé, un lien est tiré actif avec la probabilité `pAdj` ; dé éteint, il "
+      + "garde l'état qu'on lui a donné. Actif, il met ses deux postes au même niveau." },
   { dom:"mix", quoi:"L'ordre de pose",
     comment:"les postes dont le règlement ne laisse qu'un niveau passent d'abord, les plus "
       + "grands en tête ; puis ceux qui suivent une ancre ; puis le reste." },
