@@ -60,6 +60,8 @@ fini doit se voir sur le site en ligne** — donc finir veut dire : sur `main`.
 2. **Partir d'un `main` à jour** — `git fetch origin main`, puis
    `git checkout -b prénom/sujet origin/main`.
 3. **Travailler**, en s'aidant des plugins et skills utiles à la tâche.
+   Les plugins du projet sont déclarés dans `.claude/settings.json`, les skills copiés
+   dans `.claude/skills/` — toute session, locale ou cloud, les reçoit.
 4. **Vérifier** — il n'y a pas de build : les trois snapshots de la section *Vérifier* en
    tiennent lieu. S'ils ne passent pas, on ne va pas plus loin.
 5. **Commiter, puis se rebaser sur le dernier `main`** — `git fetch origin main`,

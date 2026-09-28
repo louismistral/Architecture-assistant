@@ -1,0 +1,34 @@
+{
+  "enabledPlugins": {
+    "impeccable@impeccable": true,
+    "ponytail@ponytail": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+    "superpowers@superpowers-dev": true
+  },
+  "extraKnownMarketplaces": {
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    },
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      }
+    },
+    "superpowers-dev": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers"
+      }
+    }
+  }
+}
