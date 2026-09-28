@@ -6,7 +6,7 @@ Poser le programme sur le terrain.
 src/data/site.js      le relevé, engendré du fichier Rhino    ← source unique
 src/mass/geom.js      terrain interpolé, rectangles tournés, distances, alignements
 src/mass/model.js     l'état, les niveaux RELUS du mixer, le bilan de surface
-src/mass/gen.js       le générateur : générer → valider → comparer → choisir
+src/mass/gen.js       le générateur : générer → vérifier → noter → classer
 src/mass/juge.js      le jugement : contraintes dures, priorités fortes, préférences
 src/mass/partis.js    les douze partis : figure exacte, programme, cohérence du parti
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
@@ -62,31 +62,40 @@ voudrait dire.
 Deux graines distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
 `MASS.graine`. Les confondre ferait qu'on ne peut plus changer l'une sans perdre l'autre.
 
-## Trois rangs, et aucun point
+## Générer, vérifier, noter, classer — un score sur 100
 
-Le générateur ne somme plus rien — ni à l'écran, ni en coulisse. `juge.js` juge une variante
-en trois temps, et le volet « Contraintes » les affiche tels quels, chaque ligne disant ce
-qu'elle pense de la composition à l'écran :
+`juge.js` juge une variante en deux temps, et le volet « Contraintes » les affiche tels quels,
+chaque ligne disant ce qu'elle pense de la composition à l'écran :
 
 | rang | effet | règles |
 |---|---|---|
-| **contraintes dures** | une seule enfreinte : la variante est jetée (`dures()`) | périmètre et recul PACom de 5 m à tous les étages, passerelles comprises · 6 m au moins entre bâtiments à tous les étages (on peut en demander plus, on ne vise pas 6) · rien sur l'existant · largeur ≥ 11 m · profondeur entre `profMin` (réglable, 11 m) et 28 m · classes en façade : un corps qui porte des classes n'a pas plus de deux salles de profondeur (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
-| **priorités fortes** | on écarte toute variante qu'une autre BAT : au moins aussi bonne partout, meilleure quelque part | orientation solaire, vue vers le terrain de football (nord-ouest, lue dans le relevé), lumière entre bâtiments (1,1 × h, indication), compacité, cour généreuse |
-| **préférences** | ne départagent que des variantes ÉGALES sur les priorités fortes | alignement, terrassement (terrain réel sous l'emprise), élancement ≤ 9, connexions, accès et stationnement, nappe (3,00 m de terrain au-dessus de 462,25 m sous tout sous-sol) |
+| **règles dures** | une seule enfreinte : la variante est SUPPRIMÉE, sans score (`dures()`) | périmètre et recul de 5 m (choix de projet) à tous les étages, passerelles comprises · **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 → AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · classes en façade (`profFacade()`, 18,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
+| **priorités fortes** | comptent dans le score, poids 40 | dimensions souhaitées · distance souhaitée · respect du parti · organisation du programme · orientation solaire · vue au nord-ouest · lumière entre bâtiments · compacité · cour généreuse |
+| **préférences** | comptent dans le score, poids 15 | alignement · terrassement · élancement · connexions · nappe et sous-sol · accès et stationnement |
 
-Chaque critère rend favorable, neutre ou défavorable — les seuils sont dans `doctrine.js`.
+**Les dimensions et la distance sont des réglages, pas des règles.** Largeur et profondeur
+min/max (`DOC.largeurMin/Max`, `profMin/Max`, cotes extérieures, murs compris) et la distance
+souhaitée (`DOC.distVoulue`) se règlent dans le volet Contraintes. Le générateur les VISE —
+les figures s'écartent de `max(distance incendie, distance souhaitée)`, `besoins()` découpe
+selon la largeur max —, mais un volume hors fourchette ou un écart sous la distance souhaitée
+ne fait que baisser le score. Seule la distance incendie bloque.
 
-**La note se lit, elle ne choisit pas — et elle est sur 100.** Chaque critère porte un
-score : sa qualité q ∈ [−1, 1], mesurée sur les mêmes seuils, fois le poids de son rang
-(`RANGS_MASS.poids` : forte 40, préférence 15, en proportion), le tout ramené pour qu'une
-composition qui répond pleinement à tout vaille exactement 100. Une contrainte dure respectée
-vaut 0, chaque écart coûte 100. `juge.js — noter()` rend le total et le détail ; `views/note.js` les dessine — total en
-grand, gains à droite en vert, coûts à gauche en rouge, critères nuls sur une ligne — dans le
-volet Contraintes comme dans la fiche d'une variante. Le générateur ne lit pas cette somme. Les paramètres de recherche (essais, reconnaissance, profondeur de mesure
-de la cour, passerelles) sont rangés à part, sous « Paramètres du générateur ».
+**Le score** : chaque critère rend q ∈ [−1, 1], ramené à s = (q + 1) / 2, et
+
+```
+score = 100 × Σ w·s / Σ w        sur les seuls critères ACTIFS (DOC["on_" + id])
+```
+
+100 = tous les critères actifs pleinement satisfaits. Décocher un critère le retire des deux
+sommes : la note se recalibre. Les poids (`RANGS_MASS.poids`) ne s'affichent pas : l'interface
+ne montre que le rang de chaque critère, son état (favorable, neutre, défavorable, désactivé)
+et le total. `juge.js — noter()` le calcule ; `views/note.js` le dessine, dans le volet
+Contraintes comme dans la fiche d'une variante. Les paramètres de recherche (essais,
+reconnaissance, profondeur de mesure de la cour, passerelles) sont rangés à part, sous
+« Paramètres du générateur ».
 
 Ont disparu, de l'interface ET de l'algorithme : les poids (`*Poids`), le coût du sous-sol
-hors règle (la nappe est désormais une préférence qualitative), l'éparpillement (doublon des 6 m), le maximum
+hors règle (la nappe est désormais une préférence qualitative), l'éparpillement (doublon de la distance entre bâtiments), le maximum
 de cour, l'adresse du corps principal et sa « bande de 30 m » (une largeur de bande autour
 d'une voie, qui ne servait qu'à ce bonus), la « marge sans pénalité » du terrassement
 (1,6 m de dénivelé en deçà duquel le malus valait zéro), la force et le poids d'alignement,
@@ -118,12 +127,16 @@ L'ordre est imposé : **1. le parti · 2. le programme · 3. les règles dures �
    les résultats. Après le choix, les ouvrages du second temps sont posés et tout est revérifié :
    s'ils font enfreindre une règle, ils ne sont pas posés ; si la variante ne tient plus, elle est
    abandonnée. Rien qui enfreigne une règle dure n'arrive à l'écran.
-5. **Les priorités et préférences** ne départagent qu'ensuite. En Auto, le parti est tiré parmi
-   tous ceux qui ont rendu une variante valide (`DOC.essaisParti` essais chacun) ; quand un parti
-   imposé n'a presque rien rendu, le générateur persévère jusqu'à dix fois le budget.
+5. **Le score, puis le classement** (`classer()`). Chaque variante valide est notée sur 100 et
+   classée. En Auto, chaque parti essaie `DOC.essaisParti` fois et l'on garde la MEILLEURE de
+   chaque parti ; un parti imposé garde ses huit meilleures. Quand un parti imposé n'a presque
+   rien rendu, le générateur persévère jusqu'à dix fois le budget. `genMass()` rend la première
+   de la liste (`vols.props`, `vols.rang`, `vols.score`) ; « Shuffle massing » passe à la
+   suivante, et ne rejoue un tirage qu'au bout de la liste. Le score est affiché sous les
+   boutons : « 83/100 · proposition 1 sur 6 ».
 
 Avec ce programme, la Barre ne tient presque jamais : une seule file de volumes d'au plus 28 m
-fait 130 m. Les pavillons, six à neuf bâtiments à six mètres les uns des autres, tiennent
+fait 130 m. Les pavillons, six à neuf bâtiments à la distance souhaitée les uns des autres, tiennent
 difficilement. Quand rien ne tient, rien n'est proposé.
 
 ## Murs, dalles, module
@@ -147,16 +160,14 @@ aucune variante ainsi tirée ne tient, le générateur rejoue avec tous les corp
 Ici les 1ᵉʳ et 2ᵉ étages ont presque la même surface : on obtient surtout des R+2 à côté de rez
 seuls, plus rarement des R+1.
 
-## Une seule limite géométrique : 28 m, en longueur comme en largeur
+## Les dimensions : une fourchette souhaitée, pas une limite
 
-Aucun volume ne dépasse `DOC.profMax`, 28 m, dans l'une ou l'autre direction — à aucun étage,
-ni au sous-sol. Seule exception : la salle de sport double, que le règlement fixe à 28 × 32 m.
-C'est une LIMITE, pas une cible : `cotes()` choisit les proportions à surface exacte sous cette
-cote, et une géométrie qui la franchit est invalide — le générateur cherche une autre
-composition. Aucune forme de repli n'est appliquée : ni décrochement, ni fusion, ni règle de
-porte-à-faux.
+Aucune cote de volume n'est plus une règle dure — seule la salle de sport double reste fixée
+à 28 × 32 m par le règlement. Les fourchettes du volet Contraintes (11–28 m par défaut)
+orientent `besoins()` et `profBornes()` et comptent dans le critère « Dimensions souhaitées ».
+Aucune forme de repli n'est appliquée : ni décrochement, ni fusion, ni règle de porte-à-faux.
 
-Conséquence : un corps d'école fait au plus 28 × 18,5 m (les classes en façade), soit environ
+Avec les réglages par défaut, un corps d'école vise au plus 28 × 18,5 m (les classes en façade), soit environ
 520 m² par étage, et le rez en demande quatre fois plus. `genMass()` calcule donc le nombre de
 corps nécessaire (`nMin`) et chaque parti en pose au moins autant — en rangs pour les barres
 et les terrasses, le long de chaque aile pour le L, le U et la cour. Le sous-sol se répartit
@@ -192,7 +203,7 @@ cour minimale.
 
 Ils se posent **après** que l'école est composée, sur la composition retenue, et prennent les MARGES
 du site : `poserSecond()` balaie la parcelle du bord vers le cœur et prend la première position
-admissible — mêmes limites, même recul, mêmes six mètres. Les faire concourir avec les corps d'école
+admissible — mêmes limites, même recul, même distance incendie. Les faire concourir avec les corps d'école
 doublait le coût d'un tirage et écartait des figures d'école valables pour loger une piscine qu'on
 ne bâtira pas avant dix ans. Quand aucune place ne tient, l'ouvrage **n'est pas posé** et le
 contrôle le dit, avec les gestes qui le résoudraient : mieux vaut l'absence que le mensonge.
@@ -200,7 +211,7 @@ contrôle le dit, avec les gestes qui le résoudraient : mieux vaut l'absence qu
 Ils sont hors de tout ce qui mesure l'ÉCOLE : le bilan de surface, la compacité, la cour tenue,
 l'adresse, la part de classes et le jour entre corps les ignorent — exiger seize mètres entre une
 piscine basse et un corps de classes était une alerte que rien ne pouvait corriger. Ils ne sont hors
-de rien de ce qui tient au TERRAIN : périmètre, recul, six mètres, existant, pente.
+de rien de ce qui tient au TERRAIN : périmètre, recul, distance incendie, existant, pente.
 
 ## Une alerte se clique : le geste, ou l'assumer
 
