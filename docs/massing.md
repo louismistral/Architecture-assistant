@@ -12,6 +12,7 @@ src/mass/partis.js    les douze partis : figure exacte, programme, cohérence du
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
+src/mass/export.js    le fichier .obj pour Rhino — une fonction pure, qui rend du texte
 src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
 src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation
 src/views/vue3d.js    la 3D : terrain maillé, courbes drapées, existant, volumes
@@ -61,6 +62,16 @@ voudrait dire.
 
 Deux graines distinctes — celle du mixer dans `core/rand.js`, celle du massing dans
 `MASS.graine`. Les confondre ferait qu'on ne peut plus changer l'une sans perdre l'autre.
+
+**La seed du massing se lit et se retape.** Elle s'affiche sous « Shuffle massing », libellée
+« Seed » — dans le code elle reste `MASS.graine` —, dans le champ du mixer à l'identique : base
+36, retapée puis Entrée, et la même volumétrie revient, pourvu que le programme et le parti
+soient les mêmes. « Shuffle massing » parcourt d'abord le classement que la seed a produit —
+la seed ne change pas, le rang s'affiche —, puis en tire une nouvelle au bout. Le bouton et
+le champ passent par un seul chemin, `rejouerMassing()` : une seed retapée ne peut pas rendre
+autre chose que ce que le tirage avait montré. Une seed illisible ou nulle remet la valeur
+courante sans rien tirer. Elle est enregistrée avec le reste (`mass/etat.js`) : après un
+rechargement, la seed affichée est celle de la volumétrie relue.
 
 ## Générer, vérifier, noter, classer — un score sur 100
 
@@ -241,6 +252,43 @@ existants, périmètre. On y zoome, on s'y déplace, on sélectionne un volume e
 en le tirant, on le tourne par sa poignée — et la 3D suit à l'instant. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.
+
+Dans la 3D, **le modèle suit la main** : tirer vers la gauche le fait tourner vers la gauche,
+tirer vers le haut relève son côté proche. La composante horizontale était inversée — la
+caméra suivait le curseur, et le projet tournait à rebours du geste.
+
+L'altitude de chaque étage se lit à un seul endroit, `etagesDe()` (et `pontEtage()` pour une
+passerelle) : le rez sur l'assise, les étages au-dessus, les sous-sols dessous, un ouvrage du
+second temps à sa propre hauteur. La 3D et l'export la lisent tous deux.
+
+## L'export vers Rhino
+
+« Exporter pour Rhino (.obj) », en fin de rail, télécharge `saxon-massing-<seed>.obj`.
+`mass/export.js` écrit le texte, la vue ne fait que le donner.
+
+- **Le repère est celui de `DOC/site_plan.3dm`**, en centimètres, Z vers le haut à l'altitude
+  absolue : le fichier s'y pose en place, sans rien déplacer. L'origine vient de `RHINO`, que le
+  script du relevé écrit dans `site.js`. Ce repère a l'allure du LV95 sans en être — voir
+  `docs/releve.md` ; pour se superposer au relevé, c'est pourtant lui qu'il faut.
+- **Un groupe OBJ par calque** : `Niveau_Sous-sol`, `Niveau_Rez`, `Niveau_1er_etage`… — chaque
+  étage de chaque volume en maillage fermé, huit sommets, six faces, normales vers l'extérieur,
+  de plancher à plancher, murs compris ; les passerelles vont au niveau qu'elles desservent.
+  `Second_temps` porte la piscine et le local CAD, `Perimetre` et `Recul_5m` les deux limites.
+  Les objets portent le nom du plan : le V3 qu'on lit au plan est le `V3_Rez` du fichier.
+- **Le recul est celui que le contrôle mesure.** Aucun module ne le traçait : la règle est une
+  distance, `bordDist()` ≥ 5 m. `ligneRecul()` (`geom.js`) en fait une ligne sans refaire le
+  calcul autrement — les côtés poussés vers l'intérieur, un arc à chaque angle rentrant, et
+  `bordDist()` qui décide des morceaux à garder. Ses sommets sont à 5 m du bord à 10⁻¹⁴ m près,
+  et l'aire qu'elle enclôt, 10'534 m², est celle que la règle donne point par point.
+- **Les deux lignes sont drapées** sur le terrain, un sommet au moins tous les deux mètres : le
+  fichier Rhino n'a pas de surface de terrain, rien que des courbes, et y draper une ligne est
+  long quand la remettre à plat est une commande (`ProjectToCPlane`).
+- Ni l'acrotère, ni le jour de 12 cm que la 3D laisse entre deux étages, ni le programme à
+  l'intérieur des volumes. Tout le fichier est en ASCII : un nom de calque accentué arrive
+  mutilé selon la version de Rhino.
+
+À l'import : **ne pas cocher** « Map OBJ Y to Rhino Z » — Z monte déjà dans le fichier —, et
+**cocher** « Import OBJ groups as layers ». La ligne sous le bouton le dit.
 
 L'état du massing — volumes, positions, rotations, parti, réglages — est persisté avec le reste
 (`mass/etat.js`, clé `saxon-mix-v1`) : aller au mixer et revenir ne défait pas une implantation qu'on
