@@ -41,16 +41,45 @@ export var ITEMBYKEY = {}; ITEMS.forEach(function(it){ ITEMBYKEY[it.key] = it; }
    arithmétiques opposées. Elle appartient au programme : c'est une surface, et
    les surfaces se décident une fois, dans l'onglet qui les tient.
 
-   Convention unique : part de la surface BÂTIE.
-     bâti = utile / (1 − part)   ·   circulation = bâti − utile
+   Elle ne dépend plus des seuls mètres carrés mais des PIÈCES : un couloir
+   dessert des portes. Chaque pièce ouvre sur lui le côté d'un carré de sa
+   surface, son front ; le couloir vaut ce front, fois sa largeur, divisé par
+   les rangs qu'il dessert ; chaque niveau ajoute ses cages d'escalier. Les
+   petites pièces d'un poste se groupent en un bloc à une porte, un grand local
+   plafonne son front. Tous les chiffres sont dans `RULES.circ`.
+
+   La largeur du couloir est la seule saisie ; la PART de la surface bâtie
+   devient un résultat — `CIRC`, qu'on lit partout où on lisait la part.
    Elle ne porte QUE sur le bâti scolaire — les quatre premiers chapitres. La
    piscine, le chauffage à distance, la cour et son préau n'ont pas de couloirs
    à nous : ils sont hors enveloppe. */
-export var CIRC = RULES.circ.def;     /* part de la surface bâtie */
+export var COULOIR = RULES.circ.couloir.def;   /* largeur du couloir, m */
 export var CIRCSET = false;           /* l'utilisateur a-t-il tranché ? */
+export var CIRC = 0;                  /* part de la surface bâtie — un résultat */
 export var CIRCA = 0;                 /* m² de circulation du bâti scolaire */
+export var CIRCH = 0;                 /* dont couloirs */
+export var CIRCV = 0;                 /* dont cages d'escalier */
+export var FRONT = 0;                 /* mètres de front ouverts sur les couloirs */
 export var BUILTG = 0;                /* bâti scolaire, circulation comprise */
 export var GRANDG = 0;                /* total du programme, circulation comprise */
+
+/* Le front que `q` pièces d'un poste ouvrent sur le couloir. Les locaux engins
+   de la salle de gym n'en ont pas : ils sont DANS l'abri PC, que le règlement
+   convertit, et ils n'ont pas de porte à eux. */
+export function frontDe(it, q){
+  var R = RULES.circ;
+  if(!it || !(q > 0) || it.planSkip || it.ci >= 4) return 0;
+  if(it.u < R.bloc) return Math.min(Math.sqrt(q * it.u), R.frontMax);
+  return q * Math.min(Math.sqrt(it.u), R.frontMax);
+}
+/* Les m² de couloir qu'un front demande. */
+export function couloirDe(front){ return front * COULOIR / RULES.circ.rangs; }
+/* Les m² de cages d'un niveau qui porte `aire` m² bâtis : une cage, deux
+   au-delà du seuil de la protection incendie. */
+export function cagesDe(aire){
+  var n = aire > RULES.feu.cageSeuil ? 2 : RULES.feu.cageMin;
+  return n * RULES.circ.cage;
+}
 
 export function recompute(){
   ESTT = 0;
@@ -68,22 +97,43 @@ export function recompute(){
   });
   GRAND = PROG + ESTT;
   BUILT = CHAP.slice(0,4).reduce(function(t,c){ return t + c.total; }, 0);
-  BUILTG = BUILT / (1 - CIRC);
-  CIRCA = BUILTG - BUILT;
+
+  /* Les couloirs, poste par poste : chacun porte ceux que ses pièces demandent. */
+  FRONT = 0; CIRCH = 0;
+  ITEMS.forEach(function(it){
+    it.front = frontDe(it, it.nb);
+    it.couloir = couloirDe(it.front);
+    FRONT += it.front; CIRCH += it.couloir;
+  });
+  /* Les cages, sur la pile que le cahier des charges suppose : il vient AVANT
+     le mixer, et ne sait pas encore combien de niveaux le projet aura. */
+  var N = RULES.circ.niveaux;
+  CIRCV = N * cagesDe((BUILT + CIRCH) / N);
+  CIRCA = CIRCH + CIRCV;
+  BUILTG = BUILT + CIRCA;
+  CIRC = BUILTG > 0 ? CIRCA / BUILTG : 0;
   GRANDG = GRAND + CIRCA;
-  /* La circulation se répartit sur les chapitres et les familles au prorata de
-     ce qu'ils pèsent dans le bâti scolaire : c'est l'arithmétique du total,
-     appliquée groupe par groupe, et les parts se resomment exactement à CIRCA.
-     Les deux derniers chapitres — infrastructures du second temps et
-     extérieurs — sont hors enveloppe et n'en portent aucune. */
-  CHAP.forEach(function(ch, ci){
-    ch.scol = ci < 4 ? ch.total : 0;
-    ch.circ = ch.scol / (1 - CIRC) - ch.scol;
+  /* La circulation se répartit sur les chapitres et les familles : chacun porte
+     les couloirs de SES pièces, et les cages — qui servent tout le monde — au
+     prorata de ce qu'il pèse dans le bâti scolaire. Les parts se resomment
+     exactement à CIRCA. Les deux derniers chapitres — infrastructures du second
+     temps et extérieurs — sont hors enveloppe et n'en portent aucune. */
+  function partDe(items){
+    var scol = 0, h = 0, n = 0;
+    items.forEach(function(i){
+      if(i.ci >= 4) return;
+      scol += i.tot; h += i.couloir; n += i.nb;
+    });
+    return { scol: scol, circ: h + (BUILT > 0 ? CIRCV * scol / BUILT : 0), pieces: n };
+  }
+  CHAP.forEach(function(ch){
+    var p = partDe(ch.items);
+    ch.scol = p.scol; ch.circ = p.circ;
     ch.gross = ch.total + ch.circ;
   });
   FAM.forEach(function(f){
-    f.scol = f.items.reduce(function(t,i){ return t + (i.ci < 4 ? i.tot : 0); }, 0);
-    f.circ = f.scol / (1 - CIRC) - f.scol;
+    var p = partDe(f.items);
+    f.scol = p.scol; f.circ = p.circ;
     f.gross = f.total + f.circ;
   });
 }
@@ -102,21 +152,27 @@ export function setItemArea(key, v){
 }
 export var userAreas = {};
 
-export function setCirc(p){
-  var lo = RULES.circ.min, hi = RULES.circ.max;
-  if(!isFinite(p) || p < lo || p > hi) return false;
+/* La largeur du couloir, en mètres — la seule chose qui se saisit de la
+   circulation. Tout le reste en découle. */
+export function setCirc(w){
+  var R = RULES.circ.couloir;
+  if(!isFinite(w) || w < R.min || w > R.max) return false;
+  w = Math.round(w * 100) / 100;
   /* Fixer la valeur qu'on avait déjà est un geste : le poste passe de « à
      préciser » à « fixée », et cela se voit. */
-  var change = (p !== CIRC) || !CIRCSET;
+  var change = (w !== COULOIR) || !CIRCSET;
   CIRCSET = true;
-  if(p !== CIRC){ CIRC = p; recompute(); }
+  if(w !== COULOIR){ COULOIR = w; recompute(); }
   return change;
 }
 /* Restauration depuis le stockage : la valeur revient telle qu'elle a été
-   saisie, avec son statut « fixée ». */
-export function loadCirc(p){
-  if(!isFinite(p) || p < RULES.circ.min || p > RULES.circ.max) return false;
-  CIRC = p; CIRCSET = true; recompute();
+   saisie, avec son statut « fixée ». Un état enregistré avant le calcul par
+   les pièces portait une PART (0,18) : elle est hors des bornes d'une largeur
+   et se refuse d'elle-même — on repart du couloir par défaut. */
+export function loadCirc(w){
+  var R = RULES.circ.couloir;
+  if(!isFinite(w) || w < R.min || w > R.max) return false;
+  COULOIR = w; CIRCSET = true; recompute();
   return true;
 }
 

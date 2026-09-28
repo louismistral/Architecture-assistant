@@ -26,8 +26,8 @@
    ajoute un niveau à l'endroit où il apparaîtra, en tête ou au pied de la
    pile.
    ========================================================================= */
-import { el, fmt } from "../core/format.js";
-import { CIRC, CIRCA, FMAP } from "../core/model.js";
+import { dec, el, fmt } from "../core/format.js";
+import { CIRC, CIRCA, COULOIR, FMAP } from "../core/model.js";
 import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
 import { s as svg } from "../core/svg.js";
 import { squarify } from "../core/treemap.js";
@@ -38,7 +38,7 @@ import { accept, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import {
   FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
-  addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt,
+  addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt, flCirc, flCircDe,
   flCount, flHeight, flLibre, flName, flNet, floorCost, grappeBlocs, horsAt,
   lvlOf, move, moveGroupe, onFloor, regrouper, setPlate, split, toTray,
   trayArea, trayBlocks, usable
@@ -53,7 +53,7 @@ import { saveSoon, setChip } from "../mix/store.js";
 var AIRE = 70;
 var TINY_W = 46, TINY_H = 21;
 
-var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null;
+var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null, circEl = null;
 var ghostEl = null;
 var selU = null, drag = null, wired = false;
 /* Le code de l'écart déplié, s'il y en a un. Un seul à la fois : ouvrir le
@@ -162,7 +162,8 @@ export function mixPanel(){
   grid.appendChild(main);
 
   var side = el("aside","mix-side");
-  side.appendChild(circBlock());
+  circEl = el("section","mix-circ");
+  side.appendChild(circEl);
   issuesEl = el("section","mix-issues");
   side.appendChild(issuesEl);
   trayEl = el("section","mix-tray");
@@ -190,18 +191,26 @@ function proposer(){
   saveSoon();
 }
 
-/* ---------- la part de circulation, en lecture seule -----------------------
+/* ---------- la circulation, en lecture seule --------------------------------
    Elle se règle dans le cahier des charges et nulle part ailleurs : c'est une
    surface, et les surfaces se décident une fois. Ici on la lit. */
-function circBlock(){
-  var s = el("section","mix-circ");
+function drawCirc(){
+  if(!circEl) return;
+  var s = circEl;
+  while(s.firstChild) s.removeChild(s.firstChild);
   s.appendChild(el("h3","label","Circulation"));
-  var v = el("p","mix-circ__v mono", Math.round(CIRC * 100) + " %");
-  v.appendChild(el("span","u", "de la surface bâtie"));
+  var v = el("p","mix-circ__v mono", dec(COULOIR) + " m");
+  v.appendChild(el("span","u", "de couloir"));
   s.appendChild(v);
+  /* Deux chiffres, et ils ne se confondent pas : le cahier des charges
+     l'ESTIME avant de connaître la pile, le mixer la COMPTE sur celle qu'il
+     porte — les couloirs devant les pièces de chaque niveau, et ses cages. */
+  var pile = 0, i;
+  for(i = 0; i < FLOORS.length; i++) pile += flCirc(i);
   s.appendChild(el("p","mix-circ__n",
-    fmt(Math.round(CIRCA)) + " m² sur le bâti scolaire, déjà comptés dans les "
-    + "capacités de plateau ci-contre."));
+    fmt(Math.round(pile)) + " m² sur cette pile — couloirs devant les pièces de chaque "
+    + "niveau, et ses cages d’escalier. Le cahier des charges en estime "
+    + fmt(Math.round(CIRCA)) + " m² (" + Math.round(CIRC * 100) + " % du bâti)."));
   var b = el("button","btn btn--quiet mix-circ__go","Régler dans le cahier des charges");
   b.type = "button";
   b.addEventListener("click", function(){
@@ -214,7 +223,6 @@ function circBlock(){
     }, 0);
   });
   s.appendChild(b);
-  return s;
 }
 
 /* ---------- rendu --------------------------------------------------------- */
@@ -222,6 +230,7 @@ export function drawMix(){
   if(!stackEl) return;
   drawSeed();
   drawSum();
+  drawCirc();
   drawStack();
   drawIssues();
   drawTray();
@@ -251,8 +260,8 @@ function drawSeed(){
 
 function drawSum(){
   while(sumEl.firstChild) sumEl.removeChild(sumEl.firstChild);
-  var pose = 0, bati = 0, i;
-  for(i = 0; i < FLOORS.length; i++){ pose += flArea(i); bati += flBuilt(i); }
+  var pose = 0, bati = 0, circ = 0, i;
+  for(i = 0; i < FLOORS.length; i++){ pose += flArea(i); bati += flBuilt(i); circ += flCirc(i); }
   var reste = trayArea();
 
   function fig(lb, val, sub){
@@ -267,7 +276,7 @@ function drawSum(){
     + "rez" + (lvlOf(FLOORS.length - 1) > 0 ? " + " + lvlOf(FLOORS.length - 1) : "")));
   sumEl.appendChild(fig("posé", fmt(Math.round(pose)) + " m²", "surface utile"));
   sumEl.appendChild(fig("bâti", fmt(Math.round(bati)) + " m²",
-    "circulation à " + Math.round(CIRC * 100) + " % comprise"));
+    "dont " + fmt(Math.round(circ)) + " m² de circulation" + (bati > 0 ? ", " + Math.round(circ / bati * 100) + " %" : "")));
   sumEl.appendChild(fig("au bac", fmt(Math.round(reste)) + " m²",
     reste > 0 ? "encore à poser" : "tout est posé"));
 }
@@ -343,8 +352,8 @@ function floorNode(i){
   var F = FLOORS[i];
   var wrap = el("div","mix-fl");
   wrap.dataset.floor = String(i);
-  var net = flNet(i), cap = usable(i), bati = flBuilt(i), hors = horsAt(i);
-  var over = isFinite(cap) && net > cap + 1;
+  var net = flNet(i), bati = flBuilt(i), hors = horsAt(i), plate = F.plate > 0 ? F.plate : 0;
+  var over = plate > 0 && bati > plate + 1;
   if(over) wrap.classList.add("is-over");
 
   if(issFocus && issFocus.fl === i) wrap.classList.add("is-flagged", "is-" + issFocus.sev);
@@ -371,8 +380,8 @@ function floorNode(i){
   meta.appendChild(document.createTextNode(
     flCount(i) + " pièces · " + fmt(Math.round(net)) + " m² utiles"));
   meta.appendChild(el("span","mix-fl__circ",
-    "+ " + fmt(Math.round(bati - net)) + " m² de circulation ("
-    + Math.round(CIRC * 100) + " %)"));
+    "+ " + fmt(Math.round(bati - net)) + " m² de circulation"
+    + (bati > 0 ? " (" + Math.round((bati - net) / bati * 100) + " %)" : "")));
   meta.appendChild(document.createTextNode(
     " = " + fmt(Math.round(bati)) + " m² bâtis"));
   if(hors > 0) meta.appendChild(el("span","mix-fl__hors",
@@ -387,7 +396,7 @@ function floorNode(i){
   bar.appendChild(h);
 
   bar.appendChild(el("span","spacer"));
-  var pct = isFinite(cap) && cap > 0 ? Math.round(net / cap * 100) : 0;
+  var pct = plate > 0 ? Math.round(bati / plate * 100) : 0;
   var tag = el("span", "mix-fl__pct mono" + (over ? " is-over" : ""), pct + " %");
   tag.title = "Part du plateau occupée, circulation comprise";
   bar.appendChild(tag);
@@ -467,10 +476,13 @@ function paintFloor(host, i){
     var cb = el("div","mix-circband is-hatched");
     cb.style.top = netH.toFixed(1) + "px";
     cb.style.height = circH.toFixed(1) + "px";
-    cb.setAttribute("data-tip", "Circulation|" + fmt(Math.round(circ)) + " m² à ce niveau|"
-      + Math.round(CIRC * 100) + " % du bâti, réglés au cahier des charges");
+    var cd = flCircDe(i);
+    cb.setAttribute("data-tip", "Circulation|" + fmt(Math.round(circ)) + " m² à ce niveau — "
+      + fmt(Math.round(cd.couloir)) + " de couloirs, " + fmt(Math.round(cd.cages)) + " de cages|"
+      + fmt(Math.round(cd.front)) + " m de portes sur des couloirs de " + dec(COULOIR)
+      + " m, réglés au cahier des charges");
     if(circH > 13) cb.appendChild(el("span", null, "circulation · "
-      + fmt(Math.round(circ)) + " m² · " + Math.round(CIRC * 100) + " %"));
+      + fmt(Math.round(circ)) + " m² · " + Math.round(circ / (net + circ) * 100) + " %"));
     host.appendChild(cb);
   }
   if(horsH > 0){

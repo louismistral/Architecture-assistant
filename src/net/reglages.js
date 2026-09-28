@@ -2,10 +2,14 @@
    LES RÉGLAGES DU GROUPE
 
    Trois choses ne peuvent pas différer entre deux membres sans que l'outil
-   mente : les huit surfaces « à préciser », la part de circulation, et les
+   mente : les huit surfaces « à préciser », la largeur du couloir, et les
    écarts à la doctrine. Ce ne sont pas des préférences d'affichage, ce sont
-   des DÉCISIONS DE PROJET — si l'un travaille à 0,18 de circulation et
-   l'autre à 0,20, leurs deux variantes ne se comparent plus.
+   des DÉCISIONS DE PROJET — si l'un travaille avec un couloir de 2,40 m et
+   l'autre de 3 m, leurs deux variantes ne se comparent plus.
+
+   La colonne `circulation` de la table porte la LARGEUR du couloir depuis que
+   la circulation se déduit des pièces. Une ligne écrite avant y a laissé une
+   part (0,18) : hors des bornes d'une largeur, elle se refuse d'elle-même.
 
    Elles se lisent à l'ouverture et s'écrivent au fil de l'eau. Le dernier qui
    écrit gagne, et l'on dit QUI : à deux, sur un concours, se voler un réglage
@@ -14,7 +18,7 @@
    Ce qui reste à chacun : la composition à l'écran, les écarts assumés, les
    interrupteurs du mixer. Travailler n'est pas publier.
    ========================================================================= */
-import { CIRC, CIRCSET, loadCirc, recompute, userAreas } from "../core/model.js";
+import { CIRCSET, COULOIR, loadCirc, recompute, userAreas } from "../core/model.js";
 import { docOf, setDocs } from "../data/doctrine.js";
 import { applyAreas, onSave } from "../mix/store.js";
 import { CPT } from "./compte.js";
@@ -26,7 +30,7 @@ var occupe = false;      /* on applique du distant : ne pas le renvoyer aussitô
 var minuteur = null;
 
 function partDeLEtat(){
-  return { areas: userAreas, circulation: CIRCSET ? CIRC : null, doctrine: docOf() };
+  return { areas: userAreas, circulation: CIRCSET ? COULOIR : null, doctrine: docOf() };
 }
 function signature(o){ return JSON.stringify([o.areas, o.circulation, o.doctrine]); }
 

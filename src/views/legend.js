@@ -1,5 +1,7 @@
-import { el, fmt } from "../core/format.js";
-import { BUILT, BUILTG, CIRC, CIRCA, CIRCSET, ESTT, GRAND, PROG, VARITEMS } from "../core/model.js";
+import { dec, el, fmt } from "../core/format.js";
+import {
+  BUILT, BUILTG, CIRC, CIRCA, CIRCH, CIRCSET, CIRCV, COULOIR, ESTT, FRONT, GRAND, PROG, VARITEMS
+} from "../core/model.js";
 import { FAM } from "../data/families.js";
 import { RULES } from "../data/rules.js";
 
@@ -64,7 +66,8 @@ function breakBlock(){
   var br = el("dl","intro__break");
   [["chiffré au règlement", fmt(PROG) + " m²"],
    ["à préciser", fmt(ESTT) + " m²"],
-   ["circulation, " + Math.round(CIRC * 100) + " % du bâti scolaire", fmt(Math.round(CIRCA)) + " m²"],
+   ["circulation, " + Math.round(CIRC * 100) + " % du bâti scolaire — couloirs de " + dec(COULOIR) + " m",
+    fmt(Math.round(CIRCA)) + " m²"],
    ["bâti scolaire, circulation comprise", fmt(Math.round(BUILTG)) + " m²"]
   ].forEach(function(row){
     br.appendChild(el("dt", null, row[0]));
@@ -164,23 +167,28 @@ export function varBlock(){
   });
 
   /* La circulation ferme la liste : elle n'est pas un local, elle est ce qui
-     les relie, et sa part décide de la surface bâtie de tous les niveaux. */
-  var lo = Math.round(RULES.circ.min * 100), hi = Math.round(RULES.circ.max * 100);
+     les relie. On n'en saisit plus la PART mais la largeur du couloir : la
+     surface se déduit des pièces qu'il dessert, et la part devient un résultat. */
+  var R = RULES.circ;
   var liC = row({
     id: "var-circ",
-    name: "Circulation — couloirs, escaliers, paliers, sas",
+    name: "Circulation — largeur des couloirs",
     set: CIRCSET,
-    aria: "Part de circulation, en pour cent de la surface bâtie",
-    min: lo, max: hi, step: 1, value: Math.round(CIRC * 100),
-    unit: "% du bâti",
+    aria: "Largeur des couloirs, en mètres",
+    min: R.couloir.min, max: R.couloir.max, step: 0.1, value: COULOIR,
+    unit: "m de couloir",
     tot: fmt(Math.round(CIRCA)) + " m²",
-    bad: "Entre " + lo + " et " + hi + " %",
-    commit: function(v){ return onSetCirc ? onSetCirc(v / 100) : false; }
+    bad: "Entre " + dec(R.couloir.min) + " et " + dec(R.couloir.max) + " m",
+    commit: function(v){ return onSetCirc ? onSetCirc(v) : false; }
   });
   liC.classList.add("vars__circ");
   var why = el("p","vars__why",
-    "Part de la surface BÂTIE, et non un supplément : " + fmt(BUILT)
-    + " m² utiles de bâti scolaire deviennent " + fmt(Math.round(BUILTG)) + " m² bâtis.");
+    "Un couloir dessert des portes, pas des mètres carrés : chaque pièce y ouvre le côté "
+    + "d’un carré de sa surface, " + fmt(Math.round(FRONT)) + " m en tout, desservis "
+    + (R.rangs === 2 ? "des deux côtés" : "d’un côté") + " — " + fmt(Math.round(CIRCH))
+    + " m² de couloirs, plus " + fmt(Math.round(CIRCV)) + " m² de cages d’escalier. Soit "
+    + Math.round(CIRC * 100) + " % de la surface bâtie : " + fmt(BUILT) + " m² utiles de bâti "
+    + "scolaire deviennent " + fmt(Math.round(BUILTG)) + " m² bâtis.");
   liC.appendChild(why);
   ul.appendChild(liC);
 
@@ -236,8 +244,8 @@ export function legendBlock(){
   ci.appendChild(el("i","sw sw--circ"));
   var cl = el("div","legend__lb");
   cl.appendChild(document.createTextNode("Circulation"));
-  cl.appendChild(el("i", null, "hors des huit familles · " + Math.round(CIRC * 100)
-    + " % du bâti scolaire"));
+  cl.appendChild(el("i", null, "hors des huit familles · couloirs de " + dec(COULOIR)
+    + " m et cages, " + Math.round(CIRC * 100) + " % du bâti scolaire"));
   ci.appendChild(cl);
   ci.appendChild(el("div","legend__vl mono", fmt(Math.round(CIRCA)) + " m²"));
   key.appendChild(ci);

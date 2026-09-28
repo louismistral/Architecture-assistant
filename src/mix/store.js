@@ -18,7 +18,7 @@
    perdre aussi les surfaces.
    ========================================================================= */
 import { el } from "../core/format.js";
-import { CIRC, CIRCSET, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
+import { CIRCSET, COULOIR, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
 import { optsOf, setOpts } from "./opts.js";
 import { docOf, setDocs } from "../data/doctrine.js";
@@ -60,7 +60,9 @@ function failChip(){
 export function snapshot(){
   return {
     areas: userAreas,
-    circ: circValue(),
+    /* La LARGEUR du couloir, et non plus une part : la clé a changé avec le
+       sens, pour qu'un état enregistré avant ne soit pas relu de travers. */
+    couloir: circValue(),
     lvls: FLOORS.map(function(F){ return F.lvl; }),
     plates: FLOORS.map(function(F){ return F.plate; }),
     blocks: BLOCKS.filter(function(b){ return b.fl !== TRAY; })
@@ -90,7 +92,7 @@ export function restore(o){
   var lost = [];
   if(!o) return lost;
   try{ applyAreas(o.areas); }catch(_){ lost.push("surfaces"); }
-  try{ if(o.circ != null) loadCirc(o.circ); }catch(_){ lost.push("circulation"); }
+  try{ if(o.couloir != null) loadCirc(o.couloir); }catch(_){ lost.push("circulation"); }
   try{ applyStack(o.lvls, o.plates); }catch(_){ lost.push("niveaux"); }
   try{ applyBlocks(o.blocks); }catch(_){ lost.push("répartition"); }
   try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
@@ -123,10 +125,10 @@ export function saveSoon(){
   }, 700);
 }
 
-/* La part de circulation vit dans `core/model.js` ; on ne la duplique pas, on
+/* La largeur du couloir vit dans `core/model.js` ; on ne la duplique pas, on
    la relit au moment d'écrire. Tant qu'elle n'a pas été tranchée, on
    n'enregistre rien : l'hypothèse de projet doit pouvoir évoluer. */
-function circValue(){ return CIRCSET ? CIRC : null; }
+function circValue(){ return CIRCSET ? COULOIR : null; }
 
 export function applyAreas(areas){
   if(!areas) return;

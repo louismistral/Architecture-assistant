@@ -1,11 +1,12 @@
-import { el, fmt } from "../core/format.js";
+import { dec, el, fmt } from "../core/format.js";
 import {
-  ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, ESTT, FMAP, GRAND, GRANDG, PROG,
+  ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, COULOIR, ESTT, FMAP, GRAND, GRANDG, PROG,
   setCirc, setItemArea
 } from "../core/model.js";
 import { curSub, setSub, subBtnId, subsOf, view, writeHash } from "../core/viewstate.js";
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
+import { RULES } from "../data/rules.js";
 import { FREE, SLINK, SNODE } from "../data/schema.js";
 import { drawMass, massDoctrine, massPanel, setMassNav } from "./massing.js";
 import { drawMix, mixDoctrine, mixPanel, setMixNav } from "./mixer.js";
@@ -309,7 +310,7 @@ export function render(){
 
     host.appendChild(p);
     drawDiagram(d, gp.items, W, fs, fsSm, Math.round(gp.circ),
-      Math.round(CIRC * 100) + " % de la surface bâtie, part de " + gp.name.toLowerCase());
+      "couloirs de " + dec(COULOIR) + " m devant ses pièces, et sa part des cages d’escalier");
     d.querySelector("svg").setAttribute("aria-label",
       gp.name + " — " + fmt(Math.round(gp.gross)) + " m² représentés à l’échelle, dont "
       + fmt(gp.total) + " m² de programme"
@@ -442,7 +443,8 @@ function fillTotals(tb){
      et seule la part bâtie scolaire la porte. La taire ferait croire qu'un
      projet de 7'025 m² se bâtit en 7'025 m². */
   tb.appendChild(row("Circulation", null, null, Math.round(CIRCA), "soft",
-    Math.round(CIRC * 100) + " % de la surface bâtie, sur le seul bâti scolaire"));
+    "couloirs de " + dec(COULOIR) + " m et cages d’escalier, sur le seul bâti scolaire — "
+    + Math.round(CIRC * 100) + " % de la surface bâtie"));
   tb.appendChild(row("Bâti scolaire, circulation comprise", null, null,
     Math.round(BUILTG), "grand"));
 }
@@ -460,7 +462,7 @@ function sourcesSection(){
   a.appendChild(el("b", null, "Surfaces à préciser. "));
   a.appendChild(document.createTextNode(
     "Huit postes ne sont pas chiffrés par le règlement — il les compte en nombre de pièces, ou les "
-    + "renvoie « selon projet ». Ils portent notre valeur, modifiable en section 2, sur ces "
+    + "renvoie « selon projet ». Ils portent notre valeur, modifiable en section 1, sur ces "
     + "bases : vestiaires de classe 0,5 m² par élève, soit 10 m² pour 20 élèves ; WC 2 m² par cabine, "
     + "soit la cabine standard de 1 × 2 m sans la zone lavabos ; halls posés par défaut à 120, 150 et "
     + "30 m², sans fondement dans le règlement. Ces valeurs sont à vérifier contre les directives "
@@ -470,12 +472,16 @@ function sourcesSection(){
   var e = el("p");
   e.appendChild(el("b", null, "Circulation. "));
   e.appendChild(document.createTextNode(
-    "Le règlement ne la chiffre pas. Elle est une hypothèse de projet, saisie en section 2 comme "
-    + "une PART DE LA SURFACE BÂTIE : le bâti vaut la surface utile divisée par un moins cette part. "
-    + "Une part de 18 % ajoute donc 22 % à la surface utile, et non 18 %. Elle ne porte que sur le "
-    + "bâti scolaire — école, sport, UAPE, technique ; la piscine, le chauffage à distance, la cour "
-    + "et son préau n'ont pas de couloirs à nous. C'est cette part que le mixer retranche de chaque "
-    + "plateau pour dire ce qu'un niveau peut porter."));
+    "Le règlement ne la chiffre pas. Elle est une hypothèse de projet, déduite des PIÈCES et non "
+    + "des seuls mètres carrés : un couloir dessert des portes. Chaque pièce ouvre sur lui le côté "
+    + "d’un carré de sa surface ; les petites pièces d’un même poste — WC, vestiaires — forment un "
+    + "bloc à une porte, et un grand local n’ouvre jamais plus de " + RULES.circ.frontMax + " m. Ce "
+    + "front, fois la largeur du couloir saisie en section 1, divisé par " + RULES.circ.rangs
+    + " parce qu’un couloir dessert ses deux rives, donne les couloirs ; chaque niveau ajoute une ou "
+    + "deux cages d’escalier de " + RULES.circ.cage + " m², selon le seuil de la protection incendie. "
+    + "Le cahier des charges suppose " + RULES.circ.niveaux + " niveaux ; le mixer compte ceux de sa "
+    + "pile. Elle ne porte que sur le bâti scolaire — école, sport, UAPE, technique ; la piscine, le "
+    + "chauffage à distance, la cour et son préau n’ont pas de couloirs à nous."));
   d.appendChild(e);
 
   var b = el("p");

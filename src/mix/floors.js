@@ -10,7 +10,7 @@
    `{ u, key, q, fl }` — `q` unités du poste `key` au niveau d'indice `fl`, ou
    dans le bac (`TRAY`) tant qu'elles ne sont pas posées.
    ========================================================================= */
-import { CIRC } from "../core/model.js";
+import { CIRC, ITEMBYKEY, cagesDe, couloirDe, frontDe } from "../core/model.js";
 import { RULES } from "../data/rules.js";
 import { PMAP, aOf, grappeDe, posables, qOf } from "./prog.js";
 
@@ -77,13 +77,35 @@ export function flNet(i){
   BLOCKS.forEach(function(b){ if(b.fl === i && !PMAP[b.key].hors) a += areaOf(b); });
   return a;
 }
-export function flBuilt(i){ return flNet(i) / (1 - CIRC); }
+/* La circulation d'un niveau se déduit des pièces qu'il PORTE : les couloirs
+   devant leurs portes, et ses cages d'escalier. Les parts d'un même poste se
+   regroupent d'abord — neuf WC posés en trois parts au même niveau restent un
+   seul bloc sanitaire, avec une seule porte. Un niveau qui ne porte rien du
+   bâti scolaire n'a ni couloir ni cage. `core/model.js` tient l'arithmétique ;
+   ici on ne fait que lui donner ce qui est posé. */
+export function flCircDe(i){
+  var q = {}, n = 0, net = 0, front = 0, k;
+  BLOCKS.forEach(function(b){
+    if(b.fl !== i || PMAP[b.key].hors) return;
+    q[b.key] = (q[b.key] || 0) + b.q;
+    net += areaOf(b);
+  });
+  for(k in q){ front += frontDe(ITEMBYKEY[k], q[k]); n++; }
+  if(!n) return { couloir: 0, cages: 0, front: 0 };
+  var h = couloirDe(front);
+  return { couloir: h, cages: cagesDe(net + h), front: front };
+}
+export function flCirc(i){ var c = flCircDe(i); return c.couloir + c.cages; }
+export function flBuilt(i){ return flNet(i) + flCirc(i); }
 export function flCount(i){
   var n = 0;
   BLOCKS.forEach(function(b){ if(b.fl === i) n += b.q; });
   return n;
 }
-/* Ce qu'un niveau peut porter en surface utile sans déborder son plateau. */
+/* Ce qu'un niveau peut porter en surface utile sans déborder son plateau. La
+   circulation d'un niveau n'est connue qu'une fois ses pièces posées : pour
+   PRÉVOIR, on prend la part que le programme entier donne — `CIRC`, le
+   résultat du cahier des charges. */
 export function usable(i){
   var F = FLOORS[i];
   return F && F.plate > 0 ? F.plate * (1 - CIRC) : Infinity;

@@ -16,11 +16,10 @@
    sans dire ce qui le réparerait laisse tout le travail à faire.
    ========================================================================= */
 import { fmt } from "../core/format.js";
-import { CIRC } from "../core/model.js";
 import { DOC } from "../data/doctrine.js";
 import { RULES } from "../data/rules.js";
 import {
-  BLOCKS, FLOORS, TRAY, flCount, flName, flNet, lvlOf, trayArea, trayBlocks, usable
+  BLOCKS, FLOORS, TRAY, flBuilt, flCount, flName, lvlOf, trayArea, trayBlocks
 } from "./floors.js";
 import { isAccepted } from "./accept.js";
 import {
@@ -149,18 +148,19 @@ export function mixCheck(){
 
   /* --- plateau ------------------------------------------------------------ */
   FLOORS.forEach(function(F, k){
-    var cap = usable(k), net = flNet(k);
-    if(!isFinite(cap) || net <= cap + 1) return;
-    /* La comparaison se fait en surface BÂTIE des deux côtés : dire « 2'168 m²
-       utiles pour un plateau de 2'400 m² » donnait deux nombres qui semblaient
-       tenir l'un dans l'autre alors qu'il manquait 244 m². */
+    var bati = flBuilt(k);
+    if(!(F.plate > 0) || bati <= F.plate + 1) return;
+    /* La comparaison se fait en surface BÂTIE : dire « 2'168 m² utiles pour un
+       plateau de 2'400 m² » donnait deux nombres qui semblaient tenir l'un dans
+       l'autre alors qu'il manquait 244 m². La circulation est celle que les
+       pièces posées à ce niveau demandent, pas une part forfaitaire. */
     add("w", "Le " + flName(k).toLowerCase() + " demande "
-      + fmt(Math.round(net / (1 - circPart()))) + " m² bâtis, circulation comprise, "
+      + fmt(Math.round(bati)) + " m² bâtis, circulation comprise, "
       + "pour un plateau de " + fmt(F.plate) + " m² — il manque "
-      + fmt(Math.round((net - cap) / (1 - circPart()))) + " m²",
+      + fmt(Math.round(bati - F.plate)) + " m²",
       "plateau", "", k,
       { code:"plate:" + F.lvl,
-        fix: [fixPlateau(k, net / (1 - circPart())), fixEtage()] });
+        fix: [fixPlateau(k, bati), fixEtage()] });
   });
 
   /* --- sanitaires --------------------------------------------------------- */
@@ -206,7 +206,7 @@ export function mixCheck(){
 
   /* --- art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage ------ */
   FLOORS.forEach(function(F, k){
-    var a = flNet(k) / (1 - circPart());
+    var a = flBuilt(k);
     /* Deux cages ne se posent pas ici : elles se dessinent à la typologie. Le
        seul geste qui change quelque chose au mixer est d'alléger le niveau. */
     if(a > RULES.feu.cageSeuil) add("w", "Surface d'étage de " + fmt(Math.round(a))
@@ -231,10 +231,6 @@ export function mixCheck(){
   out.sort(function(a, b){ return (a.sev === "e" ? 0 : 1) - (b.sev === "e" ? 0 : 1); });
   return out;
 }
-
-/* La part de circulation est relue à chaque appel : elle se règle dans l'onglet
-   Programme et le contrôle doit suivre sans être rechargé. */
-function circPart(){ return CIRC; }
 
 /* Les écarts assumés ne comptent plus au verdict : c'est tout leur sens. Ils
    restent dans la liste, à part, et se reprennent d'un clic. */
