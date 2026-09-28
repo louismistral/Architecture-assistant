@@ -109,7 +109,10 @@ function copie(o, garde){
 }
 export function setOpts(o){
   if(!o) return;
-  if(o.v !== 2){ if(o.niv !== undefined) dePile = !!o.niv; return; }
+  /* Un état d'avant ne connaît ni liens ni adjacences : ils reviennent au
+     défaut, et non à ceux de la session en cours — sinon une variante
+     ancienne se rechargeait avec les réglages de la dernière qu'on a vue. */
+  if(o.v !== 2){ resetOpts(); if(o.niv !== undefined) dePile = !!o.niv; return; }
   dePile = !!o.pile;
   dePlat = copie(o.plat, function(k, v){ return v === false; });
   lies = copie(o.lie, function(k, v){ return v === true; });
