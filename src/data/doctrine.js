@@ -415,9 +415,10 @@ export var REGLES = [
   { id:"facade", dom:"mass", rang:"dure", titre:"Toutes les salles de classe en façade",
     val:"un corps qui porte des classes n'a pas plus de deux salles de profondeur",
     source:"projet — jour naturel", lu:"src/mass/model.js — profFacade()",
-    pourquoi:"Deux rangées de salles de classe prises à leur surface bâtie, circulation "
-      + "comprise : au-delà, une salle se retrouve au milieu du corps, sans fenêtre. La "
-      + "cote vient du programme, pas d'un réglage.",
+    pourquoi:"Deux rangées de salles de classe, chacune au carré de sa surface, et le "
+      + "couloir qui les dessert entre elles, à la largeur réglée au cahier des charges "
+      + "(2 × √72 + 2,40 ≈ 19,5 m) : au-delà, une salle se retrouve au milieu du corps, "
+      + "sans fenêtre. La cote vient du programme, pas d'un réglage.",
     agit:"Jette la variante ; plafonne la profondeur tirée pour les corps d'école." },
   { id:"module", dom:"mass", rang:"dure", titre:"Module dimensionnel",
     val:"0,50 m — toutes les cotes des corps", source:"projet",
