@@ -257,6 +257,15 @@ Dans la 3D, **le modèle suit la main** : tirer vers la gauche le fait tourner v
 tirer vers le haut relève son côté proche. La composante horizontale était inversée — la
 caméra suivait le curseur, et le projet tournait à rebours du geste.
 
+**Les étages montrés sont une PLAGE** (`MASS.etages`, `plageVue()` / `vu()` dans `model.js`),
+réglée par un curseur à deux poignées sous « Affichage », un cran par étage. Toute la plage,
+c'est tout le bâtiment ; deux poignées sur le même cran, un seul étage. Le plan pave le plus
+bas des étages montrés (hors sous-sol) et trace les autres en trait fin ; la 3D ne pose que
+ceux-là. Le curseur est fait main : deux `<input type="range">` superposés laissaient l'input
+du dessus prendre tout quand les poignées se rejoignaient, et l'on ne pouvait plus rouvrir la
+plage vers le bas. Un enregistrement d'avant, qui portait `etage` (un niveau ou −1), se relit
+en plage.
+
 L'altitude de chaque étage se lit à un seul endroit, `etagesDe()` (et `pontEtage()` pour une
 passerelle) : le rez sur l'assise, les étages au-dessus, les sous-sols dessous, un ouvrage du
 second temps à sa propre hauteur. La 3D et l'export la lisent tous deux.
