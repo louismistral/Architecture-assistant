@@ -21,7 +21,7 @@ import { el } from "../core/format.js";
 import { CIRCSET, COULOIR, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
 import { optsOf, setOpts } from "./opts.js";
-import { docOf, setDocs } from "../data/doctrine.js";
+import { docOf, docReset, setDocs } from "../data/doctrine.js";
 import { massOf, setMass } from "../mass/etat.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
@@ -98,7 +98,12 @@ export function restore(o){
   try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
   try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
   try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
-  try{ setDocs(o.doc); }catch(_){ lost.push("contraintes"); }
+  /* La doctrine d'un instantané est ce qui s'écarte du DÉFAUT : on repart du
+     défaut avant de la poser. Sans cela, une valeur réglée avant le chargement
+     survivait à une variante qui ne la touchait pas, et la variante ne se
+     reproduisait plus. Un instantané d'avant la doctrine (`doc` absent) ne
+     touche à rien. */
+  try{ if(o.doc){ docReset(); setDocs(o.doc); } }catch(_){ lost.push("contraintes"); }
   return lost;
 }
 

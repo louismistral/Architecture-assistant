@@ -20,13 +20,15 @@
 
    Plus l'EMPREINTE des fichiers du dépôt : voir `core/empreinte.js`.
    ========================================================================= */
-import { BUILTG } from "../core/model.js";
+import { BUILTG, VARITEMS, recompute, userAreas } from "../core/model.js";
+import { curSeed as seedActuelle, seed } from "../core/rand.js";
+import { DOC } from "../data/doctrine.js";
 import { empreinte } from "../core/empreinte.js";
 import { curSeed } from "../core/rand.js";
 import { FLOORS } from "../mix/floors.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import { restore, saveSoon, snapshot } from "../mix/store.js";
-import { MASS, bilanTotal, partiOf, volCoins } from "../mass/model.js";
+import { MASS, bilanTotal, massVols, partiOf, volCoins } from "../mass/model.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { jugementCourant } from "../mass/juge.js";
 import { CPT } from "./compte.js";
@@ -45,8 +47,11 @@ function signale(){ abonnes.forEach(function(f){ try{ f(VARIANTES); }catch(_){} 
    Le périmètre n'est pas enregistré : il est dans `data/site.js`, donc dans le
    dépôt — s'il change, la variante est périmée, et la vue le dessinera avec
    le relevé du jour. */
+/* Elle porte aussi le parti RÉEL : en « Auto », `MASS.parti` vaut `auto` et ne
+   dit pas quelle figure a été tirée — c'est la composition qui le sait. Le
+   filtre par type de massing le lit ici. */
 export function vignetteCourante(){
-  return { vol: (MASS.vol || []).map(function(v){
+  return { parti: (MASS.vol && MASS.vol.parti) || null, vol: (MASS.vol || []).map(function(v){
     var c = volCoins(v) || [];
     return { p: c.map(function(p){ return [ +p[0].toFixed(1), +p[1].toFixed(1) ]; }),
              s: v.fix ? 1 : 0 };
@@ -169,4 +174,70 @@ export async function charger(id){
   var perdu = restore(st);
   saveSoon();
   return perdu;
+}
+
+/* ---------- rejouer ----------
+   « Reload » : chaque variante est rechargée, son résumé recalculé par le code
+   D'AUJOURD'HUI — note, critères, verdict, surfaces, miniature — et réécrit en
+   base s'il a changé. Une note d'un ancien juge (vingt-trois critères, ou 670
+   sur 100) n'a plus de sens : elle est refaite, pas cachée.
+
+   L'EMPREINTE, elle, ne bouge pas : elle dit sur quelle version du programme
+   et du règlement la variante a été COMPOSÉE, et rejouer ne recompose rien.
+   Une variante périmée le reste — sa note est simplement relue par le juge
+   actuel.
+
+   Comme la recherche, on travaille sur l'état vivant et on le remet tel quel.
+   `restore()` ne défait pas une surface « à préciser » qu'une variante aurait
+   posée, ni une valeur de doctrine : on les sauve et on les rend à l'identique. */
+function pause(){ return new Promise(function(ok){ setTimeout(ok, 0); }); }
+function sauverCadre(){
+  return {
+    doc: Object.assign({}, DOC),
+    areas: Object.assign({}, userAreas),
+    items: VARITEMS.map(function(it){ return [it, it.u, it.set]; })
+  };
+}
+function rendreCadre(c){
+  var k;
+  for(k in DOC) if(k in c.doc) DOC[k] = c.doc[k];
+  for(k in userAreas) delete userAreas[k];
+  Object.assign(userAreas, c.areas);
+  c.items.forEach(function(x){ x[0].u = x[1]; x[0].set = x[2]; });
+  recompute();
+}
+var CHAMPS_RESUME = ["score", "criteria", "verdict", "floors", "bodies",
+                     "area_required", "area_placed", "area_gross", "thumbnail"];
+
+export async function rejouerTout(progres, arret){
+  var liste = VARIANTES.slice(), etat = snapshot(), cadre = sauverCadre(),
+      g0 = seedActuelle, faits = 0, changes = 0, rates = 0;
+  try{
+    for(var i = 0; i < liste.length; i++){
+      if(arret && arret()) break;
+      var v = liste[i], st = null;
+      try{ st = await etatDe(v.id); }catch(_){ st = null; }
+      if(!st){ rates++; continue; }
+      restore(st);
+      var r = resumeCourant(), patch = {}, diff = false;
+      CHAMPS_RESUME.forEach(function(k){
+        patch[k] = r[k];
+        if(JSON.stringify(r[k]) !== JSON.stringify(v[k])) diff = true;
+      });
+      if(diff){
+        try{ await patchApi("variant", "id=eq." + v.id, patch); Object.assign(v, patch); changes++; }
+        catch(_){ rates++; }
+      }
+      faits++;
+      if(progres) progres(faits, liste.length);
+      await pause();
+    }
+  } finally {
+    if(!(etat.mass && etat.mass.vol && etat.mass.vol.length)) massVols([]);
+    restore(etat);
+    rendreCadre(cadre);
+    seed(g0);
+  }
+  await chargerVariantes();
+  return { faits: faits, changes: changes, rates: rates };
 }

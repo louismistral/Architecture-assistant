@@ -36,8 +36,14 @@
 .vp__cnt{flex:1;font-size:var(--t-2xs);color:var(--muted-foreground)}
 .vp__body{
   flex:1;min-height:0;overflow:auto;
-  padding:var(--s-4);display:flex;flex-direction:column;gap:var(--s-3);
+  padding:var(--s-4);display:flex;flex-direction:column;gap:var(--s-5);
 }
+/* Rien ne rétrécit dans le corps : c'est LUI qui défile. Sans cela, les onglets
+   de groupe — un conteneur en `overflow-x:auto`, donc de hauteur minimale nulle
+   — s'écrasaient dès que la liste des variantes remplissait le panneau. */
+.vp__body>*,.vp-sec>*{flex:none}
+.vp-sec{display:flex;flex-direction:column;gap:var(--s-3)}
+.vp-enreg{gap:var(--s-2)}
 
 .vp-note{margin:0;font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 .vp-note.is-bad{color:var(--destructive)}
@@ -60,7 +66,9 @@
 }
 .vp-av.is-moi{background:var(--primary)}
 
-/* ---------- enregistrer ---------- */
+/* ---------- enregistrer ----------
+   Le champ du nom et le « + » sont les deux moitiés d'un même bouton : on
+   nomme, puis on pose. */
 .vp-save{
   flex:none;display:flex;align-items:center;justify-content:center;gap:var(--s-2);
   min-block-size:var(--s-7);padding:var(--s-3);cursor:pointer;
@@ -70,6 +78,23 @@
 .vp-save:hover{border-color:var(--muted-foreground);background:var(--card)}
 .vp-save:disabled{opacity:.55;cursor:default}
 .vp-save__p{font-size:var(--t-md);line-height:1}
+.vp-save--nom{padding:0;cursor:default;align-items:stretch;overflow:hidden}
+.vp-save--nom:hover{background:transparent}
+.vp-save--nom:focus-within{border-color:var(--ring);border-style:solid}
+.vp-save__nom{
+  flex:1;min-width:0;padding:0 var(--s-3);
+  font:inherit;font-size:var(--t-sm);color:var(--foreground);
+  background:transparent;border:0;
+}
+.vp-save__nom:focus-visible{outline:none}
+.vp-save__nom::placeholder{color:var(--muted-foreground)}
+.vp-save__plus{
+  flex:none;inline-size:var(--s-7);display:flex;align-items:center;justify-content:center;
+  color:var(--primary-foreground);background:var(--primary);border:0;cursor:pointer;
+  border-inline-start:1.5px dashed var(--border-strong);
+}
+.vp-save__plus:hover{opacity:.88}
+.vp-save__plus:disabled,.vp-save__nom:disabled{opacity:.55;cursor:default}
 
 /* ---------- l'avertissement avant de charger ---------- */
 .vp-alerte{
@@ -85,27 +110,28 @@
    variantes remplissaient le panneau, et comparer demandait de défiler. La
    miniature tient dans un CARRÉ à gauche ; le nom et la note, qui sont ce
    qu'on lit en premier, prennent la largeur. */
-.vp-liste{display:flex;flex-direction:column;gap:var(--s-2)}
+.vp-liste{display:flex;flex-direction:column;gap:var(--s-3)}
 .vc{
-  display:flex;gap:var(--s-3);align-items:stretch;
+  position:relative;display:flex;gap:var(--s-3);align-items:stretch;
   padding:var(--s-2);border-radius:var(--radius-lg);
   background:var(--card);border:1px solid var(--border);
 }
 .vc.is-perime{border-style:dashed}
+/* La nouvelle : cernée, et soulignée d'un trait sous la carte — le temps de
+   la retrouver. */
+.vc.is-new{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+.vc.is-new::after{
+  content:"";position:absolute;inset-inline:var(--s-4);inset-block-end:calc(var(--s-2) * -1 + 1px);
+  block-size:2px;border-radius:var(--radius-full);background:var(--ring);
+}
 .vc__vig{
-  position:relative;flex:none;inline-size:var(--s-8);block-size:var(--s-8);
+  position:relative;flex:none;inline-size:104px;block-size:104px;
   border-radius:var(--radius-sm);border:1px solid var(--border-soft);
   background:var(--background);overflow:hidden;
 }
 .vc__vig svg{inline-size:100%;block-size:100%;display:block}
-.vc__perime{
-  position:absolute;inset-block-start:2px;inset-inline-start:2px;
-  inline-size:var(--s-4);block-size:var(--s-4);
-  display:flex;align-items:center;justify-content:center;
-  font-size:var(--t-3xs);font-weight:700;color:var(--on-fill);
-  background:var(--warn-fill);border-radius:var(--radius-full);
-}
-.vc__d{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--s-2)}
+/* La colonne fait la hauteur de la miniature : les gestes se calent sur son bas. */
+.vc__d{flex:1;min-width:0;min-block-size:104px;display:flex;flex-direction:column;gap:var(--s-1)}
 .vc__t{display:flex;align-items:baseline;gap:var(--s-3)}
 .vc__nom{
   flex:1;min-width:0;margin:0;
@@ -114,14 +140,86 @@
 }
 .vc__note{flex:none;font-size:var(--t-num-md);font-weight:500;line-height:1;color:var(--soft-foreground)}
 .vc__note.is-haut{color:var(--ok)}
-.vc__a{display:flex;gap:var(--s-2)}
+.vc__note.is-bas{color:var(--destructive)}
+.vc__meta{
+  margin:0;display:flex;align-items:center;gap:var(--s-2);min-width:0;
+  font-size:var(--t-2xs);color:var(--muted-foreground);
+}
+.vc__qui{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vc__tags{display:flex;flex-wrap:wrap;gap:var(--s-1)}
+.vc-tag{
+  padding:0 var(--s-2);line-height:1.6;
+  font-size:var(--t-3xs);font-weight:600;letter-spacing:.03em;color:var(--soft-foreground);
+  border:1px solid var(--border);border-radius:var(--radius-full);
+}
+.vc-tag--new{color:var(--on-fill);background:var(--focus-fill);border-color:var(--focus-fill)}
+.vc-tag--perime{color:var(--on-fill);background:var(--warn-fill);border-color:var(--warn-fill)}
+.vc__a{display:flex;gap:var(--s-2);margin-block-start:auto}
 .vc__load{flex:1}
 .vc__info{flex:none}
-.vc__meta{
-  margin:0;display:flex;align-items:center;gap:var(--s-2);
-  font-size:var(--t-2xs);color:var(--muted-foreground);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.vc__sup{flex:none;color:var(--muted-foreground)}
+.vc__sup:hover{color:var(--destructive);border-color:var(--destructive)}
+/* Premier clic : le couvercle se soulève, le bouton passe au rouge. */
+.vc__sup .ic-couvercle{transform-origin:19px 6px;transition:transform var(--dur-2) var(--ease)}
+.vc__sup.is-arme{color:var(--on-fill);background:var(--danger-fill);border-color:var(--danger-fill)}
+.vc__sup.is-arme .ic-couvercle{transform:translate(-1px,-2px) rotate(-24deg)}
+
+/* ---------- trier, filtrer, chercher, Reload ---------- */
+.vp-barre{
+  display:flex;align-items:center;gap:var(--s-2);
+  position:sticky;inset-block-start:calc(var(--s-4) * -1);z-index:3;
+  margin-inline:calc(var(--s-4) * -1);padding:var(--s-2) var(--s-4);
+  background:var(--background);border-block-end:1px solid var(--border-soft);
 }
+.vp-barre__g{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s-1)}
+.vp-outil{padding-inline:var(--s-2);min-inline-size:var(--ctl-h);gap:var(--s-1)}
+.vp-outil.is-actif{color:var(--foreground);background:var(--accent);border-color:var(--border-strong)}
+.vp-outil[aria-expanded="true"]{border-color:var(--ring)}
+.vp-outil__r{max-inline-size:14ch;overflow:hidden;text-overflow:ellipsis;font-size:var(--t-2xs)}
+.vp-reload{flex:none}
+.vp-cherche{
+  flex:1;min-width:0;display:flex;align-items:center;gap:var(--s-2);
+  min-block-size:var(--ctl-h);padding-inline:var(--s-2);color:var(--muted-foreground);
+  background:var(--card);border:1px solid var(--ring);border-radius:var(--radius-md);
+}
+.vp-cherche input{
+  flex:1;min-width:0;font:inherit;font-size:var(--t-xs);color:var(--foreground);
+  background:transparent;border:0;
+}
+.vp-cherche input:focus-visible{outline:none}
+
+.vp-pop{
+  position:absolute;z-index:5;inset-inline:var(--s-4);inset-block-start:calc(100% + var(--s-1));
+  max-block-size:min(70vh,560px);overflow:auto;
+  display:flex;flex-direction:column;gap:var(--s-2);padding:var(--s-3);
+  background:var(--popover);color:var(--popover-foreground);
+  border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);
+}
+.vp-pop h4{
+  margin:var(--s-1) 0 0;font-size:var(--t-3xs);font-weight:600;
+  letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--muted-foreground);
+}
+.vp-pop h4:first-child{margin-block-start:0}
+.vp-pop__tri{display:grid;grid-template-columns:7.5rem 1fr 1fr;align-items:center;gap:var(--s-1);font-size:var(--t-xs)}
+.vp-pop__tri.is-on>span{font-weight:600}
+.vp-pop__dir{min-block-size:var(--tap-min);padding-inline:var(--s-2);font-size:var(--t-2xs);white-space:normal;line-height:var(--lh-snug)}
+.vp-pop__note{display:flex;gap:var(--s-3)}
+.vp-pop__note label{display:flex;align-items:center;gap:var(--s-2);font-size:var(--t-xs);color:var(--soft-foreground)}
+.vp-pop__note input{
+  inline-size:6ch;min-block-size:var(--tap-min);padding:0 var(--s-2);
+  font:inherit;font-size:var(--t-xs);color:var(--foreground);
+  background:var(--card);border:1px solid var(--input);border-radius:var(--radius-md);
+}
+.vp-seg{align-self:flex-start;max-inline-size:100%}
+.vp-seg .btn{min-block-size:var(--tap-min);font-size:var(--t-2xs);padding-inline:var(--s-2)}
+.vp-pils{display:flex;flex-wrap:wrap;gap:var(--s-1)}
+.vp-pil{
+  padding:var(--s-1) var(--s-3);cursor:pointer;
+  font:inherit;font-size:var(--t-2xs);color:var(--soft-foreground);
+  background:transparent;border:1px solid var(--border);border-radius:var(--radius-full);
+}
+.vp-pil[aria-pressed="true"]{color:var(--primary-foreground);background:var(--primary);border-color:var(--primary)}
+.vp-pop .vp-lien{align-self:flex-start;margin-block-start:var(--s-1)}
 
 /* la miniature : le périmètre du relevé, les corps de la variante */
 .vp-per{fill:var(--card);stroke:var(--site-perimetre);stroke-width:1.3;stroke-linejoin:round}
@@ -320,18 +418,6 @@
    L'étiquette sur la carte, le filtre, le suivi dans le panneau, le formulaire
    dans le modal. Mêmes pilules que les onglets de groupe : c'est le même geste,
    choisir ce qu'on regarde. */
-.vc__tag{
-  align-self:flex-start;padding:1px var(--s-2);
-  font-size:var(--t-2xs);color:var(--soft-foreground);
-  border:1px solid var(--border);border-radius:var(--radius-full);
-}
-.vp-filtre{display:flex;flex-wrap:wrap;gap:var(--s-1)}
-.vp-filtre__b{
-  padding:var(--s-1) var(--s-3);cursor:pointer;
-  font:inherit;font-size:var(--t-2xs);color:var(--soft-foreground);
-  background:transparent;border:1px solid var(--border);border-radius:var(--radius-full);
-}
-.vp-filtre__b.is-on{color:var(--foreground);font-weight:600;background:var(--accent);border-color:var(--border-strong)}
 .vp-rech{
   display:flex;flex-direction:column;gap:var(--s-2);padding:var(--s-3);
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);

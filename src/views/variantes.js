@@ -10,10 +10,11 @@
    DEUX NIVEAUX, et c'est tout le dessin :
 
    — la CARTE porte ce qu'il faut pour RECONNAÎTRE une variante et la CHARGER.
-     Miniature carrée, nom, note, deux boutons, et le reste en petit.
+     Miniature carrée, nom, note, qui et quand, ses étiquettes, et trois
+     gestes : charger, les informations, et la poubelle — qui se confirme d'un
+     second clic, comme « Supprimer » dans le modal.
    — le MODAL porte tout le reste — la note critère par critère, les graines,
-     les surfaces, les contrôles — et le seul geste qui détruit, « Supprimer »,
-     qui n'a rien à faire sur une carte de liste.
+     les surfaces, les contrôles.
 
    Le PROFIL est ailleurs, sur son propre badge : les groupes dont on fait
    partie, le mot de passe, la sortie. Ce ne sont pas des variantes, et les
@@ -32,7 +33,9 @@ import { CPT, MEMBRES_PAR_EQUIPE, annulerInvite, choisirEquipe, connexion,
          sortir, transfererPropriete } from "../net/compte.js";
 import { REG, tirerReglages } from "../net/reglages.js";
 import { VARIANTES, charger, chargerVariantes, enregistrer, nomPropose,
-         onVariantes, poserTrouvees, renommer, supprimer } from "../net/variantes.js";
+         onVariantes, poserTrouvees, rejouerTout, renommer, supprimer } from "../net/variantes.js";
+import { PREFS, onPrefs, setPref } from "../net/prefs.js";
+import { icone } from "./icons.js";
 import { BORNES, RECH, TAG_RECHERCHE, rechercher } from "../net/recherche.js";
 import { MASS, PARTIS, partiOf } from "../mass/model.js";
 import { supaOn } from "../net/supa.js";
@@ -45,7 +48,6 @@ var occupe = false, message = "";
 var vueEquipe = null;            /* le groupe dont la liste est à l'écran */
 var cherche = null;              /* la recherche en cours : { i, n, top, arreter } */
 var chercheEl = null, bilanRech = "";
-var filtre = "tout";             /* tout · algo · main */
 
 export function setApresCharge(fn){ apresCharge = fn; }
 
@@ -191,7 +193,15 @@ function bati(){
   document.addEventListener("keydown", function(e){
     if(e.key !== "Escape") return;
     if(!modal.hidden) fermerModal();
+    else if(ouvertOutil){ ouvertOutil = null; peindre(); }
     else if(ouvert) fermer();
+  });
+  /* Un clic hors du réglage ouvert le referme ; un clic sur son propre bouton
+     le bascule déjà. */
+  panneau.addEventListener("pointerdown", function(e){
+    if(!ouvertOutil || ouvertOutil === "cherche") return;
+    if(e.target.closest(".vp-pop") || e.target.closest(".vp-outil")) return;
+    ouvertOutil = null; peindre();
   });
 }
 
@@ -214,6 +224,9 @@ export function ouvrir(){
 export function fermer(){
   if(!panneau) return;
   ouvert = false;
+  /* Fermer le panneau, c'est avoir vu ce qu'on venait d'enregistrer. */
+  NOUVELLES = {};
+  ouvertOutil = null;
   panneau.hidden = true;
   majBoutons();
 }
@@ -357,82 +370,362 @@ async function allerGroupe(id){
   occupe = false; peindre();
 }
 
+/* ---------- les nouvelles ----------
+   Une variante qu'on vient d'enregistrer — à la main ou par la recherche — est
+   « new » : elle monte en tête, hors tri et hors filtre, cernée et soulignée,
+   pour qu'on la retrouve sans la chercher. C'est temporaire, et en mémoire
+   seulement : le badge tombe quand on ferme l'application, quand on ferme le
+   panneau, quand on ouvre ses informations, ou au Reload. */
+var NOUVELLES = {};
+function marquerNouvelles(rows){ (rows || []).forEach(function(r){ if(r && r.id) NOUVELLES[r.id] = 1; }); }
+function estNouvelle(v){ return !!NOUVELLES[v.id]; }
+
 /* ---------- une carte ----------
-   Miniature CARRÉE à gauche, le nom et la note en grand, les deux gestes,
-   et le reste en petit dessous. La carte d'avant était haute comme une
-   affiche : trois variantes remplissaient le panneau, et comparer demandait
-   de faire défiler. */
+   Miniature CARRÉE à gauche. À droite, de haut en bas : le nom et la note, qui
+   sont ce qu'on lit en premier ; qui l'a posée et quand ; ses étiquettes ; et,
+   calés sur le bas de la miniature, les trois gestes — charger, les
+   informations, supprimer. */
+function tag(txt, cls, titre){
+  var t = el("span", "vc-tag" + (cls ? " vc-tag--" + cls : ""), txt);
+  if(titre) t.title = titre;
+  return t;
+}
 function carte(v){
   var c = el("article", "vc");
   var vieux = perime(v.fingerprint);
   if(vieux.length) c.classList.add("is-perime");
+  if(estNouvelle(v)) c.classList.add("is-new");
 
   var cadre = el("div", "vc__vig");
   cadre.appendChild(vignette(v.thumbnail));
-  if(vieux.length){
-    var m = el("span", "vc__perime", "!");
-    m.title = "Périmée — " + vieux.join(", ") + " depuis l'enregistrement";
-    cadre.appendChild(m);
-  }
   c.appendChild(cadre);
 
   var d = el("div", "vc__d");
-
   var t = el("div", "vc__t");
   t.appendChild(el("h3", "vc__nom", v.name));
   var note = el("b", "vc__note mono", v.score == null ? "—" : (v.score > 0 ? "+" : "") + v.score);
   if(v.score != null) note.classList.add(v.score >= 0 ? "is-haut" : "is-bas");
   t.appendChild(note);
   d.appendChild(t);
-  if(estTrouvee(v)) d.appendChild(el("span", "vc__tag", TAG_RECHERCHE));
-
-  var a = el("div", "vc__a");
-  a.appendChild(btn("btn btn--primary vc__load", vieux.length ? "Charger quand même" : "Charger",
-    function(){ demandeCharge(v); }));
-  a.appendChild(btn("btn vc__info", "Informations", function(){ ouvrirModal(v); }));
-  d.appendChild(a);
 
   var meta = el("p", "vc__meta");
   meta.appendChild(pastilleDe(v.author_id, "vp-av--mini"));
-  meta.appendChild(document.createTextNode(nomDe(v.author_id) + " · " + quand(v.created_at)));
+  meta.appendChild(el("span", "vc__qui", nomDe(v.author_id) + " · " + quand(v.created_at)));
   d.appendChild(meta);
+
+  /* Les étiquettes se cumulent : une trouvaille de la recherche, neuve et déjà
+     périmée, porte les trois. */
+  var tags = [];
+  if(estNouvelle(v)) tags.push(tag("new", "new", "Enregistrée à l'instant"));
+  if(vieux.length) tags.push(tag("périmée", "perime", "Périmée — " + vieux.join(", ") + " depuis l'enregistrement. Elle reste chargeable."));
+  if(estTrouvee(v)) tags.push(tag("algo", "algo", "Trouvée par la recherche automatique"));
+  if(tags.length){
+    var tg = el("div", "vc__tags");
+    tags.forEach(function(x){ tg.appendChild(x); });
+    d.appendChild(tg);
+  }
+
+  var a = el("div", "vc__a");
+  a.appendChild(btn("btn btn--primary vc__load", "Charger", function(){ demandeCharge(v); }));
+  a.appendChild(btn("btn vc__info", "Infos", function(){ ouvrirModal(v); }));
+  a.appendChild(poubelle(v));
+  d.appendChild(a);
 
   c.appendChild(d);
   return c;
 }
 
-function estTrouvee(v){ return (v.tags || []).indexOf(TAG_RECHERCHE) >= 0; }
-
-/* Le filtre ne paraît que s'il sépare quelque chose : un choix entre « tout »
-   et « tout » n'en est pas un. */
-function filtres(){
-  var n = VARIANTES.filter(estTrouvee).length;
-  if(!n || n === VARIANTES.length) return null;
-  var nav = el("div", "vp-filtre");
-  nav.setAttribute("role", "group");
-  nav.setAttribute("aria-label", "Filtrer les variantes");
-  [["tout", "Toutes"], ["algo", TAG_RECHERCHE + " · " + n], ["main", "À la main"]].forEach(function(f){
-    var b = btn("vp-filtre__b" + (filtre === f[0] ? " is-on" : ""), f[1], function(){
-      filtre = f[0]; peindre();
-    });
-    b.setAttribute("aria-pressed", String(filtre === f[0]));
-    nav.appendChild(b);
+/* La poubelle se confirme d'un second clic, comme « Supprimer » dans les
+   informations : au premier, le couvercle se soulève et le bouton passe au
+   rouge ; au second, la variante part. Laissée ouverte, elle se referme seule. */
+function poubelle(v){
+  var b = btn("btn btn--icon vc__sup", null, null), minuteur = null;
+  b.appendChild(icone("poubelle"));
+  function desarmer(){
+    clearTimeout(minuteur);
+    b.classList.remove("is-arme");
+    b.setAttribute("aria-label", "Supprimer « " + v.name + " »");
+    b.title = "Supprimer";
+  }
+  desarmer();
+  b.addEventListener("click", async function(){
+    if(!b.classList.contains("is-arme")){
+      b.classList.add("is-arme");
+      b.setAttribute("aria-label", "Confirmer la suppression de « " + v.name + " »");
+      b.title = "Cliquer encore pour supprimer";
+      minuteur = setTimeout(desarmer, 3500);
+      return;
+    }
+    clearTimeout(minuteur);
+    b.disabled = true;
+    try{ await supprimer(v.id); delete NOUVELLES[v.id]; peindre(); }
+    catch(e){ b.disabled = false; desarmer(); dit(e.message); }
   });
-  return nav;
-}
-function visibles(){
-  if(filtre === "algo") return VARIANTES.filter(estTrouvee);
-  if(filtre === "main") return VARIANTES.filter(function(v){ return !estTrouvee(v); });
-  return VARIANTES;
+  b.addEventListener("blur", function(){ if(b.classList.contains("is-arme")) minuteur = setTimeout(desarmer, 600); });
+  return b;
 }
 
-/* ---------- peindre ---------- */
+function estTrouvee(v){ return (v.tags || []).indexOf(TAG_RECHERCHE) >= 0; }
+function partiReel(v){ return (v.thumbnail && v.thumbnail.parti) || v.parti || "auto"; }
+
+/* ---------- trier, filtrer, chercher ----------
+   Trois boutons au-dessus des enregistrements, et un quatrième à droite :
+   Reload. Au repos, un bouton n'est qu'une icône ; dès qu'il règle quelque
+   chose, il s'élargit pour dire QUOI — « Date ↑ », « Note ≥ 80 » — ou, si
+   c'est trop long à dire, combien de choses. Les trois réglages suivent le
+   compte (`net/prefs.js`). Le vocabulaire est celui des listes qu'on connaît
+   — Linear, Notion : un tri, des filtres qui se cumulent, une recherche. */
+var TRIS = [
+  { k:"score",  n:"Note",            asc:"la moins bonne d'abord", desc:"la meilleure d'abord" },
+  { k:"date",   n:"Date",            asc:"la plus ancienne d'abord", desc:"la plus récente d'abord" },
+  { k:"name",   n:"Nom",             asc:"A → Z", desc:"Z → A" },
+  { k:"author", n:"Auteur",          asc:"A → Z", desc:"Z → A" },
+  { k:"parti",  n:"Type de massing", asc:"A → Z", desc:"Z → A" }
+];
+var TRI_DEF = { k:"score", dir:"desc" };
+function triCourant(){ var t = PREFS.vTri; return t && t.k ? t : TRI_DEF; }
+function triActif(){ var t = triCourant(); return t.k !== TRI_DEF.k || t.dir !== TRI_DEF.dir; }
+function triDe(k){ for(var i = 0; i < TRIS.length; i++) if(TRIS[i].k === k) return TRIS[i]; return TRIS[0]; }
+function cleTri(v, k){
+  if(k === "score") return v.score == null ? -Infinity : v.score;
+  if(k === "date") return v.created_at || "";
+  if(k === "name") return (v.name || "").toLowerCase();
+  if(k === "author") return nomDe(v.author_id).toLowerCase();
+  return partiOf(partiReel(v)).n.toLowerCase();
+}
+function trier(L){
+  var t = triCourant(), s = t.dir === "asc" ? 1 : -1;
+  return L.slice().sort(function(a, b){
+    var x = cleTri(a, t.k), y = cleTri(b, t.k);
+    if(x < y) return -s;
+    if(x > y) return s;
+    return (b.created_at || "").localeCompare(a.created_at || "");
+  });
+}
+
+var DATES = [["tout", "Toutes"], ["24h", "24 h"], ["7j", "7 jours"], ["30j", "30 jours"]];
+var DUREES = { "24h":86400e3, "7j":7 * 86400e3, "30j":30 * 86400e3 };
+var ETATS = [["tout", "Toutes"], ["ajour", "À jour"], ["perimee", "Périmées"]];
+var ORIGINES = [["tout", "Toutes"], ["algo", "Recherche auto"], ["main", "À la main"]];
+function filtreCourant(){
+  var f = PREFS.vFiltre || {};
+  return {
+    smin: f.smin == null || f.smin === "" ? null : +f.smin,
+    smax: f.smax == null || f.smax === "" ? null : +f.smax,
+    auteurs: f.auteurs || [], partis: f.partis || [],
+    etat: f.etat || "tout", date: f.date || "tout", origine: f.origine || "tout"
+  };
+}
+function nomDeListe(L, id){ for(var i = 0; i < L.length; i++) if(L[i][0] === id) return L[i][1]; return id; }
+/* Chaque critère réglé, dit en quelques mots — c'est ce que le bouton affiche. */
+function critFiltre(f){
+  var out = [];
+  if(f.smin != null && f.smax != null) out.push("Note " + f.smin + "–" + f.smax);
+  else if(f.smin != null) out.push("Note ≥ " + f.smin);
+  else if(f.smax != null) out.push("Note ≤ " + f.smax);
+  if(f.auteurs.length) out.push(f.auteurs.length === 1 ? "Par " + nomDe(f.auteurs[0]) : f.auteurs.length + " auteurs");
+  if(f.etat !== "tout") out.push(nomDeListe(ETATS, f.etat));
+  if(f.date !== "tout") out.push(nomDeListe(DATES, f.date));
+  if(f.partis.length) out.push(f.partis.length === 1 ? partiOf(f.partis[0]).n : f.partis.length + " types");
+  if(f.origine !== "tout") out.push(nomDeListe(ORIGINES, f.origine));
+  return out;
+}
+function passeFiltre(v, f){
+  if(f.smin != null && !(v.score != null && v.score >= f.smin)) return false;
+  if(f.smax != null && !(v.score != null && v.score <= f.smax)) return false;
+  if(f.auteurs.length && f.auteurs.indexOf(v.author_id) < 0) return false;
+  if(f.etat !== "tout"){
+    var p = perime(v.fingerprint).length > 0;
+    if(f.etat === "perimee" ? !p : p) return false;
+  }
+  if(f.date !== "tout" && !(Date.now() - new Date(v.created_at).getTime() <= DUREES[f.date])) return false;
+  if(f.partis.length && f.partis.indexOf(partiReel(v)) < 0) return false;
+  if(f.origine === "algo" && !estTrouvee(v)) return false;
+  if(f.origine === "main" && estTrouvee(v)) return false;
+  return true;
+}
+function passeRecherche(v, q){
+  if(!q) return true;
+  var txt = [v.name, nomDe(v.author_id), partiOf(partiReel(v)).n, (v.tags || []).join(" ")].join(" ").toLowerCase();
+  return q.toLowerCase().split(/\s+/).every(function(m){ return !m || txt.indexOf(m) >= 0; });
+}
+function setFiltre(k, val){
+  var f = filtreCourant();
+  f[k] = val;
+  setPref("vFiltre", f);
+  peindre();
+}
+
+/* Un bouton d'outil : l'icône, et — une fois réglé — ce qu'il règle. */
+var LONG_MAX = 18;
+function boutonOutil(id, ic, nom, resume, compte){
+  var b = btn("btn vp-outil" + (resume ? " is-actif" : ""), null, function(){
+    ouvertOutil = ouvertOutil === id ? null : id;
+    peindre();
+  });
+  b.appendChild(icone(ic));
+  if(resume){
+    var txt = resume.length > LONG_MAX && compte ? String(compte) : resume;
+    b.appendChild(el("span", "vp-outil__r", txt));
+  }
+  b.setAttribute("aria-expanded", String(ouvertOutil === id));
+  b.setAttribute("aria-label", nom + (resume ? " — " + resume : ""));
+  b.title = nom + (resume ? " — " + resume : "");
+  return b;
+}
+var ouvertOutil = null;      /* "tri" · "filtre" · "cherche" · null */
+
+function segment(liste, val, onPick, label){
+  var g = el("div", "btn-group vp-seg");
+  g.setAttribute("role", "group");
+  g.setAttribute("aria-label", label);
+  liste.forEach(function(p){
+    var b = btn("btn", p[1], function(){ onPick(p[0]); });
+    b.setAttribute("aria-pressed", String(val === p[0]));
+    g.appendChild(b);
+  });
+  return g;
+}
+function pilules(liste, choisis, onPick, label){
+  var g = el("div", "vp-pils");
+  g.setAttribute("role", "group");
+  g.setAttribute("aria-label", label);
+  liste.forEach(function(p){
+    var on = choisis.indexOf(p[0]) >= 0;
+    var b = btn("vp-pil", p[1], function(){
+      onPick(on ? choisis.filter(function(x){ return x !== p[0]; }) : choisis.concat([p[0]]));
+    });
+    b.setAttribute("aria-pressed", String(on));
+    g.appendChild(b);
+  });
+  return g;
+}
+function popTri(){
+  var pop = el("div", "vp-pop");
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", "Trier les variantes");
+  pop.appendChild(el("h4", null, "Trier par"));
+  var t = triCourant();
+  TRIS.forEach(function(x){
+    var r = el("div", "vp-pop__tri" + (t.k === x.k ? " is-on" : ""));
+    r.appendChild(el("span", null, x.n));
+    ["desc", "asc"].forEach(function(dir){
+      var b = btn("btn vp-pop__dir", x[dir], function(){ setPref("vTri", { k:x.k, dir:dir }); peindre(); });
+      b.setAttribute("aria-pressed", String(t.k === x.k && t.dir === dir));
+      r.appendChild(b);
+    });
+    pop.appendChild(r);
+  });
+  if(triActif()) pop.appendChild(btn("vp-lien", "Revenir au tri par défaut — note, la meilleure d'abord",
+    function(){ setPref("vTri", null); peindre(); }));
+  return pop;
+}
+function popFiltre(){
+  var f = filtreCourant();
+  var pop = el("div", "vp-pop");
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", "Filtrer les variantes");
+
+  pop.appendChild(el("h4", null, "Note"));
+  var r = el("div", "vp-pop__note");
+  function champNote(k, lab){
+    var l = el("label", null);
+    l.appendChild(el("span", null, lab));
+    var i = el("input", "mono");
+    i.type = "number"; i.step = "1"; i.value = f[k] == null ? "" : String(f[k]);
+    i.addEventListener("change", function(){ setFiltre(k, i.value === "" ? null : +i.value); });
+    l.appendChild(i);
+    return l;
+  }
+  r.appendChild(champNote("smin", "de"));
+  r.appendChild(champNote("smax", "à"));
+  pop.appendChild(r);
+
+  var auteurs = [], vus = {};
+  VARIANTES.forEach(function(v){ if(!vus[v.author_id]){ vus[v.author_id] = 1; auteurs.push([v.author_id, nomDe(v.author_id)]); } });
+  if(auteurs.length > 1){
+    pop.appendChild(el("h4", null, "Auteur"));
+    pop.appendChild(pilules(auteurs, f.auteurs, function(x){ setFiltre("auteurs", x); }, "Auteur"));
+  }
+  pop.appendChild(el("h4", null, "État"));
+  pop.appendChild(segment(ETATS, f.etat, function(x){ setFiltre("etat", x); }, "État"));
+  pop.appendChild(el("h4", null, "Date"));
+  pop.appendChild(segment(DATES, f.date, function(x){ setFiltre("date", x); }, "Date"));
+
+  var partis = [], pv = {};
+  VARIANTES.forEach(function(v){ var p = partiReel(v); if(!pv[p]){ pv[p] = 1; partis.push([p, partiOf(p).n]); } });
+  if(partis.length > 1){
+    pop.appendChild(el("h4", null, "Type de massing"));
+    pop.appendChild(pilules(partis, f.partis, function(x){ setFiltre("partis", x); }, "Type de massing"));
+  }
+  pop.appendChild(el("h4", null, "Origine"));
+  pop.appendChild(segment(ORIGINES, f.origine, function(x){ setFiltre("origine", x); }, "Origine"));
+
+  if(critFiltre(f).length) pop.appendChild(btn("vp-lien", "Tout effacer", function(){ setPref("vFiltre", null); peindre(); }));
+  return pop;
+}
+function champCherche(){
+  var w = el("div", "vp-cherche");
+  w.appendChild(icone("loupe"));
+  var i = el("input");
+  i.type = "search"; i.value = PREFS.vCherche || "";
+  i.placeholder = "Nom, auteur, type…";
+  i.setAttribute("aria-label", "Chercher une variante");
+  var t = null;
+  i.addEventListener("input", function(){
+    clearTimeout(t);
+    t = setTimeout(function(){ setPref("vCherche", i.value); peindreListe(); }, 160);
+  });
+  i.addEventListener("keydown", function(e){
+    if(e.key === "Escape"){
+      e.stopPropagation();
+      if(i.value){ i.value = ""; setPref("vCherche", ""); peindreListe(); }
+      else { ouvertOutil = null; peindre(); }
+    }
+  });
+  w.appendChild(i);
+  w.champ = i;
+  return w;
+}
+
+/* ---------- Reload ----------
+   Il remet la liste d'aplomb : les « new » tombent, la liste est relue, et
+   chaque variante est rejouée par le code d'aujourd'hui — sa note, ses
+   critères, son verdict sont refaits et réécrits (`rejouerTout`). */
+var rejeu = null;
+async function faireRejouer(){
+  if(rejeu || cherche) return;
+  NOUVELLES = {};
+  var stop = false;
+  rejeu = { i:0, n:VARIANTES.length, arreter:function(){ stop = true; } };
+  message = ""; bilanRech = "";
+  peindre();
+  try{
+    var r = await rejouerTout(function(i, n){ rejeu.i = i; rejeu.n = n; majRejeu(); }, function(){ return stop; });
+    if(apresCharge) apresCharge();
+    bilanRech = r.faits + " variante" + (r.faits > 1 ? "s" : "") + " relue" + (r.faits > 1 ? "s" : "") + " par le juge actuel"
+      + (r.changes ? ", " + r.changes + " note" + (r.changes > 1 ? "s" : "") + " refaite" + (r.changes > 1 ? "s" : "") : ", aucune note à refaire")
+      + (r.rates ? " · " + r.rates + " illisible" + (r.rates > 1 ? "s" : "") : "") + ".";
+  }catch(e){ message = e.message; }
+  rejeu = null;
+  peindre();
+}
+function majRejeu(){
+  var s = panneau && panneau.querySelector(".vp-rejeu");
+  if(s && rejeu) s.textContent = "Relecture " + rejeu.i + " / " + rejeu.n + "…";
+}
+
+/* ---------- peindre ----------
+   Trois sections, et chacune a son rôle :
+   — l'EN-TÊTE, qui reste accroché : « Variantes », le groupe, la croix ;
+   — les OUTILS : le groupe à l'écran, enregistrer, chercher automatiquement ;
+   — les ENREGISTREMENTS : les presets qui remettent tous les onglets en place,
+     avec leurs outils de lecture — trier, filtrer, chercher, Reload. */
 function peindre(){
   if(!panneau) return;
   var b = panneau.querySelector(".vp__body");
   while(b.firstChild) b.removeChild(b.firstChild);
-  panneau.querySelector(".vp__cnt").textContent =
-    CPT.equipe ? VARIANTES.length + " · " + CPT.equipe.name : "";
+  panneau.querySelector(".vp__cnt").textContent = CPT.equipe ? CPT.equipe.name : "";
 
   if(CPT.statut !== "dedans"){
     b.appendChild(blocAuth());
@@ -441,44 +734,118 @@ function peindre(){
     return;
   }
 
+  /* --- les outils --- */
+  var outils = el("section", "vp-sec vp-outils");
+  outils.setAttribute("aria-label", "Outils");
   var ong = ongletsGroupes();
-  if(ong) b.appendChild(ong);
-  if(message) b.appendChild(el("p", "vp-note is-bad", message));
+  if(ong) outils.appendChild(ong);
+  if(message) outils.appendChild(el("p", "vp-note is-bad", message));
   if(REG.quand && REG.par && CPT.profil && REG.par !== CPT.profil.id){
-    b.appendChild(el("p", "vp-note", "Réglages du groupe modifiés par " + nomDe(REG.par) + " " + quand(REG.quand) + "."));
+    outils.appendChild(el("p", "vp-note", "Réglages du groupe modifiés par " + nomDe(REG.par) + " " + quand(REG.quand) + "."));
   }
 
-  var save = btn("vp-save", null, function(){ faireEnregistrer(); });
-  save.appendChild(el("span", "vp-save__p", "+"));
-  save.appendChild(el("span", null, occupe ? "Un instant…" : "Enregistrer la composition à l'écran"));
-  save.disabled = occupe || !!cherche;
-  b.appendChild(save);
+  /* Le nom se donne AVANT d'enregistrer : le champ est la moitié du bouton,
+     le « + » l'autre. Vide, la variante prend le nom proposé. */
+  var f = el("form", "vp-save vp-save--nom");
+  var nom = el("input", "vp-save__nom");
+  nom.type = "text"; nom.value = nomSaisi;
+  nom.placeholder = "Nommer la composition à l'écran — " + nomPropose();
+  nom.setAttribute("aria-label", "Nom de la variante à enregistrer");
+  nom.addEventListener("input", function(){ nomSaisi = nom.value; });
+  var plus = btn("vp-save__plus", null, null);
+  plus.type = "submit";
+  plus.appendChild(icone("plus", 18));
+  plus.setAttribute("aria-label", "Enregistrer la composition à l'écran");
+  plus.title = "Enregistrer";
+  nom.disabled = plus.disabled = occupe || !!cherche || !!rejeu;
+  f.appendChild(nom); f.appendChild(plus);
+  f.addEventListener("submit", function(e){ e.preventDefault(); faireEnregistrer(nom.value); });
+  outils.appendChild(f);
+  if(occupe) outils.appendChild(el("p", "vp-note", "Un instant…"));
 
   var rb = btn("vp-save", null, ouvrirRecherche);
   rb.appendChild(el("span", "vp-save__p", "⟳"));
   rb.appendChild(el("span", null, "Recherche automatique"));
-  rb.disabled = occupe || !!cherche;
-  b.appendChild(rb);
-  if(cherche){ chercheEl = el("div", "vp-rech"); b.appendChild(chercheEl); majCherche(); }
+  rb.disabled = occupe || !!cherche || !!rejeu;
+  outils.appendChild(rb);
+  if(cherche){ chercheEl = el("div", "vp-rech"); outils.appendChild(chercheEl); majCherche(); }
   else chercheEl = null;
-  if(bilanRech) b.appendChild(el("p", "vp-note", bilanRech));
+  if(bilanRech) outils.appendChild(el("p", "vp-note", bilanRech));
+  b.appendChild(outils);
 
-  if(!VARIANTES.length){
-    b.appendChild(el("p", "vp-note", "Aucune variante dans ce groupe. Compose au mixer et au massing, puis enregistre."));
-  }
-  var fl = filtres();
-  if(fl) b.appendChild(fl);
-  else filtre = "tout";
+  /* --- les enregistrements --- */
+  var enr = el("section", "vp-sec vp-enreg");
+  enr.setAttribute("aria-label", "Enregistrements");
+  var barre = el("div", "vp-barre");
+  var g = el("div", "vp-barre__g");
+  var t = triCourant(), ft = filtreCourant(), cf = critFiltre(ft);
+  g.appendChild(boutonOutil("tri", "trier", "Trier",
+    triActif() ? triDe(t.k).n + (t.dir === "asc" ? " ↑" : " ↓") : "", 1));
+  g.appendChild(boutonOutil("filtre", "filtrer", "Filtrer",
+    cf.length ? (cf.length === 1 ? cf[0] : cf.length + " filtres") : "", cf.length));
+  if(ouvertOutil === "cherche" || PREFS.vCherche){
+    var ch = champCherche();
+    g.appendChild(ch);
+    if(ouvertOutil === "cherche") setTimeout(function(){ ch.champ.focus(); }, 0);
+  } else g.appendChild(boutonOutil("cherche", "loupe", "Chercher", "", 0));
+  barre.appendChild(g);
+  var rl = btn("btn vp-outil vp-reload", null, faireRejouer);
+  rl.appendChild(icone("recharger"));
+  if(rejeu) rl.appendChild(el("span", "vp-outil__r vp-rejeu", "Relecture " + rejeu.i + " / " + rejeu.n + "…"));
+  rl.disabled = !!rejeu || !!cherche || !VARIANTES.length;
+  rl.setAttribute("aria-label", "Reload — efface les « new », relit la liste et refait les notes avec le juge actuel");
+  rl.title = "Reload — efface les « new », relit la liste et refait les notes avec le juge actuel";
+  barre.appendChild(rl);
+  /* Le réglage ouvert se pose SOUS la barre, par-dessus la liste : il ne la
+     fait pas sauter à chaque ouverture. */
+  if(ouvertOutil === "tri") barre.appendChild(popTri());
+  if(ouvertOutil === "filtre") barre.appendChild(popFiltre());
+  enr.appendChild(barre);
+
   var liste = el("div", "vp-liste");
-  visibles().forEach(function(v){ liste.appendChild(carte(v)); });
-  b.appendChild(liste);
+  enr.appendChild(liste);
+  b.appendChild(enr);
+  peindreListe();
   majBoutons();
 }
 
+/* La liste seule : la recherche la refait à chaque lettre sans reconstruire
+   le champ où l'on tape. */
+function peindreListe(){
+  var liste = panneau && panneau.querySelector(".vp-liste");
+  if(!liste) return;
+  while(liste.firstChild) liste.removeChild(liste.firstChild);
+  var neuves = VARIANTES.filter(estNouvelle)
+                        .sort(function(a, b){ return (b.created_at || "").localeCompare(a.created_at || ""); });
+  var f = filtreCourant(), q = (PREFS.vCherche || "").trim();
+  var reste = trier(VARIANTES.filter(function(v){
+    return !estNouvelle(v) && passeFiltre(v, f) && passeRecherche(v, q);
+  }));
+  neuves.concat(reste).forEach(function(v){ liste.appendChild(carte(v)); });
+
+  var total = VARIANTES.length, vus = neuves.length + reste.length;
+  var cnt = panneau.querySelector(".vp__cnt");
+  if(cnt && CPT.equipe) cnt.textContent = (vus < total ? vus + " sur " + total : String(total)) + " · " + CPT.equipe.name;
+  if(!total) liste.appendChild(el("p", "vp-note", "Aucune variante dans ce groupe. Compose au mixer et au massing, puis enregistre."));
+  else if(!reste.length && (critFiltre(f).length || q)){
+    var p = el("p", "vp-note", "Aucune variante ne passe " + (q ? "la recherche" : "le filtre") + ". ");
+    p.appendChild(btn("vp-lien", "Tout effacer", function(){
+      setPref("vFiltre", null); setPref("vCherche", ""); ouvertOutil = null; peindre();
+    }));
+    liste.appendChild(p);
+  }
+}
+
 /* ---------- les gestes ---------- */
-async function faireEnregistrer(){
+var nomSaisi = "";
+async function faireEnregistrer(nom){
   occupe = true; peindre();
-  try{ await enregistrer(nomPropose()); marqueReference(); message = ""; }
+  try{
+    var r = await enregistrer((nom && nom.trim()) || nomPropose());
+    marquerNouvelles([r]);
+    nomSaisi = "";
+    marqueReference(); message = "";
+  }
   catch(e){ message = e.message; }
   occupe = false; peindre();
 }
@@ -656,7 +1023,7 @@ async function lancerRecherche(){
       ? poses.length + " variante" + (poses.length > 1 ? "s" : "") + " trouvée" + (poses.length > 1 ? "s" : "")
         + " en " + r.essais + " essais, enregistrée" + (poses.length > 1 ? "s" : "") + " au groupe."
       : "Aucun des " + r.essais + " essais ne passe ce qu'on garde. Élargis les filtres ou tire davantage.";
-    if(poses.length) filtre = "algo";
+    marquerNouvelles(poses);
   }catch(e){ message = e.message; }
   cherche = null;
   peindre();
@@ -693,6 +1060,7 @@ function ligne(k, v, cls){
   return d;
 }
 export function ouvrirModal(v){
+  if(NOUVELLES[v.id]){ delete NOUVELLES[v.id]; peindre(); }
   var box = boite();
   var nom = el("input", "vm__nom");
   nom.type = "text"; nom.value = v.name;
@@ -992,4 +1360,7 @@ export function initVariantes(){
     }
   });
   onVariantes(function(){ peindre(); majBoutons(); });
+  /* Le tri, le filtre et la recherche suivent le compte : relus d'un autre
+     appareil, ils redessinent la liste. */
+  onPrefs(function(){ if(ouvert) peindreListe(); });
 }
