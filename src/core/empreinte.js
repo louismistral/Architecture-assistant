@@ -59,10 +59,20 @@ function programmeDeclare(){
   }));
 }
 
+/* Les adjacences, telles que le FICHIER les déclare — figées au chargement.
+   La vue du volet Adjacences écrit sa mise en page SUR les nœuds mêmes
+   (`nd.x`, `nd.bw`, `nd.lines`…, `views/schema.js — mesurer()`), et cette mise
+   en page dépend de la largeur de la fenêtre. L'empreinte changeait donc dès
+   qu'on avait ouvert ce volet : toute variante enregistrée ensuite se déclarait
+   périmée chez celui qui ne l'avait pas ouvert, et inversement. La base en
+   portait quatre valeurs pour un `schema.js` inchangé. Ce module est évalué
+   avant tout rendu : ce qu'il lit ici est la déclaration, rien d'autre. */
+var ADJ_DECLAREES = JSON.stringify([SPOLE, SNODE, SLINK]);
+
 var SOURCES = [
   { k:"p", nom:"les surfaces du programme",      de:programmeDeclare },
   { k:"r", nom:"le règlement du concours",       de:function(){ return RULES; } },
-  { k:"s", nom:"les adjacences exigées",         de:function(){ return [SPOLE, SNODE, SLINK]; } },
+  { k:"s", nom:"les adjacences exigées",         de:function(){ return JSON.parse(ADJ_DECLAREES); } },
   { k:"t", nom:"le relevé du terrain",           de:function(){ return SITE; } },
   { k:"d", nom:"les valeurs par défaut de la doctrine",
     de:function(){
