@@ -19,12 +19,14 @@ import { cssRGB } from "../core/gl.js";
 import { trace } from "../core/pdf.js";
 import { PER, SITE } from "../data/site.js";
 import { RULES } from "../data/rules.js";
-import { DOC } from "../data/doctrine.js";
+import { V, reculVise } from "../data/cadre.js";
+import "../data/leviers.js";
+import "../data/recherche.js";
 import { ENCRE, FORMATS } from "../data/planches.js";
 import { FLOORS, flHeight, flNet, lvlOf } from "../mix/floors.js";
 import { airePoly, airePosable, bbox, coins, ligneRecul } from "../mass/geom.js";
 import { MASS, etagesDe, familleDom, famTok, partiOf } from "../mass/model.js";
-import { jugementCourant } from "../mass/juge.js";
+import { evaluationCourante } from "../mass/mesures.js";
 
 var E = ENCRE;
 function couleur(f){
@@ -134,8 +136,8 @@ function fantome(){ return [E.fantome, [0.95, 0.8, 0.74]]; }
 
 /* ---------- les cases : une par décision prise ---------- */
 function etapes(vols){
-  var j = jugementCourant(), pa = partiOf(vols.parti || MASS.parti);
-  function q(id){ return j ? j.fortes.concat(j.prefs).filter(function(c){ return c.id === id; })[0] : null; }
+  var ev = evaluationCourante(), j = ev && ev.jugement, pa = partiOf(vols.parti || MASS.parti);
+  function q(id){ return ev ? ev.qualites[id] : null; }
   var hs = [], net = 0, H = 0, z00 = Infinity, hmax = 0;
   FLOORS.forEach(function(f, i){ if(lvlOf(i) >= 0){ hs.push(i); net += flNet(i); H += flHeight(i); } });
   vols.forEach(function(v){
@@ -146,7 +148,8 @@ function etapes(vols){
   vols.forEach(function(v){ etagesDe(v).forEach(function(e){ hmax = Math.max(hmax, e.z1 - z00); }); });
   hmax = Math.max(hmax, H);
   /* la ligne de recul : sa plus grande boucle */
-  var recul = ligneRecul(RULES.dist.retrait).slice().sort(function(a, b){ return airePoly(b) - airePoly(a); })[0] || PER;
+  var RV = reculVise();
+  var recul = (RV ? ligneRecul(RV) : [PER.slice(0, -1)]).slice().sort(function(a, b){ return airePoly(b) - airePoly(a); })[0] || PER;
   var sport = vols.filter(function(v){ return v.fix && !v.ph; });
   var sous = [];
   vols.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) < 0) sous.push({ v:v, e:e }); }); });
@@ -164,8 +167,8 @@ function etapes(vols){
       scene(t, A, [{ d:0, z:0, f:function(){ prisme(t, A, PER.slice(0, -1), 0, H, saumon()); } }]);
       [[60, 50], [110, 80], [130, 40]].forEach(function(p){ fleche(t, A(p[0], p[1], H + 2), A(p[0], p[1], H + 14), .9); });
     } });
-  S.push({ n:"Le recul", d:RULES.dist.retrait + " m de recul sur tout le périmètre, " + RULES.dist.entre + " m entre bâtiments (AEAI) : "
-    + "il reste " + fmt(Math.round(airePosable(RULES.dist.retrait))) + " m² posables.",
+  S.push({ n:"Le recul", d:String(RV).replace(".", ",") + " m de recul sur tout le périmètre, " + RULES.dist.entre + " m entre bâtiments (AEAI) : "
+    + "il reste " + fmt(Math.round(airePosable(RV))) + " m² posables.",
     f:function(t, A){
       scene(t, A, [{ d:0, z:0, f:function(){ prisme(t, A, recul, 0, H, saumon()); } }]);
       t.ligne(recul.map(function(p){ return A(p[0], p[1], 0); }).concat([A(recul[0][0], recul[0][1], 0)]), { stroke:E.rouge, lw:.4, dash:[2, 1.5] });
@@ -175,7 +178,7 @@ function etapes(vols){
       });
     } });
   S.push({ n:"La figure : " + pa.n.toLowerCase(), d:pa.d.split(/[.:]/)[0] + ". " + ecole.length + " corps"
-    + (prof ? " de " + String(prof).replace(".", ",") + " m de profondeur, tirée entre " + DOC.profMin + " et " + DOC.profMax + " m" : "")
+    + (prof ? " de " + String(prof).replace(".", ",") + " m de profondeur, tirée entre " + V.profMin + " et " + V.profMax + " m" : "")
     + " : chacun prend une part des niveaux.",
     f:function(t, A){
       /* la figure au sol : l'emprise de chaque corps, sur l'aire posable */
@@ -220,10 +223,10 @@ function etapes(vols){
     + " les bâtiments à l'étage : un seul ensemble, sans les fermer.",
     f:function(t, A){ scene(t, A, corpsDe(t, A, ecole, function(){ return saumon(); }, z00)); } });
   var props = vols.props || [vols];
-  S.push({ n:"Le tri", d:Math.round(DOC.essais) + " compositions essayées" + (vols.valides ? ", " + vols.valides + " valides" : "")
-    + " : toute règle dure enfreinte élimine. Les autres sont notées par les jugements ; celle-ci est la "
+  S.push({ n:"Le tri", d:Math.round(V.essais) + " compositions essayées" + (vols.valides ? ", " + vols.valides + " valides" : "")
+    + " : ce qui sort du cadre est éliminé, l'orientation retient, le jugement classe ; celle-ci est la "
     + ((vols.rang || 0) + 1) + (vols.rang ? "e" : "re") + " sur " + props.length
-    + (j && j.total != null ? ", " + j.total + " / 100." : "."),
+    + (j && j.total != null ? ", " + j.total + " / 100 au jugement." : "."),
     f:function(t, A){
       scene(t, A, corpsDe(t, A, vols, function(v, e){ var c = couleur(familleDom(e.e.i)); return [c, teinte(c, .72)]; }, z00, { second:true }));
     } });

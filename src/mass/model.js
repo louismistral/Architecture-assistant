@@ -25,7 +25,9 @@
    ========================================================================= */
 import { COULOIR, FMAP, ITEMS } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
-import { DOC } from "../data/doctrine.js";
+import { V } from "../data/leviers.js";
+import "../data/cadre.js";
+import "../data/donnees.js";
 import { RULES } from "../data/rules.js";
 import { FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
   from "../mix/floors.js";
@@ -57,17 +59,21 @@ export function partiOf(id){
 }
 
 /* ---------- l'état ----------------------------------------------------------
-   `vol` est la solution posée ; `par` les réglages du générateur ; `graine` la
-   graine du SEUL tirage massing. Tout est persisté avec le reste du mixer :
+   `vol` est la solution posée ; `graine` la graine du SEUL tirage massing. Les
+   LEVIERS du massing sont ici, leur état à chacun (`data/leviers.js`) : le
+   parti (`auto` = libre), le second temps (`auto` = libre), et `lev` pour le
+   reste, `null` voulant dire libre. Tout est persisté avec le reste du mixer :
    revenir d'un onglet à l'autre ne doit rien perdre. */
 export var MASS = {
   parti: "auto",
   graine: 1,
-  par: {
-    nb: 0,          /* nombre de volumes · 0 = au parti d'en décider */
-    cap: null       /* orientation générale · null = au générateur de la chercher */
+  lev: {
+    cap: null,      /* orientation de la figure : "axe" · "soleil" · "libre" */
+    sport: null,    /* salle de sport : "accolee" · "part" */
+    ponts: null,    /* passerelles : "oui" · "non" */
+    prof: null      /* profondeur des corps, en m murs compris */
   },
-  /* second temps : "auto" au générateur · "sep" deux volumes · "un" groupés · "non" */
+  /* second temps : "auto" libre · "sep" deux volumes · "un" groupés · "non" */
   second: "auto",
   vol: [],
   pont: [],         /* passerelles : { a, b, i } — deux volumes et un niveau */
@@ -88,21 +94,21 @@ export function plageVue(){
 }
 export function vu(i){ var p = plageVue(); return i >= p[0] && i <= p[1]; }
 export function toutVu(){ var p = plageVue(); return p[0] === 0 && p[1] === FLOORS.length - 1; }
-export function massPar(k, v){ MASS.par[k] = v; }
+/* Un levier du massing : sa valeur fixée, ou `null` pour le rendre libre. */
+export function massLev(k, v){ MASS.lev[k] = v == null ? null : v; }
 export function massVols(list){
   MASS.vol = list || []; MASS.pont = (list && list.ponts) || []; MASS.sel = null;
 }
 
 /* ---------- la profondeur, et ses deux bornes --------------------------------
    La profondeur d'un corps est sa PETITE cote, sa largeur la grande. Les deux
-   fourchettes sont des paramètres de l'utilisateur (`DOC.profMin/profMax`,
-   `DOC.largeurMin/largeurMax`), notés par `juge.js` — jamais bloquants. */
+   fourchettes sont les DOMAINES de deux leviers (`V.profMin/profMax`,
+   `V.largeurMin/largeurMax`, `data/leviers.js`) : le générateur y tire ses
+   cotes ; un corps retouché qui en sort ne l'est que pour l'orientation. */
 export function profBornes(){
-  /* La profondeur SOUHAITÉE de l'utilisateur, hors tout (murs compris), ramenée
-     aux cotes intérieures. Un paramètre, pas une règle : le générateur y tire
-     ses profondeurs, et en sortir ne fait que baisser la note. */
-  var m = 2 * RULES.haut.mur, lo = Math.max(1, DOC.profMin - m);
-  return { lo:lo, hi:Math.max(lo, DOC.profMax - m) };
+  /* Le domaine, hors tout (murs compris), ramené aux cotes intérieures. */
+  var m = 2 * RULES.haut.mur, lo = Math.max(1, V.profMin - m);
+  return { lo:lo, hi:Math.max(lo, V.profMax - m) };
 }
 /* TOUTES LES CLASSES EN FAÇADE. Un corps qui porte des salles de classe n'a pas
    plus de deux salles de profondeur, et le couloir qui les dessert entre elles,
@@ -117,14 +123,15 @@ export function profFacade(){
     if(it.f !== "cla") return;
     if(!u || it.nb > u.nb) u = it;
   });
-  if(!u) return DOC.profMax;
+  if(!u) return V.profMax;
   return auModule(2 * Math.sqrt(u.u) + COULOIR);
 }
-/* LE MODULE : toute cote de corps est un multiple de `DOC.module` (0,50 m). Une
-   seule fonction arrondit, le générateur, les remèdes et la main l'appellent. */
-export function auModule(x){ var m = DOC.module; return Math.round(x / m) * m; }
+/* LE MODULE : toute cote de corps est un multiple de `V.module` (0,50 m, une
+   ligne du cadre choisi). Une seule fonction arrondit, le générateur, les
+   remèdes et la main l'appellent. */
+export function auModule(x){ var m = V.module; return Math.round(x / m) * m; }
 export function horsModule(x){
-  var m = DOC.module, q = x / m;
+  var m = V.module, q = x / m;
   return Math.abs(q - Math.round(q)) > 1e-6;
 }
 
@@ -283,7 +290,7 @@ export function pontRect(p, vols){
   var c = Math.cos(-ra.a), s = Math.sin(-ra.a);
   var u = (rb.x - ra.x) * c - (rb.y - ra.y) * s, v = (rb.x - ra.x) * s + (rb.y - ra.y) * c;
   var bw = (tourne ? rb.d : rb.w) / 2, bd = (tourne ? rb.w : rb.d) / 2;
-  var L = DOC.passLarg, q = null;
+  var L = V.passLarg, q = null;
   var ou0 = Math.max(-ra.w / 2, u - bw), ou1 = Math.min(ra.w / 2, u + bw);
   var ov0 = Math.max(-ra.d / 2, v - bd), ov1 = Math.min(ra.d / 2, v + bd);
   if(ou1 - ou0 >= L + 2){

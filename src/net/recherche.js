@@ -4,7 +4,9 @@
    Tirer beaucoup, garder peu. On choisit ce qu'on rebat (le programme, le
    massing, ou les deux), combien de fois, ce qu'on accepte de garder et
    combien ; la recherche rejoue les tirages que l'on ferait à la main et
-   retient les meilleures NOTES du juge (`mass/juge.js — noter()`).
+   retient les meilleures NOTES du jugement (`data/jugement.js — noter()`) :
+   les générateurs cherchent par l'orientation, le jugement classe ce qu'ils
+   ont trouvé.
 
    Elle ne connaît pas d'autre tirage que les deux boutons : `repartir()` pour
    le programme, `genMass()` pour le massing. Une variante trouvée est donc une
@@ -27,9 +29,10 @@ import { resumeCourant } from "./variantes.js";
 
 export var TAG_RECHERCHE = "algo search";
 
-/* Les réglages d'une recherche, et leurs bornes. Ce ne sont pas des décisions
-   de projet — ils disent comment on cherche, pas ce qu'on bâtit : ils vivent
-   donc ici, et non dans `doctrine.js`. */
+/* Les réglages d'une recherche, et leurs bornes. Ce ne sont pas des lignes :
+   ils ne changent aucune variante — ils disent combien on en tire et
+   lesquelles on garde. Ils vivent donc ici, le temps d'une session, et non
+   dans `data/recherche.js`. */
 export var RECH = {
   programme: true,      /* rebattre la répartition du mixer, pile comprise */
   massing: true,        /* rebattre la volumétrie */

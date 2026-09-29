@@ -11,18 +11,26 @@
      Les graines suffiraient à reconstruire une composition tirée ; l'état
      complet est là pour celle qu'on a retouchée à la main, et qu'aucune graine
      ne retrouve.
-   — CE QUI SE TRIE : note, niveaux, corps, surfaces. Des colonnes, pas du
-     JSON : trier cinquante variantes par note ne doit pas demander d'ouvrir
-     cinquante états.
-   — CE QUI SE MONTRE : le verdict, le détail de la note, et les polygones de
-     la miniature — pour dessiner le panneau sans rejouer un générateur par
-     carte.
+   — CE QUI SE TRIE : niveaux, corps, surfaces, en colonnes. La NOTE, elle, se
+     refait ici, à chaque affichage : la variante garde ses MESURES BRUTES
+     (`criteria.mes`), et le jugement d'aujourd'hui les note avec les poids
+     d'aujourd'hui. Changer un poids reclasse toutes les variantes sans en
+     regénérer une ; la colonne `score` ne garde que la note du jour de
+     l'enregistrement, pour le premier tri de la base.
+   — CE QUI SE MONTRE : le verdict, les écarts au cadre, les notes posées À LA
+     MAIN (`criteria.main`), et les polygones de la miniature — pour dessiner
+     le panneau sans rejouer un générateur par carte.
+
+   `criteria` était une liste de critères notés par l'ancien juge ; c'est
+   maintenant `{ v:3, mes, cadre, main }`. Une variante d'avant n'a pas de
+   mesures : « Reload » les lui calcule, et la renote.
 
    Plus l'EMPREINTE des fichiers du dépôt : voir `core/empreinte.js`.
    ========================================================================= */
 import { BUILTG, VARITEMS, recompute, userAreas } from "../core/model.js";
 import { curSeed as seedActuelle, seed } from "../core/rand.js";
-import { DOC } from "../data/doctrine.js";
+import { V } from "../data/lignes.js";
+import { moyennes, noter } from "../data/jugement.js";
 import { empreinte } from "../core/empreinte.js";
 import { curSeed } from "../core/rand.js";
 import { FLOORS } from "../mix/floors.js";
@@ -30,7 +38,7 @@ import { mixCheck, mixVerdict } from "../mix/checks.js";
 import { restore, saveSoon, snapshot } from "../mix/store.js";
 import { MASS, bilanTotal, massVols, partiOf, volCoins } from "../mass/model.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
-import { jugementCourant } from "../mass/juge.js";
+import { evaluationCourante } from "../mass/mesures.js";
 import { CPT } from "./compte.js";
 import { deleteApi, insertApi, patchApi, selectApi } from "./supa.js";
 
@@ -62,13 +70,15 @@ export function vignetteCourante(){
    pour ne pas avoir à le recalculer à chaque affichage de la liste. */
 export function resumeCourant(){
   var b = bilanTotal(), note = null, crit = null;
-  /* La NOTE de la composition et son détail, critère par critère
-     (`mass/juge.js — noter()`) : une lecture, que le générateur ne suit pas. */
+  /* Les MESURES BRUTES du bâtiment, et ses écarts au cadre : de quoi le
+     renoter demain avec d'autres poids, sans le regénérer. La note du jour,
+     à côté, pour le premier tri de la base. */
   try{
-    var d = jugementCourant();
-    if(d){
-      note = d.total;
-      crit = d.crit.map(function(c){ return { id:c.id, n:c.n, pts:c.pts, niv:c.niv, rang:c.rang, txt:c.txt, actif:c.actif }; });
+    var ev = evaluationCourante();
+    if(ev){
+      note = noter(ev.mes, null, moyennesMain()).total;
+      crit = { v:3, mes:ev.mes,
+               cadre:{ ko: idsDe(ev.ecarts, "e"), notif: idsDe(ev.ecarts, "w") } };
     }
   }catch(_){}
   var vm = {}, vx = {};
@@ -89,6 +99,50 @@ export function resumeCourant(){
     thumbnail: vignetteCourante(),
     fingerprint: empreinte()
   };
+}
+
+function idsDe(E, sev){
+  var o = [];
+  E.forEach(function(x){ if(x.sev === sev && !x.pile && o.indexOf(x.k) < 0) o.push(x.k); });
+  return o;
+}
+
+/* ---------- la note d'une variante, refaite ici ----------
+   Les mesures qu'elle a gardées, ses notes manuelles, et — pour les critères
+   qu'on ne lui a pas notés — la moyenne de celles des autres. */
+function mesDe(v){ var c = v && v.criteria; return c && c.v === 3 ? c : null; }
+export function moyennesMain(){
+  return moyennes(VARIANTES.map(function(v){ var c = mesDe(v); return c && c.main; }));
+}
+export function jugementDe(v, moy){
+  var c = mesDe(v);
+  if(!c) return null;
+  return noter(c.mes, c.main, moy || moyennesMain());
+}
+/* La note à afficher et à trier : le jugement d'aujourd'hui quand la variante
+   a ses mesures, la note enregistrée sinon — marquée comme telle. */
+export function noteDe(v, moy){
+  var j = jugementDe(v, moy);
+  return j ? j.total : v.score;
+}
+export function aJour(v){ return !!mesDe(v); }
+/* Invalide : un écart au cadre OPPOSABLE. Elle reste chargeable et notée. */
+export function invalide(v){ var c = mesDe(v); return !!(c && c.cadre && c.cadre.ko && c.cadre.ko.length); }
+export function notifiee(v){ var c = mesDe(v); return c && c.cadre ? (c.cadre.notif || []) : []; }
+
+/* Une note posée à la main, sur un critère sans mesure : `s` de 0 à 1, ou
+   null pour l'effacer. Écrite dans la base, sur la variante même. */
+export async function noterMain(id, crit, s){
+  var v = VARIANTES.filter(function(x){ return x.id === id; })[0];
+  var c = mesDe(v);
+  if(!c) throw new Error("variante sans mesures — Reload d'abord");
+  var main = Object.assign({}, c.main || {});
+  if(s == null) delete main[crit]; else main[crit] = Math.max(0, Math.min(1, s));
+  var nc = Object.assign({}, c, { main: main });
+  var r = await patchApi("variant", "id=eq." + id, { criteria: nc });
+  if(r && r[0]) v.criteria = r[0].criteria; else v.criteria = nc;
+  signale();
+  return v;
 }
 
 export function nomPropose(){
@@ -136,8 +190,7 @@ export async function poserTrouvees(trouves, tag){
     row.team_id = CPT.equipe.id;
     row.author_id = CPT.profil.id;
     /* L'étiquette dit d'où elle vient ; le nom n'a pas à le redire. */
-    row.name = partiOf(t.pid || row.parti).n + " · " +
-               (row.score > 0 ? "+" : "") + row.score + " · n° " + (k + 1);
+    row.name = partiOf(t.pid || row.parti).n + " · " + row.score + "/100 · n° " + (k + 1);
     row.tags = [tag];
     row.state = t.state;
     return row;
@@ -189,18 +242,20 @@ export async function charger(id){
 
    Comme la recherche, on travaille sur l'état vivant et on le remet tel quel.
    `restore()` ne défait pas une surface « à préciser » qu'une variante aurait
-   posée, ni une valeur de doctrine : on les sauve et on les rend à l'identique. */
+   posée, ni une ligne qu'elle aurait réglée : on les sauve et on les rend à
+   l'identique. Les notes posées À LA MAIN survivent : elles ne se recalculent
+   pas, elles se sont données. */
 function pause(){ return new Promise(function(ok){ setTimeout(ok, 0); }); }
 function sauverCadre(){
   return {
-    doc: Object.assign({}, DOC),
+    doc: Object.assign({}, V),
     areas: Object.assign({}, userAreas),
     items: VARITEMS.map(function(it){ return [it, it.u, it.set]; })
   };
 }
 function rendreCadre(c){
   var k;
-  for(k in DOC) if(k in c.doc) DOC[k] = c.doc[k];
+  for(k in V) if(k in c.doc) V[k] = c.doc[k];
   for(k in userAreas) delete userAreas[k];
   Object.assign(userAreas, c.areas);
   c.items.forEach(function(x){ x[0].u = x[1]; x[0].set = x[2]; });
@@ -219,7 +274,8 @@ export async function rejouerTout(progres, arret){
       try{ st = await etatDe(v.id); }catch(_){ st = null; }
       if(!st){ rates++; continue; }
       restore(st);
-      var r = resumeCourant(), patch = {}, diff = false;
+      var r = resumeCourant(), patch = {}, diff = false, av = mesDe(v);
+      if(r.criteria && av && av.main) r.criteria.main = av.main;
       CHAMPS_RESUME.forEach(function(k){
         patch[k] = r[k];
         if(JSON.stringify(r[k]) !== JSON.stringify(v[k])) diff = true;

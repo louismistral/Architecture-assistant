@@ -14,12 +14,11 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | pour | lire |
 |---|---|
 | les contraintes du règlement, le schéma des adjacences | `docs/concours.md` |
-| ce que le règlement ne dit pas, et que les générateurs appliquent | `docs/doctrine.md` |
+| ce qui influe sur une variante : leviers, cadre, orientation, jugement — le système | `docs/parametres.md` |
 | l'onglet Programme mixer | `docs/mixer.md` |
 | l'onglet Massing | `docs/massing.md` |
 | les variantes partagées, le compte, le groupe, la base | `docs/variantes.md` |
 | le relevé du géomètre et sa regénération | `docs/releve.md` |
-| l'onglet Paramètres & contraintes | `docs/parametres.md` |
 | l'onglet Forensics, sa table et son stockage | `docs/forensics.md` |
 | l'onglet Rendu, ses planches PDF | `docs/rendu.md` |
 | les tokens, les thèmes shadcn, le mode | `README.md` — *Règles du projet* |
@@ -87,16 +86,17 @@ Par **onglet**, pas par fichier — le découpage existe déjà.
 | Variantes | `src/net/*`, `views/variantes.js`, la base | quasi nul |
 | Forensics | `views/forensics.js`, `net/forensics.js`, `styles/forensics.css` | nul |
 | Paramètres | `views/parametres.js` — il LIT tout, n'écrit que par les fonctions existantes | faible |
+| Jugement | `data/jugement.js` — axes, critères, poids par défaut | faible |
 | Chrome et thèmes | `index.html`, `main.js`, `styles/tokens.css`, `styles/themes/*`, `data/themes.js` | **fort** : tout le CSS lit les tokens |
 | Typologie (à construire) | `src/typo/*` | nul |
-| Données | `program.js`, `rules.js`, `doctrine.js`, `schema.js` | **garanti** |
+| Données | `program.js`, `rules.js`, `schema.js`, et les lignes : `lignes.js`, `leviers.js`, `cadre.js`, `orientation.js`, `recherche.js`, `donnees.js` | **garanti** |
 
 `mass/gen.js` et `views/mixer.js` sont les deux gros morceaux : jamais les deux en parallèle
 sur le même.
 
 **Les fichiers de données se touchent seul, en un commit à part, mergé tout de suite.**
-`doctrine.js` et `rules.js` sont lus par les deux générateurs — c'est leur raison d'être, et
-c'est ce qui les rend explosifs. Ajouter une clé prend deux minutes ; le faire dans une branche
+Les fichiers de lignes et `rules.js` sont lus par les deux générateurs — c'est leur raison
+d'être, et c'est ce qui les rend explosifs. Ajouter une clé prend deux minutes ; le faire dans une branche
 de trois jours donne un conflit que personne ne saura arbitrer.
 
 **`src/data/site.js` ne se résout jamais à la main** — 208 Ko engendrés. En cas de conflit :
@@ -147,8 +147,9 @@ d'architecture, est resté où il était.
 | Massing | Volumétrie · **Contraintes** |
 
 Les deux volets « Contraintes » des OUTILS sont d'une autre nature que celui du cahier des
-charges : là on lit ce que le RÈGLEMENT impose, ici on lit — et l'on RÈGLE — ce que NOUS avons
-arbitré (`docs/doctrine.md`).
+charges : là on lit ce que le RÈGLEMENT impose ; ici, c'est la page Paramètres & contraintes
+filtrée sur l'onglet — chaque ligne qui y agit, et ce qu'elle dit de la composition à l'écran
+(`docs/parametres.md`).
 
 URL : `#<onglet>/<volet>`, et `#programme/surfaces/<chap|fam>` pour le seul volet qui a un
 regroupement. Les liens qui ont circulé — `#adjacences`, `#programme/adjacences`,
@@ -215,18 +216,30 @@ seulement** ; tous les onglets suivants la lisent.
 
 ## Règle troisième : une source par décision
 
-Une valeur qui n'est ni dans `rules.js` ni dans `doctrine.js` est un nombre écrit en dur, et
-c'est un défaut.
+Une valeur qui n'est ni dans `rules.js` ni dans une LIGNE (`src/data/lignes.js` et les fichiers
+de rôle) est un nombre écrit en dur, et c'est un défaut.
 
 ---
 
 ## Où modifier quoi
 
 - **Une surface, un nombre, une famille, une note** : `src/data/program.js` seul.
-- **Une contrainte du concours** : `src/data/rules.js` seul — la section Contraintes, les règles
-  de niveau et le contrôle en découlent.
-- **Un seuil, un plafond, un poids de génération** : `src/data/doctrine.js` seul — voir
-  `docs/doctrine.md` pour la forme d'une règle.
+- **Une contrainte du concours** : `src/data/rules.js` seul — la section Contraintes et le
+  contrôle en découlent. Les règles de niveau sont des lignes du cadre (`src/data/cadre.js — NIV`).
+- **Ce qui influe sur une variante** — une ligne, dans le fichier de son RÔLE, et nulle part
+  ailleurs (`docs/parametres.md`) :
+  - ce que l'on fait varier : `src/data/leviers.js` (l'état fixe/libre vit dans `mix/opts.js`
+    et `MASS.lev`) ;
+  - ce qui rend une variante valide : `src/data/cadre.js` — les règles de niveau (`NIV`) y
+    sont ; `mix/niv.js` n'en garde que la mécanique ;
+  - où chercher d'abord : `src/data/orientation.js` ;
+  - ce que vaut le bâtiment pour le jury : `src/data/jugement.js` — axes, critères, fonctions ;
+  - la machine : `src/data/recherche.js` ; nos hypothèses et le catalogue des mesures :
+    `src/data/donnees.js`.
+  Le TAG d'une ligne (Intangible, Imposé, Prioritaire, Souhaité, Indicatif) se lit dans l'état,
+  jamais en dur : `tagDe()`, `enVigueur()`, `force()`.
+- **Une mesure du bâtiment** : `src/mass/mesures.js` ou `src/mix/mesures.js`, et son entrée
+  dans `MESURES` (`donnees.js`). Le jugement ne lit QUE des mesures.
 - **Une adjacence** : `src/data/schema.js` seul — le lien, le pôle du nœud, et les postes qu'il
   désigne (`nd.k`). Ni surface ni coordonnée : la surface se lit dans `program.js` par cette
   table, la géométrie est déduite par la vue. `LIENS_ORPHELINS` signale tout nom de poste qui ne
@@ -308,22 +321,25 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
 });"
 ```
 
-Ce que le juge dit de la composition retenue — chaque critère, son état et son score de
-lecture (le générateur choisit par la hiérarchie, pas par la note) :
+Ce que dit le JUGEMENT de la composition retenue — la note, la part du poids lue, chaque axe —,
+et ce qu'en pense l'ORIENTATION, ligne par ligne (le générateur retient par l'orientation, puis
+classe par le jugement) :
 
 ```bash
 node --input-type=module -e "
 Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
-             import('./src/mass/model.js'),import('./src/mass/juge.js'),
-             import('./src/core/rand.js')]).then(([S,G,M,J,R])=>{
+             import('./src/mass/model.js'),import('./src/mass/mesures.js'),
+             import('./src/core/rand.js')]).then(([S,G,M,E,R])=>{
   R.seed(1);
   S.repartir({ alea:false, etages:true });
   M.massSet('parti','auto');
   M.massVols(G.genMass(11));
-  var j = J.jugementCourant(), N = ['défavorable','neutre','favorable'];
-  console.log('parti', M.MASS.vol.parti, '· note', j.total);
-  j.crit.forEach(function(c){
-    console.log(c.n.padEnd(40), N[c.niv].padEnd(12), (c.pts > 0 ? '+' : '') + c.pts);
+  var ev = E.evaluationCourante(), j = ev.jugement, N = ['défavorable','neutre','favorable'];
+  console.log('parti', M.MASS.vol.parti, '· jugement', j.total, '· lu à', Math.round(100 * j.couv) + ' %',
+              '· cadre', ev.invalide ? 'enfreint' : ev.notifie ? 'choisi enfreint' : 'tenu');
+  j.axes.forEach(function(a){ console.log(a.n.padEnd(52), a.s == null ? '—' : Math.round(100 * a.s) + ' %'); });
+  Object.keys(ev.qualites).forEach(function(id){
+    console.log('  qualité', id.padEnd(8), N[ev.qualites[id].niv].padEnd(12), ev.qualites[id].txt);
   });
 });"
 ```

@@ -1,14 +1,16 @@
 /* ============================================================================
    CONTRÔLE D'UNE RÉPARTITION
 
-   Le mixer ne refuse rien : il dit. Deux sévérités, la convention du projet —
-     "e"  rouge : une règle écrite au règlement ou à l'AEAI ;
-     "w"  ambre : une règle de projet, ou une marge qui se discute.
-   Le plateau, la part de circulation et le nombre de niveaux sont des choix de
-   projet : leur dépassement est ambre, pas rouge. Une classe en sous-sol, une
-   salle de sport à l'étage, une adjacence coupée : rouge.
+   Le mixer ne refuse rien : il dit. C'est le canal par lequel une répartition
+   faite à la main — ou chargée d'une variante que le cadre a depuis rendue
+   invalide — apprend ses écarts. Deux sévérités, lues sur le TAG de la ligne
+   qu'elles notifient (`data/cadre.js`, `data/lignes.js — severite()`) :
+     "e"  rouge : le cadre OPPOSABLE, Intangible — la variante est invalide ;
+     "w"  ambre : le cadre choisi, une orientation, une marge qui se discute.
+   Une ligne éteinte ne dit plus rien ; une ligne Indicative, si.
 
-   Toute valeur chiffrée vient de `src/data/rules.js`. Rien n'est réécrit ici.
+   Toute valeur chiffrée vient de `src/data/rules.js` ou de l'état. Rien n'est
+   réécrit ici.
 
    Chaque écart porte deux choses de plus qu'un message : un CODE stable, qui
    permet de l'assumer sans qu'il resurgisse au premier réglage (`accept.js`),
@@ -16,7 +18,7 @@
    sans dire ce qui le réparerait laisse tout le travail à faire.
    ========================================================================= */
 import { dec, fmt } from "../core/format.js";
-import { DOC } from "../data/doctrine.js";
+import { V, lu, severite } from "../data/cadre.js";
 import { RULES } from "../data/rules.js";
 import {
   BLOCKS, FLOORS, TRAY, flBuilt, flCount, flName, lvlOf, trayArea, trayBlocks
@@ -60,7 +62,7 @@ export function mixCheck(){
   /* --- ce qui n'est pas encore posé ------------------------------------- */
   var tb = trayBlocks(), tn = 0;
   tb.forEach(function(b){ tn += b.q; });
-  if(tn) add("w", tn + " pièce" + (tn > 1 ? "s" : "") + " encore au bac, soit "
+  if(tn) add(severite("bac"), tn + " pièce" + (tn > 1 ? "s" : "") + " encore au bac, soit "
     + fmt(Math.round(trayArea())) + " m² sans niveau", "à placer",
     tb.length ? PMAP[tb[0].key].n : "", null,
     { code:"bac", fix: fixReste(), keys: tb.map(function(b){ return b.key; }) });
@@ -70,11 +72,11 @@ export function mixCheck(){
     if(b.fl === TRAY || b.fl >= FLOORS.length) return;
     var p = PMAP[b.key], lv = lvlOf(b.fl);
     NIV.forEach(function(rl){
-      if(!nivHit(rl, p)) return;
+      if(!nivHit(rl, p) || !lu(rl.id)) return;
       var bad = false;
       if(rl.lvl){ if(lv < rl.lvl.min || lv > rl.lvl.max) bad = true; }
       else if(rl.grade){ if(lv !== 0) bad = true; }
-      else if(rl.max !== undefined){ if(lv > rl.max || lv < 0) bad = true; }
+      else if(rl.etageMax !== undefined){ if(lv > rl.etageMax || lv < 0) bad = true; }
       else if(rl.same){
         var ref = nivDe(rl.same);
         if(ref.length && ref.indexOf(b.fl) < 0) bad = true;
@@ -85,7 +87,7 @@ export function mixCheck(){
          cible est le niveau de son ancre. */
       var cible = rl.same ? (nivDe(rl.same)[0] === undefined ? -1 : nivDe(rl.same)[0])
                           : nivCible(p, b.fl);
-      add(rl.sev, rl.msg, rl.ref, p.n + " au " + flName(b.fl).toLowerCase(), b.fl,
+      add(severite(rl.id), rl.msg, rl.src.a, p.n + " au " + flName(b.fl).toLowerCase(), b.fl,
         { code: "niv:" + NIV.indexOf(rl) + ":" + p.key, keys: [p.key], fix: fixDeplacer(p.key, cible),
           note: "Le mixer n\u2019offre aucun niveau que cette règle admette."  });
     });
@@ -98,8 +100,8 @@ export function mixCheck(){
     if(b.fl === TRAY || b.fl >= FLOORS.length) return;
     if(lvlOf(b.fl) >= 0) return;
     var p = PMAP[b.key];
-    if(p.f === "tec") return;
-    add("e", "En sous-sol, seuls les locaux techniques, de stockage et de nettoyage "
+    if(p.f === "tec" || !lu("jour-ss")) return;
+    add(severite("jour-ss"), "En sous-sol, seuls les locaux techniques, de stockage et de nettoyage "
       + "se passent de lumière naturelle", "2.10", p.n, b.fl,
       { code:"jour:" + p.key, keys: [p.key], fix: fixDeplacer(p.key, nivCible(p, b.fl)) });
   });
@@ -110,18 +112,18 @@ export function mixCheck(){
     { code:"nappe", fix: fixCombler() });
 
   /* --- adjacences actives -------------------------------------------------
-     Une adjacence ACTIVE demande ses deux postes au même niveau : c'est un
-     choix qu'on a fait, lien par lien, et il ne tient pas — rouge. Une
-     adjacence éteinte ne dit rien : les deux postes sont indépendants, et
-     c'est aussi un choix. */
+     Une adjacence ACTIVE demande ses deux postes au même niveau : c'est la
+     ligne `adj` du cadre choisi, et elle ne tient pas — ambre. Une adjacence
+     éteinte ne dit rien : les deux postes sont indépendants, et c'est aussi un
+     choix — celui du levier. */
   PROX.forEach(function(l){
-    if(!adjActive(l.id)) return;
+    if(!adjActive(l.id) || !lu("adj")) return;
     var A = nivDe(l.a), B = nivDe(l.b);
     if(!A.length || !B.length) return;       /* pas encore posé : rien à dire */
     var d = Infinity;
     A.forEach(function(fa){ B.forEach(function(fb){ d = Math.min(d, Math.abs(fa - fb)); }); });
     if(d === 0) return;
-    add("e",
+    add(severite("adj"),
       PMAP[l.a].n + " et " + PMAP[l.b].n + " sont séparés de "
         + d + " niveau" + (d > 1 ? "x" : "") + " — « " + l.q + " »",
       "adjacences", PMAP[l.a].n, A[0],
@@ -142,7 +144,7 @@ export function mixCheck(){
     var reste = FLOORS[b.fl].plate - aOf(b.key, b.q);
     for(var k = b.fl + 1; k < FLOORS.length; k++){
       if(FLOORS[k].plate > reste + 0.5 && flCount(k)){
-        add("e", p.n + " demande " + dec(p.hlibre)
+        add(severite("gabarit"), p.n + " demande " + dec(p.hlibre)
           + " m de hauteur libre : rien ne se pose dessus. Le " + flName(k).toLowerCase()
           + " ne dispose que des " + fmt(Math.round(Math.max(0, reste)))
           + " m² laissés libres à côté d'elle", "2.10", flName(k), k,
@@ -179,8 +181,8 @@ export function mixCheck(){
       if(p.f !== "tec") use += b.q;
       if(WCRE.test(p.n)) wc += b.q;
     });
-    if(!use) return;
-    if(!wc) add("w", "Aucun WC au " + flName(k).toLowerCase()
+    if(!use || !lu("wc")) return;
+    if(!wc) add(severite("wc"), "Aucun WC au " + flName(k).toLowerCase()
       + " : tout niveau occupé doit avoir ses sanitaires", "2.10", "", k,
       { code:"wc:" + F.lvl, fix: fixWC(k) });
   });
@@ -189,9 +191,9 @@ export function mixCheck(){
      Un degré tient sur un niveau, avec ses dégagements : au-delà, on fait un
      couloir d'hôpital. Le tirage le respecte, mais il ne refuse rien — quand
      un niveau est plein, le reste des classes se pose quand même au mieux
-     noté, et il fallait le DIRE. Le seuil est une règle de projet, il se
-     règle dans le volet « Contraintes » du mixer. */
-  FLOORS.forEach(function(F, k){
+     noté, et il fallait le DIRE. Le seuil est une ligne du cadre choisi
+     (`unite`). */
+  if(lu("unite")) FLOORS.forEach(function(F, k){
     var n = 0, keys = [];
     BLOCKS.forEach(function(b){
       if(b.fl !== k) return;
@@ -199,15 +201,15 @@ export function mixCheck(){
       n += b.q;
       if(keys.indexOf(b.key) < 0) keys.push(b.key);
     });
-    var max = Math.max(1, Math.round(DOC.clsParNiveau));
+    var max = Math.max(1, Math.round(V.clsParNiveau));
     if(n <= max) return;
-    add("w", n + " salles de classe au " + flName(k).toLowerCase()
+    add(severite("unite"), n + " salles de classe au " + flName(k).toLowerCase()
       + ", où l'unité pédagogique retenue en compte " + max
       + " au plus : au-delà, le dégagement devient un couloir d'hôpital",
       "projet", "", k,
       { code:"unite:" + F.lvl, keys: keys, fix: fixEtage(),
-        note: "Aucun article ne l’écrit : c’est une règle de projet, et elle se "
-          + "règle dans le volet « Contraintes »." });
+        note: "Aucun article ne l’écrit : c’est notre choix, et il se règle dans "
+          + "Paramètres & contraintes — ligne « Unité pédagogique »." });
   });
 
   /* --- art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage ------ */
@@ -227,7 +229,7 @@ export function mixCheck(){
   /* --- un niveau vide sous un niveau chargé ------------------------------- */
   for(i = 0; i < FLOORS.length - 1; i++){
     if(flCount(i) === 0 && flCount(i + 1) > 0){
-      add("w", "Le " + flName(i).toLowerCase() + " est vide alors que le "
+      add(severite("vide"), "Le " + flName(i).toLowerCase() + " est vide alors que le "
         + flName(i + 1).toLowerCase() + " porte " + flCount(i + 1)
         + " pièces — cela ne se construit pas", "pile", "", i,
         { code:"vide:" + lvlOf(i), fix: (i === 0 && lvlOf(0) < 0) ? fixCombler() : fixReste() });

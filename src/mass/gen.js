@@ -7,24 +7,27 @@
    SOLUTION ARCHITECTURALE — combien de corps, où, dans quelle direction, à
    quelle profondeur, jusqu'à quel étage, accolés, séparés ou reliés.
 
-   Et ce n'est pas un tirage, ni une note. Le générateur :
+   Le générateur, dans cet ordre :
 
-     1. GÉNÈRE des compositions — un parti, une figure, une profondeur, une
-        orientation, la salle de sport à part ou accolée, des passerelles ou
-        non ;
-     2. VALIDE les contraintes dures (`juge.js — dures()`) et jette toute
-        variante qui en enfreint une ;
-     3. COMPARE les variantes valides, qualitativement : on écarte celles
-        qu'une autre bat sur les priorités fortes, puis, entre égales, sur les
-        préférences ;
-     4. tire un PARTI parmi ce qui reste, puis une variante : la diversité est
-        voulue, une priorité oriente la recherche sans imposer une forme.
+     1. TIRE les LEVIERS laissés libres (`data/leviers.js`) — un parti, une
+        figure, une profondeur, une orientation, la salle de sport à part ou
+        accolée, des passerelles ou non —, et respecte ceux qu'on a fixés ;
+     2. VALIDE le CADRE (`mesures.js — ecarts()`) et jette toute variante qui
+        en sort : il n'en propose jamais une ;
+     3. RETIENT, entre les variantes valides, celles que l'ORIENTATION préfère
+        — dosée avec le hasard (`V.hasardMass`) : la meilleure de chaque parti
+        en libre, les huit meilleures d'un parti fixé ;
+     4. CLASSE ce qu'il retient par le JUGEMENT (`data/jugement.js`) : la
+        première proposition est celle que le jury noterait le mieux.
 
-   Aucun critère n'est converti en points, ni affiché ni caché.
+   L'orientation choisit, le jugement classe ; aucun ne sait rien de l'autre.
    ========================================================================= */
 import { ITEMBYKEY } from "../core/model.js";
 import { PER, SITE } from "../data/site.js";
-import { DOC } from "../data/doctrine.js";
+import { V, courExigee, recul, reculVise } from "../data/cadre.js";
+import { distVisee, ombreVisee, preference } from "../data/orientation.js";
+import "../data/leviers.js";
+import "../data/recherche.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { areaOf, lvlOf, onFloor } from "../mix/floors.js";
@@ -35,8 +38,8 @@ import {
 import { CONTACT, MASS, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
   sousSol, volEtage, volRect } from "./model.js";
 export { lies };
-import { angleSoleilVue, classer, courUtile, dures, ensembles, noter, oublier, qualites }
-  from "./juge.js";
+import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
+  from "./mesures.js";
 import { PARTIS_FIGURES, composer } from "./partis.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
@@ -54,10 +57,13 @@ function alea(g){
 }
 function entre(r, a, b){ return a + r() * (b - a); }
 
-/* JEU : le jeu d'orientation autour de l'angle choisi — sans lui, les
-   compositions d'un même parti seraient la même. */
-var JEU = .11;
 function d1(v){ return Math.round(v * 10) / 10; }
+/* Un levier du massing : fixé, sa valeur ; libre, une des options, à parts
+   égales. `r` est le hasard du massing. */
+function levier(k, options, r){
+  var v = MASS.lev[k];
+  return v != null ? v : options[Math.floor(r() * options.length)];
+}
 
 
 /* ---------- les emprises déjà là --------------------------------------------
@@ -128,7 +134,7 @@ function corpsImpose(iRez){
    un niveau est son poids parmi ceux qui montent jusque-là ; sa surface UTILE
    est cette part de la surface bâtie du niveau ; sa largeur est cette surface
    divisée par sa profondeur. Les deux cotes sont au MODULE, et la profondeur
-   reste entre les bornes de la doctrine (`profBornes()`) — `hi` la plafonne en
+   reste dans le domaine du levier (`profBornes()`) — `hi` la plafonne en
    plus pour un corps d'école, dont toutes les classes doivent avoir leur façade.
    Les murs s'ajoutent autour (`volRect`) : ils ne prennent rien au programme. */
 function cotes(a, prof, hi){
@@ -190,8 +196,8 @@ export function relier(vols){
       });
       if(i1 < 0) return;
       var p = { a:A.id, b:B.id, i:i1 }, rc = pontRect(p, vols);
-      if(!rc || rc.long > DOC.passMax || rc.long < RULES.dist.entre - .01) return;
-      if(margeAu(PER, rc) < RULES.dist.retrait - .01) return;
+      if(!rc || rc.long > V.passMax || rc.long < RULES.dist.entre - .01) return;
+      if(margeAu(PER, rc) < recul() - .01) return;
       var bute = vols.some(function(o){
         return o !== A && o !== B && ecart(rc, rectSol(o)) < .5; });
       if(!bute) cand.push({ p:p, l:rc.long });
@@ -254,7 +260,7 @@ function auBord(v, vols){
   for(cx = B.x0; cx <= B.x1; cx += 2){
     for(cy = B.y0; cy <= B.y1; cy += 2){
       var d = bordDist(PER, cx, cy);
-      if(d < RULES.dist.retrait + demi * .3) continue;
+      if(d < reculVise() + demi * .3) continue;
       cand.push([cx, cy, d]);
     }
   }
@@ -264,7 +270,7 @@ function auBord(v, vols){
     for(var i = 0; i < cand.length; i++){
       if(!admissible(v, vols, cand[i][0], cand[i][1], angles[k])) continue;
       v.x = d1(cand[i][0]); v.y = d1(cand[i][1]); v.a = angles[k];
-      if(courUtile(vols).a >= DOC.courMin) return true;
+      if(courUtile(vols).a >= courExigee()) return true;
       if(++essais > 30) return false;
     }
   }
@@ -306,7 +312,7 @@ export function admissible(v, vols, x, y, a){
   var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a };
   var i, j;
   for(i = 0; i < v.lv.length; i++)
-    if(!tientA(PER, volRect(P, v.lv[i]), RULES.dist.retrait - .01)) return false;
+    if(!tientA(PER, volRect(P, v.lv[i]), recul() - .01)) return false;
   for(i = 0; i < vols.length; i++){
     var o = vols[i];
     if(o === v) continue;
@@ -329,14 +335,14 @@ export function toutDedans(vols){
 }
 
 /* Ramener ce qui dépasse. La distance minimale se tient pleine poussée ; le
-   JOUR — `DOC.ombreK` fois la hauteur du plus haut — d'une poussée douce :
-   c'est une priorité, pas une contrainte, et elle ne doit pas faire sortir un
+   JOUR — `V.ombreK` fois la hauteur du plus haut — d'une poussée douce :
+   c'est une orientation, pas un cadre, et elle ne doit pas faire sortir un
    corps de la parcelle pour gagner deux mètres. */
 function reparer(vols){
-  var pas, i, j, B = bbox(PER);
+  var pas, i, j, B = bbox(PER), RV = reculVise(), OK = ombreVisee();
   /* La réparation vise la distance SOUHAITÉE, jamais moins que la distance
      incendie. */
-  var cible = Math.max(RULES.dist.entre, DOC.distVoulue) + .35;
+  var cible = Math.max(RULES.dist.entre, distVisee()) + .35;
   var N = horsSol(), HN = {};
   N.forEach(function(n){ HN[n.i] = n.h; });
   var HV = vols.map(function(v){
@@ -351,7 +357,7 @@ function reparer(vols){
       var v = vols[i], rc = rectSol(v), dx = 0, dy = 0;
       var pire = Infinity;
       v.lv.forEach(function(e){ pire = Math.min(pire, margeAu(PER, volRect(v, e))); });
-      var m = pire - RULES.dist.retrait - .3;
+      var m = pire - RV - .3;
       if(m < 0){
         var k = Math.min(3, -m) * .55;
         var lx = B.cx - v.x, ly = B.cy - v.y, l = Math.hypot(lx, ly) || 1;
@@ -361,7 +367,7 @@ function reparer(vols){
         if(j === i || lies(v, vols[j])) continue;
         var o = rectSol(vols[j]);
         var e = ecart(rc, o);
-        var jour = visAVis(rc, o) > 8 ? Math.max(HV[i], HV[j]) * DOC.ombreK : 0;
+        var jour = visAVis(rc, o) > 8 ? Math.max(HV[i], HV[j]) * OK : 0;
         var vise = Math.max(cible, Math.min(jour + MARGE_JOUR, cible + 14));
         if(e < vise){
           var ox = v.x - vols[j].x, oy = v.y - vols[j].y, ol = Math.hypot(ox, oy) || 1;
@@ -401,7 +407,7 @@ export function recaler(v, vols){
      plupart des positions sans rien mesurer. */
   var demi = Infinity;
   rectsHors(v).forEach(function(r){ demi = Math.min(demi, Math.min(r.w, r.d) / 2); });
-  var seuil = RULES.dist.retrait + demi - .01;
+  var seuil = reculVise() + demi - .01;
   var angles = [v.a, v.a + Math.PI / 2, axePer(), axePer() + Math.PI / 2];
   var cand = grilleSite().filter(function(p){ return p[2] >= seuil; }).map(function(p){
     return [p[0], p[1], (p[0] - v.x) * (p[0] - v.x) + (p[1] - v.y) * (p[1] - v.y)];
@@ -465,13 +471,13 @@ function implanter(S, N, r, th0){
                         dy: s.gradin && e.k > 0 ? d1(-(s.d - e.d) / 2) : 0, a:e.a };
              }) };
   });
-  var cand = grilleSite().filter(function(p){ return p[2] >= RULES.dist.retrait + rMin; });
+  var cand = grilleSite().filter(function(p){ return p[2] >= reculVise() + rMin; });
   var t, k;
   for(t = 0; t < 300; t++){
     var p = cand[Math.floor(r() * cand.length)];
     /* L'angle choisi le plus souvent ; parfois une direction du site — une
        longue barre ne tient que dans le sens de la parcelle. */
-    var th = r() < .7 ? th0 + entre(r, -1, 1) * JEU * 1.5 + (r() < .25 ? Math.PI / 2 : 0)
+    var th = r() < .7 ? th0 + entre(r, -1, 1) * V.jeuAngle * 1.5 + (r() < .25 ? Math.PI / 2 : 0)
                       : ATTS[Math.floor(r() * ATTS.length)].a + (r() < .5 ? 0 : Math.PI / 2);
     var c = Math.cos(th), s2 = Math.sin(th), ok = true;
     for(k = 0; k < vols.length; k++){
@@ -496,17 +502,19 @@ export function intact(vols){
     return Math.hypot(v.x - x, v.y - y) < .2 && Math.abs(Math.sin(v.a - T.a - v.la)) < .01;
   });
 }
-/* La salle de sport : accolée à la figure une fois sur trois, sinon sur le bas
-   du terrain, à distance. Ses cotes ne bougent pas. */
+/* La salle de sport — un LEVIER : accolée à la figure, ou sur le bas du
+   terrain, à distance. Libre, une chance sur deux ; accolée sans y parvenir,
+   elle se pose à part. Ses cotes ne bougent pas. */
 function placerSport(vols, imp, r, th){
   var sp = { id:"vsport", x:0, y:0, a:th, fix:1, ancre:1, key:imp.key, prof:imp.d, grad:0,
              lv:[{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, keys:[imp.key] }] };
   vols.push(sp);
   var E = vols.filter(function(v){ return !v.fix && !v.ph; });
-  if(E.length && r() < .35 && accolerA(sp, E[Math.floor(r() * E.length)], vols, r)) return true;
+  if(E.length && levier("sport", ["accolee", "part"], r) === "accolee"
+     && accolerA(sp, E[Math.floor(r() * E.length)], vols, r)) return true;
   delete sp.joint;
   var demi = Math.min(imp.w, imp.d) / 2 + RULES.haut.mur;
-  var cand = grilleSite().filter(function(p){ return p[2] >= RULES.dist.retrait + demi; })
+  var cand = grilleSite().filter(function(p){ return p[2] >= reculVise() + demi; })
     .map(function(p){ return [p[0], p[1], p[3] + r() * .8]; });
   cand.sort(function(a, b){ return a[2] - b[2]; });
   for(var q = 0; q < cand.length && q < 500; q++){
@@ -531,15 +539,15 @@ function aval(){
   AVAL = Math.atan2(-gy, -gx);
   return AVAL;
 }
-/* L'orientation d'une figure : l'axe du périmètre, l'optimum soleil-vue, ou un
-   angle libre. Les terrasses suivent les courbes : leurs rangs descendent la
+/* L'orientation d'une figure — un LEVIER : l'axe du périmètre, l'optimum
+   soleil-vue, ou un angle libre autour de l'axe ; libre, l'une des trois à
+   parts égales. Les terrasses suivent les courbes : leurs rangs descendent la
    pente (le +v de la figure va vers l'aval). */
 function orientation(pid, r, centreSite){
   if(pid === "terrasses") return aval() - Math.PI / 2;
-  if(MASS.par.cap != null) return MASS.par.cap;
-  var m = r();
-  if(m < .4) return axePer();
-  if(m < .75) return angleSoleilVue(centreSite.cx, centreSite.cy);
+  var m = levier("cap", ["axe", "soleil", "libre"], r);
+  if(m === "axe") return axePer();
+  if(m === "soleil") return angleSoleilVue(centreSite.cx, centreSite.cy);
   return axePer() + entre(r, -.7, .7);
 }
 
@@ -564,34 +572,40 @@ export function genMass(graine){
   /* L'aire bâtie d'école par niveau hors sol : ce que la figure doit loger. */
   var Aecole = N.map(function(n, k){ return Math.max(0, n.A - (imp && k === 0 ? imp.aire : 0)); });
 
-  /* UN ESSAI, dans l'ordre voulu : 1. le PARTI construit sa figure ; 2. le
-     PROGRAMME lui donne ses étages et ses emprises (dans `composer`) ; la
-     figure est posée d'un bloc, puis la salle de sport et le sous-sol ; 3. les
-     RÈGLES DURES — TOUTES, sans exception — décident si elle entre dans les
-     résultats ; 4. les priorités et préférences ne départagent qu'ensuite. */
+  /* UN ESSAI, dans l'ordre voulu : 1. les LEVIERS — le parti construit sa
+     figure, le programme lui donne ses étages et ses emprises (dans
+     `composer`), la figure est posée d'un bloc, puis la salle de sport, le
+     sous-sol, les passerelles ; 2. le CADRE — tout entier — décide si elle
+     entre dans les résultats ; 3. l'ORIENTATION ne départage qu'ensuite. */
   function essai(pid){
-    /* La profondeur, tirée sous la cote : une barre et un bloc compact la
-       veulent pleine, des pavillons et un hameau plus mince. */
+    /* La profondeur — un levier : fixée, la nôtre ; libre, tirée sous la cote
+       de façade, pleine pour une barre et un bloc compact, plus mince pour des
+       pavillons et un hameau. */
     var p0 = B.lo, p1 = hiE;
     if(pid === "barre" || pid === "compact") p0 = Math.max(B.lo, hiE - 3);
     if(pid === "pavillons" || pid === "hameau") p1 = Math.max(B.lo, Math.min(hiE, B.lo + 5));
-    var prof = auModule(entre(r, p0, p1)), vols;
+    var fixe = MASS.lev.prof;
+    var prof = fixe != null ? auModule(Math.max(B.lo, Math.min(hiE, fixe - 2 * RULES.haut.mur)))
+                            : auModule(entre(r, p0, p1)), vols;
     {
       var S = composer(pid, Aecole, prof, r);
       if(!S){ rates.push({ pid:pid, k:"parti" }); return false; }
       var th = orientation(pid, r, centreSite);
       vols = implanter(S, N, r, th);
-      if(!vols){ rates.push({ pid:pid, k:"perim" }); return false; }
+      if(!vols){ rates.push({ pid:pid, k:"perimetre" }); return false; }
       if(imp && !placerSport(vols, imp, r, th)){ rates.push({ pid:pid, k:"sport" }); return false; }
       enterrer(vols);
       var bats = {};
       vols.forEach(function(v){ if(v.bat) bats[v.bat] = 1; });
-      vols.ponts = Object.keys(bats).length > 1 && r() < .4 ? relier(vols) : [];
+      vols.ponts = Object.keys(bats).length > 1 && levier("ponts", ["oui", "non"], r) === "oui"
+        ? relier(vols) : [];
+      /* la figure doit rester celle de son parti : c'est ce que veut dire
+         l'option du levier, pas une contrainte sur le bâtiment */
       if(!intact(vols)){ rates.push({ pid:pid, k:"parti" }); return false; }
     }
     vols.parti = pid; vols.prof = prof;
-    var d = dures(vols, true);
-    if(!d.length){ valides.push({ vols:vols, pid:pid, d:d, q:d.q || qualites(vols) }); return true; }
+    var d = ecarts(vols, true);
+    if(!d.length){ valides.push({ vols:vols, pid:pid, pref: preference(lecture(vols).q) }); return true; }
     rates.push({ vols:vols, pid:pid, k:d[0].k, pile:d[0].pile });
     return false;
   }
@@ -601,37 +615,37 @@ export function genMass(graine){
   if(partis.length > 1){
     var ok = {};
     partis.forEach(function(pid){
-      for(var k = 0; k < Math.max(1, Math.round(DOC.essaisParti)); k++)
+      for(var k = 0; k < Math.max(1, Math.round(V.essaisParti)); k++)
         if(essai(pid)) ok[pid] = 1;
     });
     var l2 = partis.filter(function(p){ return ok[p]; });
     if(l2.length) lot = l2;
   }
-  for(t = 0; t < Math.max(1, Math.round(DOC.essais)); t++) essai(lot[t % lot.length]);
+  for(t = 0; t < Math.max(1, Math.round(V.essais)); t++) essai(lot[t % lot.length]);
   /* Un parti imposé qui n'a encore presque rien rendu : on persévère, les
      essais ne coûtent que quelques millisecondes — jusqu'à dix fois le budget. */
-  var plafond = 10 * Math.max(1, Math.round(DOC.essais));
+  var plafond = 10 * Math.max(1, Math.round(V.essais));
   while(valides.length < 4 && t < plafond){ essai(lot[t % lot.length]); t++; }
 
-  /* LE CLASSEMENT, PUIS LA DERNIÈRE GARDE. Les variantes valides reçoivent leur
-     score sur 100 ; en Auto on garde la meilleure de chaque parti. Sur chacune,
-     dans l'ordre, les ouvrages du second temps se posent et TOUTES les règles
-     dures sont revérifiées : s'ils en font enfreindre une, ils ne sont pas
-     posés ; si la variante ne tient plus, elle quitte le classement. Rien de ce
-     qui enfreint une règle dure n'arrive à l'écran. La première est montrée ;
-     les suivantes attendent « Shuffle massing ». */
+  /* RETENIR, PUIS LA DERNIÈRE GARDE, PUIS CLASSER. L'orientation retient les
+     candidates ; sur chacune, les ouvrages du second temps se posent et TOUT le
+     cadre est revérifié : s'ils le font enfreindre, ils ne sont pas posés ; si
+     la variante ne tient plus, elle s'en va. Rien qui sorte du cadre n'arrive à
+     l'écran. Ce qui reste est classé par le JUGEMENT — le bâtiment entier,
+     second temps compris : la première est montrée, les suivantes attendent
+     « Shuffle massing ». */
   var n0 = valides.length, props = [];
-  classer(valides, partis.length > 1).forEach(function(c){
+  retenir(valides, partis.length > 1, r).forEach(function(c){
     poserSecond(c.vols, r);
-    if(dures(c.vols, false).length) retirerSecond(c.vols);
-    var d2 = dures(c.vols, false);
-    if(d2.length) return;
-    /* le second temps compte dans la note (terrain, cour) : on la recalcule */
-    c.vols.score = noter(d2, d2.q || qualites(c.vols)).total;
+    if(ecarts(c.vols, false).length) retirerSecond(c.vols);
+    if(ecarts(c.vols, false).length) return;
+    var ev = evaluer(c.vols);
+    c.vols.score = ev.jugement.total;
+    c.vols.pref = c.pref;
     c.vols.valides = n0;
     props.push(c.vols);
   });
-  props.sort(function(a, b){ return b.score - a.score; });
+  props.sort(function(a, b){ return (b.score || 0) - (a.score || 0); });
   if(props.length){
     props.forEach(function(v, k){ v.rang = k; v.props = props; });
     return props[0];
@@ -647,12 +661,27 @@ export function genMass(graine){
   /* Une règle que la composition ne peut pas résoudre (l'abri PC à l'étage) : on
      le dit, c'est au mixer. */
   var pile = rates.filter(function(x){ return x.pile && x.vols; })[0];
-  if(pile) vide.raison = dures(pile.vols, false).filter(function(x){ return x.pile; })[0].msg;
+  if(pile) vide.raison = ecarts(pile.vols, false).filter(function(x){ return x.pile; })[0].msg;
   vide.parti = MASS.parti;
-  vide.posable = airePosable(RULES.dist.retrait);
+  vide.posable = airePosable(reculVise());
   return vide;
 }
 var PARTIS_LIBRES = PARTIS_FIGURES.concat(["libre"]);
+
+/* L'ORIENTATION RETIENT. Chaque candidate valide a sa préférence (0 à 1,
+   `data/orientation.js — preference()`) ; la part du hasard (`V.hasardMass`)
+   s'y mêle, et l'on garde les mieux placées : la meilleure de chaque parti
+   quand le parti est libre — la diversité —, les huit meilleures d'un parti
+   fixé. Le jugement n'entre pas ici : il classe ensuite ce qu'on a retenu. */
+function retenir(cands, parParti, r){
+  var h = Math.max(0, Math.min(1, V.hasardMass));
+  cands.forEach(function(c){ c.cle = (1 - h) * c.pref + h * r(); });
+  cands.sort(function(a, b){ return b.cle - a.cle; });
+  if(!parParti) return cands.slice(0, 8);
+  var vu = {}, out = [];
+  cands.forEach(function(c){ if(!vu[c.pid]){ vu[c.pid] = 1; out.push(c); } });
+  return out;
+}
 
 /* Les sous-sols vont sous le corps le PLUS HAUT du site : trois mètres de
    terrain au-dessus de la nappe ne se trouvent qu'au tiers est. Jamais sous la

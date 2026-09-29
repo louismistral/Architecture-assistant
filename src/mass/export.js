@@ -39,7 +39,7 @@
    mutilé selon la version de Rhino.
    ========================================================================= */
 import { dec } from "../core/format.js";
-import { RULES } from "../data/rules.js";
+import { reculVise } from "../data/cadre.js";
 import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain } from "./geom.js";
 import { MASS, etagesDe, niveaux, partiOf, pontEtage, volNom } from "./model.js";
@@ -72,7 +72,7 @@ function jour(d){
 export function objMassing(o){
   var date = (o && o.date) || new Date();
   var N = niveaux(), out = [], nv = 0, nEt = 0, nPont = 0;
-  var recul = RULES.dist.retrait;
+  var recul = reculVise();
   var gRecul = "Recul_" + String(recul).replace(".", "_") + "m";
 
   function sommet(x, y, z){ out.push("v " + X(x) + " " + Y(y) + " " + Z(z)); return ++nv; }

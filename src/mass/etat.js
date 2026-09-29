@@ -17,7 +17,8 @@ export function massOf(){
   return {
     parti: MASS.parti,
     graine: MASS.graine,
-    par: { nb: MASS.par.nb, cap: MASS.par.cap },
+    /* l'état des leviers : `null`, libre ; une valeur, fixe */
+    lev: { cap: MASS.lev.cap, sport: MASS.lev.sport, ponts: MASS.lev.ponts, prof: MASS.lev.prof },
     second: MASS.second,
     mono: MASS.mono ? 1 : 0,
     /* La pile pour laquelle ces volumes ont été composés : une solution relue
@@ -42,11 +43,11 @@ export function setMass(o){
   if(!o) return;
   if(o.parti) MASS.parti = o.parti;
   if(o.graine) MASS.graine = o.graine;
-  if(o.par){
-    var k;
-    for(k in o.par) if(MASS.par[k] !== undefined && o.par[k] !== undefined)
-      MASS.par[k] = o.par[k];
-  }
+  /* Un état d'avant les leviers (`par`, jamais réglé à l'écran) : tout libre.
+     Sans cela, une variante ancienne se rechargeait avec les leviers de la
+     dernière qu'on a vue. */
+  var k, L = o.lev || {};
+  for(k in MASS.lev) MASS.lev[k] = L[k] === undefined ? null : L[k];
   MASS.mono = !!o.mono;
   if(o.second) MASS.second = o.second;
   /* `etage`, un seul niveau ou -1, est l'écriture d'avant la plage. */

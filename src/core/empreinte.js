@@ -3,8 +3,10 @@
 
    Une variante enregistre un état ; mais cet état s'appuie sur des nombres
    qu'on ne peut PAS changer depuis l'application — le programme, le règlement,
-   les adjacences, le relevé, et les valeurs par défaut de la doctrine. Ceux-là
-   changent en éditant le code et en poussant sur GitHub.
+   les adjacences, le relevé, et les valeurs par défaut des lignes de la
+   RECHERCHE (cadre, orientation, leviers, générateur). Ceux-là changent en
+   éditant le code et en poussant sur GitHub. Les défauts du JURY n'y sont pas :
+   changer un poids renote une variante, il ne la périme pas.
 
    Quand ils changent, une variante enregistrée avant ne dit plus la vérité :
    ses surfaces, sa note et son bilan portent sur un programme qui n'existe
@@ -19,7 +21,11 @@ import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
 import { SLINK, SNODE, SPOLE } from "../data/schema.js";
 import { SITE } from "../data/site.js";
-import { DOC, docDefaut } from "../data/doctrine.js";
+import { defautsRecherche } from "../data/lignes.js";
+import "../data/leviers.js";
+import "../data/cadre.js";
+import "../data/orientation.js";
+import "../data/recherche.js";
 
 function fnv(s){
   var h = 0x811c9dc5, i;
@@ -74,12 +80,7 @@ var SOURCES = [
   { k:"r", nom:"le règlement du concours",       de:function(){ return RULES; } },
   { k:"s", nom:"les adjacences exigées",         de:function(){ return JSON.parse(ADJ_DECLAREES); } },
   { k:"t", nom:"le relevé du terrain",           de:function(){ return SITE; } },
-  { k:"d", nom:"les valeurs par défaut de la doctrine",
-    de:function(){
-      var o = {}, k;
-      for(k in DOC) o[k] = docDefaut(k);
-      return o;
-    } }
+  { k:"d", nom:"les valeurs par défaut de la recherche", de:defautsRecherche }
 ];
 
 /* `p1a2b.r3c4d.s5e6f.t7g8h.d9i0j` — une part par source, pour que la

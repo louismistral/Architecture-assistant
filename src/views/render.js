@@ -19,8 +19,8 @@ import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
 import { FREE } from "../data/schema.js";
-import { drawMass, massDoctrine, massPanel, setMassNav } from "./massing.js";
-import { drawMix, mixDoctrine, mixPanel, setMixNav } from "./mixer.js";
+import { drawMass, massPanel, massPrepare, massRejouer, setMassNav } from "./massing.js";
+import { drawMix, mixPanel, mixPiles, mixRejouer, setMixNav } from "./mixer.js";
 import { saveSoon } from "../mix/store.js";
 import { constraintsSection } from "./constraints.js";
 import { CIRCPAT, hatchDefs, panelsEl, scaleBar } from "./diagram.js";
@@ -177,11 +177,16 @@ export function render(){
   renderBar();
 
   /* Les deux outils ont chacun deux volets : ce qu'ils FONT, et les CONTRAINTES
-     qui gouvernent ce qu'ils font. Le second est la réponse à « pourquoi
-     obtient-on ce résultat » — et c'est là qu'on le corrige. */
+     qui gouvernent ce qu'ils font. Le second est la page Paramètres &
+     contraintes filtrée sur l'onglet : la réponse à « pourquoi obtient-on ce
+     résultat », et l'endroit où on le corrige. */
   if(view.tab === "mixer"){
     var mh = subHost();
-    if(curSub() === "contraintes"){ mh.appendChild(mixDoctrine()); return; }
+    if(curSub() === "contraintes"){
+      mh.appendChild(parametresVue(render, { onglet:"mixer", titre:"Ce qui gouverne la répartition",
+        rejouer: mixRejouer, extra: mixPiles() }));
+      return;
+    }
     mh.appendChild(mixPanel());
     drawMix();
     return;
@@ -190,7 +195,12 @@ export function render(){
      d'une largeur mesurable, et WebGL d'un canevas attaché. */
   if(view.tab === "massing"){
     var xh = subHost();
-    if(curSub() === "contraintes"){ xh.appendChild(massDoctrine()); return; }
+    if(curSub() === "contraintes"){
+      massPrepare();
+      xh.appendChild(parametresVue(render, { onglet:"massing", titre:"Ce qui gouverne la volumétrie",
+        rejouer: massRejouer }));
+      return;
+    }
     xh.appendChild(massPanel());
     requestAnimationFrame(drawMass);
     return;

@@ -471,3 +471,17 @@
 .vm-rang{margin:var(--s-3) 0 var(--s-1)}
 .vm-c.is-off{opacity:.55}
 .vm-c .chip{flex:none;inline-size:6.5em;text-align:center}
+
+/* --- la note par axes du jugement (`views/note.js`) ------------------------ */
+.vm-axe{ border-top:1px solid var(--border-soft); }
+.vm-axe__h{
+  display:grid; grid-template-columns:minmax(0,1.6fr) minmax(60px,1fr) 3.5rem; align-items:center;
+  gap:var(--s-3); padding:var(--s-2) 0; cursor:pointer; list-style:none; font-size:var(--t-xs);
+}
+.vm-axe__h::-webkit-details-marker{ display:none; }
+.vm-axe__n{ color:var(--foreground); }
+.vm-axe__h b{ text-align:right; font-weight:500; color:var(--soft-foreground); }
+.vm-axe[open] .vm-axe__h{ color:var(--primary); }
+.vm-main{ flex:none; }
+.vm-main .btn{ min-inline-size:var(--tap-min); padding:0 var(--s-1); }
+.vc__note.is-vieux{ font-style:italic; opacity:.7; }

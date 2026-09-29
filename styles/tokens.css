@@ -243,6 +243,18 @@
   --focus-fill:#3077CD;
   --on-fill:#FFFFFF;
 
+  /* --- les tags de force (`data/lignes.js — TAGS`) -------------------------
+     Du rouge au vert : ce qui influe forcément, ce qui influe peut-être, ce
+     qui n'influe pas. Des aplats qui portent leur propre fond, comme les
+     pastilles d'état : une valeur sert les deux modes et tous les thèmes. Le
+     texte dessus passe 4.5:1 — clair sur le rouge et le vert franc, sombre sur
+     l'orange, le jaune et le vert clair, où un blanc ne tiendrait pas. */
+  --tag-intangible:#C0392B;   --tag-intangible-on:#FFFFFF;
+  --tag-impose:#E07A1F;       --tag-impose-on:#2A1500;
+  --tag-prioritaire:#E9C236;  --tag-prioritaire-on:#2B2200;
+  --tag-souhaite:#9FCF72;     --tag-souhaite-on:#11280A;
+  --tag-indicatif:#2C7A47;    --tag-indicatif-on:#FFFFFF;
+
   /* --- couches du fond de plan du site ------------------------------------
      Elles emprutaient des tokens de famille d'usage : le vert « sport » servait
      à tracer une emprise et le gris « technique » le bâti existant, d'où trois

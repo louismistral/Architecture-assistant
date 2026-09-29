@@ -36,10 +36,11 @@ export var RULES = {
      règlement (art. 2.3) renvoie aux directives AEAI 15-15 sans donner de
      chiffre ; 5 m est leur cas de base (deux façades à couche extérieure
      incombustible). C'est la seule distance BLOQUANTE entre bâtiments.
-     `retrait` est un recul de projet sur le périmètre (le règlement ne fixe pas
-     de distance aux limites). `couverture` est la terre qu'un sous-sol excavé
-     garde au-dessus de la nappe — hypothèse de projet. */
-  dist: { retrait: 5, entre: 5, couverture: 3.0 },
+     Le recul sur le périmètre n'est PAS ici : le règlement ne fixe aucune
+     distance aux limites, et ce recul est notre choix — une ligne du cadre
+     choisi (`data/cadre.js`, `V.recul`). `couverture` est la terre qu'un
+     sous-sol excavé garde au-dessus de la nappe — hypothèse de projet. */
+  dist: { entre: 5, couverture: 3.0 },
 
   /* --- hauteurs ---------------------------------------------------------- */
   /* `libre` : hauteurs libres EXIGÉES par le règlement, par famille ou par
@@ -118,6 +119,11 @@ export var RULES = {
          busPassages: 4,                      /* passages des bus scolaires par jour */
          accesAuto: "rue du Casino",          /* voitures, bus et dépose-minute */
          accesDoux: "chemin du Petit Mont" }, /* vélos et piétons */
+
+  /* --- 1.9 le coût -------------------------------------------------------- */
+  /* CFC 2 à 4, TTC, tel que le maître d'ouvrage l'estime. Le jugement le compare
+     au volume mesuré fois le prix au m³, une hypothèse (`data/donnees.js`). */
+  budget: 29000000,
 
   /* --- 2.7 l'école -------------------------------------------------------- */
   ecole: { eleves: 360, degres: "5H à 8H" },
@@ -210,7 +216,7 @@ Object.keys(RULES.cadre).forEach(function(k){
 /* Distances et couverture sont lues telles quelles par l'implantation : elles
    vivaient dans `data/site.js`, au milieu du relevé du géomètre, alors que ce
    sont des règles et non des mesures. */
-export var RETRAIT = RULES.dist.retrait, ENTRE = RULES.dist.entre, SOUSSOL = RULES.dist.couverture;
+export var ENTRE = RULES.dist.entre, SOUSSOL = RULES.dist.couverture;
 
 /* Hauteur d'un niveau à partir de sa hauteur libre. */
 export function hNiv(cle){

@@ -78,12 +78,13 @@ qu'ils **font**, et les **contraintes** qui gouvernent ce qu'ils font.
 | Massing | Volumétrie · Contraintes |
 
 Les deux volets « Contraintes » des outils sont d'une autre nature que celui du cahier des
-charges : là on lit ce que le **règlement** impose, ici on lit — et l'on **règle** — ce que
-nous avons arbitré pour qu'un générateur produise quelque chose. Rien n'y est opposable,
-tout s'y discute. Ils listent les règles **de la plus dure à la plus molle**, disent ce que
-le hasard décide, et inventorient les scripts qui génèrent. Le volet du massing porte en
-tête la **note de la composition à l'écran**, critère par critère : c'est la réponse à
-« pourquoi obtient-on ce résultat », et c'est là qu'on le corrige.
+charges : là on lit ce que le **règlement** impose ; ici, c'est la page **Paramètres &
+contraintes** filtrée sur l'onglet — chaque ligne qui y agit, son rôle (levier, cadre,
+orientation, jugement), son tag de force, et ce qu'elle dit de la composition à l'écran. C'est
+la réponse à « pourquoi obtient-on ce résultat », et c'est là qu'on le corrige.
+
+Deux moteurs : la **recherche** produit les variantes (leviers, cadre, orientation), le
+**jugement** les note comme le jury, par leurs seules mesures. Voir `docs/parametres.md`.
 
 ### Le cahier des charges, en trois volets
 
@@ -142,9 +143,8 @@ styles/
   schema.css          adjacences : cartes des grappes, en cascade
   mixer.css           le mixer : pile, canevas d'un niveau, blocs, pièces, bac
   massing.css         le massing : rail, plan et 3D, alertes
-  doctrine.css        le volet Contraintes des outils : règles repliées, note, scripts
   variantes.css       le panneau des variantes et le modal de leurs informations
-  parametres.css      l'onglet Paramètres & contraintes
+  parametres.css      Paramètres & contraintes, et les volets Contraintes des outils
   forensics.css       l'onglet Forensics : la toile et ses cartes
 src/
   data/               données pures, sans logique
@@ -157,9 +157,14 @@ src/
                       nappe, stationnement, circulation, second temps ← source unique
     supabase.js       l'adresse de la base et sa clé PUBLIABLE      ← source unique
     themes.js         les thèmes installés et les trois modes            ← source unique
-    doctrine.js       LA DOCTRINE DE PROJET — tout ce que le règlement NE dit pas et
-                      que les deux générateurs appliquent : seuils, plafonds, poids,
-                      rangs de dureté, inventaire des scripts   ← source unique
+    lignes.js         LE SCHÉMA DES LIGNES — rôles, tags, onglets, sources, qui règle —
+                      et le magasin `V` que lisent les moteurs   ← source unique
+    leviers.js        LEVIERS : ce qu'on fait varier, leurs domaines
+    cadre.js          CADRE : opposable et choisi, les règles de niveau (`NIV`)
+    orientation.js    ORIENTATION : nos intentions, leurs cibles et leurs points
+    jugement.js       JUGEMENT : les six axes du règlement, les critères, la note
+    recherche.js      GÉNÉRATEUR : essais, part du hasard, seeds
+    donnees.js        DONNÉES : nos hypothèses, le catalogue des mesures
   core/
     viewstate.js      view.tab / view.subs (un volet par onglet) / group / mode
                       + routage par hash
@@ -173,7 +178,8 @@ src/
     gl.js             WebGL minimal : matrices, programme, tampons (dont statiques), caméra
   mix/                répartir le programme sur les niveaux
     prog.js           le programme vu comme des parts à poser, adjacences par poste
-    niv.js            règles de niveau du règlement, cotes admissibles par poste
+    niv.js            la mécanique des règles de niveau, cotes admissibles par poste
+    mesures.js        les mesures brutes d'une répartition, pour le jugement
     floors.js         la pile de niveaux, les parts posées, déplacer / scinder
     shuffle.js        répartition ordonnée, tirage, proposition de pile
     checks.js         contrôle d'une répartition → écarts, avec leur code et leurs remèdes
@@ -186,7 +192,8 @@ src/
   mass/               poser le programme en volumes, sur le terrain relevé
     geom.js           terrain interpolé, rectangles tournés, distances, alignements
     model.js          l'état du massing, les niveaux relus du mixer, le bilan de surface
-    gen.js            le générateur : parti → figure → réparation → note
+    gen.js            le générateur : leviers → cadre → orientation → jugement
+    mesures.js        ce qu'on lit sur une volumétrie : écarts au cadre, qualités, mesures
     checks.js         contrôle d'une volumétrie → alertes info / à vérifier / erreur
     etat.js           ce que le massing enregistre (lu par mix/store.js)
   net/                le partage — `fetch` seul, aucune dépendance
@@ -201,9 +208,6 @@ src/
     render.js         aiguillage par onglet, cahier des charges, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
     constraints.js    la section Contraintes du cahier des charges, lue dans rules.js
-    doctrine.js       le volet Contraintes des DEUX outils : les règles rangées par
-                      dureté et réglables, la note d'une composition, les piles
-                      admissibles, ce que le hasard décide, l'inventaire des scripts
     diagram.js        barre d'échelle, trames de hachure
     schema.js         schéma fonctionnel : une carte par grappe rayonnante, locaux à
                       l'échelle
@@ -212,7 +216,9 @@ src/
     plan.js           la vue en plan : relevé, volumes, sélection, déplacement, rotation
     vue3d.js          la vue 3D : terrain maillé, courbes drapées, existant, volumes
     variantes.js      le panneau des variantes, et le modal de leurs informations
-    parametres.js     Paramètres & contraintes : tout ce qui influe sur une variante
+    parametres.js     Paramètres & contraintes : tout ce qui influe sur une variante,
+                      classé — et les volets Contraintes du mixer et du massing
+    note.js           la note d'un bâtiment, axe par axe, et ses notes manuelles
     forensics.js      Forensics : la toile, les cartes, les gestes
     icons.js          le jeu d'icônes, au trait
     tooltip.js        infobulle
@@ -313,8 +319,9 @@ survol n'existe ni au doigt, ni au clavier, ni sur mobile.
 - **Le programme** (surfaces, nombres, familles, notes) : `src/data/program.js` seul. Tous
   les totaux, la nomenclature, les cartes et les parts du mixer en découlent.
 - **Les contraintes du concours** (distances, hauteurs libres, protection incendie, nappe,
-  stationnement, largeur de couloir par défaut) : `src/data/rules.js` seul. La section
-  Contraintes, les règles de niveau et le contrôle du mixer en découlent.
+  stationnement, largeur de couloir par défaut, budget) : `src/data/rules.js` seul. La
+  section Contraintes et le contrôle en découlent ; les règles de niveau sont des lignes du
+  cadre (`src/data/cadre.js — NIV`), avec leur tag.
   `src/data/site.js` ne porte que du relevé.
 - **Les adjacences** : `src/data/schema.js` seul. `src/mix/prog.js` ne fait que dire quel
   nœud du schéma correspond à quel poste du programme, et le signale si un nom change.
