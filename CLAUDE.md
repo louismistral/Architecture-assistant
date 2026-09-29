@@ -19,6 +19,9 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | l'onglet Massing | `docs/massing.md` |
 | les variantes partagées, le compte, le groupe, la base | `docs/variantes.md` |
 | le relevé du géomètre et sa regénération | `docs/releve.md` |
+| l'onglet Paramètres & contraintes | `docs/parametres.md` |
+| l'onglet Forensics, sa table et son stockage | `docs/forensics.md` |
+| les tokens, les thèmes shadcn, le mode | `README.md` — *Règles du projet* |
 
 ---
 
@@ -81,6 +84,9 @@ Par **onglet**, pas par fichier — le découpage existe déjà.
 | Mixer | `src/mix/*`, `views/mixer.js` | quasi nul |
 | Massing | `src/mass/*`, `views/massing.js`, `plan.js`, `vue3d.js` | quasi nul |
 | Variantes | `src/net/*`, `views/variantes.js`, la base | quasi nul |
+| Forensics | `views/forensics.js`, `net/forensics.js`, `styles/forensics.css` | nul |
+| Paramètres | `views/parametres.js` — il LIT tout, n'écrit que par les fonctions existantes | faible |
+| Chrome et thèmes | `index.html`, `main.js`, `styles/tokens.css`, `styles/themes/*`, `data/themes.js` | **fort** : tout le CSS lit les tokens |
 | Typologie (à construire) | `src/typo/*` | nul |
 | Données | `program.js`, `rules.js`, `doctrine.js`, `schema.js` | **garanti** |
 
@@ -104,19 +110,24 @@ isolé. Sans quoi le conflit est garanti et illisible.
 ## Les onglets sont une chronologie
 
 ```
-Cahier des charges  →  Programme mixer  →  Massing  →  Typologie
-surfaces et             répartition du      volumétrie  plans et
-contraintes             programme sur       sur le site coupes
-                        les niveaux
+⚙  Paramètres & contraintes   le cadre — hors chronologie, une icône et pas de numéro
+01 Cahier des charges         surfaces et contraintes
+02 Forensics                  le moodboard du groupe
+03 Programme mixer            répartition du programme sur les niveaux
+04 Massing                    volumétrie sur le site
+05 Typologies · 06 Tectonics · 07 Materiality · 08 Rendu      à construire
 ```
 
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :
 l'onglet Site venait après le Plan, donc la typologie décidait du volume.
 
-Les quatre onglets existent ; la **Typologie** est vide, à construire.
+Les onglets vivent dans la **barre latérale « Atelier et outils »**, une ligne numérotée
+par onglet, tirée de `TABS` (`src/core/viewstate.js`) ; elle pousse le contenu, et son
+bouton est à gauche de la barre du haut. Le titre et le total vivant sont au centre. Les
+quatre derniers onglets sont vides, à construire.
 
 **Les variantes ne sont PAS un onglet.** Une variante enregistre l'état du projet
-sous un nom et le recharge à l'identique : elle TRAVERSE les trois onglets au lieu
+sous un nom et le recharge à l'identique : elle TRAVERSE les onglets au lieu
 d'en être une étape. Son bouton vit donc à côté du compte, hors du groupe de
 destinations, et ouvre un panneau posé par-dessus. Voir `docs/variantes.md`. `src/vol/`, qui gardait
 dormants un générateur de volumétrie et une scène 3D, a été RETIRÉ quand le Massing a été
@@ -231,9 +242,18 @@ c'est un défaut.
   séparer ferait deux vérités.
 - **L'adresse de la base ou sa clé** : `src/data/supabase.js` seul. La clé
   `service_role` n'entre JAMAIS dans le dépôt.
-- **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs. WebGL ne sait pas lire
-  `var(--f-cla)` : `cssRGB()` fait résoudre le token par le navigateur et le garde en cache tant
-  que le thème ne change pas.
+- **Une valeur de dessin** : `styles/tokens.css`, et nulle part ailleurs — trois couches : les
+  noms de **shadcn** (le thème, Saxon par défaut), les **dérivés** calculés (`--soft-foreground`,
+  `--border-soft`, `--radius-*`, `--s-*`…), l'**application** (familles, états, échelles), qui ne
+  dépend que du mode. WebGL ne sait pas lire `var(--f-cla)` : `cssRGB()` fait résoudre le
+  token par le navigateur, le ramène à trois octets par un canevas (`oklch()`, `color-mix()`)
+  et le garde en cache tant que le thème et le mode ne changent pas.
+- **Un thème** : un fichier `styles/themes/<id>.css` au format shadcn, une ligne dans
+  `src/data/themes.js`. Le thème et le mode sont deux choix, dans les préférences du compte.
+- **Une préférence de la personne** — thème, mode, tri et filtre des variantes, barre ouverte :
+  `PREFS` dans `src/net/prefs.js` (colonne `profile.prefs`, copie sur l'appareil). Jamais une
+  décision de projet : celles-là sont dans `net/reglages.js`.
+- **Un onglet** : une entrée dans `TABS` (numéro `n` ou `icon`) et une branche dans `render()`.
 
 ---
 
