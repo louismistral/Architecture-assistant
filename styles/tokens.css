@@ -270,6 +270,7 @@
                                pas atteindre 3:1 sur un fond clair */
   --f-pis:#0D95A9;          /* piscine */
   --f-ext:#196B39;          /* cour et extérieurs */
+  --papier:#FFFFFF;         /* la feuille d'une planche imprimée : blanche dans tous les modes */
   --fill-op:0.20;           /* opacité des aplats de famille */
   --hatch-ink:rgba(0,0,0,.34);          /* opacité de la hachure du technique */
 

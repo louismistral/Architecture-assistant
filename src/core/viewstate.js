@@ -28,6 +28,8 @@
    `view.mode`  ce que dessine la nomenclature   → un carré par poste ou par pièce
 */
 
+import { ETAPES } from "../data/planches.js";
+
 export var TABS = [
   /* Le CADRE du projet, hors chronologie : tout ce qui influe sur une
      variante, en lignes — critère, valeur, importance. Il n'a pas de numéro
@@ -74,7 +76,9 @@ export var SUBS_BY = {
   massing: [
     { id:"volumetrie",  label:"Volumétrie"  },
     { id:"contraintes", label:"Contraintes" }
-  ]
+  ],
+  /* une étape du projet par volet, chacune ses planches (`data/planches.js`) */
+  rendu: ETAPES.map(function(e){ return { id:e.id, label:e.n }; })
 };
 /* Un volet qui a disparu mène à celui qui l'a repris : les liens ont circulé,
    ils restent valables. Aucun n'a disparu aujourd'hui : `adjacences`, qui a
@@ -83,7 +87,7 @@ var SALIAS = {};
 
 export var view = {
   tab: "programme",
-  subs: { programme:"surfaces", mixer:"repartition", massing:"volumetrie" },
+  subs: { programme:"surfaces", mixer:"repartition", massing:"volumetrie", rendu:"massing" },
   group: "chap",      /* "chap" | "fam" */
   mode: "agg"         /* "agg" (groupé) | "unit" (détaillé) */
 };

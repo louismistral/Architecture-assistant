@@ -44,6 +44,8 @@ import {
 } from "../mass/model.js";
 import { doctrineSection, etatDe } from "./doctrine.js";
 import { jugesVue } from "./juges.js";
+import { apercu } from "./rendu.js";
+import { planDiagrammes } from "../rendu/diagramme.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
   vue3dPick } from "./vue3d.js";
@@ -185,7 +187,36 @@ function dessineRail(){
   railEl.appendChild(blocSel());
   railEl.appendChild(blocBilan());
   railEl.appendChild(blocAlertes());
+  railEl.appendChild(blocDiagramme());
   railEl.appendChild(blocExport());
+}
+
+/* --- le diagramme de la composition ---
+   La planche de diagrammes du rendu, refaite à chaque génération : c'est le
+   raisonnement qui mène à ce volume. Elle se calcule après l'affichage (la
+   mobilité prend une seconde), et une fois par volumétrie. */
+var DIAG = { vol:null, el:null };
+function blocDiagramme(){
+  var b = bloc("Diagramme");
+  b.classList.add("mass-diag");
+  if(!MASS.vol.length){ b.appendChild(el("p", "mass-note", "Aucune volumétrie posée.")); return b; }
+  if(DIAG.vol === MASS.vol && DIAG.el){ b.appendChild(DIAG.el); }
+  else {
+    var at = el("p", "mass-note", "Calcul du diagramme…");
+    b.appendChild(at);
+    var v = MASS.vol;
+    setTimeout(function(){
+      if(v !== MASS.vol) return;
+      v.ponts = MASS.pont;
+      var d = apercu(planDiagrammes(v));
+      d.title = "Ouvrir les planches du rendu";
+      d.addEventListener("click", function(){ location.hash = "#rendu/massing"; });
+      DIAG = { vol:v, el:d };
+      if(at.parentNode) at.replaceWith(d);
+    }, 60);
+  }
+  b.appendChild(el("p", "mass-note", "Le raisonnement, du site au volume. En A2 dans l'onglet Rendu."));
+  return b;
 }
 
 function bloc(titre, chip){

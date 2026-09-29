@@ -7,13 +7,13 @@ import {
 import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../core/viewstate.js";
 import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
+import { renduVue } from "./rendu.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
   typologie:   "Plans et coupes, dessinés dans les volumes que le massing a posés.",
   tectonique:  "La construction : structure, portées, trames, assemblages.",
   materialite: "Les matériaux, leurs teintes, leurs textures et leur vieillissement.",
-  rendu:       "Les planches du concours : images, axonométries, mise en page."
 };
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
@@ -196,6 +196,7 @@ export function render(){
     return;
   }
 
+  if(view.tab === "rendu"){ subHost().appendChild(renduVue(curSub())); return; }
   if(view.tab === "parametres"){ panelsEl.appendChild(parametresVue(render)); return; }
   if(view.tab === "forensics"){ forensicsVue(panelsEl, render); return; }
 
