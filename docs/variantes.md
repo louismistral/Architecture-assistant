@@ -121,6 +121,11 @@ s'élargit pour dire QUOI (« Date ↑ », « Note ≥ 80 ») ou, si c'est trop 
 combien de choses. Les trois réglages suivent le **compte** (`net/prefs.js`,
 colonne `profile.prefs`) : on les retrouve sur un autre appareil.
 
+Le **tri** est un seul choix : c'est le déroulant du menu ◐ (`views/menu.js`),
+un titre par critère et ses deux sens dessous. Le **filtre** est un petit
+formulaire, pas une liste : il reste un panneau, mais s'ouvre en pop comme le
+déroulant — à l'ouverture seulement, pas à chaque réglage qui le repeint.
+
 Le type de massing d'une variante « Auto » est celui que la composition a
 réellement tiré : la miniature l'enregistre (`thumbnail.parti`). Les variantes
 d'avant n'ont que `parti`, qui vaut alors `auto`.
