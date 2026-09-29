@@ -1,6 +1,6 @@
 # La base
 
-Les deux migrations qui suivent sont **déjà appliquées** au projet Supabase du
+Les migrations qui suivent sont **déjà appliquées** au projet Supabase du
 concours. Elles vivent ici pour la même raison que `tools/extract-site.py` :
 c'est le script qui fait foi, pas l'état du serveur. On ne corrige pas la base à
 la main — on écrit une migration et on la rejoue.
@@ -13,6 +13,8 @@ Le détail de ce qu'elles posent, et pourquoi, est dans `docs/variantes.md`.
 20260922152235_plusieurs_groupes.sql     rejoindre, quitter, renommer, les gardes
 20260922152453_transfert_atomique.sql    transmettre la propriété en un appel
 20260928120000_variante_tags.sql         les étiquettes d'une variante (« algo search »)
+20260929090000_preferences_du_compte.sql les préférences du compte (profile.prefs)
+20260929100000_forensics.sql             la planche Forensics et son bucket d'images
 ```
 
 Pour les rejouer sur un projet neuf, avec la CLI Supabase :

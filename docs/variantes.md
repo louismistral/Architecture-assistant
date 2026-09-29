@@ -70,15 +70,78 @@ l'inscription par un déclencheur ; pour un compte qui existe déjà, elle
 apparaît dans son profil et il l'accepte. Ce second cas manquait : inviter
 quelqu'un d'inscrit ne faisait rien, en silence.
 
+## Trois sections
+
+- l'**en-tête**, qui reste accroché : « Variantes », le compte, le groupe, la croix ;
+- les **outils** : le groupe à l'écran (ses onglets, à partir de deux),
+  enregistrer, la recherche automatique ;
+- les **enregistrements** : les presets qui remettent tous les onglets en place,
+  avec leur barre — trier, filtrer, chercher à gauche, **Reload** à droite.
+
+Rien ne rétrécit dans le corps du panneau : c'est lui qui défile. Les onglets de
+groupe, un conteneur en `overflow-x:auto` donc de hauteur minimale nulle,
+s'écrasaient dès que la liste remplissait le panneau.
+
+**Enregistrer** : le champ du nom et le « + » sont les deux moitiés d'un même
+bouton. On nomme, puis on pose ; vide, la variante prend le nom proposé.
+
 ## Deux niveaux, et c'est tout le dessin
 
 - La **carte** porte ce qu'il faut pour RECONNAÎTRE une variante et la CHARGER :
-  une miniature CARRÉE à gauche, le nom et la note en grand, les deux gestes,
-  et le reste en petit dessous. Elle a été haute comme une affiche : trois
-  variantes remplissaient le panneau, et comparer demandait de défiler.
+  une miniature CARRÉE à gauche ; à droite le nom et la note, qui et quand, ses
+  étiquettes, et — calés sur le bas de la miniature — trois gestes : **Charger**,
+  **Infos**, et la **poubelle**, qui se confirme d'un second clic (le couvercle
+  se soulève au premier, comme « Supprimer » dans le modal attend sa
+  confirmation). Elle a été haute comme une affiche : trois variantes
+  remplissaient le panneau, et comparer demandait de défiler.
 - Le **modal** porte tout le reste — la note critère par critère, les graines,
-  les surfaces, les contrôles — et le seul geste qui détruit, « Supprimer », qui
-  n'a rien à faire sur une carte de liste.
+  les surfaces, les contrôles.
+
+Les **étiquettes** se cumulent : `new`, `périmée`, `algo`.
+
+## Trier, filtrer, chercher
+
+Le vocabulaire est celui des listes qu'on connaît (Linear, Notion) : un tri,
+des filtres qui se cumulent, une recherche.
+
+| outil | règle |
+|---|---|
+| trier | note, date, nom, auteur, type de massing — dans un sens ou l'autre. Par défaut : la note, la meilleure d'abord |
+| filtrer | note (de… à…), auteur, état (à jour · périmées), date (24 h · 7 · 30 jours), type de massing, origine (recherche auto · à la main) |
+| chercher | le nom, l'auteur, le type, les étiquettes |
+
+Au repos, un bouton n'est qu'une icône ; dès qu'il règle quelque chose, il
+s'élargit pour dire QUOI (« Date ↑ », « Note ≥ 80 ») ou, si c'est trop long,
+combien de choses. Les trois réglages suivent le **compte** (`net/prefs.js`,
+colonne `profile.prefs`) : on les retrouve sur un autre appareil.
+
+Le type de massing d'une variante « Auto » est celui que la composition a
+réellement tiré : la miniature l'enregistre (`thumbnail.parti`). Les variantes
+d'avant n'ont que `parti`, qui vaut alors `auto`.
+
+## Les nouvelles
+
+Une variante qu'on vient d'enregistrer — à la main ou par la recherche — est
+**new** : elle monte en tête, **hors tri et hors filtre**, cernée et soulignée
+d'un trait, pour qu'on la retrouve sans la chercher. C'est en mémoire
+seulement : le badge tombe quand on ferme l'application, quand on ferme le
+panneau, quand on ouvre ses informations, ou au Reload.
+
+## Reload
+
+Il remet la liste d'aplomb : les `new` tombent, la liste est relue, et chaque
+variante est **rejouée par le code d'aujourd'hui** (`rejouerTout()`) — sa note,
+ses critères, son verdict, ses surfaces et sa miniature sont recalculés et
+réécrits en base s'ils ont changé. Une note d'un ancien juge (vingt-trois
+critères, ou 670 sur 100) n'a plus de sens : elle est refaite, pas cachée.
+
+L'**empreinte ne bouge pas** : elle dit sur quelle version du programme et du
+règlement la variante a été COMPOSÉE, et rejouer ne recompose rien. Une
+variante périmée le reste.
+
+Comme la recherche, Reload travaille sur l'état vivant et le remet tel quel —
+y compris la doctrine et les surfaces « à préciser », que `restore()` ne défait
+pas seul.
 
 **« Charger » est la raison d'être de l'écran**, donc le seul bouton plein. Il
 remet le cahier des charges, le mixer et le massing dans l'état exact.
@@ -99,6 +162,10 @@ Elle porte trois familles de choses :
   cinquante états ;
 - **ce qui se montre** — verdict, détail de la note, polygones de la miniature,
   pour dessiner le panneau sans rejouer un générateur par carte.
+
+`restore()` repart de la doctrine **par défaut** avant de poser celle de
+l'instantané : une valeur réglée avant de charger une variante survivait sinon
+à une variante qui ne la touchait pas, et la variante ne se reproduisait plus.
 
 L'état est celui de `snapshot()` dans `src/mix/store.js`, sans un octet de plus :
 un seul objet dit ce qu'est « l'état du projet », et deux choses le lisent —
@@ -123,6 +190,14 @@ modal dit LAQUELLE des cinq a bougé.
 
 Une variante sans empreinte — d'avant cette version — n'est pas déclarée
 périmée : on ne sait pas, et accuser à tort est pire que se taire.
+
+**L'empreinte des adjacences lit la déclaration**, figée au chargement du
+module. La vue du volet Adjacences écrit sa mise en page SUR les nœuds de
+`schema.js` (`nd.x`, `nd.bw`, `nd.lines`…), et cette mise en page dépend de la
+largeur de la fenêtre : toute variante enregistrée après avoir ouvert ce volet
+se déclarait périmée chez qui ne l'avait pas ouvert. La base en porte quatre
+valeurs pour un `schema.js` inchangé depuis le 26 septembre ; elles restent
+signalées périmées (on n'a pas réécrit l'historique), les nouvelles non.
 
 **L'empreinte ne hache pas `CHAP` tel quel**, et c'est tout le sujet :
 `recompute()` écrit sur ses objets mêmes — `total`, `circ`, `gross`, `key` —,
@@ -188,8 +263,7 @@ elle, trie ce que le générateur a rendu, et c'est exactement ce qu'on faisait
   la recherche serait donc perdu — le formulaire le dit.
 - **Les résultats vont au groupe**, en un seul envoi, avec l'étiquette
   `algo search` dans la colonne `tags` (migration `20260928120000`). Le panneau
-  les marque et propose un filtre — Toutes · algo search · À la main — dès
-  qu'il sépare quelque chose.
+  les marque de l'étiquette `algo`, et le filtre « Origine » les sépare.
 - Un essai coûte près d'une seconde, presque tout au massing. La page reste
   vivante entre deux essais, la progression se lit dans le panneau, et
   « Arrêter » garde ce qui a été trouvé jusque-là.
