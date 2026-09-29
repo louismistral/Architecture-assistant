@@ -11,8 +11,8 @@
 
    — la CARTE porte ce qu'il faut pour RECONNAÎTRE une variante et la CHARGER.
      Miniature carrée, nom, note, qui et quand, ses étiquettes, et trois
-     gestes : charger, les informations, et la poubelle — qui se confirme d'un
-     second clic, comme « Supprimer » dans le modal.
+     gestes : charger, les informations, et la poubelle — une mèche qui laisse
+     quatre secondes pour annuler, comme « Supprimer » dans le modal.
    — le MODAL porte tout le reste — la note critère par critère, les graines,
      les surfaces, les contrôles.
 
@@ -428,40 +428,86 @@ function carte(v){
   var a = el("div", "vc__a");
   a.appendChild(btn("btn btn--primary vc__load", "Charger", function(){ demandeCharge(v); }));
   a.appendChild(btn("btn vc__info", "Infos", function(){ ouvrirModal(v); }));
-  a.appendChild(poubelle(v));
+  a.appendChild(meche("btn--icon vc__sup", null, "« " + v.name + " »", async function(){
+    await supprimer(v.id); delete NOUVELLES[v.id]; peindre();
+  }));
   d.appendChild(a);
 
   c.appendChild(d);
   return c;
 }
 
-/* La poubelle se confirme d'un second clic, comme « Supprimer » dans les
-   informations : au premier, le couvercle se soulève et le bouton passe au
-   rouge ; au second, la variante part. Laissée ouverte, elle se referme seule. */
-function poubelle(v){
-  var b = btn("btn btn--icon vc__sup", null, null), minuteur = null;
-  b.appendChild(icone("poubelle"));
-  function desarmer(){
-    clearTimeout(minuteur);
-    b.classList.remove("is-arme");
-    b.setAttribute("aria-label", "Supprimer « " + v.name + " »");
-    b.title = "Supprimer";
-  }
-  desarmer();
-  b.addEventListener("click", async function(){
-    if(!b.classList.contains("is-arme")){
-      b.classList.add("is-arme");
-      b.setAttribute("aria-label", "Confirmer la suppression de « " + v.name + " »");
-      b.title = "Cliquer encore pour supprimer";
-      minuteur = setTimeout(desarmer, 3500);
-      return;
-    }
-    clearTimeout(minuteur);
-    b.disabled = true;
-    try{ await supprimer(v.id); delete NOUVELLES[v.id]; peindre(); }
-    catch(e){ b.disabled = false; desarmer(); dit(e.message); }
+/* ---------- la mèche ----------
+   Une suppression ne se confirme pas : elle s'allume. Au clic, le bouton
+   devient « Annuler » et une mèche rouge brûle son bord ; un clic ou Échap
+   l'éteint, et la variante part quand la mèche arrive au bout. Revenir dessus à
+   la souris la fige, le temps de réfléchir ; un onglet caché aussi.
+   L'effacement part À LA FIN et pas au clic : la base est celle du groupe, et
+   « Annuler » ne saurait pas rendre une ligne déjà effacée. Pour la même raison,
+   un bouton qui a quitté l'écran — fenêtre ou panneau refermé, liste repeinte —
+   n'efface rien. */
+var MECHE = 4000;
+function meche(cls, texte, quoi, faire){
+  var b = btn("btn meche " + cls, null, null), a = null, ici = false, figeable = false;
+  var faces = el("span", "meche__faces");
+  [["poubelle", texte], ["annuler", texte && "Annuler"]].forEach(function(f, i){
+    var s = el("span", "meche__f" + (i ? " meche__f--arme" : ""));
+    s.appendChild(icone(f[0]));
+    if(f[1]) s.appendChild(document.createTextNode(f[1]));
+    faces.appendChild(s);
   });
-  b.addEventListener("blur", function(){ if(b.classList.contains("is-arme")) minuteur = setTimeout(desarmer, 600); });
+  b.appendChild(faces);
+  var rim = sv("svg", { class:"meche__rim", "aria-hidden":"true" });
+  rim.appendChild(sv("rect", {}));
+  b.appendChild(rim);
+
+  function arme(){ return b.classList.contains("is-arme"); }
+  function jouer(){
+    if(!a || !arme()) return;
+    if(ici || document.hidden) a.pause(); else a.play();
+  }
+  function poser(on){
+    b.classList.toggle("is-arme", on);
+    b.setAttribute("aria-label", (on ? "Annuler la suppression de " : "Supprimer ") + quoi);
+    b.title = on ? "Annuler (Échap)" : "Supprimer";
+    document[on ? "addEventListener" : "removeEventListener"]("visibilitychange", jouer);
+  }
+  /* Éteinte, la mèche reste où elle en était : elle s'efface en fondu, sans
+     revenir pleine. */
+  function eteindre(){ if(a){ a.onfinish = null; a.pause(); } poser(false); }
+  poser(false);
+
+  b.addEventListener("click", function(){
+    if(arme()){ eteindre(); return; }
+    if(a) a.cancel();
+    ici = false; figeable = false;
+    poser(true);
+    /* Le tour se mesure en pixels : `pathLength` ne règle pas le pointillé
+       partout (Chromium ici, Safari aussi), et la mèche restait pleine. */
+    var r = rim.firstChild, tour = r.getTotalLength();
+    r.style.strokeDasharray = tour + "px";
+    a = r.animate([{ strokeDashoffset:"0px" }, { strokeDashoffset:-tour + "px" }],
+                  { duration:MECHE, easing:"linear", fill:"forwards" });
+    jouer();
+    a.onfinish = async function(){
+      poser(false);
+      if(!b.getClientRects().length) return;
+      b.disabled = true;
+      try{ await faire(); }
+      catch(e){ b.disabled = false; dit(e.message); }
+    };
+  });
+  b.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && arme()){ e.stopPropagation(); eteindre(); }
+  });
+  /* La souris qui vient de cliquer est déjà dessus : il faut qu'elle soit
+     sortie une fois pour que revenir fige. */
+  b.addEventListener("pointerenter", function(e){
+    if(e.pointerType === "mouse" && figeable){ ici = true; jouer(); }
+  });
+  b.addEventListener("pointerleave", function(e){
+    if(e.pointerType === "mouse"){ figeable = true; ici = false; jouer(); }
+  });
   return b;
 }
 
@@ -1128,16 +1174,9 @@ export function ouvrirModal(v){
   var pied = el("footer", "vm__pied");
   pied.appendChild(btn("btn btn--primary", "Charger cette variante", function(){ demandeCharge(v); fermerModal(); }));
   pied.appendChild(el("span", "vm__dit", "Remet le cahier des charges, le mixer et le massing dans cet état."));
-  var sup = btn("btn vm__sup", "Supprimer", async function(){
-    if(sup.dataset.sur !== "1"){
-      sup.dataset.sur = "1";
-      sup.textContent = "Confirmer la suppression";
-      return;
-    }
-    try{ await supprimer(v.id); fermerModal(); peindre(); }
-    catch(e){ dit(e.message); }
-  });
-  pied.appendChild(sup);
+  pied.appendChild(meche("vm__sup", "Supprimer", "« " + v.name + " »", async function(){
+    await supprimer(v.id); fermerModal(); peindre();
+  }));
   box.appendChild(pied);
   montrer();
   nom.focus();

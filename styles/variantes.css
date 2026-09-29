@@ -158,11 +158,42 @@
 .vc__load{flex:1}
 .vc__info{flex:none}
 .vc__sup{flex:none;color:var(--muted-foreground)}
-.vc__sup:hover{color:var(--destructive);border-color:var(--destructive)}
-/* Premier clic : le couvercle se soulève, le bouton passe au rouge. */
-.vc__sup .ic-couvercle{transform-origin:19px 6px;transition:transform var(--dur-2) var(--ease)}
-.vc__sup.is-arme{color:var(--on-fill);background:var(--danger-fill);border-color:var(--danger-fill)}
-.vc__sup.is-arme .ic-couvercle{transform:translate(-1px,-2px) rotate(-24deg)}
+.vc__sup:hover,.vc__sup.is-arme{color:var(--destructive);border-color:var(--destructive)}
+
+/* ---------- la mèche ----------
+   Deux faces empilées, qui passent l'une à l'autre en fondu flou, et un
+   contour SVG dont le trait recule le long du bord : un seul tiret de la
+   longueur du tour, décalé de 0 à -tour (variantes.js). */
+.meche{
+  position:relative;
+  transition:color var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease),transform var(--dur-2) var(--ease);
+}
+.meche.is-arme{border-color:var(--border)}
+.meche:active:not(:disabled){transform:scale(.97)}
+.meche__faces{display:inline-grid}
+.meche__f{
+  grid-area:1/1;display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);
+  transition:opacity var(--dur-2) ease,filter var(--dur-2) ease,visibility 0s;
+}
+.meche__f--arme,.meche.is-arme .meche__f{
+  opacity:0;filter:blur(2px);visibility:hidden;transition-delay:0s,0s,var(--dur-2);
+}
+.meche.is-arme .meche__f--arme{opacity:1;filter:none;visibility:visible;transition-delay:0s}
+/* la flèche d'annulation arrive en tournant */
+.meche__f--arme .ic{transform:rotate(-70deg);transition:transform var(--dur-2) var(--ease)}
+.meche.is-arme .meche__f--arme .ic{transform:none}
+.meche__rim{
+  position:absolute;top:-1px;left:-1px;width:calc(100% + 2px);height:calc(100% + 2px);
+  overflow:visible;pointer-events:none;opacity:0;
+  filter:drop-shadow(0 0 3px color-mix(in srgb,var(--destructive) 60%,transparent));
+  transition:opacity var(--dur-2) ease;
+}
+.meche.is-arme .meche__rim{opacity:1}
+.meche__rim rect{
+  x:.75px;y:.75px;width:calc(100% - 1.5px);height:calc(100% - 1.5px);
+  rx:calc(var(--radius-md) - .75px);
+  fill:none;stroke:var(--destructive);stroke-width:1.5px;stroke-linecap:round;
+}
 
 /* ---------- trier, filtrer, chercher, Reload ---------- */
 .vp-barre{

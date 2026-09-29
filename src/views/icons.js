@@ -13,12 +13,11 @@ var P = {
   reglages: [["path", { d:"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" }]],
   plus:     [["path", { d:"M12 5v14M5 12h14" }]],
   croix:    [["path", { d:"M18 6 6 18M6 6l12 12" }]],
-  /* la poubelle, fermée puis entrouverte : le couvercle se soulève au premier
-     clic — c'est l'avertissement, le second supprime */
-  poubelle: [["path", { d:"M3 6h18", class:"ic-couvercle" }],
-             ["path", { d:"M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2", class:"ic-couvercle" }],
+  poubelle: [["path", { d:"M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" }],
              ["path", { d:"M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" }],
              ["path", { d:"M10 11v6M14 11v6" }]],
+  /* annuler : la flèche qui revient — la face d'une suppression qui brûle */
+  annuler:  [["path", { d:"M9 14 4 9l5-5" }], ["path", { d:"M4 9h10.5a5.5 5.5 0 0 1 0 11H11" }]],
   /* trier : deux flèches opposées */
   trier:    [["path", { d:"m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16" }]],
   /* filtrer : trois barres qui raccourcissent */
