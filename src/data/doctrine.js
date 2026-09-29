@@ -150,9 +150,11 @@ export var DOC = {
 
 /* Le bac et le poids de chaque entrée de `JUGES` (`data/jugements.js`) :
    `b_<id>` vaut 1 en règle dure, 0 en jugement ; `w_<id>` son poids, 0 à 10.
-   Un jugement de poids 0 ne compte pas ; la note reste sur 100. */
-JUGES.forEach(function(x){ DOC["b_" + x.id] = x.dur ? 1 : 0; DOC["w_" + x.id] = x.w; });
-export function estDure(x){ return DOC["b_" + x.id] === 1; }
+   Un jugement de poids 0 ne compte pas ; la note reste sur 100. `x_<id>` vaut 1
+   pour une entrée mise à la poubelle : elle ne bloque ni ne compte plus. */
+JUGES.forEach(function(x){ DOC["b_" + x.id] = x.dur ? 1 : 0; DOC["w_" + x.id] = x.w; DOC["x_" + x.id] = 0; });
+export function efface(x){ return DOC["x_" + x.id] === 1; }
+export function estDure(x){ return DOC["b_" + x.id] === 1 && !efface(x); }
 export function poidsJ(x){ return DOC["w_" + x.id]; }
 /* Les mesures qu'une règle dure au moins réclame : c'est ce que le générateur
    fait respecter. Une mesure qui n'est plus que jugée ne bloque plus rien. */

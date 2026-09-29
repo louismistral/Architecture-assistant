@@ -16,8 +16,17 @@
    Jugements A à J : critères tirés de concours d'écoles primaires gagnants.
    ========================================================================= */
 
+import { RULES } from "./rules.js";
+
 export var CATS = {
   R: "Règlement et doctrine",
+  site: "Brief — site et urbanisme",
+  mobilite: "Brief — mobilité",
+  programme: "Brief — programme",
+  normes: "Brief — normes techniques",
+  economie: "Brief — économie et durabilité",
+  rendu: "Brief — rendu",
+  procedure: "Brief — procédure",
   A: "Conditions éliminatoires",
   B: "Implantation et rapport au lieu",
   C: "Espaces extérieurs",
@@ -30,7 +39,8 @@ export var CATS = {
   J: "Stratégie de rendu"
 };
 
-function j(id, c, w, fam, m, n, ex){ return { id:id, c:c, w:w, fam:fam, m:m || [], n:n, ex:ex || "", dur: c === "R" || c === "A" }; }
+function j(id, c, w, fam, m, n, ex){ return { id:id, c:c, w:w, fam:fam, m:m || [], n:n, ex:ex || "", dur: !/^[B-J]$/.test(c) }; }
+function nb(x){ return String(x).replace(".", ","); }
 function r(id, fam, m){ var o = j(id, "R", 8, fam, m || [id]); o.r = id; return o; }
 
 export var JUGES = [
@@ -44,6 +54,27 @@ export var JUGES = [
   j("r_cages", "R", 8, null, [], "Deux cages d'escalier au-delà de 900 m² d'étage", "AEAI 16-15"),
   j("r_fuite", "R", 8, null, [], "Voies de fuite de 35 m au plus", "AEAI 16-15"),
   j("r_second", "R", 8, "pis", [], "Piscine et local CAD en pointillé, l'école marche avec et sans", "règlement 2.2, 2.10"),
+
+  /* ---- le brief : tout le règlement, en règles dures ----
+     Les chiffres se lisent dans `RULES` ; le texte de `RULES.cadre` suit plus
+     bas. Une contrainte du brief que le massing mesure nomme sa mesure. */
+  j("s_perim", "site", 8, null, ["perim"], "Périmètre : parcelles " + RULES.site.parcelles.join(", ") + ", " + RULES.site.aire + " m²", "règlement 2.3"),
+  j("s_zone", "site", 8, null, [], RULES.site.zone + " : ni gabarit, ni hauteur, ni distance aux limites", "règlement 2.3"),
+  j("s_dist", "site", 8, null, ["dist", "existant"], "Distances AEAI entre bâtiments (" + nb(RULES.dist.entre) + " m) et alignements routiers", "règlement 2.3"),
+  j("s_nappe", "site", 8, "tec", [], "Nappe entre " + nb(RULES.site.nappe[0]) + " et " + nb(RULES.site.nappe[1]) + " msm, terrain à " + nb(RULES.site.altMoy) + " : presque pas de sous-sol", "règlement 2.3"),
+  j("s_eaux", "site", 8, null, [], RULES.site.eaux, "règlement 2.3"),
+  j("s_pollu", "site", 8, null, [], RULES.site.pollution, "règlement 2.3"),
+  j("s_voisins", "site", 8, null, [], "Projet résidentiel voisin, parcelles " + RULES.site.voisins.join(" et "), "règlement 2.3"),
+  j("m_bus", "mobilite", 8, "ext", [], "Dépose sécurisée pour " + RULES.ext.bus + " bus, " + RULES.ext.busPassages + " passages par jour, par la " + RULES.ext.accesAuto, "règlement 2.4"),
+  j("m_acces", "mobilite", 8, "ext", [], "Voitures par la " + RULES.ext.accesAuto + ", vélos et piétons par le " + RULES.ext.accesDoux, "règlement 2.4"),
+  j("m_parc", "mobilite", 8, "ext", ["terrain"], RULES.ext.voitures + " places à ciel ouvert, " + RULES.ext.velos + " vélos, " + RULES.ext.depose + " déposes-minute", "règlement 2.4, 2.10"),
+  j("p_ecole", "programme", 8, "cla", [], RULES.ecole.eleves + " élèves, de la " + RULES.ecole.degres, "règlement 2.7"),
+  j("p_classes", "programme", 8, "cla", [], "Classes : " + nb(RULES.haut.libre.cla) + " m de vide d'étage", "règlement 2.10"),
+  j("p_sport", "programme", 8, "spo", ["sport"], "Salle de sport double 28 × 32 m, " + nb(RULES.haut.libre.spo) + " m libres sous structure", "règlement 2.10"),
+  j("p_abri", "programme", 8, "tec", ["abri"], "Abri PC, les locaux engins convertibles en abri", "règlement 2.10"),
+  j("p_rez", "programme", 8, null, [], "Au rez : " + RULES.niv.solRez.join(", "), "règlement 2.10"),
+  j("n_seisme", "normes", 8, null, [], "Séisme : zone " + RULES.seisme.zone + ", agd " + nb(RULES.seisme.agd) + " m/s², sol " + RULES.seisme.sol + ", classe " + RULES.seisme.ouvrage, "règlement 2.5"),
+  j("n_cage", "normes", 8, null, [], "Au moins " + RULES.feu.cageMin + " cage d'escalier compartimentée", "règlement 2.6"),
 
   /* ---- A · conditions éliminatoires ---- */
   j("a1", "A", 10, null, ["prog"], "Programme complet, surfaces à ±5 % environ, aucun local manquant", "Champagne"),
@@ -145,6 +176,14 @@ export var JUGES = [
   j("j79", "J", 3, "cla", [], "Une vue intérieure de l'espace d'apprentissage"),
   j("j80", "J", 4, null, [], "Des tableaux de surfaces justes et vérifiables")
 ];
+
+/* Le texte du brief (`RULES.cadre`), sauf les points « à vérifier », qui sont
+   des doutes et non des contraintes. La vue range chaque entrée sous son thème. */
+Object.keys(RULES.cadre).forEach(function(t){
+  RULES.cadre[t].forEach(function(c, i){
+    if(!c.verif) JUGES.push(j("k_" + t + i, t, 8, null, [], c.n + " : " + c.v.charAt(0).toLowerCase() + c.v.slice(1), "règlement " + c.art));
+  });
+});
 
 /* ---- pourquoi chaque entrée compte, en une phrase ----
    Ce que MESURE le générateur ne se redit pas ici : il se lit dans le
