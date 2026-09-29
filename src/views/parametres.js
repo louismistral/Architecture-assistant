@@ -46,7 +46,8 @@ var IMP = {
   hyp:   { n:"hypothèse",   c:"warn",   d:"Hypothèse de projet, écrite avec le règlement parce qu'il ne dit rien." },
   groupe:{ n:"groupe",      c:"soft",   d:"Décision de projet, partagée à tout le groupe." },
   compo: { n:"composition", c:"soft",   d:"Réglage de la composition à l'écran ; enregistré avec chaque variante." },
-  pref:  { n:"préférence",  c:"soft",   d:"Ne suit que toi ; ne change rien à une variante." }
+  pref:  { n:"préférence",  c:"soft",   d:"Ne suit que toi ; ne change rien à une variante." },
+  verif: { n:"à vérifier",  c:"warn",   d:"Le règlement est incomplet ou se contredit : à vérifier dans le PDF." }
 };
 function impDoctrine(r){
   if(r.dom === "mass"){
@@ -141,31 +142,78 @@ function famille(titre, sous, lignes){
 function nb(x){ return String(Math.round(x * 100) / 100).replace(".", ","); }
 function m(x){ return nb(x) + " m"; }
 
-/* ---------- 1 · le règlement ---------- */
+/* ---------- 1 · le règlement ----------
+   Par thème, dans l'ordre du règlement. Chaque thème lit d'abord les clés que
+   les outils vérifient, puis `RULES.cadre`, ce qui ne se vérifie pas par le
+   calcul. Une surface se lit dans `program.js`, jamais ici. */
+function poste(n){
+  for(var i = 0; i < ITEMS.length; i++) if(ITEMS[i].n === n) return ITEMS[i];
+  return null;
+}
+function surf(n){ var it = poste(n); return it ? fmt(it.nb * it.u) + " m²" : "—"; }
+function cadre(L, k){
+  RULES.cadre[k].forEach(function(c){
+    L.push(ligne(c.n, c.v, c.verif ? IMP.verif : IMP.regl, "règlement " + c.art));
+  });
+}
 function reglement(){
-  var R = RULES, L = [], regl = IMP.regl, hyp = IMP.hyp;
+  var R = RULES, regl = IMP.regl, hyp = IMP.hyp, F = [];
+  function theme(t, sous, L){ F.push(famille("Règlement — " + t, sous, L)); }
+  var NOMS = { cla:"classes", spo:"salle de sport double", cad:"chauffage à distance", pis:"piscine", abri:"abri PC", def:"tout autre local" };
+
+  var L = [];
+  L.push(ligne("Périmètre", "parcelles " + R.site.parcelles.join(", ") + " · " + fmt(R.site.aire) + " m²", regl, "règlement 2.3"));
+  L.push(ligne("Zone", R.site.zone + " — ni gabarit, ni hauteur, ni distance aux limites", regl, "règlement 2.3"));
+  L.push(ligne("Distance incendie entre bâtiments", m(R.dist.entre), regl, "AEAI 15-15 · la seule distance bloquante, avec les alignements routiers"));
+  L.push(ligne("Recul sur le périmètre", m(R.dist.retrait), hyp, "rules.js — dist.retrait"));
+  L.push(ligne("Nappe phréatique", nb(R.site.nappe[0]) + " – " + nb(R.site.nappe[1]) + " msm · terrain à " + nb(R.site.altMoy)
+    + " — " + m(R.site.altMoy - R.site.nappe[1]) + " de marge", regl, "règlement 2.3 · presque pas de sous-sol"));
+  L.push(ligne("Couverture au-dessus de la nappe", m(R.dist.couverture), hyp, "rules.js — dist.couverture"));
+  L.push(ligne("Protection des eaux", R.site.eaux, regl, "règlement 2.3"));
+  L.push(ligne("Pollution des sols", R.site.pollution, regl, "règlement 2.3"));
+  L.push(ligne("Voisinage", "projet résidentiel voisin, parcelles " + R.site.voisins.join(" et "), regl, "règlement 2.3"));
+  cadre(L, "site");
+  L.push(ligne("Second temps", R.phase2.map(function(n){ return n + " " + surf(n); }).join(" · ")
+    + " — hauteur libre " + m(R.haut.libre.pis) + " (3 à 5 m) et " + m(R.haut.libre.cad) + ", accès camion de plain-pied",
+    regl, "règlement 2.2, 2.10 — en pointillé au 1:500, sans plans ni façades"));
+  theme("site et urbanisme", "Ce que le concours et l'AEAI imposent. Se lit ; se change dans rules.js, et toute variante enregistrée avant devient périmée.", L);
+
+  L = [];
+  L.push(ligne("Bus scolaires", R.ext.bus + " bus, " + R.ext.busPassages + " passages par jour, accès par la " + R.ext.accesAuto, regl, "règlement 2.4"));
+  L.push(ligne("Accès", "voitures par la " + R.ext.accesAuto + " · vélos et piétons par le " + R.ext.accesDoux, regl, "règlement 2.4"));
+  L.push(ligne("Stationnement", R.ext.voitures + " voitures à ciel ouvert · " + R.ext.velos + " vélos et trottinettes · "
+    + R.ext.depose + " déposes-minute", regl, "règlement 2.4, 2.10"));
+  cadre(L, "mobilite");
+  theme("mobilité", null, L);
+
+  L = [];
+  L.push(ligne("École", R.ecole.eleves + " élèves, de la " + R.ecole.degres, regl, "règlement 2.7"));
   L.push(ligne("Surfaces du programme", fmt(PROG) + " m² chiffrés · " + fmt(GRAND) + " m² au total",
     regl, "program.js — fixes, on change les proportions, jamais les m²"));
-  L.push(ligne("Distance incendie entre bâtiments", m(R.dist.entre), regl, "AEAI 15-15 · la seule distance bloquante"));
-  L.push(ligne("Recul sur le périmètre", m(R.dist.retrait), hyp, "rules.js — dist.retrait"));
-  L.push(ligne("Couverture au-dessus de la nappe", m(R.dist.couverture), hyp, "rules.js — dist.couverture"));
-  L.push(ligne("Nappe phréatique", nb(R.site.nappe[0]) + " – " + nb(R.site.nappe[1]) + " msm", regl, "règlement 2.3"));
-  L.push(ligne("Zone", R.site.zone + " — ni gabarit, ni hauteur, ni distance aux limites", regl, "règlement 2.3"));
+  var sp = poste("Salle de sport double");
+  if(sp) L.push(ligne("Salle de sport double", sp.h + " × " + sp.w + " m · " + m(R.haut.libre.spo) + " libres sous structure", regl, "règlement 2.10"));
+  L.push(ligne("Abri PC", surf("Abri PC") + " · locaux engins " + surf("Local engins de sports") + " convertibles en abri", regl, "règlement 2.10"));
   Object.keys(R.haut.libre).forEach(function(k){
-    var NOMS = { cla:"classes", spo:"salle de sport double", cad:"chauffage à distance", pis:"piscine", abri:"abri PC", def:"tout autre local" };
     L.push(ligne("Hauteur libre — " + (NOMS[k] || k), m(R.haut.libre[k]), k === "def" || k === "abri" ? hyp : regl, "rules.js — haut.libre." + k));
   });
   L.push(ligne("Dalle · mur extérieur · acrotère", m(R.haut.dalle) + " · " + m(R.haut.mur) + " · " + m(R.haut.acrotere), hyp, "rules.js — haut"));
   L.push(ligne("Classes au plus au", R.niv.classeMax + "ᵉ étage", regl, "règlement 2.10"));
   L.push(ligne("Au rez-de-chaussée", R.niv.solRez.join(", "), regl, "règlement 2.10"));
   L.push(ligne("Admis en sous-sol", R.niv.sousSol.join(", "), regl, "règlement 2.10"));
-  L.push(ligne("Deux cages d'escalier au-delà de", fmt(R.feu.cageSeuil) + " m² d'étage", regl, "AEAI 16-15"));
-  L.push(ligne("Voie d'évacuation — une issue · deux issues", m(R.feu.fuiteSimple) + " · " + m(R.feu.fuiteDouble), regl, "AEAI 16-15"));
-  L.push(ligne("Stationnement", R.ext.voitures + " voitures · " + R.ext.velos + " vélos · " + R.ext.bus + " bus · " + R.ext.depose + " déposes", regl, "règlement 2.4"));
-  L.push(ligne("Parasismique", "zone " + R.seisme.zone + " · sol " + R.seisme.sol + " · classe " + R.seisme.ouvrage, regl, "règlement 2.5"));
-  L.push(ligne("Second temps", R.phase2.join(", "), regl, "règlement — en pointillé au 1:500"));
-  R.qualitatif.forEach(function(q){ L.push(ligne("Exigence", q, regl, "règlement 2.7 à 2.9")); });
-  return famille("Règlement", "Ce que le concours et l'AEAI imposent. Se lit ; se change dans rules.js, et toute variante enregistrée avant devient périmée.", L);
+  cadre(L, "programme");
+  theme("programme", null, L);
+
+  L = [];
+  L.push(ligne("Parasismique", "zone " + R.seisme.zone + " · agd = " + nb(R.seisme.agd) + " m/s² · sol " + R.seisme.sol + " · classe d'ouvrage " + R.seisme.ouvrage, regl, "règlement 2.5"));
+  L.push(ligne("Cages d'escalier compartimentées", "au moins " + R.feu.cageMin + " · deux au-delà de " + fmt(R.feu.cageSeuil) + " m² d'étage", regl, "règlement 2.6 · AEAI 16-15"));
+  L.push(ligne("Voie d'évacuation — une issue · deux issues", m(R.feu.fuiteSimple) + " · " + m(R.feu.fuiteDouble), regl, "règlement 2.6 · AEAI 16-15"));
+  cadre(L, "normes");
+  theme("normes techniques", null, L);
+
+  L = []; cadre(L, "economie"); theme("économie et durabilité", null, L);
+  L = []; cadre(L, "rendu"); theme("rendu", null, L);
+  L = []; cadre(L, "procedure"); theme("procédure", "« À vérifier » : ce que le règlement laisse incomplet ou contradictoire.", L);
+  return F;
 }
 
 /* ---------- 2 · la doctrine ---------- */
@@ -221,6 +269,13 @@ function projet(){
 }
 
 /* ---------- 4 · la composition ---------- */
+/* Les quatre valeurs de `MASS.second` (mass/model.js), lues par gen.js. */
+var SECONDS = [
+  { id:"auto", n:"au générateur" },
+  { id:"sep",  n:"posés, deux volumes" },
+  { id:"un",   n:"posés, un seul volume" },
+  { id:"non",  n:"éteints — sans piscine" }
+];
 function composition(){
   var L = [], c = IMP.compo;
   var lies = 0, adjs = 0, tot = liens().length;
@@ -228,6 +283,9 @@ function composition(){
   ITEMS.forEach(function(it){ if(estLie(it.key)) lies++; });
   L.push(ligne("Type de massing", choix(PARTIS.map(function(p){ return { id:p.id, n:p.n }; }), MASS.parti,
     function(v){ massSet("parti", v); saveSoon(); rendre(); }, "Type de massing"), c, "au prochain Shuffle massing"));
+  L.push(ligne("Piscine et local CAD", choix(SECONDS, MASS.second,
+    function(v){ massSet("second", v); saveSoon(); rendre(); }, "Piscine et local CAD"), c,
+    "au prochain Shuffle massing — l'école doit marcher avec et sans"));
   L.push(ligne("Seed du programme", (curSeed >>> 0).toString(36), c, "rejoue la répartition à l'identique"));
   L.push(ligne("Seed du massing", ((MASS.graine || 0) >>> 0).toString(36), c, "rejoue la volumétrie à l'identique"));
   L.push(ligne("Niveaux de la pile", String(FLOORS.length) + (dePile ? " · dé allumé" : " · figé"), c, "au mixer, sur la pile"));
@@ -283,7 +341,7 @@ export function parametresVue(render){
   ["Critère", "Valeur", "Importance"].forEach(function(t){ tete.appendChild(el("span", null, t)); });
   s.appendChild(tete);
 
-  s.appendChild(reglement());
+  reglement().forEach(function(f){ s.appendChild(f); });
   doctrine().forEach(function(f){ s.appendChild(f); });
   s.appendChild(projet());
   s.appendChild(composition());
