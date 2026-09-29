@@ -38,6 +38,25 @@ autre décision.
 Un champ en tête filtre les lignes, sur le critère, la valeur, la source et
 l'importance (« hauteur », « cour », « dure »).
 
+## Le règlement, par thème
+
+La famille Règlement se découpe en sept thèmes, dans l'ordre du règlement :
+site et urbanisme, mobilité, programme, normes techniques, économie et
+durabilité, rendu, procédure. Chaque thème montre d'abord les clés de
+`rules.js` que les outils vérifient (distances, nappe, hauteurs, places…),
+puis `RULES.cadre.<thème>` : ce qui ne se vérifie pas par le calcul, en toutes
+lettres, avec son article. Une surface se lit dans `program.js` (`poste()`),
+jamais recopiée.
+
+Dans `RULES.cadre`, `q:1` marque une exigence qualitative — `RULES.qualitatif`,
+que liste le volet Contraintes, en est tiré — et `verif:1` un point que le
+règlement laisse incomplet ou contradictoire : il porte l'importance
+« à vérifier » (critères de jugement 1.26, dates de la LcEne).
+
+La Composition règle aussi la piscine et le local CAD (`MASS.second`) : au
+générateur, posés en deux volumes ou en un, ou éteints — l'école doit
+fonctionner avec et sans piscine.
+
 ## Ce qui reste à trancher
 
 C'est une première version. Les volets « Contraintes » des outils restent en
