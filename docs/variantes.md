@@ -90,9 +90,13 @@ bouton. On nomme, puis on pose ; vide, la variante prend le nom proposé.
 - La **carte** porte ce qu'il faut pour RECONNAÎTRE une variante et la CHARGER :
   une miniature CARRÉE à gauche ; à droite le nom et la note, qui et quand, ses
   étiquettes, et — calés sur le bas de la miniature — trois gestes : **Charger**,
-  **Infos**, et la **poubelle**, qui se confirme d'un second clic (le couvercle
-  se soulève au premier, comme « Supprimer » dans le modal attend sa
-  confirmation). Elle a été haute comme une affiche : trois variantes
+  **Infos**, et la **poubelle**. Elle ne se confirme pas, elle s'ALLUME, comme
+  « Supprimer » dans le modal (`meche()`, `views/variantes.js`) : le bouton
+  devient « Annuler » et une mèche rouge brûle son bord quatre secondes ; un
+  clic ou Échap l'éteint, revenir dessus à la souris la fige. La variante part
+  à la FIN de la mèche, pas au clic — la base est celle du groupe, et annuler ne
+  saurait pas rendre une ligne effacée ; un bouton qui a quitté l'écran
+  (fenêtre ou panneau refermé) n'efface rien. Elle a été haute comme une affiche : trois variantes
   remplissaient le panneau, et comparer demandait de défiler.
 - Le **modal** porte tout le reste — la note critère par critère, les graines,
   les surfaces, les contrôles.
