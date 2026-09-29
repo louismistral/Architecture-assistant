@@ -30,7 +30,6 @@
         "repo": "obra/superpowers"
       }
     }
-  }
   },
   "hooks": {
     "SessionStart": [
@@ -44,4 +43,4 @@
       }
     ]
   }
-}}
+}
