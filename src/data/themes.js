@@ -13,7 +13,10 @@
    ========================================================================= */
 export var THEMES = [
   { id:"saxon",   n:"Saxon",   d:"le thème d'origine du projet" },
-  { id:"neutral", n:"Neutral", d:"shadcn/ui, la palette par défaut", css:"styles/themes/neutral.css" }
+  { id:"neutral", n:"Neutral", d:"shadcn/ui, la palette par défaut", css:"styles/themes/neutral.css" },
+  { id:"liquid-glass", n:"Liquid Glass", d:"tweakcn — Apple Liquid Glass", css:"styles/themes/liquid-glass.css" },
+  { id:"zen",     n:"Zen",     d:"tweakcn — Zen Inspired Theme", css:"styles/themes/zen.css" },
+  { id:"claude-plus", n:"Claude +", d:"tweakcn — Claude +", css:"styles/themes/claude-plus.css" }
 ];
 
 export var MODES = [

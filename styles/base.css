@@ -11,6 +11,7 @@ body{
   background:var(--background);
   color:var(--foreground);
   font-family:var(--font-sans);
+  letter-spacing:var(--tracking-normal);   /* l'interlettrage du thème, 0 pour Saxon */
   line-height:var(--lh-base);
   -webkit-font-smoothing:antialiased;
   margin:0;
