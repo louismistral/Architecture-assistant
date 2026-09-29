@@ -24,16 +24,14 @@ qui s'en sert (`docs/doctrine.md`).
 | famille | d'où | se règle ? | importance |
 |---|---|---|---|
 | Règlement | `rules.js`, `program.js` | non — se change dans le code, et périme les variantes | « règlement » ou « hypothèse » |
-| Doctrine — répartition, volumétrie | `doctrine.js` (`REGLES`, `DOC`) | oui ; un critère NOTÉ se coche ou non | le rang : dure, ferme, forte, préf., guide — ou obligatoire, à favoriser, départage, recherche |
+| Doctrine — répartition, volumétrie | `doctrine.js` (`REGLES`, `DOC`) | oui ; le poids d'un critère se règle au massing (bacs) | le rang : dure, ferme, forte, préf., guide — ou obligatoire, à favoriser, départage, recherche |
 | Projet | `core/model.js` — couloir, huit surfaces à préciser | oui, partagé au groupe | « groupe » |
 | Composition | `mass/model.js`, `core/rand.js`, `mix/opts.js` | le parti ; le reste se lit | « composition » |
 | Préférences | `net/prefs.js` | oui, suit la personne | « préférence » |
 
 L'importance **se lit** : on ne change pas le rang d'une règle depuis cette
-page. Le seul geste sur l'importance est de compter ou non un critère de la
-note du massing — comme dans le volet Contraintes. Changer un rang demanderait
-que les générateurs le lisent dans l'état plutôt que dans le code : c'est une
-autre décision.
+page. Le bac (dure ou jugement) et le poids des critères du massing se règlent
+dans son volet Contraintes (`docs/massing.md`).
 
 Un champ en tête filtre les lignes, sur le critère, la valeur, la source et
 l'importance (« hauteur », « cour », « dure »).

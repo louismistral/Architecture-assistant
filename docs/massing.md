@@ -81,8 +81,8 @@ chaque ligne disant ce qu'elle pense de la composition à l'écran :
 | rang | effet | règles |
 |---|---|---|
 | **règles dures** | une seule enfreinte : la variante est SUPPRIMÉE, sans score (`dures()`) | périmètre et recul de 5 m (choix de projet) à tous les étages, passerelles comprises · **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 → AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · classes en façade (`profFacade()`, deux salles et leur couloir : 19,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
-| **priorités fortes** | comptent dans le score, poids 40 | dimensions souhaitées · distance souhaitée · respect du parti · organisation du programme · orientation solaire · vue au nord-ouest · lumière entre bâtiments · compacité · cour généreuse |
-| **préférences** | comptent dans le score, poids 15 | alignement · terrassement · élancement · connexions · nappe et sous-sol · accès et stationnement |
+| **priorités fortes** | mesures des jugements |  dimensions souhaitées · distance souhaitée · respect du parti · organisation du programme · orientation solaire · vue au nord-ouest · lumière entre bâtiments · compacité · cour généreuse |
+| **préférences** | mesures des jugements |  alignement · terrassement · élancement · connexions · nappe et sous-sol · accès et stationnement |
 
 **Les dimensions et la distance sont des réglages, pas des règles.** Largeur et profondeur
 min/max (`DOC.largeurMin/Max`, `profMin/Max`, cotes extérieures, murs compris) et la distance
@@ -91,17 +91,26 @@ les figures s'écartent de `max(distance incendie, distance souhaitée)`, `besoi
 selon la largeur max —, mais un volume hors fourchette ou un écart sous la distance souhaitée
 ne fait que baisser le score. Seule la distance incendie bloque.
 
-**Le score** : chaque critère rend q ∈ [−1, 1], ramené à s = (q + 1) / 2, et
+**Deux bacs — règles dures et jugements** (`data/jugements.js`, vue `views/juges.js`). Le volet
+Contraintes pose à gauche les RÈGLES DURES (les règles dures de `REGLES`, celles du règlement
+qui touchent au volume, les conditions éliminatoires A), à droite les JUGEMENTS B à J, tirés
+de concours gagnants. Chaque entrée passe d'un bac à l'autre ; son bac et son poids (curseur
+0–10) vivent dans `DOC` (`b_<id>`, `w_<id>`), partagés au groupe.
+
+Chaque entrée nomme les MESURES du générateur qui la disent (`m`, ids de `dures()` et de
+`qualites()`). Une mesure réclamée par une règle dure BLOQUE (`mesuresDures()`) : une qualité
+passée en dure bloque quand elle se lit défavorable. Une règle dure passée aux jugements ne
+bloque plus, et vaut 1 tenue, 0 enfreinte (`dures().hors`). Chaque qualité rend
+s = (q + 1) / 2 ; un jugement vaut la moyenne de ses mesures, et
 
 ```
-score = 100 × Σ w·s / Σ w        sur les seuls critères ACTIFS (DOC["on_" + id])
+score = 100 × Σ w·s / Σ w        sur les jugements MESURÉS, w = le curseur
 ```
 
-100 = tous les critères actifs pleinement satisfaits. Décocher un critère le retire des deux
-sommes : la note se recalibre. Les poids (`RANGS_MASS.poids`) ne s'affichent pas : l'interface
-ne montre que le rang de chaque critère, son état (favorable, neutre, défavorable, désactivé)
-et le total. `juge.js — noter()` le calcule ; `views/note.js` le dessine, dans le volet
-Contraintes comme dans la fiche d'une variante. Les paramètres de recherche (essais,
+Un jugement sans mesure (matériaux, rendu…) garde son curseur pour les onglets suivants mais
+n'entre pas dans la note. La couverture de la nappe part jugée : dure, elle rend « pavillons »
+impossible. Les seuils de chaque mesure restent en bas du volet, repliés. `views/note.js`
+dessine encore la note d'une variante enregistrée. Les paramètres de recherche (essais,
 reconnaissance, profondeur de mesure de la cour, passerelles) sont rangés à part, sous
 « Paramètres du générateur ».
 
