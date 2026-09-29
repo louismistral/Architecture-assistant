@@ -23,7 +23,7 @@ export function massOf(){
     /* La pile pour laquelle ces volumes ont été composés : une solution relue
        alors que le mixer a changé de nombre de niveaux ne veut plus rien dire. */
     pile: MASS.pile || empreintePile(),
-    etage: MASS.etage,
+    etages: MASS.etages,
     pont: (MASS.pont || []).map(function(p){ return { a:p.a, b:p.b, i:p.i }; }),
     vol: MASS.vol.map(function(v){
       return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
@@ -49,7 +49,9 @@ export function setMass(o){
   }
   MASS.mono = !!o.mono;
   if(o.second) MASS.second = o.second;
-  if(o.etage !== undefined) MASS.etage = o.etage;
+  /* `etage`, un seul niveau ou -1, est l'écriture d'avant la plage. */
+  if(o.etages !== undefined) MASS.etages = o.etages;
+  else if(o.etage !== undefined) MASS.etages = o.etage >= 0 ? [o.etage, o.etage] : null;
   MASS.pile = o.pile || null;
   MASS.pont = o.pont || [];
   if(o.vol && o.vol.length){

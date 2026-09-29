@@ -28,7 +28,7 @@ import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
 import { MASS, cellules, etagesDe, famTok, filtreDe, mursDe, niveaux, pontEtage,
-  volInt, volRect } from "../mass/model.js";
+  volInt, volRect, vu } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
@@ -221,7 +221,7 @@ function volMesh(){
        fois, pour la 3D comme pour l'export vers Rhino. */
     etagesDe(v).forEach(function(s){
       var e = s.e, n = s.n, h = s.h, z0 = s.z0 - ZBAS;
-      if(MASS.etage >= 0 && MASS.etage !== e.i) return;
+      if(!vu(e.i)) return;
       var q = coins(s.rc);
       var edge = sel ? cSel : cEdge;
       /* Un ouvrage du SECOND TEMPS se lit PÂLE : il occupe le terrain, mais il
@@ -255,7 +255,7 @@ function volMesh(){
   /* Les passerelles : au niveau qu'elles desservent, posées sur la hauteur du
      premier volume qu'elles relient. */
   (MASS.pont || []).forEach(function(p){
-    if(MASS.etage >= 0 && MASS.etage !== p.i) return;
+    if(!vu(p.i)) return;
     var s = pontEtage(p);
     if(!s) return;
     boite(M, coins(s.rc), s.z0 - ZBAS, s.z0 - ZBAS + s.h - .12, cMono, 1, cEdge);
@@ -417,7 +417,7 @@ export function vue3dPick(px, py){
       var n = N[e.i];
       if(!n) return;
       var z0 = z; z += n.h;
-      if(MASS.etage >= 0 && MASS.etage !== e.i) return;
+      if(!vu(e.i)) return;
       var q = coins(volRect(v, e)).map(function(p){
         return m4project(mvp, [p[0], p[1], z0 + n.h], r.width, r.height);
       });

@@ -72,10 +72,22 @@ export var MASS = {
   vol: [],
   pont: [],         /* passerelles : { a, b, i } — deux volumes et un niveau */
   mono: false,      /* affichage : couleurs du programme, ou masse seule */
-  etage: -1,        /* niveau montré · -1 = tous */
+  etages: null,     /* étages montrés : [bas, haut] en indices de FLOORS · null = tous */
   sel: null         /* volume sélectionné */
 };
 export function massSet(k, v){ MASS[k] = v; }
+
+/* LES ÉTAGES MONTRÉS, au plan comme dans la 3D : une plage, bornes comprises.
+   Toute la pile, c'est tout le bâtiment ; deux bornes égales, un seul étage.
+   Relue bornée à la pile du moment — le mixer a pu retirer un niveau. */
+export function plageVue(){
+  var n = FLOORS.length, p = MASS.etages;
+  if(!p || n < 1) return [0, Math.max(0, n - 1)];
+  var lo = Math.max(0, Math.min(n - 1, p[0])), hi = Math.max(lo, Math.min(n - 1, p[1]));
+  return [lo, hi];
+}
+export function vu(i){ var p = plageVue(); return i >= p[0] && i <= p[1]; }
+export function toutVu(){ var p = plageVue(); return p[0] === 0 && p[1] === FLOORS.length - 1; }
 export function massPar(k, v){ MASS.par[k] = v; }
 export function massVols(list){
   MASS.vol = list || []; MASS.pont = (list && list.ponts) || []; MASS.sel = null;

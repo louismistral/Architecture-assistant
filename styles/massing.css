@@ -57,8 +57,50 @@
    compare du regard, et l'on voit d'un coup combien il y en a. */
 .mass-partis{ display:flex; flex-wrap:wrap; gap:var(--s-1); }
 .mass-partis .btn{ font-size:var(--t-3xs); padding-inline:var(--s-2); }
-.mass-etages{ display:flex; flex-wrap:wrap; gap:var(--s-1); margin-top:var(--s-2); }
-.mass-etages .btn{ font-size:var(--t-3xs); padding-inline:var(--s-2); }
+/* Les étages montrés : une piste fine, la plage pleine entre deux poignées, un
+   cran par étage et son nom dessous — rien d'autre. Tout glisse par transform :
+   la plage se pose d'un cran à l'autre sans rien remettre en page. La piste et
+   les crans sont rentrés d'une demi-étiquette, pour que « S-sol » et « R+2 »
+   se centrent sur leur cran sans déborder du rail. */
+.mass-plage{ --lo:0; --hi:1; margin-top:var(--s-3); }
+.mass-plage__piste{
+  position:relative; block-size:var(--s-5); margin-inline:var(--s-4);
+  cursor:pointer; touch-action:none;
+}
+.mass-plage__piste::before,.mass-plage__fil{
+  content:""; position:absolute; inset-inline:0; inset-block-start:calc(50% - var(--s-1) / 2);
+  block-size:var(--s-1); border-radius:var(--radius-full); background:var(--muted);
+}
+.mass-plage__fil{
+  background:var(--foreground); transform-origin:left center;
+  transform:translateX(calc(var(--lo) * 100%)) scaleX(calc(var(--hi) - var(--lo)));
+  transition:transform var(--dur-2) var(--ease-out);
+}
+.mass-plage__glis{
+  position:absolute; inset:0; pointer-events:none;
+  transition:transform var(--dur-2) var(--ease-out);
+}
+.mass-plage__glis--bas{ transform:translateX(calc(var(--lo) * 100%)); }
+.mass-plage__glis--haut{ transform:translateX(calc(var(--hi) * 100%)); }
+.mass-plage__poi{
+  position:absolute; inset-inline-start:0; inset-block-start:50%;
+  inline-size:var(--s-4); block-size:var(--s-4); margin:calc(var(--s-4) / -2);
+  box-sizing:border-box; border:2px solid var(--foreground); border-radius:var(--radius-full);
+  background:var(--background); outline:none;
+  transition:transform var(--dur-2) var(--ease-out);
+}
+.mass-plage__piste:hover .mass-plage__poi{ transform:scale(1.08); }
+.mass-plage__poi.is-tenu{ transform:scale(1.2); }
+.mass-plage__poi:focus-visible{ box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent); }
+.mass-plage__crans{
+  position:relative; block-size:1.5em; margin-inline:var(--s-4);
+  font-size:var(--t-3xs); color:var(--muted-foreground);
+}
+.mass-plage__crans span{
+  position:absolute; inset-inline-start:calc(var(--t) * 100%); transform:translateX(-50%);
+  white-space:nowrap; transition:color var(--dur-1) var(--ease);
+}
+.mass-plage__crans .is-vu{ color:var(--foreground); }
 
 /* Un réglage porte son CHIFFRE : un curseur sans valeur ne se règle pas, il se
    tâtonne. */

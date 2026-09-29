@@ -39,7 +39,7 @@ import { jugementCourant } from "../mass/juge.js";
 import { DOC } from "../data/doctrine.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massSet, massVols, niveaux, partiOf,
+  massSet, massVols, niveaux, partiOf, plageVue,
   volHaut, volNiv
 } from "../mass/model.js";
 import { doctrineSection, etatDe, jugementBloc } from "./doctrine.js";
@@ -350,22 +350,100 @@ function blocAffichage(){
   });
   b.appendChild(g);
 
-  var e = el("div", "mass-etages");
-  var all = el("button", "btn", "Tous les étages");
-  all.type = "button";
-  all.setAttribute("aria-current", String(MASS.etage < 0));
-  all.addEventListener("click", function(){ massSet("etage", -1); redessine(); });
-  e.appendChild(all);
-  niveaux().slice().reverse().forEach(function(n){
-    var t = el("button", "btn", court(n.lvl));
-    t.type = "button";
-    t.title = n.nom + " · " + fmt(Math.round(n.A)) + " m² bâtis · " + dec(n.h) + " m";
-    t.setAttribute("aria-current", String(MASS.etage === n.i));
-    t.addEventListener("click", function(){ massSet("etage", n.i); redessine(); });
-    e.appendChild(t);
-  });
-  b.appendChild(e);
+  b.appendChild(plageEtages());
   return b;
+}
+/* LES ÉTAGES MONTRÉS, au plan comme dans la 3D : deux poignées sur la pile, un
+   cran par étage. Toute la plage, c'est tout le bâtiment ; les deux poignées
+   sur le même cran, un seul étage.
+   Fait main plutôt que deux `<input type="range">` superposés : deux poignées
+   sur le même cran, l'input du dessus prenait tout, et l'on ne pouvait plus
+   rouvrir la plage vers le bas. Ici on prend la poignée la plus proche, et sur
+   un même cran celle du côté où l'on tire. Glisser redessine le plan et la 3D,
+   pas le rail : le curseur qu'on tient ne se refait pas sous la main. */
+function plageEtages(){
+  var N = niveaux(), max = N.length - 1, w = el("div", "mass-plage");
+  if(max < 1) return w;
+  var val = plageVue().slice(), tient = -1;
+  var piste = el("div", "mass-plage__piste");
+  piste.appendChild(el("span", "mass-plage__fil"));
+  var po = ["bas", "haut"].map(function(c, k){
+    var g = el("span", "mass-plage__glis mass-plage__glis--" + c);
+    var t = el("span", "mass-plage__poi");
+    t.tabIndex = 0;
+    t.setAttribute("role", "slider");
+    t.setAttribute("aria-label", k ? "Étage le plus haut montré" : "Étage le plus bas montré");
+    t.setAttribute("aria-valuemin", "0");
+    t.setAttribute("aria-valuemax", String(max));
+    t.addEventListener("keydown", function(e){
+      var d = { ArrowLeft:-1, ArrowDown:-1, ArrowRight:1, ArrowUp:1, Home:-max, End:max }[e.key];
+      if(!d) return;
+      e.preventDefault();
+      regler(k, val[k] + d);
+    });
+    g.appendChild(t);
+    piste.appendChild(g);
+    return t;
+  });
+  var crans = el("div", "mass-plage__crans");
+  var labs = N.map(function(n, i){
+    var s = el("span", null, court(n.lvl));
+    s.style.setProperty("--t", String(i / max));
+    crans.appendChild(s);
+    return s;
+  });
+  w.appendChild(piste);
+  w.appendChild(crans);
+
+  function poser(){
+    w.style.setProperty("--lo", String(val[0] / max));
+    w.style.setProperty("--hi", String(val[1] / max));
+    labs.forEach(function(s, i){ s.classList.toggle("is-vu", i >= val[0] && i <= val[1]); });
+    po.forEach(function(t, k){
+      t.setAttribute("aria-valuenow", String(val[k]));
+      t.setAttribute("aria-valuetext", N[val[k]].nom);
+    });
+  }
+  function regler(k, v){
+    v = Math.max(k ? val[0] : 0, Math.min(k ? max : val[1], v));
+    if(v === val[k]) return;
+    val[k] = v;
+    massSet("etages", val[0] === 0 && val[1] === max ? null : val.slice());
+    poser(); planDraw(); vue3dDraw(); saveSoon();
+  }
+  function cran(e){
+    var r = piste.getBoundingClientRect();
+    return Math.max(0, Math.min(max, Math.round((e.clientX - r.left) / Math.max(1, r.width) * max)));
+  }
+  function prendre(k){ tient = k; po[k].classList.add("is-tenu"); po[k].focus({ preventScroll:true }); }
+  piste.addEventListener("pointerdown", function(e){
+    if(e.button !== 0) return;
+    var v = cran(e);
+    piste.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    /* Sur les deux poignées réunies, on attend de savoir de quel côté on tire. */
+    if(val[0] === val[1] && v === val[0]){ tient = -2; return; }
+    prendre(val[0] === val[1] ? (v < val[0] ? 0 : 1)
+                              : Math.abs(v - val[0]) <= Math.abs(v - val[1]) ? 0 : 1);
+    regler(tient, v);
+  });
+  piste.addEventListener("pointermove", function(e){
+    if(tient === -1) return;
+    var v = cran(e);
+    if(tient === -2){
+      if(v === val[0]) return;
+      prendre(v < val[0] ? 0 : 1);
+    }
+    regler(tient, v);
+  });
+  function lacher(){
+    tient = -1;
+    po.forEach(function(t){ t.classList.remove("is-tenu"); });
+  }
+  piste.addEventListener("pointerup", lacher);
+  piste.addEventListener("pointercancel", lacher);
+  poser();
+  return w;
 }
 function court(l){
   if(l === 0) return "Rez";

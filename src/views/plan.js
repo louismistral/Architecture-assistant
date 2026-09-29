@@ -20,7 +20,7 @@ import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
-  volRect } from "../mass/model.js";
+  volRect, vu } from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 
@@ -119,7 +119,7 @@ export function planDraw(){
   /* Les passerelles, par-dessus : une connexion entre deux corps, au niveau
      qu'elles desservent. */
   (MASS.pont || []).forEach(function(p){
-    if(MASS.etage >= 0 && MASS.etage !== p.i) return;
+    if(!vu(p.i)) return;
     var r = pontRect(p);
     if(r) gVol.appendChild(svg("path", { d: chemin(coins(r), true), "class":"plan-pont" }));
   });
@@ -140,13 +140,12 @@ function dessineVol(g, v, k){
   var gv = svg("g", { "class":"plan-vol" + (sel ? " is-sel" : "")
                         + (v.ph ? " is-ph" : ""),
                       "data-vol": v.id, tabindex:"0" });
-  var montres = v.lv.filter(function(e){
-    return MASS.etage < 0 ? true : e.i === MASS.etage;
-  });
+  var montres = montresDe(v);
   if(!montres.length){ return; }
-  /* L'étage plein : celui qu'on montre, ou l'emprise au sol quand on montre
-     tout — c'est elle qui compte pour le terrain. */
-  var plein = MASS.etage >= 0 ? montres[0] : bas(v);
+  /* L'étage plein : le plus bas de la plage montrée, sous-sols à part — toute
+     la pile, c'est l'emprise au sol, celle qui compte pour le terrain ; un seul
+     étage, c'est lui. */
+  var plein = bas(montres);
   montres.forEach(function(e){
     if(e === plein) return;
     var r = volRect(v, e);
@@ -193,17 +192,16 @@ function dessineVol(g, v, k){
   }
   g.appendChild(gv);
 }
-/* Ce que le pavage d'un corps doit montrer. Un corps aux cotes imposées ne
-   porte que SON poste ; les autres ne portent pas le sien. Sans cela on
-   dessinait des salles de classe dans la salle de sport, et la salle de sport
-   dans chaque bâtiment. */
-function bas(v){
+function montresDe(v){ return v.lv.filter(function(e){ return vu(e.i); }); }
+/* Le plus bas des étages donnés, hors sous-sol s'il y en a un autre : c'est
+   celui qu'on pave. */
+function bas(L){
   var e = null;
-  v.lv.forEach(function(x){
+  L.forEach(function(x){
     if(lvlOf(x.i) < 0) return;
     if(!e || x.i < e.i) e = x;
   });
-  return e || v.lv[0];
+  return e || L[0];
 }
 /* LES COTES du volume choisi : longueur et profondeur hors tout, murs compris,
    en lignes de cote posées à 4 m du bâtiment, et la hauteur au milieu. On clique
@@ -292,16 +290,11 @@ function monde(e){
 function volAu(x, y){
   var found = null;
   MASS.vol.forEach(function(v){
-    var e = MASS.etage >= 0 ? volEt(v, MASS.etage) : bas(v);
+    var e = bas(montresDe(v));
     if(!e) return;
     if(dansRect(volRect(v, e), x, y)) found = v;
   });
   return found;
-}
-function volEt(v, i){
-  var e = null;
-  v.lv.forEach(function(x){ if(x.i === i) e = x; });
-  return e;
 }
 export function volDe(id){
   var v = null;
