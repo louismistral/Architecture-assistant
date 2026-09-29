@@ -224,6 +224,27 @@ export function patchApi(table, q, row){
 }
 export function deleteApi(table, q){ return api(table + "?" + q, { method:"DELETE" }); }
 
+/* ---------- le stockage ----------
+   Les fichiers (les images de Forensics) ne passent pas par PostgREST : ils
+   ont leur propre API, sous `/storage/v1/`. Même jeton, même règle — c'est la
+   base qui décide qui lit quoi, par le premier dossier du chemin. `corps` est
+   envoyé tel quel (un fichier) ou en JSON (un objet). */
+export async function stockage(chemin, opts){
+  var o = opts || {};
+  if(!supaOn()) throw new Error("base non configurée");
+  if(!(await jetonValide())) throw new Error("session expirée");
+  var h = entetes(true), corps = o.body;
+  if(corps instanceof Blob){ h["Content-Type"] = corps.type || "application/octet-stream"; }
+  else if(corps !== undefined) corps = JSON.stringify(corps);
+  if(o.upsert) h["x-upsert"] = "true";
+  var r = await fetch(SUPA.url + "/storage/v1/" + chemin, { method: o.method || "GET", headers: h, body: corps });
+  var t = await r.text(), d = null;
+  try{ d = t ? JSON.parse(t) : null; }catch(_){ d = null; }
+  if(!r.ok) throw new Error((d && (d.message || d.error)) || ("erreur " + r.status));
+  return d;
+}
+export function urlStockage(relatif){ return SUPA.url + "/storage/v1" + relatif; }
+
 /* Au démarrage : on consomme d'abord un éventuel retour de lien, PUIS on relit
    la session. L'ordre compte — l'inverse écraserait le jeton tout neuf. */
 export function initSupa(){

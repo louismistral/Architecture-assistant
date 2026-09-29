@@ -197,7 +197,7 @@ export function render(){
   }
 
   if(view.tab === "parametres"){ panelsEl.appendChild(parametresVue(render)); return; }
-  if(view.tab === "forensics"){ forensicsVue(panelsEl); return; }
+  if(view.tab === "forensics"){ forensicsVue(panelsEl, render); return; }
 
   /* Les onglets à construire. Ils sont là pour que la chronologie soit
      entière, et ne promettent rien d'autre que ce qu'ils viendront faire. */
