@@ -27,14 +27,14 @@ function graine(){ return ((MASS.graine || 0) >>> 0).toString(36); }
 /* Les planches du massing. `fond` : l'image de la base sous l'aperçu. */
 var PLANCHES = {
   massing: [
-    { id:"situation", n:"Plan de situation", spec:"A2 paysage · 1:500 · PDF vectoriel",
-      d:"La base du géomètre, et dans la seule parcelle : la volumétrie à l'écran, dans le style de la base, "
-        + "les voies, la baie des bus, la dépose-minute, les parkings, l'abri à vélos et le cheminement piéton.",
+    { id:"situation", n:"Plan de situation", spec:"A2 paysage · 1:" + BASE.echelle + " · PDF vectoriel",
+      d:"La base du géomètre, et dans la seule parcelle la volumétrie à l'écran, dans le style de la base, "
+        + "avec l'échelle graphique. L'échelle est fixe : imprimer à 100 % (taille réelle), jamais « ajuster à la page ».",
       dessin:function(){ return planSituation(vols()); }, fond:BASE.apercu,
       fichier:function(t){ return base().then(function(b){ return pdfSur(b, t); }); } },
     { id:"diagrammes", n:"Diagrammes", spec:"A2 paysage · PDF vectoriel",
-      d:"Huit axonométries, du site au volume : les limites, le programme, le parti, l'empilement, "
-        + "le soleil et la vue, la mobilité, le résultat et sa note.",
+      d:"Le raisonnement du générateur, étape par étape, du site au volume : une case par décision "
+        + "réellement prise pour cette composition.",
       dessin:function(){ return planDiagrammes(vols()); },
       fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }
   ]
@@ -64,13 +64,12 @@ function carte(p){
   c.appendChild(b);
   var note = el("p", "rd-note");
   c.appendChild(note);
-  /* la mobilité demande une seconde : la page s'affiche d'abord */
+  /* la page s'affiche d'abord, la planche ensuite */
   setTimeout(function(){
     var t;
     try { t = p.dessin(); }
     catch(e){ zone.textContent = "La planche n'a pas pu être dessinée : " + e.message; return; }
     zone.replaceChildren(apercu(t, p.fond));
-    if(t.mobilite && t.mobilite.manque.length) note.textContent = "Ne tient pas dans la parcelle : " + t.mobilite.manque.join(", ") + ".";
     b.disabled = false;
     b.addEventListener("click", function(){
       b.disabled = true;

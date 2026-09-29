@@ -1,24 +1,30 @@
 /* ============================================================================
-   PLANCHE MASSING · DIAGRAMMES — A2, vectoriel, à la manière de BIG
+   PLANCHE MASSING · PROCESSUS — A2, vectoriel
 
-   Huit axonométries en bande, du site au volume : chaque case montre UNE
-   décision, un numéro, un titre, deux lignes. Tout est lu dans l'état : le
-   site, le recul, le programme du mixer, le parti, la volumétrie, le soleil et
-   la vue, la mobilité, le jugement. La même planche s'affiche dans le massing
-   à chaque génération (`svg()`), et s'imprime (`pdf()`).
+   Le raisonnement du générateur, dans l'ordre où il le tient (`mass/gen.js —
+   genMass`) : le site, le programme mis en volume, le recul, la figure du
+   parti, l'orientation, la salle de sport, les étages, le sous-sol, les
+   passerelles, le tri. Une case par décision RÉELLEMENT prise pour cette
+   composition : pas de sous-sol, pas de case « sous-sol ». Le nombre de cases
+   suit, la grille aussi.
+
+   Le style est celui de la planche de référence (`diagramme.pdf`) : fond
+   blanc, contexte gris, parcelle au trait rouge, le volume saumon et ses
+   flancs brique, des flèches noires, le soleil ; les couleurs du programme
+   n'arrivent qu'à la dernière case. Chaque case porte un numéro, un titre et
+   ce qui a décidé, lu dans l'état.
    ========================================================================= */
 import { fmt } from "../core/format.js";
 import { cssRGB } from "../core/gl.js";
 import { trace } from "../core/pdf.js";
 import { PER, SITE } from "../data/site.js";
 import { RULES } from "../data/rules.js";
+import { DOC } from "../data/doctrine.js";
 import { ENCRE, FORMATS } from "../data/planches.js";
-import { FLOORS, flHeight, flName, flNet } from "../mix/floors.js";
-import { bbox, cibleVue, coins, dedans, ligneRecul } from "../mass/geom.js";
+import { FLOORS, flHeight, flNet, lvlOf } from "../mix/floors.js";
+import { airePoly, airePosable, bbox, coins, ligneRecul } from "../mass/geom.js";
 import { MASS, etagesDe, familleDom, famTok, partiOf } from "../mass/model.js";
 import { jugementCourant } from "../mass/juge.js";
-import { JUGES } from "../data/jugements.js";
-import { mobilite } from "./mobilite.js";
 
 var E = ENCRE;
 function couleur(f){
@@ -27,164 +33,222 @@ function couleur(f){
 }
 function teinte(c, k){ return c.map(function(v){ return v * k; }); }
 function coupe(s, n){
-  var mots = s.split(" "), L = [], l = "";
-  mots.forEach(function(m){ if((l + " " + m).trim().length > n){ L.push(l.trim()); l = m; } else l += " " + m; });
+  var L = [], l = "";
+  s.split(" ").forEach(function(m){ if((l + " " + m).trim().length > n){ L.push(l.trim()); l = m; } else l += " " + m; });
   if(l.trim()) L.push(l.trim());
   return L;
 }
+function ccw(p){
+  var a = 0;
+  for(var i = 0; i < p.length; i++){ var q = p[(i + 1) % p.length]; a += p[i][0] * q[1] - q[0] * p[i][1]; }
+  return a < 0 ? p.slice().reverse() : p;
+}
 
 /* ---------- l'axonométrie d'une case ----------
-   Vue du sud-ouest : on tourne le site de `r`, on écrase la profondeur, la
-   hauteur monte. `cadre` = [x, y, w, h] en points ; la parcelle y est calée. */
+   Vue du sud-ouest : le site tourne de `r`, la profondeur s'écrase, la hauteur
+   monte. La parcelle et son contexte proche sont calés dans `cadre`. */
 function axo(cadre, hmax){
-  var r = -0.62, el = 0.52, c = Math.cos(r), s = Math.sin(r);
+  var r = -0.62, el = 0.5, c = Math.cos(r), s = Math.sin(r);
   function brut(x, y, z){ return [x * c - y * s, (x * s + y * c) * el + z * 0.9]; }
   var B = bbox(PER.map(function(p){ return brut(p[0], p[1], 0); }).concat(
     PER.map(function(p){ return brut(p[0], p[1], hmax); })));
-  var k = Math.min(cadre[2] / B.w, cadre[3] / B.h) * 0.92;
+  var k = Math.min(cadre[2] / B.w, cadre[3] / B.h) * 0.86;
   var ox = cadre[0] + (cadre[2] - B.w * k) / 2 - B.x0 * k, oy = cadre[1] + (cadre[3] - B.h * k) / 2 - B.y0 * k;
   var A = function(x, y, z){ var b = brut(x, y, z || 0); return [ox + b[0] * k, oy + b[1] * k]; };
   A.prof = function(x, y){ return x * s + y * c; };
   A.g = [s, c];
+  A.cadre = cadre;
   return A;
 }
-/* une boîte : ses faces visibles, puis son toit */
-function boite(t, A, q, z0, z1, col, o){
+/* Un prisme : ses faces visibles, de la plus lointaine à la plus proche, puis
+   son toit. `c` : [toit, flanc]. */
+function prisme(t, A, poly, z0, z1, c, o){
   o = o || {};
-  for(var i = 0; i < 4; i++){
-    var a = q[i], b = q[(i + 1) % 4], n = [b[1] - a[1], -(b[0] - a[0])];
+  var p = ccw(poly), F = [];
+  for(var i = 0; i < p.length; i++){
+    var a = p[i], b = p[(i + 1) % p.length], n = [b[1] - a[1], -(b[0] - a[0])];
     if(n[0] * A.g[0] + n[1] * A.g[1] >= 0) continue;
-    t.poly([A(a[0], a[1], z0), A(b[0], b[1], z0), A(b[0], b[1], z1), A(a[0], a[1], z1)],
-      { fill: teinte(col, i % 2 ? 0.72 : 0.84), stroke:E.noir, lw:o.lw || .35 });
+    F.push({ a:a, b:b, d:A.prof((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), l:Math.abs(n[0]) > Math.abs(n[1]) });
   }
-  t.poly(q.map(function(p){ return A(p[0], p[1], z1); }), { fill:col, stroke:E.noir, lw:o.lw || .35 });
-}
-function sol(t, A, fill){
-  t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:fill || [0.93, 0.93, 0.91], stroke:E.noir, lw:.5 });
-}
-function fleche(t, a, b, col, lw){
-  var dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n, h = 3 + lw * 2;
-  t.ligne([a, b], { stroke:col, lw:lw });
-  t.poly([b, [b[0] - ux * h * 2 + uy * h, b[1] - uy * h * 2 - ux * h], [b[0] - ux * h * 2 - uy * h, b[1] - uy * h * 2 + ux * h]], { fill:col });
-}
-/* les corps posés, du plus loin au plus proche ; `col(c)` dit la couleur */
-function volumes(t, A, vols, col){
-  var C = [];
-  vols.forEach(function(v){
-    etagesDe(v).forEach(function(e){ C.push({ v:v, e:e, q:coins(e.rc) }); });
+  F.sort(function(u, v){ return v.d - u.d; }).forEach(function(f){
+    t.poly([A(f.a[0], f.a[1], z0), A(f.b[0], f.b[1], z0), A(f.b[0], f.b[1], z1), A(f.a[0], f.a[1], z1)],
+      { fill: f.l ? c[1] : teinte(c[1], 1.12), stroke:o.trait || E.noir, lw:o.lw || .3 });
   });
-  var z00 = Math.min.apply(null, C.map(function(c){ return c.e.z0; }).concat([Infinity]));
-  C.sort(function(a, b){
-    var da = A.prof(a.e.rc.x, a.e.rc.y), db = A.prof(b.e.rc.x, b.e.rc.y);
-    return Math.abs(da - db) > 4 ? db - da : a.e.z0 - b.e.z0;
-  });
-  C.forEach(function(c){
-    if(c.v.ph){
-      t.poly(c.q.map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.4, dash:[2, 1.5] });
-      return;
-    }
-    boite(t, A, c.q, Math.max(0, c.e.z0 - z00), c.e.z1 - z00, col(c));
-  });
+  t.poly(p.map(function(q){ return A(q[0], q[1], z1); }), { fill:c[0], stroke:o.trait || E.noir, lw:o.lw || .3, dash:o.dash });
 }
-function hauteurMax(vols){
-  var h = 12;
-  vols.forEach(function(v){
-    var et = etagesDe(v);
-    if(et.length) h = Math.max(h, et[et.length - 1].z1 - et[0].z0);
-  });
-  return h;
+function fleche(t, a, b, lw){
+  var dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n, h = 2.2 + lw * 1.6;
+  t.ligne([a, [b[0] - ux * h, b[1] - uy * h]], { stroke:E.noir, lw:lw });
+  t.poly([b, [b[0] - ux * h * 2 + uy * h, b[1] - uy * h * 2 - ux * h], [b[0] - ux * h * 2 - uy * h, b[1] - uy * h * 2 + ux * h]], { fill:E.noir });
+}
+function soleil(t, p, r){
+  for(var i = 0; i < 12; i++){
+    var a = i / 12 * 2 * Math.PI;
+    t.ligne([[p[0] + Math.cos(a) * r * 1.4, p[1] + Math.sin(a) * r * 1.4], [p[0] + Math.cos(a) * r * 2, p[1] + Math.sin(a) * r * 2]], { stroke:E.soleil, lw:.8 });
+  }
+  t.cercle(p[0], p[1], r, { fill:E.soleil, stroke:[0.85, 0.5, 0.05], lw:.5 });
 }
 
-/* ---------- les huit cases ---------- */
-function cases(vols){
-  var j = jugementCourant(), p = partiOf(vols.parti || MASS.parti), M = null;
-  function q(id){ return j ? j.fortes.concat(j.prefs).filter(function(c){ return c.id === id; })[0] : null; }
-  var net = 0; FLOORS.forEach(function(f, i){ net += flNet(i); });
-  var gris = [0.97, 0.97, 0.96];
-  return [
-    { n:"Le site", d:"Une parcelle de " + fmt(RULES.site.aire) + " m² entre la rue du Casino et le chemin du Petit Mont, au pied du Casino et de ses jardins.",
-      f:function(t, A){
-        SITE.bat.forEach(function(b, i){
-          var c = bbox(b);
-          if(!dedans([[-40, -40], [220, -40], [220, 170], [-40, 170]], c.cx, c.cy)) return;
-          var h = SITE.bath[i] ? Math.max(3, SITE.bath[i][1] - SITE.bath[i][0]) : 6;
-          t.poly(b.map(function(p){ return A(p[0], p[1], h); }), { fill:E.blanc, stroke:E.fin, lw:.3 });
-        });
-        sol(t, A, [0.86, 0.9, 0.82]);
-      } },
-    { n:"Les limites", d:"Recul de " + fmt(RULES.dist.retrait) + " m sur le périmètre ; la nappe à 3 m sous le terrain interdit presque tout sous-sol.",
-      f:function(t, A){
-        sol(t, A);
-        t.poly(ligneRecul(RULES.dist.retrait).map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.rouge, lw:1, dash:[4, 2.5] });
-      } },
-    { n:"Le programme", d:fmt(Math.round(net)) + " m² sur " + FLOORS.length + " niveaux, empilés par le mixer : chaque dalle a la couleur de sa famille dominante.",
-      f:function(t, A){
-        sol(t, A);
-        var cx = 88, cy = 60, z = 0;
-        FLOORS.forEach(function(f, i){
-          var a = Math.sqrt(Math.max(1, flNet(i))), h = flHeight(i);
-          boite(t, A, coins({ x:cx, y:cy, w:a, d:a, a:0 }), z, z + h, couleur(familleDom(i)));
-          z += h;
-        });
-      } },
-    { n:"Le parti", d:p.n + " — " + p.d.split(/[.:]/)[0] + ".",
-      f:function(t, A){
-        sol(t, A);
-        vols.forEach(function(v){
-          var e = etagesDe(v)[0];
-          if(e) t.poly(coins(e.rc).map(function(pt){ return A(pt[0], pt[1], 0); }), { fill:[0.25, 0.25, 0.25] });
-        });
-      } },
-    { n:"L'empilement", d:"Chaque étage prend la couleur de ce qu'il porte : le sport au rez, les classes au plus au 2ᵉ étage.",
-      f:function(t, A){ sol(t, A); volumes(t, A, vols, function(c){ return couleur(familleDom(c.e.e.i)); }); } },
-    { n:"Soleil et vue", d:[q("soleil"), q("vue")].filter(Boolean).map(function(c){ return c.n + " : " + c.txt; }).join(" · ") || "Les longues façades des classes vers le sud, la vue vers le nord-ouest.",
-      f:function(t, A){
-        sol(t, A); volumes(t, A, vols, function(){ return gris; });
-        fleche(t, A(90, -45, 35), A(90, 10, 14), [0.95, 0.65, 0.1], 2.2);
-        /* la vue : vers la cible de `cibleVue()`, depuis le centre de la parcelle */
-        var cv = cibleVue(), dx = cv.x - 90, dy = cv.y - 60, l = Math.hypot(dx, dy) || 1;
-        fleche(t, A(90, 60, 22), A(90 + dx / l * 70, 60 + dy / l * 70, 22), [0.2, 0.45, 0.8], 1.6);
-      } },
-    { n:"La mobilité", d:"Bus et dépose-minute côté rue du Casino, piétons et vélos par le chemin du Petit Mont, " + RULES.ext.voitures + " places en bordure.",
-      f:function(t, A){
-        sol(t, A);
-        M = M || mobilite(vols);
-        M.lots.forEach(function(l){ t.poly(coins(l.rc).map(function(pt){ return A(pt[0], pt[1], 0); }), { fill:E.route, stroke:E.trait, lw:.3 }); });
-        [M.bus, M.depose].forEach(function(r){ if(r) t.poly(coins(r).map(function(pt){ return A(pt[0], pt[1], 0); }), { fill:[0.95, 0.65, 0.1] }); });
-        if(M.pieton) fleche(t, A(M.pieton[0][0], M.pieton[0][1], 0), A(M.pieton[1][0], M.pieton[1][1], 0), [0.2, 0.6, 0.35], 1.4);
-        volumes(t, A, vols, function(){ return gris; });
-      } },
-    { n:"Le résultat", d:j && j.total != null ? "Note " + j.total + " / 100 — toutes les règles dures tenues ; " + meilleurs(j) + "."
-                                             : "Aucune composition valide pour l'instant.",
-      f:function(t, A){ sol(t, A, [0.86, 0.9, 0.82]); volumes(t, A, vols, function(){ return E.blanc; }); } }
-  ];
+/* ---------- ce que toute case montre : le contexte, la parcelle ---------- */
+var CTX = null;
+function contexte(){
+  if(CTX) return CTX;
+  var B = bbox(PER);
+  CTX = [];
+  SITE.bat.forEach(function(b, i){
+    var c = bbox(b);
+    if(c.cx < B.x0 - 45 || c.cx > B.x1 + 45 || c.cy < B.y0 - 45 || c.cy > B.y1 + 45) return;
+    var h = SITE.bath[i] ? Math.max(3, SITE.bath[i][1] - SITE.bath[i][0]) : 6;
+    CTX.push({ p:b, h:h, d:0 });
+  });
+  return CTX;
 }
-function meilleurs(j){
-  var L = (j.juges || []).slice().sort(function(a, b){ return b.w * b.sc - a.w * a.sc; }).slice(0, 2);
-  return L.map(function(o){
-    var x = JUGES.filter(function(y){ return y.id === o.id; })[0];
-    return (x ? x.n.split(/[,:(]/)[0].toLowerCase() : o.id) + " " + Math.round(o.sc * 100) + " %";
-  }).join(", ");
+/* Tout ce qui a une hauteur, peint du plus loin au plus proche : le contexte
+   et les corps de la case, dans une seule liste. */
+function scene(t, A, corps){
+  var L = contexte().map(function(b){
+    var c = bbox(b.p);
+    return { d:A.prof(c.cx, c.cy), z:0, f:function(){ prisme(t, A, b.p, 0, b.h, [E.contexte, [0.78, 0.78, 0.78]], { trait:[0.55, 0.55, 0.55], lw:.2 }); } };
+  }).concat(corps);
+  L.sort(function(a, b){ return Math.abs(a.d - b.d) > 3 ? b.d - a.d : a.z - b.z; });
+  t.ligne(PER.map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.rouge, lw:.6 });
+  L.forEach(function(x){ x.f(); });
+}
+/* les corps de la composition, avec la couleur que dit `col(corps)` */
+function corpsDe(t, A, vols, col, z00, o){
+  var C = [];
+  vols.forEach(function(v){
+    etagesDe(v).forEach(function(e){
+      if(v.ph && !(o && o.second)) return;
+      var c = col(v, e);
+      if(!c) return;
+      C.push({ d:A.prof(e.rc.x, e.rc.y), z:e.z0, f:function(){
+        prisme(t, A, coins(e.rc), Math.max(0, e.z0 - z00), e.z1 - z00, c, v.ph ? { dash:[2, 1.5] } : null);
+      } });
+    });
+  });
+  return C;
+}
+function saumon(){ return [E.volume, E.flanc]; }
+function fantome(){ return [E.fantome, [0.95, 0.8, 0.74]]; }
+
+/* ---------- les cases : une par décision prise ---------- */
+function etapes(vols){
+  var j = jugementCourant(), pa = partiOf(vols.parti || MASS.parti);
+  function q(id){ return j ? j.fortes.concat(j.prefs).filter(function(c){ return c.id === id; })[0] : null; }
+  var hs = [], net = 0, H = 0, z00 = Infinity, hmax = 0;
+  FLOORS.forEach(function(f, i){ if(lvlOf(i) >= 0){ hs.push(i); net += flNet(i); H += flHeight(i); } });
+  vols.forEach(function(v){
+    var et = etagesDe(v);
+    et.forEach(function(e){ if(lvlOf(e.e.i) >= 0) z00 = Math.min(z00, e.z0); });
+  });
+  if(!isFinite(z00)) z00 = 0;
+  vols.forEach(function(v){ etagesDe(v).forEach(function(e){ hmax = Math.max(hmax, e.z1 - z00); }); });
+  hmax = Math.max(hmax, H);
+  /* la ligne de recul : sa plus grande boucle */
+  var recul = ligneRecul(RULES.dist.retrait).slice().sort(function(a, b){ return airePoly(b) - airePoly(a); })[0] || PER;
+  var sport = vols.filter(function(v){ return v.fix && !v.ph; });
+  var sous = [];
+  vols.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) < 0) sous.push({ v:v, e:e }); }); });
+  var ponts = vols.ponts || [], ecole = vols.filter(function(v){ return !v.ph; });
+  var prof = vols.prof ? Math.round(vols.prof * 10) / 10 : null;
+  var ang = ecole.length ? Math.round(((ecole[0].a * 180 / Math.PI) % 180 + 180) % 180) : 0;
+
+  var S = [];
+  S.push({ n:"Le site", d:"Une parcelle de " + fmt(RULES.site.aire) + " m² en zone publique A : ni gabarit, ni hauteur, "
+    + "ni distance aux limites. Ce qui la tient : le Casino et ses jardins, les voisins, la nappe.",
+    f:function(t, A){ scene(t, A, []); } });
+  S.push({ n:"Le programme en volume", d:fmt(Math.round(net)) + " m² hors sol, sur " + hs.length + " niveaux empilés par le mixer : "
+    + "l'école monte à " + fmt(Math.round(H * 10) / 10) + " m. C'est la matière à loger.",
+    f:function(t, A){
+      scene(t, A, [{ d:0, z:0, f:function(){ prisme(t, A, PER.slice(0, -1), 0, H, saumon()); } }]);
+      [[60, 50], [110, 80], [130, 40]].forEach(function(p){ fleche(t, A(p[0], p[1], H + 2), A(p[0], p[1], H + 14), .9); });
+    } });
+  S.push({ n:"Le recul", d:RULES.dist.retrait + " m de recul sur tout le périmètre, " + RULES.dist.entre + " m entre bâtiments (AEAI) : "
+    + "il reste " + fmt(Math.round(airePosable(RULES.dist.retrait))) + " m² posables.",
+    f:function(t, A){
+      scene(t, A, [{ d:0, z:0, f:function(){ prisme(t, A, recul, 0, H, saumon()); } }]);
+      t.ligne(recul.map(function(p){ return A(p[0], p[1], 0); }).concat([A(recul[0][0], recul[0][1], 0)]), { stroke:E.rouge, lw:.4, dash:[2, 1.5] });
+      [[PER[5], recul], [PER[12], recul], [PER[22], recul]].forEach(function(o){
+        var p = o[0], c = bbox(PER), dx = c.cx - p[0], dy = c.cy - p[1], l = Math.hypot(dx, dy);
+        fleche(t, A(p[0] - dx / l * 8, p[1] - dy / l * 8, H / 2), A(p[0] + dx / l * 6, p[1] + dy / l * 6, H / 2), .8);
+      });
+    } });
+  S.push({ n:"La figure : " + pa.n.toLowerCase(), d:pa.d.split(/[.:]/)[0] + ". " + ecole.length + " corps"
+    + (prof ? " de " + String(prof).replace(".", ",") + " m de profondeur, tirée entre " + DOC.profMin + " et " + DOC.profMax + " m" : "")
+    + " : chacun prend une part des niveaux.",
+    f:function(t, A){
+      /* la figure au sol : l'emprise de chaque corps, sur l'aire posable */
+      var C = [{ d:1e9, z:-1, f:function(){ prisme(t, A, recul, 0, .3, fantome(), { lw:.15 }); } }];
+      ecole.forEach(function(v){
+        var e = etagesDe(v).filter(function(x){ return lvlOf(x.e.i) >= 0; })[0];
+        if(e) C.push({ d:A.prof(e.rc.x, e.rc.y), z:0, f:function(){ prisme(t, A, coins(e.rc), 0, 1.5, saumon()); } });
+      });
+      scene(t, A, C);
+    } });
+  var so = q("soleil"), al = q("align");
+  S.push({ n:"L'orientation", d:"La figure tourne à " + ang + "° : " + [so && so.txt, al && al.txt].filter(Boolean).join(" ; ") + ".",
+    f:function(t, A){
+      scene(t, A, corpsDe(t, A, ecole, function(){ return saumon(); }, z00));
+      var s0 = A(95, -40, hmax * 1.3);
+      soleil(t, s0, 5);
+      [[70, 40], [100, 55], [130, 50]].forEach(function(p){ t.ligne([s0, A(p[0], p[1], hmax * .5)], { stroke:E.soleil, lw:.9 }); });
+    } });
+  if(sport.length) S.push({ n:"La salle de sport", d:"28 × 32 m et 7 m libres : elle se pose au rez, d'un seul tenant, et rien ne la surmonte. "
+    + "Le reste de l'école se range autour.",
+    f:function(t, A){
+      scene(t, A, corpsDe(t, A, ecole, function(v){ return v.fix ? saumon() : fantome(); }, z00));
+      var v = sport[0], et = etagesDe(v), top = et.length ? et[et.length - 1].z1 - z00 : 8;
+      fleche(t, A(v.x, v.y, top + 16), A(v.x, v.y, top + 2), 1);
+    } });
+  S.push({ n:"Les étages", d:"Chaque corps reçoit les niveaux qu'il porte, à la hauteur du mixer : "
+    + hs.map(function(i){ return String(flHeight(i)).replace(".", ","); }).join(" + ") + " m. Les classes restent au plus au 2e étage.",
+    f:function(t, A){ scene(t, A, corpsDe(t, A, ecole, function(){ return saumon(); }, z00)); } });
+  if(sous.length) S.push({ n:"Le sous-sol", d:"Sous le corps le plus haut du terrain, là seulement où la nappe laisse "
+    + String(RULES.dist.couverture).replace(".", ",") + " m de couverture : l'abri PC et la technique.",
+    f:function(t, A){
+      scene(t, A, corpsDe(t, A, ecole, function(v, e){ return lvlOf(e.e.i) < 0 ? null : fantome(); }, z00));
+      /* sous le terrain : dessiné par-dessus, pour qu'on le voie */
+      sous.forEach(function(s){
+        var q = coins(s.e.rc), z0 = s.e.z0 - z00;
+        prisme(t, A, q, z0, 0, saumon(), { lw:.4 });
+        t.poly(q.map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.5, dash:[2, 1.5] });
+      });
+      var s = sous[0].e.rc; fleche(t, A(s.x, s.y, 14), A(s.x, s.y, 1), 1);
+    } });
+  if(ponts.length) S.push({ n:"Les passerelles", d:ponts.length + " passerelle" + (ponts.length > 1 ? "s relient" : " relie")
+    + " les bâtiments à l'étage : un seul ensemble, sans les fermer.",
+    f:function(t, A){ scene(t, A, corpsDe(t, A, ecole, function(){ return saumon(); }, z00)); } });
+  var props = vols.props || [vols];
+  S.push({ n:"Le tri", d:Math.round(DOC.essais) + " compositions essayées" + (vols.valides ? ", " + vols.valides + " valides" : "")
+    + " : toute règle dure enfreinte élimine. Les autres sont notées par les jugements ; celle-ci est la "
+    + ((vols.rang || 0) + 1) + (vols.rang ? "e" : "re") + " sur " + props.length
+    + (j && j.total != null ? ", " + j.total + " / 100." : "."),
+    f:function(t, A){
+      scene(t, A, corpsDe(t, A, vols, function(v, e){ var c = couleur(familleDom(e.e.i)); return [c, teinte(c, .72)]; }, z00, { second:true }));
+    } });
+  S.hmax = hmax;
+  return S;
 }
 
 export function planDiagrammes(vols){
-  var F = FORMATS.A2, t = trace(F.w, F.h), m = 48, g = 22;
+  var F = FORMATS.A2, t = trace(F.w, F.h), m = 48, g = 26;
   t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
-  t.texte(m, F.h - m - 30, "Massing — du programme au volume", { size:34, gras:true });
-  t.texte(m, F.h - m - 56, "Huit décisions, dans l'ordre où le générateur les prend. Parti : " + partiOf(vols.parti || MASS.parti).n
-    + " · " + vols.length + " corps · " + FLOORS.map(function(f, i){ return flName(i); }).join(" / "), { size:11, fill:[0.35, 0.35, 0.35] });
-  var top = F.h - m - 90, cw = (F.w - 2 * m - 3 * g) / 4, ch = (top - m - g) / 2, hm = hauteurMax(vols);
-  cases(vols).forEach(function(c, i){
-    var col = i % 4, row = Math.floor(i / 4);
+  var S = etapes(vols), n = S.length, cols = n <= 4 ? n : n <= 9 ? 3 : 4, rows = Math.ceil(n / cols);
+  t.texte(m, F.h - m - 22, "MASSING — LE PROCESSUS", { size:26, gras:true });
+  t.texte(m, F.h - m - 42, "Ce que le générateur a décidé, dans l'ordre, pour la composition à l'écran — "
+    + n + " étapes. Parti : " + partiOf(vols.parti || MASS.parti).n + ".", { size:10, fill:[0.35, 0.35, 0.35] });
+  var top = F.h - m - 62, cw = (F.w - 2 * m - (cols - 1) * g) / cols, ch = (top - m - (rows - 1) * g) / rows;
+  S.forEach(function(s, i){
+    var col = i % cols, row = Math.floor(i / cols);
     var x = m + col * (cw + g), y = top - (row + 1) * ch - row * g;
-    var A = axo([x, y + 96, cw, ch - 110], hm);
-    c.f(t, A);
-    t.ligne([[x, y + 88], [x + cw, y + 88]], { stroke:E.noir, lw:.8 });
-    t.texte(x, y + 58, ("0" + (i + 1)).slice(-2), { size:26, gras:true });
-    t.texte(x + 44, y + 68, c.n, { size:13, gras:true });
-    coupe(c.d, 58).slice(0, 4).forEach(function(l, k){ t.texte(x + 44, y + 52 - k * 11, l, { size:8.5, fill:[0.25, 0.25, 0.25] }); });
-    if(col < 3) fleche(t, [x + cw + 3, y + ch / 2 + 40], [x + cw + g - 3, y + ch / 2 + 40], E.noir, .8);
+    t.decoupe([[x, y + 50], [x + cw, y + 50], [x + cw, y + ch], [x, y + ch]]);
+    s.f(t, axo([x, y + 56, cw, ch - 60], S.hmax));
+    t.fin();
+    t.texte(x, y + 26, ("0" + (i + 1)).slice(-2), { size:22, gras:true });
+    t.texte(x + 38, y + 38, s.n, { size:10.5, gras:true });
+    coupe(s.d, Math.round((cw - 38) / 3.9)).slice(0, 3).forEach(function(l, k){ t.texte(x + 38, y + 26 - k * 9.5, l, { size:7.5, fill:[0.25, 0.25, 0.25] }); });
   });
-  t.texte(F.w - m, m - 20, "Concours CS Saxon · planche massing · A2", { size:8, fill:[0.4, 0.4, 0.4], ancre:"end" });
+  t.texte(F.w - m, m - 22, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.4, 0.4, 0.4], ancre:"end" });
   return t;
 }
