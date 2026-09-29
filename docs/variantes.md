@@ -96,7 +96,9 @@ bouton. On nomme, puis on pose ; vide, la variante prend le nom proposé.
   clic ou Échap l'éteint, revenir dessus à la souris la fige. La variante part
   à la FIN de la mèche, pas au clic — la base est celle du groupe, et annuler ne
   saurait pas rendre une ligne effacée ; un bouton qui a quitté l'écran
-  (fenêtre ou panneau refermé) n'efface rien. Elle a été haute comme une affiche : trois variantes
+  (fenêtre ou panneau refermé) n'efface rien. Plusieurs mèches brûlent
+  ensemble : la liste repeinte après une suppression reprend les autres au
+  même point (`ALLUMEES`). Elle a été haute comme une affiche : trois variantes
   remplissaient le panneau, et comparer demandait de défiler.
 - Le **modal** porte tout le reste — la note critère par critère, les graines,
   les surfaces, les contrôles.
