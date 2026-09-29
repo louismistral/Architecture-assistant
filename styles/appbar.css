@@ -75,7 +75,7 @@
   position:absolute;inset-block-start:0;inset-inline:var(--s-1);
   border-radius:var(--radius-md);background:var(--accent);
   opacity:0;pointer-events:none;
-  transition:transform var(--dur-3) var(--ease-out),height var(--dur-3) var(--ease-out),opacity var(--dur-1) ease;
+  transition:transform var(--dur-3) var(--ease-out),opacity var(--dur-1) ease;
 }
 .menu__cap{
   position:relative;padding:var(--s-1) var(--s-2);
