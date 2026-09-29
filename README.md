@@ -247,6 +247,8 @@ l'échelle et pas des choix de style.
 **Le thème et le mode sont deux choix** : `data-theme` (absent = Saxon) et `data-mode`
 (absent = suivre le système) sur `<html>`, posés par `main.js` depuis les préférences du
 compte. Une liste déroulante dans la barre les propose, lue dans `src/data/themes.js`.
+Elle et les listes de Paramètres sont un seul déroulant, `src/views/menu.js` : il s'ouvre
+en pop, une pastille glisse sous la ligne visée, une ligne par choix.
 
 **Installer un thème shadcn** (ui.shadcn.com/themes, tweakcn.com) : copier
 `styles/themes/neutral.css`, y coller son bloc `:root` et son bloc `.dark` aux trois
