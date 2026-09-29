@@ -23,26 +23,26 @@ export var FORMATS = { A2: { n:"A2", w:594 * MM, h:420 * MM } };
    Le calage a été mesuré sur la parcelle rouge du PDF contre `PER` : même
    orientation, 1 m = 2 mm = 5,669 pt, écart maximal 0,1 mm sur ses 26 sommets.
    x_pdf = ox + k·x, y_pdf = oy + k·y (y vers le haut, repère du PDF). */
+var ECHELLE = 500;   /* le plan de situation est au 1:500, et ne change jamais */
 export var BASE = {
   pdf: "DOC/site-plan_base.pdf",
   apercu: "DOC/site-plan_base.jpg",   /* le même, en image, pour l'écran */
-  format: "A2", echelle: 500,
-  k: 1000 / 500 * MM, ox: 277.546, oy: 249.798
+  format: "A2", echelle: ECHELLE,
+  k: 1000 / ECHELLE * MM, ox: 277.546, oy: 249.798,
+  /* l'échelle graphique : ses graduations en mètres, calée à gauche du nord
+     de la base (fin de la barre à x = `fin`, en points, à la hauteur `y`) */
+  barre: { m:[0, 5, 10, 20, 30, 40, 50], fin:1522, y:24 }
 };
-
-/* Les accès : quels côtés de `PER` (index du segment PER[i] → PER[i+1])
-   longent quelle rue. Le relevé ne nomme pas les routes : la rue du Casino est
-   prise comme le côté nord-ouest, qui longe le Casino (le plus grand bâtiment
-   du relevé) ; le chemin du Petit Mont comme le long côté sud. À corriger ici
-   si c'est faux — tout le dessin du stationnement suit. */
-export var ACCES = { auto: [0, 5, 6], doux: [22, 21] };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */
 export var ENCRE = {
   noir: [0, 0, 0], blanc: [1, 1, 1], ombre: [0.41, 0.41, 0.41],
-  route: [0.84, 0.84, 0.85], trait: [0.41, 0.41, 0.41], fin: [0.6, 0.6, 0.6],
-  rouge: [0.85, 0.2, 0.18], vert: [0.55, 0.66, 0.47],
+  trait: [0.41, 0.41, 0.41], fin: [0.6, 0.6, 0.6], rouge: [0.85, 0.2, 0.18],
+  /* les diagrammes, à la manière de la planche de référence (`diagramme.pdf`) :
+     le volume saumon et ses flancs brique, le contexte gris */
+  volume: [0.96, 0.66, 0.55], flanc: [0.8, 0.3, 0.17], contexte: [0.9, 0.9, 0.9],
+  fantome: [0.99, 0.9, 0.86], soleil: [0.98, 0.72, 0.1],
   /* l'ombre portée d'un volume : décalage par mètre de hauteur, vers le SE */
   ombreParM: [0.3, -0.3]
 };
