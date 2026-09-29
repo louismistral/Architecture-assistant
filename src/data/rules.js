@@ -27,7 +27,8 @@ export var RULES = {
        de la protection incendie et les alignements routiers. */
     gabarit: null, hauteurMax: null, distLimite: null,
     eaux: "Zone de protection des eaux Au - Karst ; protection des sources SIII au sud",
-    pollution: "Parcelle 4550 : investigations de pollution des sols en cours"
+    pollution: "Parcelle 4550 : investigations de pollution des sols en cours",
+    voisins: ["5792","5547"]  /* projet résidentiel voisin, à prendre en compte */
   },
 
   /* --- distances retenues pour l'implantation ---------------------------- */
@@ -113,7 +114,13 @@ export var RULES = {
   /* `mPlace` est l'emprise couramment retenue pour une place de parc à ciel
      ouvert, accès compris : elle sert à chiffrer le terrain qu'il faut garder
      libre, pas à dessiner le parking. */
-  ext: { voitures: 70, velos: 50, bus: 2, depose: 4, mPlace: 25 },
+  ext: { voitures: 70, velos: 50, bus: 2, depose: 4, mPlace: 25,
+         busPassages: 4,                      /* passages des bus scolaires par jour */
+         accesAuto: "rue du Casino",          /* voitures, bus et dépose-minute */
+         accesDoux: "chemin du Petit Mont" }, /* vélos et piétons */
+
+  /* --- 2.7 l'école -------------------------------------------------------- */
+  ecole: { eleves: 360, degres: "5H à 8H" },
 
   /* --- niveaux ----------------------------------------------------------- */
   /* Règles de niveau, lues par le mixer (`src/mix/niv.js`) : c'est lui qui
@@ -129,18 +136,76 @@ export var RULES = {
      plan de situation 1:500, sans organisation des locaux ni façades. */
   phase2: ["Piscine", "Local chauffage CAD"],
 
-  /* --- 2.7 à 2.9 exigences non métriques --------------------------------- */
-  /* Elles ne se vérifient pas par le calcul mais orientent la volumétrie :
-     la compacité et l'orientation sont nommées par le règlement. */
-  qualitatif: [
-    "Économicité : respect des surfaces données au programme, rationalité typologique",
-    "Compacité et orientation des volumes, usage passif de l'énergie solaire",
-    "Minergie A ou P, ou CECB A/A (LcEne / OcEne)",
-    "Toitures disponibles pour le photovoltaïque",
-    "Eaux de toiture et de surface infiltrées sur site",
-    "Intégration avec le bâtiment et les jardins de l'ancien Casino"
-  ]
+  /* --- le reste du règlement, en toutes lettres --------------------------- */
+  /* Ce qui ne se vérifie pas par le calcul, rangé par thème, avec son article.
+     `q` : une exigence qualitative qui oriente la volumétrie (le volet
+     Contraintes les liste, `RULES.qualitatif` ci-dessous). `verif` : un point
+     que le règlement laisse flou ou contradictoire, à vérifier. Les chiffres
+     que les outils lisent restent dans les clés ci-dessus : rien n'est redit ici. */
+  cadre: {
+    site: [
+      { n:"Ancien Casino", art:"2.2", q:1,
+        v:"Intégration harmonieuse au bâtiment et à ses jardins, inventoriés au patrimoine" },
+      { n:"Vision d'ensemble", art:"2.2",
+        v:"La commune attend une vision globale du développement du site" },
+      { n:"Deux fonctionnements", art:"2.2",
+        v:"Le volume de l'école doit fonctionner avec et sans piscine" }
+    ],
+    mobilite: [
+      { n:"Flux", art:"2.4", v:"Piétons et véhicules séparés" },
+      { n:"Dépose des bus", art:"2.4", v:"Sécurisée, impérative" },
+      { n:"Dépose-minute", art:"2.4, 2.10", v:"Séparée des places de bus, de préférence côté rue du Casino" }
+    ],
+    programme: [
+      { n:"Usage public", art:"2.2", v:"Cour et parking ouverts au public hors des heures d'école" },
+      { n:"Salle polyvalente", art:"2.2", v:"La salle de sport double accueille aussi des manifestations publiques" },
+      { n:"Flexibilité", art:"2.7", v:"Espaces modulables ; synergies scolaire, extrascolaire et associatif" }
+    ],
+    normes: [
+      { n:"Énergie", art:"2.9", q:1, v:"Minergie A ou P, ou CECB A/A (LcEne / OcEne)" },
+      { n:"Accessibilité", art:"1.5", v:"SIA 500, LDIPH / ODIPH, directives scolaires valaisannes de 2005" }
+    ],
+    economie: [
+      { n:"Coût", art:"1.9", v:"CFC 2 à 4 estimés à CHF 29 millions TTC" },
+      { n:"Économicité", art:"2.7", q:1,
+        v:"Respect des surfaces du programme, rationalité typologique, économie pour les usagers et la collectivité" },
+      { n:"Construction durable", art:"2.8", v:"SIA 112/1, faible énergie grise, construction circulaire" },
+      { n:"Bioclimatique", art:"2.9", q:1,
+        v:"Compacité, orientation, solaire passif, lumière naturelle, protection solaire adaptée" },
+      { n:"Eaux pluviales", art:"2.9", q:1, v:"Eaux de toiture et de surface infiltrées sur le site" },
+      { n:"Photovoltaïque", art:"2.9", q:1, v:"En toiture, possible en façade" }
+    ],
+    rendu: [
+      { n:"Planches", art:"1.21", v:"Au plus 5 A1, paysage, selon le schéma d'affichage, un exemplaire" },
+      { n:"Plan de situation 1:500", art:"1.21",
+        v:"Rendu libre : entrées, circulations, distances aux limites, cotes au sol et d'acrotère" },
+      { n:"Plans, coupes, façades 1:200", art:"1.21",
+        v:"Trait noir sur fond blanc, noms des locaux et surfaces nettes ; plans orientés comme la situation, coupes et façades horizontales" },
+      { n:"Planche explicative", art:"1.21",
+        v:"Insertion, concept, structure et matériaux, schémas incendie et parasismique" },
+      { n:"Documents à part", art:"1.21",
+        v:"Cahier SIA 416 avec schémas cotés au 1:500 · réductions A4 · clé USB, PDF 300 dpi, 2 Mo par planche · fiche d'identification sous enveloppe fermée" },
+      { n:"Maquette", art:"1.21", v:"Au 1:500, entièrement peinte en blanc, devise sur le plâtre et le couvercle" }
+    ],
+    procedure: [
+      { n:"Anonymat", art:"1.21",
+        v:"Une devise et « Concours CS Saxon » sur tout le rendu ; aucune variante ; en français" },
+      { n:"Rendu des projets", art:"1.21", v:"Vendredi 9 octobre 2026, 16 h, au SIP à Sion — le cachet postal ne fait pas foi" },
+      { n:"Dépôt de la maquette", art:"1.21", v:"Vendredi 30 octobre 2026, 14 h – 17 h, au Casino de Saxon, par une personne neutre" },
+      { n:"Critères de jugement", art:"1.26", verif:1,
+        v:"Seuls les quatre premiers ont été extraits du PDF — la liste continue sans doute page 15" },
+      { n:"Loi cantonale sur l'énergie", art:"1.5, 2.9", verif:1,
+        v:"Deux dates : 8 septembre 2023 (1.5), 15.01.2004 (2.9)" }
+    ]
+  }
 };
+
+/* Les exigences qui ne se vérifient pas par le calcul mais orientent la
+   volumétrie : la compacité et l'orientation sont nommées par le règlement. */
+RULES.qualitatif = [];
+Object.keys(RULES.cadre).forEach(function(k){
+  RULES.cadre[k].forEach(function(c){ if(c.q) RULES.qualitatif.push(c.n + " : " + c.v.charAt(0).toLowerCase() + c.v.slice(1)); });
+});
 
 /* Distances et couverture sont lues telles quelles par l'implantation : elles
    vivaient dans `data/site.js`, au milieu du relevé du géomètre, alors que ce
