@@ -9,6 +9,7 @@ import { PREFS, initPrefs, onPrefs, setPref } from "./net/prefs.js";
 import { MODES, THEMES, modeOf, themeOf } from "./data/themes.js";
 import { basculer, initVariantes, ouvrirProfil, setApresCharge } from "./views/variantes.js";
 import { icone } from "./views/icons.js";
+import { deroulant, item, separateur, titre } from "./views/menu.js";
 
 var H = document.documentElement;
 
@@ -49,67 +50,24 @@ function peindreTheme(){
   var lab = "Thème : " + t.n + " · " + m.n.toLowerCase();
   document.getElementById("themeLabel").textContent = lab;
   document.getElementById("themeBtn").title = lab;
-  peindreMenu();
   /* WebGL ne relit pas les tokens seul : on redessine ce qui en dépend. */
   var k = t.id + "|" + m.id;
   if(themeAvant && k !== themeAvant && view.tab === "massing") resizeMass();
   themeAvant = k;
 }
 
-var menu = document.getElementById("themeList"), menuBtn = document.getElementById("themeBtn");
-function item(txt, sous, on, fn){
-  var b = document.createElement("button");
-  b.type = "button"; b.className = "menu__item";
-  b.setAttribute("role", "menuitemradio");
-  b.setAttribute("aria-checked", String(on));
-  var t = document.createElement("span"); t.textContent = txt; b.appendChild(t);
-  if(sous){ var s = document.createElement("small"); s.textContent = sous; b.appendChild(s); }
-  b.addEventListener("click", function(){ fn(); fermerMenu(true); });
-  return b;
-}
-function titre(txt){
-  var h = document.createElement("div");
-  h.className = "menu__cap"; h.textContent = txt;
-  h.setAttribute("role", "presentation");
-  return h;
-}
-function peindreMenu(){
-  while(menu.firstChild) menu.removeChild(menu.firstChild);
-  menu.appendChild(titre("Thème"));
+/* Le menu ◐ : le thème, puis le mode — le déroulant de `views/menu.js`. */
+deroulant(document.getElementById("themeMenu"), document.getElementById("themeBtn"),
+          document.getElementById("themeList"), function(l){
+  l.appendChild(titre("Thème"));
   THEMES.forEach(function(t){
-    menu.appendChild(item(t.n, t.d, PREFS.theme === t.id, function(){ setPref("theme", t.id); }));
+    l.appendChild(item(t.n, t.d, PREFS.theme === t.id, function(){ setPref("theme", t.id); }));
   });
-  var sep = document.createElement("div"); sep.className = "menu__sep"; sep.setAttribute("role", "separator");
-  menu.appendChild(sep);
-  menu.appendChild(titre("Mode"));
+  l.appendChild(separateur());
+  l.appendChild(titre("Mode"));
   MODES.forEach(function(m){
-    menu.appendChild(item(m.n, m.d, PREFS.mode === m.id, function(){ setPref("mode", m.id); }));
+    l.appendChild(item(m.n, m.d, PREFS.mode === m.id, function(){ setPref("mode", m.id); }));
   });
-}
-function ouvrirMenu(){
-  menu.hidden = false;
-  menuBtn.setAttribute("aria-expanded", "true");
-  var on = menu.querySelector('[aria-checked="true"]') || menu.querySelector(".menu__item");
-  if(on) on.focus();
-}
-function fermerMenu(focus){
-  if(menu.hidden) return;
-  menu.hidden = true;
-  menuBtn.setAttribute("aria-expanded", "false");
-  if(focus) menuBtn.focus();
-}
-menuBtn.addEventListener("click", function(){ if(menu.hidden) ouvrirMenu(); else fermerMenu(false); });
-menu.addEventListener("keydown", function(e){
-  var L = Array.prototype.slice.call(menu.querySelectorAll(".menu__item"));
-  var i = L.indexOf(document.activeElement);
-  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
-    e.preventDefault();
-    L[(i + (e.key === "ArrowDown" ? 1 : -1) + L.length) % L.length].focus();
-  } else if(e.key === "Escape"){ e.stopPropagation(); fermerMenu(true); }
-  else if(e.key === "Tab") fermerMenu(false);
-});
-document.addEventListener("pointerdown", function(e){
-  if(!menu.hidden && !document.getElementById("themeMenu").contains(e.target)) fermerMenu(false);
 });
 
 /* ---------- la barre « Atelier et outils » ----------

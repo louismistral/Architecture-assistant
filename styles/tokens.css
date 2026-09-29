@@ -306,7 +306,9 @@
   /* --- mouvement ---------------------------------------------------------- */
   --dur-1:.09s;
   --dur-2:.18s;
+  --dur-3:.22s;             /* une pastille qui glisse d'une ligne à l'autre */
   --ease:cubic-bezier(.2,0,.2,1);
+  --ease-out:cubic-bezier(.23,1,.32,1);   /* part vite, se pose doucement : ce qui s'ouvre, ce qui glisse */
 
   /* --- trames ------------------------------------------------------------- */
   --z-props:5;              /* panneau de propriétés au-dessus du canevas */

@@ -50,6 +50,23 @@
   background:var(--card);border:1px solid var(--input);border-radius:var(--radius-md);
 }
 .pr-nb input{inline-size:7em;text-align:right}
+
+/* La liste déroulante : un bouton qui dit le choix pris, son chevron qui se
+   retourne à l'ouverture, et le menu de `appbar.css` aligné à gauche. */
+.menu--choix{display:inline-block;--menu-x:left}
+.menu--choix .menu__list{inset-inline:0 auto;min-inline-size:max(100%,160px)}
+.menu--choix .pr-sel{
+  display:inline-flex;align-items:center;gap:var(--s-1);cursor:pointer;
+  padding-inline:var(--s-2) var(--s-1);margin-inline-start:calc(var(--s-2) * -1);font-weight:500;
+  background:none;border-color:transparent;
+  transition:background-color var(--dur-1) var(--ease),transform var(--dur-2) var(--ease-out);
+}
+.menu--choix .pr-sel:hover,.menu--choix .pr-sel[aria-expanded="true"]{background:var(--accent)}
+.pr-sel:active{transform:scale(.97)}
+.pr-sel .ic--chevron{color:var(--muted-foreground);transition:transform var(--dur-2) var(--ease-out)}
+.pr-sel[aria-expanded="true"] .ic--chevron{transform:rotate(180deg)}
+.pr-sel__v.is-neuf{animation:pr-neuf var(--dur-2) ease}
+@keyframes pr-neuf{from{opacity:.6;filter:blur(2px)}}
 .pr-nb__u{font-size:var(--t-2xs);color:var(--muted-foreground)}
 
 @media (max-width:640px){

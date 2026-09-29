@@ -54,34 +54,48 @@
   .appbar__mid b{display:none}
 }
 
-/* --- le menu du thème ------------------------------------------------------
-   Une liste déroulante, deux choix : le thème, puis le mode. Un menu de
-   shadcn : une surface `--popover`, des lignes, une coche pour ce qui est pris. */
-.menu{position:relative}
+/* --- le menu déroulant -----------------------------------------------------
+   Celui du thème, et les listes de Paramètres (`views/menu.js`). Un menu de
+   shadcn — une surface `--popover`, des lignes, une coche pour ce qui est
+   pris — qui s'ouvre en pop depuis le coin de son bouton, et sous lequel une
+   pastille glisse de ligne en ligne. `--menu-x` dit de quel côté il s'aligne. */
+.menu{position:relative;--menu-x:right}
 .menu__list{
   position:absolute;inset-block-start:calc(100% + var(--s-1));inset-inline-end:0;z-index:70;
-  min-inline-size:220px;padding:var(--s-1);
-  display:flex;flex-direction:column;
+  min-inline-size:160px;padding:var(--s-1);
+  display:flex;flex-direction:column;gap:1px;
   background:var(--popover);color:var(--popover-foreground);
-  border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);
+  transform-origin:top var(--menu-x);
+  transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out);
+}
+.menu__list[data-cote="haut"]{inset-block:auto calc(100% + var(--s-1));transform-origin:bottom var(--menu-x)}
+.menu__list[data-etat="ferme"]{opacity:0;transform:scale(.95);transition-duration:var(--dur-1);pointer-events:none}
+.menu__pastille{
+  position:absolute;inset-block-start:0;inset-inline:var(--s-1);
+  border-radius:var(--radius-md);background:var(--accent);
+  opacity:0;pointer-events:none;
+  transition:transform var(--dur-3) var(--ease-out),height var(--dur-3) var(--ease-out),opacity var(--dur-1) ease;
 }
 .menu__cap{
-  padding:var(--s-2) var(--s-2) var(--s-1);
+  position:relative;padding:var(--s-1) var(--s-2);
   font-size:var(--t-3xs);font-weight:600;letter-spacing:var(--track-caps);
   text-transform:uppercase;color:var(--muted-foreground);
 }
-.menu__sep{block-size:1px;margin:var(--s-1) calc(var(--s-1) * -1);background:var(--border)}
+.menu__sep{position:relative;block-size:1px;margin:var(--s-1) calc(var(--s-1) * -1);background:var(--border)}
+/* Une ligne, un mot : le nom à gauche, la coche à droite. La description d'un
+   choix passe dans l'infobulle — le menu reste serré. */
 .menu__item{
-  appearance:none;display:grid;grid-template-columns:var(--s-4) 1fr;column-gap:var(--s-2);
-  align-items:baseline;text-align:start;
-  padding:var(--s-2);min-block-size:var(--tap-min);
-  font:inherit;font-size:var(--t-xs);color:inherit;
-  background:none;border:0;border-radius:var(--radius-md);cursor:pointer;
+  appearance:none;position:relative;display:flex;align-items:center;gap:var(--s-2);
+  min-block-size:calc(var(--ctl-h) - var(--s-1));padding:0 var(--s-2);
+  font:inherit;font-size:var(--t-xs);font-weight:500;color:inherit;text-align:start;
+  background:none;border:0;border-radius:var(--radius-md);cursor:pointer;white-space:nowrap;
 }
-.menu__item::before{content:"";grid-row:1 / span 2}
-.menu__item[aria-checked="true"]::before{content:"✓";font-weight:600}
-.menu__item small{grid-column:2;font-size:var(--t-2xs);color:var(--muted-foreground)}
-.menu__item:hover,.menu__item:focus-visible{background:var(--accent);color:var(--accent-foreground)}
+.menu__item span{flex:1}
+.menu__item::after{content:"";inline-size:var(--s-3);text-align:end;font-weight:600}
+.menu__item[aria-checked="true"]::after{content:"✓"}
+/* La ligne visée ne s'allume pas : la pastille glisse dessous. */
+.menu__item:focus{outline:none;color:var(--accent-foreground)}
 
 /* --- la barre « Atelier et outils » ----------------------------------------
    Une ligne par onglet, son numéro devant. Elle POUSSE le contenu : le plan et

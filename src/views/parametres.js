@@ -33,6 +33,8 @@ import { saveSoon } from "../mix/store.js";
 import { MASS, PARTIS, massSet } from "../mass/model.js";
 import { PREFS, setPref } from "../net/prefs.js";
 import { renderBar } from "./legend.js";
+import { icone } from "./icons.js";
+import { deroulant, item } from "./menu.js";
 
 var filtre = "";
 var rendre = null;
@@ -99,17 +101,31 @@ function nombre(val, min, max, pas, unite, onSet, aria){
   if(unite) w.appendChild(el("span", "pr-nb__u", unite));
   return w;
 }
+/* Une liste déroulante : le déroulant du menu ◐ (`menu.js`) sous un bouton qui
+   dit le choix pris. Un nouveau choix y entre en fondu flou. */
 function choix(liste, val, onSet, aria){
-  var s = el("select", "pr-sel");
-  s.setAttribute("aria-label", aria);
-  liste.forEach(function(o){
-    var op = el("option", null, o.n);
-    op.value = o.id;
-    if(o.id === val) op.selected = true;
-    s.appendChild(op);
+  var pris = liste.filter(function(o){ return o.id === val; })[0] || liste[0];
+  var r = el("div", "menu menu--choix");
+  var b = el("button", "pr-sel");
+  b.type = "button";
+  b.setAttribute("aria-label", aria);
+  var lab = el("span", "pr-sel__v", pris.n);
+  b.appendChild(lab);
+  b.appendChild(icone("chevron", 14));
+  var l = el("div", "menu__list");
+  r.appendChild(b); r.appendChild(l);
+  deroulant(r, b, l, function(l){
+    liste.forEach(function(o){
+      l.appendChild(item(o.n, o.d, o.id === val, function(){
+        if(o.id === val) return;
+        val = o.id;
+        lab.textContent = o.n;
+        lab.classList.remove("is-neuf"); void lab.offsetWidth; lab.classList.add("is-neuf");
+        onSet(o.id);
+      }));
+    });
   });
-  s.addEventListener("change", function(){ onSet(s.value); });
-  return s;
+  return r;
 }
 function famille(titre, sous, lignes){
   var s = el("section", "pr-f");
