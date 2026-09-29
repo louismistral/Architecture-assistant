@@ -22,16 +22,8 @@ export function renderBar(){
     t.appendChild(document.createTextNode(fmt(GRAND)));
     t.appendChild(el("span","u","m²"));
   }
-  var e = document.getElementById("barEst");
-  if(!e) return;
-  var pending = VARITEMS.filter(function(it){ return !it.set; }).length + (CIRCSET ? 0 : 1);
-  e.textContent = pending
-    ? pending + " poste" + (pending > 1 ? "s" : "") + " à préciser"
-    : "toutes les surfaces sont fixées";
-  e.dataset.pending = String(pending > 0);
-  e.title = pending
-    ? "Voir les postes que le règlement ne chiffre pas"
-    : "Les huit postes et la part de circulation ont reçu ta valeur";
+  /* Le compteur « N postes à préciser » a quitté le chrome : il se lit dans
+     le volet Surfaces, là où les valeurs se saisissent. */
 }
 
 /* ---------- chapô du cahier des charges ----------

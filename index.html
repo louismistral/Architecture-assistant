@@ -20,57 +20,62 @@
 <body>
 <a class="skip" href="#panels">Aller au contenu</a>
 
-<!-- Chrome permanent : trois zones et rien d'autre. Tout le contenu éditorial
-     (chapô, chiffre-clé, surfaces à préciser, légende, sources) est descendu
-     dans l'onglet Programme, qui est le seul qu'il décrive. Il occupait
-     auparavant ~900 px en tête de TOUS les onglets, soit la totalité d'un
-     écran de portable : cliquer « Plan » ne montrait pas un pixel de plan. -->
+<!-- Chrome permanent : trois zones. À gauche on choisit OÙ l'on travaille —
+     la barre « Atelier et outils » ; au centre le projet et son total vivant ;
+     à droite ce qui traverse tous les onglets : les variantes, le compte, le
+     thème. Tout le contenu éditorial appartient à l'onglet qu'il décrit. -->
 <header class="appbar">
-  <a class="appbar__brand" href="#programme">
+  <div class="appbar__start">
+    <button class="btn appbar__nav" type="button" id="navBtn"
+            aria-expanded="true" aria-controls="sidenav">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>
+      </svg>
+      <span>Atelier et outils</span>
+    </button>
+  </div>
+
+  <a class="appbar__mid" href="#programme">
     <b>Centre scolaire de Saxon</b>
-    <span>Concours de projet · Saxon (VS)</span>
+    <!-- Le total vivant. L'ancien chiffre-clé affichait 6'489 m², la part
+         chiffrée au règlement — pas le total, qui est 7'025 m². -->
+    <span class="mono appbar__tot" id="barTot"></span>
   </a>
 
-  <p class="appbar__fig">
-    <!-- Le total vivant. L'ancien chiffre-clé affichait 6'489 m², la part
-         chiffrée au règlement — pas le total, qui est 7'025 m² et
-         n'apparaissait qu'en fin de note, en petit. -->
-    <span class="mono" id="barTot"></span>
-    <button type="button" class="appbar__est" id="barEst"></button>
-  </p>
+  <div class="appbar__end">
+    <!-- Les variantes ne sont PAS un onglet : les onglets sont la chronologie
+         du concours, et une variante les traverse tous. -->
+    <button class="btn appbar__var" type="button" id="varBtn"
+            aria-expanded="false" aria-controls="vpanel">
+      Variantes<span class="vb-cnt" hidden></span>
+    </button>
 
-  <nav class="btn-group appbar__tabs" id="tabs" role="tablist" aria-label="Vues">
-    <button class="btn" type="button" id="tabProgramme" role="tab"
-            aria-selected="true" aria-controls="panels">Cahier des charges</button>
-    <!-- Le filet est la seule marque qui distingue les deux natures :
-         à gauche on lit, à droite on compose. -->
-    <button class="btn appbar__split" type="button" id="tabMixer" role="tab"
-            aria-selected="false" aria-controls="panels" tabindex="-1">Programme mixer</button>
-    <button class="btn" type="button" id="tabMassing" role="tab"
-            aria-selected="false" aria-controls="panels" tabindex="-1">Massing</button>
-    <button class="btn" type="button" id="tabTypologie" role="tab"
-            aria-selected="false" aria-controls="panels" tabindex="-1">Typologie</button>
-  </nav>
+    <button class="btn btn--icon appbar__prof" type="button" id="profBtn"
+            aria-haspopup="dialog" aria-label="Se connecter" title="Se connecter"></button>
 
-  <!-- Les variantes ne sont PAS un onglet : les onglets sont la chronologie du
-       concours, et une variante les traverse tous les trois. Elle vit donc à
-       côté du compte, hors du groupe de destinations. -->
-  <button class="btn appbar__var" type="button" id="varBtn"
-          aria-expanded="false" aria-controls="vpanel">
-    Variantes<span class="vb-cnt" hidden></span>
-  </button>
-
-  <button class="btn btn--icon appbar__prof" type="button" id="profBtn"
-          aria-haspopup="dialog" aria-label="Se connecter" title="Se connecter"></button>
-
-  <button class="btn btn--icon appbar__theme" type="button" id="themeBtn"
-          title="Thème : automatique">
-    <span aria-hidden="true" id="themeIcon">◐</span>
-    <span class="vh" id="themeLabel">Thème : automatique</span>
-  </button>
+    <!-- Le thème et le mode : une liste, deux choix. Rendue par main.js à
+         partir de src/data/themes.js. -->
+    <div class="menu appbar__theme" id="themeMenu">
+      <button class="btn btn--icon" type="button" id="themeBtn"
+              aria-haspopup="menu" aria-expanded="false" aria-controls="themeList">
+        <span aria-hidden="true" id="themeIcon"></span>
+        <span class="vh" id="themeLabel">Thème</span>
+      </button>
+      <div class="menu__list" id="themeList" role="menu" aria-labelledby="themeBtn" hidden></div>
+    </div>
+  </div>
 </header>
 
-<main id="panels" role="tabpanel" aria-labelledby="tabProgramme" tabindex="-1"></main>
+<!-- La barre « Atelier et outils » : une ligne par onglet, numérotée dans
+     l'ordre du concours. Elle POUSSE le contenu : le plan et la 3D se recadrent
+     au lieu d'être recouverts. Les lignes sont posées par main.js depuis TABS. -->
+<nav class="sidenav" id="sidenav" aria-label="Atelier et outils">
+  <div class="sidenav__list" id="tabs" role="tablist" aria-orientation="vertical"
+       aria-label="Onglets"></div>
+</nav>
+
+<main id="panels" role="tabpanel" aria-labelledby="tab-programme" tabindex="-1"></main>
 
 <div id="tip" role="status" aria-live="polite"></div>
 <script type="module" src="src/main.js"></script>

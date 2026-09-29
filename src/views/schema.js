@@ -381,7 +381,7 @@ export function dessinGrappe(T, k){
   branches([T]).forEach(function(r){
     var lk = r.lk;
     var e = s("path", { d: r.d,
-      stroke: lk.opt ? "var(--ink-4)" : "var(--ink-2)",
+      stroke: lk.opt ? "var(--faint-foreground)" : "var(--soft-foreground)",
       "stroke-width": lk.opt ? 1.1 : 1.6,
       "stroke-linecap": "round", "stroke-linejoin": "round",
       "vector-effect": "non-scaling-stroke" });
@@ -391,10 +391,10 @@ export function dessinGrappe(T, k){
        contraire d'une adjacence et cela ne peut pas se lire au même trait */
     if(lk.sep){
       gl.appendChild(s("line", { x1: r.mx - 1.7, y1: r.my - 1.7, x2: r.mx + 1.7, y2: r.my + 1.7,
-        stroke: "var(--danger)", "stroke-width": 1.8, "stroke-linecap": "round",
+        stroke: "var(--destructive)", "stroke-width": 1.8, "stroke-linecap": "round",
         "vector-effect": "non-scaling-stroke" }));
       gl.appendChild(s("line", { x1: r.mx - 1.7, y1: r.my + 1.7, x2: r.mx + 1.7, y2: r.my - 1.7,
-        stroke: "var(--danger)", "stroke-width": 1.8, "stroke-linecap": "round",
+        stroke: "var(--destructive)", "stroke-width": 1.8, "stroke-linecap": "round",
         "vector-effect": "non-scaling-stroke" }));
     }
   });
@@ -403,13 +403,13 @@ export function dessinGrappe(T, k){
   /* --- locaux --- */
   T.ids.forEach(function(id){
     var nd = SMAP[id], A = nodeArea(nd);
-    var col = nd.f ? "var(" + FMAP[nd.f].c + ")" : "var(--ink-3)";
+    var col = nd.f ? "var(" + FMAP[nd.f].c + ")" : "var(--muted-foreground)";
     var grp = s("g", { "class": "blk", tabindex: "0" });
     /* Le rayon d'angle suit la hauteur : à 1,5 fixe, un rectangle de trois
        unités devenait une pastille et ne se comparait plus aux autres. */
     var rc = s("rect", { x: nd.x, y: nd.y, width: nd.bw, height: nd.bh,
       rx: Math.min(1.2, nd.bh / 4),
-      fill: A.hors ? "var(--panel)" : col,
+      fill: A.hors ? "var(--card)" : col,
       "fill-opacity": A.hors ? "1" : "var(--fill-op)",
       stroke: col, "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" });
     if(A.est || A.hors) rc.setAttribute("stroke-dasharray", "4 3");
@@ -427,12 +427,12 @@ export function dessinGrappe(T, k){
     var top0 = nd.labIn ? nd.cy - blk / 2 : nd.y + nd.bh + 1;
     lines.forEach(function(ln, i){
       var t = s("text", { x: nd.cx, y: top0 + fs * 0.8 + i * LINEH, "text-anchor": "middle",
-        "font-size": fs, fill: "var(--ink)", "font-weight": 500 });
+        "font-size": fs, fill: "var(--foreground)", "font-weight": 500 });
       t.textContent = ln;
       grp.appendChild(t);
     });
     var v = s("text", { x: nd.cx, y: top0 + lines.length * LINEH + fsSm * 0.95,
-      "text-anchor": "middle", "font-size": fsSm, fill: "var(--ink-2)",
+      "text-anchor": "middle", "font-size": fsSm, fill: "var(--soft-foreground)",
       "font-family": "'IBM Plex Mono', monospace" });
     v.textContent = A.hors ? "hors bilan" : fmt(A.a) + " m²" + (A.est ? " ?" : "");
     grp.appendChild(v);
@@ -455,7 +455,7 @@ export function etalon(k){
   var sv = s("svg", { width: px + 2, height: px + 2, viewBox: "-1 -1 " + (c + 2 / k) + " " + (c + 2 / k),
     "aria-hidden": "true" });
   sv.appendChild(s("rect", { x: 0, y: 0, width: c, height: c, rx: 1.2,
-    fill: "var(--ink-4)", "fill-opacity": ".18", stroke: "var(--ink-3)",
+    fill: "var(--faint-foreground)", "fill-opacity": ".18", stroke: "var(--muted-foreground)",
     "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
   d.appendChild(sv);
   d.appendChild(el("span","mono", fmt(REF) + " m² · " + fmt(c) + " × " + fmt(c) + " m"));
@@ -469,15 +469,15 @@ export function linkKey(){
     var sp = el("span");
     var sv = s("svg", { width: 26, height: 10, viewBox: "0 0 26 10" });
     var ln = s("line", { x1: 0, y1: 5, x2: 26, y2: 5,
-      stroke: opt ? "var(--ink-4)" : "var(--ink-2)",
+      stroke: opt ? "var(--faint-foreground)" : "var(--soft-foreground)",
       "stroke-width": opt ? 1.3 : 1.7, "stroke-linecap": "round" });
     if(opt) ln.setAttribute("stroke-dasharray", "5 4");
     sv.appendChild(ln);
     if(sep){
       sv.appendChild(s("line", { x1: 10, y1: 1, x2: 16, y2: 9,
-        stroke: "var(--danger)", "stroke-width": 1.8, "stroke-linecap": "round" }));
+        stroke: "var(--destructive)", "stroke-width": 1.8, "stroke-linecap": "round" }));
       sv.appendChild(s("line", { x1: 10, y1: 9, x2: 16, y2: 1,
-        stroke: "var(--danger)", "stroke-width": 1.8, "stroke-linecap": "round" }));
+        stroke: "var(--destructive)", "stroke-width": 1.8, "stroke-linecap": "round" }));
     }
     sp.appendChild(sv);
     sp.appendChild(document.createTextNode(label));
@@ -489,7 +489,7 @@ export function linkKey(){
   var sp = el("span");
   var sv = s("svg", { width: 26, height: 10, viewBox: "0 0 26 10" });
   sv.appendChild(s("rect", { x: 1, y: 1, width: 24, height: 8, rx: 1.5, fill: "none",
-    stroke: "var(--ink-4)", "stroke-width": 1.4, "stroke-dasharray": "4 3" }));
+    stroke: "var(--faint-foreground)", "stroke-width": 1.4, "stroke-dasharray": "4 3" }));
   sp.appendChild(sv);
   sp.appendChild(document.createTextNode("Surface à préciser, ou hors bilan"));
   d.appendChild(sp);
@@ -503,7 +503,7 @@ export function linkList(list){
     var ic = el("div","ic");
     var sv = s("svg", { width: 13, height: 3, viewBox: "0 0 13 3" });
     var ln = s("line", { x1: 0, y1: 1.5, x2: 13, y2: 1.5,
-      stroke: lk.sep ? "var(--danger)" : lk.opt ? "var(--ink-4)" : "var(--ink-2)",
+      stroke: lk.sep ? "var(--destructive)" : lk.opt ? "var(--faint-foreground)" : "var(--soft-foreground)",
       "stroke-width": lk.opt && !lk.sep ? 1.3 : 1.7 });
     if(lk.opt) ln.setAttribute("stroke-dasharray", "4 3");
     sv.appendChild(ln); ic.appendChild(sv); li.appendChild(ic);

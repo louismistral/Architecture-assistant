@@ -1,56 +1,157 @@
-import { TABS, curSub, isTool, readHash, setSub, view, writeHash } from "./core/viewstate.js";
+import { TABS, isTool, readHash, view, writeHash } from "./core/viewstate.js";
 import { render } from "./views/render.js";
 import { resizeMix } from "./views/mixer.js";
 import { resizeMass } from "./views/massing.js";
 import { initStore, verifieQuantites } from "./mix/store.js";
 import { initCompte } from "./net/compte.js";
 import { initReglages } from "./net/reglages.js";
+import { PREFS, initPrefs, onPrefs, setPref } from "./net/prefs.js";
+import { MODES, THEMES, modeOf, themeOf } from "./data/themes.js";
 import { basculer, initVariantes, ouvrirProfil, setApresCharge } from "./views/variantes.js";
+import { icone } from "./views/icons.js";
 
-/* ---------- thème ----------
-   `[data-theme]` était prévu dans la feuille de tokens mais aucune ligne du
-   projet ne l'écrivait : le thème sombre n'était pas contrôlable. Trois états,
-   parce que « suivre le système » est le bon défaut et doit rester joignable. */
-var THEMES = [
-  { v:"auto",  icon:"◐", label:"automatique" },
-  { v:"light", icon:"○", label:"clair" },
-  { v:"dark",  icon:"●", label:"sombre" }
-];
-var themeIdx = 0;
+var H = document.documentElement;
 
-function readTheme(){
-  try{
-    var s = localStorage.getItem("saxon.theme");
-    for(var i = 0; i < THEMES.length; i++) if(THEMES[i].v === s) return i;
-  }catch(e){ /* mode privé, stockage refusé : on reste sur « automatique » */ }
-  return 0;
+/* Un redimensionnement qui ne refait que ce qui dépend de la largeur. Le
+   mixer et le massing ne se refont pas en entier : un rendu complet perdrait le
+   repli ouvert, la seed tapée, le défilement — et, au massing, la caméra de la
+   3D et le cadrage du plan. */
+function recadrer(){
+  if(view.tab === "mixer") resizeMix();
+  else if(view.tab === "massing") resizeMass();
+  else render();
 }
-function paintTheme(){
-  var t = THEMES[themeIdx];
-  if(t.v === "auto") document.documentElement.removeAttribute("data-theme");
-  else document.documentElement.setAttribute("data-theme", t.v);
-  var b = document.getElementById("themeBtn");
-  document.getElementById("themeIcon").textContent = t.icon;
-  document.getElementById("themeLabel").textContent = "Thème : " + t.label;
-  b.title = "Thème : " + t.label;
+
+/* ---------- thème et mode ----------
+   Deux choix distincts : le THÈME (Saxon, puis ceux qu'on installe — voir
+   `src/data/themes.js`) et le MODE (automatique, clair, sombre). Ils vivent
+   dans les préférences du compte, et l'appareil en garde une copie pour que le
+   thème ne clignote pas au démarrage. */
+var charges = {};
+function chargerTheme(t){
+  if(!t.css || charges[t.id]) return;
+  var l = document.createElement("link");
+  l.rel = "stylesheet"; l.href = t.css;
+  /* La 3D lit ses couleurs une fois : elle se repeint quand la feuille arrive. */
+  l.addEventListener("load", function(){ if(view.tab === "massing") resizeMass(); });
+  document.head.appendChild(l);
+  charges[t.id] = 1;
 }
-function wireTheme(){
-  themeIdx = readTheme();
-  paintTheme();
-  document.getElementById("themeBtn").addEventListener("click", function(){
-    themeIdx = (themeIdx + 1) % THEMES.length;
-    try{ localStorage.setItem("saxon.theme", THEMES[themeIdx].v); }catch(e){}
-    paintTheme();
+var themeAvant = "";
+function peindreTheme(){
+  var t = themeOf(PREFS.theme), m = modeOf(PREFS.mode);
+  chargerTheme(t);
+  if(t.id === "saxon") H.removeAttribute("data-theme"); else H.setAttribute("data-theme", t.id);
+  if(m.id === "auto") H.removeAttribute("data-mode"); else H.setAttribute("data-mode", m.id);
+  var ic = document.getElementById("themeIcon");
+  while(ic.firstChild) ic.removeChild(ic.firstChild);
+  ic.appendChild(icone(m.id === "light" ? "soleil" : m.id === "dark" ? "lune" : "auto"));
+  var lab = "Thème : " + t.n + " · " + m.n.toLowerCase();
+  document.getElementById("themeLabel").textContent = lab;
+  document.getElementById("themeBtn").title = lab;
+  peindreMenu();
+  /* WebGL ne relit pas les tokens seul : on redessine ce qui en dépend. */
+  var k = t.id + "|" + m.id;
+  if(themeAvant && k !== themeAvant && view.tab === "massing") resizeMass();
+  themeAvant = k;
+}
+
+var menu = document.getElementById("themeList"), menuBtn = document.getElementById("themeBtn");
+function item(txt, sous, on, fn){
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "menu__item";
+  b.setAttribute("role", "menuitemradio");
+  b.setAttribute("aria-checked", String(on));
+  var t = document.createElement("span"); t.textContent = txt; b.appendChild(t);
+  if(sous){ var s = document.createElement("small"); s.textContent = sous; b.appendChild(s); }
+  b.addEventListener("click", function(){ fn(); fermerMenu(true); });
+  return b;
+}
+function titre(txt){
+  var h = document.createElement("div");
+  h.className = "menu__cap"; h.textContent = txt;
+  h.setAttribute("role", "presentation");
+  return h;
+}
+function peindreMenu(){
+  while(menu.firstChild) menu.removeChild(menu.firstChild);
+  menu.appendChild(titre("Thème"));
+  THEMES.forEach(function(t){
+    menu.appendChild(item(t.n, t.d, PREFS.theme === t.id, function(){ setPref("theme", t.id); }));
+  });
+  var sep = document.createElement("div"); sep.className = "menu__sep"; sep.setAttribute("role", "separator");
+  menu.appendChild(sep);
+  menu.appendChild(titre("Mode"));
+  MODES.forEach(function(m){
+    menu.appendChild(item(m.n, m.d, PREFS.mode === m.id, function(){ setPref("mode", m.id); }));
   });
 }
+function ouvrirMenu(){
+  menu.hidden = false;
+  menuBtn.setAttribute("aria-expanded", "true");
+  var on = menu.querySelector('[aria-checked="true"]') || menu.querySelector(".menu__item");
+  if(on) on.focus();
+}
+function fermerMenu(focus){
+  if(menu.hidden) return;
+  menu.hidden = true;
+  menuBtn.setAttribute("aria-expanded", "false");
+  if(focus) menuBtn.focus();
+}
+menuBtn.addEventListener("click", function(){ if(menu.hidden) ouvrirMenu(); else fermerMenu(false); });
+menu.addEventListener("keydown", function(e){
+  var L = Array.prototype.slice.call(menu.querySelectorAll(".menu__item"));
+  var i = L.indexOf(document.activeElement);
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    L[(i + (e.key === "ArrowDown" ? 1 : -1) + L.length) % L.length].focus();
+  } else if(e.key === "Escape"){ e.stopPropagation(); fermerMenu(true); }
+  else if(e.key === "Tab") fermerMenu(false);
+});
+document.addEventListener("pointerdown", function(e){
+  if(!menu.hidden && !document.getElementById("themeMenu").contains(e.target)) fermerMenu(false);
+});
 
-/* ---------- onglets ----------
-   Vrai patron d'onglets : `role="tab"` + `aria-selected`, un seul arrêt de
-   tabulation pour le groupe, flèches pour circuler. L'ancienne barre utilisait
-   `aria-pressed`, donc le vocabulaire des interrupteurs : une destination et un
-   réglage se ressemblaient. */
+/* ---------- la barre « Atelier et outils » ----------
+   Une ligne par onglet, numérotée dans l'ordre du concours ; le cadre du
+   projet en tête, avec une icône au lieu d'un numéro. Elle POUSSE le contenu :
+   le plan et la 3D se recadrent au lieu d'être recouverts. Sur un écran
+   étroit, elle se pose par-dessus et se referme au choix d'un onglet. */
+var liste = document.getElementById("tabs");
 var tabBtns = TABS.map(function(t){
-  return { t:t, el:document.getElementById("tab" + t.id.charAt(0).toUpperCase() + t.id.slice(1)) };
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "sidenav__item";
+  b.id = "tab-" + t.id;
+  b.setAttribute("role", "tab");
+  b.setAttribute("aria-controls", "panels");
+  var n = document.createElement("span");
+  n.className = "sidenav__n mono";
+  n.setAttribute("aria-hidden", "true");
+  if(t.icon) n.appendChild(icone(t.icon)); else n.textContent = t.n;
+  b.appendChild(n);
+  var l = document.createElement("span");
+  l.className = "sidenav__l"; l.textContent = t.label;
+  b.appendChild(l);
+  if(t.icon) b.classList.add("is-cadre");
+  liste.appendChild(b);
+  return { t:t, el:b };
+});
+
+function etroit(){ return window.matchMedia("(max-width: 900px)").matches; }
+function peindreNav(){
+  var ouvert = etroit() ? navEtroit : !!PREFS.nav;
+  document.body.classList.toggle("has-nav", ouvert);
+  document.getElementById("navBtn").setAttribute("aria-expanded", String(ouvert));
+  document.getElementById("sidenav").hidden = !ouvert;
+}
+/* Sur un écran étroit, la barre ne s'ouvre qu'à la demande : elle couvrirait
+   sinon tout l'outil à chaque rechargement. */
+var navEtroit = false;
+document.getElementById("navBtn").addEventListener("click", function(){
+  if(etroit()) navEtroit = !navEtroit;
+  else setPref("nav", !PREFS.nav);
+  peindreNav();
+  recadrer();
 });
 
 function paintTabs(){
@@ -59,16 +160,7 @@ function paintTabs(){
     b.el.setAttribute("aria-selected", String(on));
     b.el.tabIndex = on ? 0 : -1;
   });
-  var cur = tabBtns.filter(function(b){ return view.tab === b.t.id; })[0];
-  if(cur){
-    document.getElementById("panels").setAttribute("aria-labelledby", cur.el.id);
-    /* Sur un écran étroit, le groupe d'onglets défile : l'onglet courant ne doit
-       pas rester hors du cadre. */
-    var g = cur.el.parentNode;
-    if(g.scrollWidth > g.clientWidth){
-      g.scrollLeft = Math.max(0, cur.el.offsetLeft - (g.clientWidth - cur.el.offsetWidth) / 2);
-    }
-  }
+  document.getElementById("panels").setAttribute("aria-labelledby", "tab-" + view.tab);
 }
 
 export function goTo(id, focusPanel){
@@ -87,9 +179,12 @@ function apply(){
 }
 
 tabBtns.forEach(function(b, i){
-  b.el.addEventListener("click", function(){ goTo(b.t.id, false); });
+  b.el.addEventListener("click", function(){
+    goTo(b.t.id, false);
+    if(etroit() && navEtroit){ navEtroit = false; peindreNav(); }
+  });
   b.el.addEventListener("keydown", function(e){
-    var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1
+    var d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1
           : e.key === "Home" ? -99 : e.key === "End" ? 99 : 0;
     if(!d) return;
     e.preventDefault();
@@ -100,42 +195,32 @@ tabBtns.forEach(function(b, i){
   });
 });
 
-/* Ce compteur est un bouton, avec un `title` qui promet de montrer les postes
-   concernés — et il n'avait aucun gestionnaire : contrôle mort dans le chrome
-   permanent. Il mène à la liste, où les valeurs se saisissent. */
-document.getElementById("barEst").addEventListener("click", function(){
-  /* Les surfaces à préciser se saisissent dans le volet Surfaces : depuis
-     « Contraintes » ou « Adjacences », changer d'onglet ne suffisait plus. */
-  var move = view.tab !== "programme" || curSub() !== "surfaces";
-  /* Le volet est nommé AVEC son onglet : depuis le mixer, « surfaces » n'est
-     pas un volet du mixer, et le régler sans dire où n'aurait rien fait. */
-  setSub("surfaces", "programme");
-  if(view.tab !== "programme") goTo("programme", false);
-  else if(move) apply();
-  var host = document.getElementById("vars");
-  if(host){
-    host.scrollIntoView({ block:"center", behavior:"smooth" });
-    var first = host.querySelector("input");
-    if(first) first.focus({ preventScroll:true });
-  }
-});
-
 window.addEventListener("hashchange", function(){
   if(readHash()) apply();
 });
 
-/* ---------- les variantes ----------
-   Le bouton vit à côté du compte, pas dans le groupe d'onglets : une variante
-   n'est pas une étape de la chronologie, elle la rejoue en entier. */
-document.getElementById("varBtn").addEventListener("click", function(){ basculer(); });
+/* La barre d'application s'enroule sur un portable : sa hauteur se MESURE, et
+   la barre latérale se cale dessous. C'est une géométrie, pas une valeur de
+   dessin — comme la taille d'un bloc du mixer. */
+function calerBarre(){
+  var bar = document.querySelector(".appbar");
+  H.style.setProperty("--appbar-h", (bar ? Math.round(bar.getBoundingClientRect().height) : 0) + "px");
+}
 
-/* Le badge du compte, à côté du thème : où je suis, comment j'entre, comment
-   je sors. Ce ne sont pas des variantes — les mettre dans le même panneau
-   aurait mêlé « où je travaille » et « ce que j'ai fait ». */
+/* ---------- les variantes, le compte ----------
+   Le bouton des variantes vit à côté du compte, pas dans la barre des
+   onglets : une variante n'est pas une étape de la chronologie, elle la rejoue
+   en entier. Le badge du compte porte l'identité — où je suis, comment j'entre,
+   comment je sors. */
+document.getElementById("varBtn").addEventListener("click", function(){ basculer(); });
 document.getElementById("profBtn").addEventListener("click", function(){ ouvrirProfil(); });
 
 /* ---------- démarrage ---------- */
-wireTheme();
+initPrefs();
+peindreTheme();
+peindreNav();
+calerBarre();
+onPrefs(function(){ peindreTheme(); peindreNav(); });
 /* Le retour du lien de connexion arrive DANS LE FRAGMENT, et le fragment porte
    la vue : il faut le consommer avant `readHash()`, sinon l'application
    démarre sur `#access_token=…`, qui n'est l'onglet de personne. */
@@ -151,7 +236,7 @@ paintTabs();
 writeHash();
 render();
 
-/* Charger une variante remet les trois onglets en place : c'est donc un rendu
+/* Charger une variante remet tous les onglets en place : c'est donc un rendu
    complet, pas un redimensionnement. */
 setApresCharge(function(){ render(); });
 initReglages();
@@ -161,13 +246,8 @@ var rt;
 window.addEventListener("resize", function(){
   clearTimeout(rt);
   rt = setTimeout(function(){
-    /* Le mixer ne se refait pas en entier : seule la largeur du canevas change,
-       donc seul le pavage est à refaire. Un rendu complet perdrait le repli
-       ouvert, la graine tapée et le défilement. */
-    /* Le massing non plus : le canevas WebGL perdrait sa caméra, et le plan
-       son cadrage. Seules leurs largeurs changent. */
-    if(view.tab === "mixer") resizeMix();
-    else if(view.tab === "massing") resizeMass();
-    else render();
+    calerBarre();
+    peindreNav();
+    recadrer();
   }, 140);
 });

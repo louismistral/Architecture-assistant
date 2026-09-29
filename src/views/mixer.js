@@ -792,7 +792,7 @@ function blockNode(b, r){
   d.style.setProperty("--c", col);
   if(!delie){
     d.style.backgroundColor = "color-mix(in srgb, " + col
-      + " calc(var(--fill-op) * 100%), var(--paper))";
+      + " calc(var(--fill-op) * 100%), var(--background))";
     d.style.borderColor = col;
   }
   if(p.f === "tec") d.classList.add("is-hatched");

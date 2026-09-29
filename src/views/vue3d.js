@@ -22,7 +22,7 @@
    pas lire `var(--f-cla)`, et il n'y a pas deux palettes dans ce projet.
    ========================================================================= */
 import { el } from "../core/format.js";
-import { STRIDE, cssRGB, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4project,
+import { STRIDE, cssRGB, themeKey, glDraw, glDrawStatic, glInit, glLibere, glStatic, m4project,
   orbitEye, orbitMVP } from "../core/gl.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
@@ -53,7 +53,7 @@ export function camLabel(){
    qui tienne — le mélange se fait donc ici, à la main, pour que le volume ait
    exactement la couleur du plan et du programme. */
 function teinte(token, op){
-  var c = cssRGB(token), p = cssRGB("--panel"), k = op == null ? .62 : op;
+  var c = cssRGB(token), p = cssRGB("--card"), k = op == null ? .62 : op;
   return [c[0] * k + p[0] * (1 - k), c[1] * k + p[1] * (1 - k), c[2] * k + p[2] * (1 - k)];
 }
 
@@ -131,17 +131,15 @@ function zg(g, i, j){ return g.zsol + grille(g, i, j) / 100 - ZBAS; }
    recalculer à chaque image d'un glisser de caméra coûtait quatre mille
    triangles pour rien. */
 function siteMesh(){
-  var key = (document.documentElement.getAttribute("data-theme") || "auto")
-          + "|" + (window.matchMedia
-            && window.matchMedia("(prefers-color-scheme: dark)").matches ? "d" : "l");
+  var key = themeKey();
   if(STATIQUE && STAKEY === key) return STATIQUE;
   var M = Mesh();
-  var cSol = cssRGB("--rule-soft"), cCtr = cssRGB("--ink-4");
-  var cCtrF = teinte("--ink-4", .45);     /* la demi-courbe, en trait faible */
-  var cPer = cssRGB("--site-perimetre"), cRou = cssRGB("--ink-4");
+  var cSol = cssRGB("--border-soft"), cCtr = cssRGB("--faint-foreground");
+  var cCtrF = teinte("--faint-foreground", .45);     /* la demi-courbe, en trait faible */
+  var cPer = cssRGB("--site-perimetre"), cRou = cssRGB("--faint-foreground");
   /* L'existant est un CONTEXTE : il doit se lire sans jamais se disputer le
      regard avec le projet. Au token brut il virait au noir sous l'éclairage. */
-  var cBat = teinte("--ink-4", .34), cEnq = cssRGB("--warn");
+  var cBat = teinte("--faint-foreground", .34), cEnq = cssRGB("--warn");
   /* Le maillage prend TOUTES les mailles du relevé. Une sur deux lissait le
      terrain à huit mètres : les courbes de niveau, relevées tous les
      cinquante centimètres, passaient au travers. */
@@ -209,13 +207,13 @@ function boiteLibre(M, P, z0, z1, c, a, edge){
 /* ---------- les volumes, refaits à chaque image ----------------------------- */
 function volMesh(){
   var M = Mesh();
-  var cEdge = cssRGB("--ink"), cSel = cssRGB("--focus");
+  var cEdge = cssRGB("--foreground"), cSel = cssRGB("--ring");
   /* Le monochrome est BLANC, et blanc pur : c'est la maquette de concours, où
      la masse se lit à l'ombre et à l'arête, jamais à la teinte. Un vert délavé
      restait une couleur, et l'on cherchait ce qu'il voulait dire. L'existant
      reste gris : c'est le contexte, il ne doit pas se disputer le regard avec
      le projet. */
-  var cMono = cssRGB("--site-mono"), cEnt = teinte("--ink-4", .5);
+  var cMono = cssRGB("--site-mono"), cEnt = teinte("--faint-foreground", .5);
   MASS.vol.forEach(function(v){
     var sel = MASS.sel === v.id;
     /* Les sous-sols descendent sous l'assise, les étages montent depuis elle, et
@@ -317,7 +315,7 @@ export function vue3dDraw(){
   cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
   var gl = G.gl;
   gl.viewport(0, 0, cv.width, cv.height);
-  var bg = cssRGB("--panel");
+  var bg = cssRGB("--card");
   gl.clearColor(bg[0], bg[1], bg[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.useProgram(G.prog);

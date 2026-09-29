@@ -1,12 +1,15 @@
 /* État de la vue — source unique de vérité.
 
-   QUATRE destinations. Les onglets ne sont pas un sommaire : ils sont la
-   CHRONOLOGIE du concours. Chacun se sert de ce que le précédent a décidé.
+   HUIT destinations numérotées, et le cadre. Les onglets ne sont pas un
+   sommaire : ils sont la CHRONOLOGIE du concours. Chacun se sert de ce que le
+   précédent a décidé.
 
-       Cahier des charges  →  Programme mixer  →  Massing  →  Typologie
-       contraintes            répartition du     volumétrie   plans et coupes
-       et surfaces            programme sur      sur le site
-                              les niveaux
+       ⚙ Paramètres & contraintes   le cadre, hors chronologie
+       01 Cahier des charges        surfaces, contraintes, adjacences
+       02 Forensics                 le moodboard : ce qu'on a vu, lu, relevé
+       03 Programme mixer           répartition du programme sur les niveaux
+       04 Massing                   volumétrie sur le site
+       05 Typologies · 06 Tectonics · 07 Materiality · 08 Rendu   à construire
 
    L'ancien ordre faisait l'inverse : on dessinait le Plan d'un niveau avant
    d'avoir choisi le Site, donc la typologie décidait du volume. La typologie
@@ -26,12 +29,22 @@
 */
 
 export var TABS = [
-  { id:"programme", label:"Cahier des charges", kind:"doc"  },
-  { id:"mixer",     label:"Programme mixer", kind:"tool" },
-  { id:"massing",   label:"Massing", kind:"tool" },
-  /* À construire. L'onglet existe pour que la chronologie soit entière, et
-     qu'on sache où la typologie viendra : après le volume, jamais avant. */
-  { id:"typologie", label:"Typologie", kind:"tool" }
+  /* Le CADRE du projet, hors chronologie : tout ce qui influe sur une
+     variante, en lignes — critère, valeur, importance. Il n'a pas de numéro
+     parce qu'il n'est pas une étape : il porte une icône. */
+  { id:"parametres", label:"Paramètres & contraintes", kind:"doc", icon:"reglages" },
+  { id:"programme",  label:"Cahier des charges", kind:"doc",  n:"01" },
+  /* Le moodboard du groupe : images, notes, liens, sur une toile. */
+  { id:"forensics",  label:"Forensics",          kind:"tool", n:"02" },
+  { id:"mixer",      label:"Programme mixer",    kind:"tool", n:"03" },
+  { id:"massing",    label:"Massing",            kind:"tool", n:"04" },
+  /* À construire. Les onglets existent pour que la chronologie soit entière,
+     et qu'on sache où chaque chose viendra : la typologie après le volume,
+     jamais avant. */
+  { id:"typologie",  label:"Typologies",         kind:"tool", n:"05" },
+  { id:"tectonique", label:"Tectonics",          kind:"tool", n:"06" },
+  { id:"materialite",label:"Materiality",        kind:"tool", n:"07" },
+  { id:"rendu",      label:"Rendu",              kind:"tool", n:"08" }
 ];
 
 /* Les volets, onglet par onglet. Ils étaient trois pour le seul cahier des

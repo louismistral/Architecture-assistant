@@ -122,10 +122,16 @@ export function glDrawStatic(G, s, mode){
 /* ---- couleurs du thème --------------------------------------------------- */
 /* Règle du projet : aucune valeur de dessin hors de `tokens.css`. WebGL ne sait
    pas lire `var(--f-cla)` : on demande au navigateur de résoudre le token sur
-   une sonde, et on garde le résultat tant que le thème ne change pas. */
-var CCACHE = {}, CKEY = "";
-function themeKey(){
-  return (document.documentElement.getAttribute("data-theme") || "auto") + "|"
+   une sonde, et on garde le résultat tant que le thème ne change pas.
+   La couleur calculée n'est plus toujours un `rgb()` : un thème shadcn écrit en
+   `oklch()`, et les dérivés de `tokens.css` sont des `color-mix()`. Un canevas
+   2D les ramène tous à quatre octets — c'est le seul convertisseur que le
+   navigateur expose pour n'importe quel espace de couleur. */
+var CCACHE = {}, CKEY = "", CTX = null;
+/* Le thème, le mode choisi, et le mode du système : les trois décident. */
+export function themeKey(){
+  var h = document.documentElement;
+  return (h.getAttribute("data-theme") || "saxon") + "|" + (h.getAttribute("data-mode") || "auto") + "|"
        + (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "d" : "l");
 }
 export function cssRGB(token){
@@ -135,10 +141,22 @@ export function cssRGB(token){
   var probe = document.createElement("span");
   probe.style.cssText = "position:absolute;width:0;height:0;color:var(" + token + ")";
   document.body.appendChild(probe);
-  var m = /rgba?\(([^)]+)\)/.exec(getComputedStyle(probe).color);
+  var col = getComputedStyle(probe).color;
   document.body.removeChild(probe);
-  var v = m ? m[1].split(",").map(parseFloat) : [128, 128, 128];
-  var c = [v[0] / 255, v[1] / 255, v[2] / 255];
+  if(!CTX){
+    var cv = document.createElement("canvas");
+    cv.width = cv.height = 1;
+    CTX = cv.getContext("2d", { willReadFrequently:true });
+  }
+  var c = [0.5, 0.5, 0.5];
+  if(CTX){
+    CTX.clearRect(0, 0, 1, 1);
+    CTX.fillStyle = "#808080";
+    CTX.fillStyle = col;
+    CTX.fillRect(0, 0, 1, 1);
+    var d = CTX.getImageData(0, 0, 1, 1).data;
+    c = [d[0] / 255, d[1] / 255, d[2] / 255];
+  }
   CCACHE[token] = c;
   return c;
 }

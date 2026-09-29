@@ -4,7 +4,17 @@ import {
   ALL_OFF, BUILT, BUILTG, CIRC, CIRCA, COULOIR, ESTT, FMAP, GRAND, GRANDG, PROG,
   setCirc, setItemArea
 } from "../core/model.js";
-import { curSub, setSub, subBtnId, subsOf, view, writeHash } from "../core/viewstate.js";
+import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../core/viewstate.js";
+import { parametresVue } from "./parametres.js";
+import { forensicsVue } from "./forensics.js";
+
+/* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
+var A_CONSTRUIRE = {
+  typologie:   "Plans et coupes, dessinés dans les volumes que le massing a posés.",
+  tectonique:  "La construction : structure, portées, trames, assemblages.",
+  materialite: "Les matériaux, leurs teintes, leurs textures et leur vieillissement.",
+  rendu:       "Les planches du concours : images, axonométries, mise en page."
+};
 import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
@@ -186,13 +196,15 @@ export function render(){
     return;
   }
 
-  /* La typologie — plans et coupes — viendra après le volume. L'onglet est là
-     pour que la chronologie soit entière ; il ne promet rien d'autre. */
-  if(view.tab === "typologie"){
+  if(view.tab === "parametres"){ panelsEl.appendChild(parametresVue(render)); return; }
+  if(view.tab === "forensics"){ forensicsVue(panelsEl); return; }
+
+  /* Les onglets à construire. Ils sont là pour que la chronologie soit
+     entière, et ne promettent rien d'autre que ce qu'ils viendront faire. */
+  if(A_CONSTRUIRE[view.tab]){
     var tv = el("section","tab-vide");
-    tv.appendChild(el("h2", null, "Typologie"));
-    tv.appendChild(el("p", null, "Plans et coupes, dessinés dans les volumes que le massing a posés. "
-      + "Cet onglet est à construire."));
+    tv.appendChild(el("h2", null, tabOf(view.tab).n + " " + tabOf(view.tab).label));
+    tv.appendChild(el("p", null, A_CONSTRUIRE[view.tab] + " Cet onglet est à construire."));
     panelsEl.appendChild(tv);
     return;
   }
@@ -370,7 +382,7 @@ function ligne(it, gp, fam){
    surfaces à préciser : les mêmes conventions que partout ailleurs. */
 function glyphe(it){
   var K = NOMEN_K, GW = NOMEN_GW;
-  var col = it.circ ? "var(--ink-4)" : "var(" + FMAP[it.f].c + ")";
+  var col = it.circ ? "var(--faint-foreground)" : "var(" + FMAP[it.f].c + ")";
   var fill = it.circ ? "url(#" + CIRCPAT + ")" : (it.f === "tec" ? "url(#" + CIRCPAT + "-tec)" : col);
   var op = it.circ || it.f === "tec" ? "1" : (it.est ? "0.1" : "var(--fill-op)");
   function carre(g, x, y, w, h){

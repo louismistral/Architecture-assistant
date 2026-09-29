@@ -8,9 +8,9 @@
 [hidden]{display:none!important}
 
 body{
-  background:var(--paper);
-  color:var(--ink);
-  font-family:var(--sans);
+  background:var(--background);
+  color:var(--foreground);
+  font-family:var(--font-sans);
   line-height:var(--lh-base);
   -webkit-font-smoothing:antialiased;
   margin:0;
@@ -22,34 +22,34 @@ body{
    dessine à l'intérieur de la boîte, donc il survit aux cinq conteneurs en
    `overflow:hidden` qui le rognaient. */
 :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{
-  outline:2px solid var(--focus);
+  outline:2px solid var(--ring);
   outline-offset:-2px;
   border-radius:inherit;
 }
 
 .wrap{max-width:960px;margin:0 auto;padding-inline:var(--s-5);padding-block:var(--s-6) var(--s-8)}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 
 /* Étiquette de rang : le motif « capitales espacées » était réécrit douze fois
    avec cinq tailles et six interlettrages. C'est la seule signalétique qui dit
    « ici commence une section » — elle ne peut pas être instable. */
 .label,.eyebrow{
   font-size:var(--t-3xs);font-weight:600;font-variation-settings:"wdth" 88;
-  letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--ink-3);
+  letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--muted-foreground);
 }
 .label--lg,.eyebrow{font-size:var(--t-2xs)}
 
-footer{margin-top:var(--s-6);font-size:var(--t-xs);color:var(--ink-2);line-height:var(--lh-loose)}
-footer b{color:var(--ink);font-weight:500}
+footer{margin-top:var(--s-6);font-size:var(--t-xs);color:var(--soft-foreground);line-height:var(--lh-loose)}
+footer b{color:var(--foreground);font-weight:500}
 
 #tip{
   position:fixed;z-index:var(--z-tip);pointer-events:none;opacity:0;
-  transform:translate(-50%,-100%);background:var(--ink);color:var(--paper);
-  padding:var(--s-2) var(--s-3);border-radius:var(--r-md);max-width:250px;
+  transform:translate(-50%,-100%);background:var(--primary);color:var(--primary-foreground);
+  padding:var(--s-2) var(--s-3);border-radius:var(--radius-md);max-width:250px;
   font-size:var(--t-xs);line-height:var(--lh-snug);
   transition:opacity var(--dur-1) linear;
 }
 #tip .t{font-weight:600;display:block;margin-bottom:2px}
-#tip .m{font-family:var(--mono);font-size:var(--t-2xs);opacity:.78;display:block}
+#tip .m{font-family:var(--font-mono);font-size:var(--t-2xs);opacity:.78;display:block}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

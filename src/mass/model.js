@@ -437,8 +437,8 @@ export function familleDom(i){
   for(k in par) if(par[k] > bv){ bv = par[k]; best = k; }
   return best || "cla";
 }
-export function famCol(f){ return FMAP[f] ? "var(" + FMAP[f].c + ")" : "var(--ink-3)"; }
-export function famTok(f){ return FMAP[f] ? FMAP[f].c : "--ink-3"; }
+export function famCol(f){ return FMAP[f] ? "var(" + FMAP[f].c + ")" : "var(--muted-foreground)"; }
+export function famTok(f){ return FMAP[f] ? FMAP[f].c : "--muted-foreground"; }
 
 export { aire };
 

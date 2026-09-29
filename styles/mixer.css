@@ -12,14 +12,14 @@
 .mix-bar{gap:var(--s-3) var(--s-4)}
 .mix-seed{display:flex;align-items:center}
 .mix-seed input{
-  width:6.5em;font:inherit;font-family:var(--mono);font-size:var(--t-xs);
+  width:6.5em;font:inherit;font-family:var(--font-mono);font-size:var(--t-xs);
   padding:var(--s-1) var(--s-2);min-height:var(--ctl-h);
-  border:1px solid var(--rule);border-radius:var(--r-md);
-  background:var(--panel);color:var(--ink);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  background:var(--card);color:var(--foreground);
 }
 .mix-opt{
   display:inline-flex;align-items:center;gap:var(--s-2);
-  font-size:var(--t-xs);color:var(--ink-2);cursor:pointer;min-height:var(--tap-min);
+  font-size:var(--t-xs);color:var(--soft-foreground);cursor:pointer;min-height:var(--tap-min);
 }
 
 /* --- la grille : la pile, et son flanc ---------------------------------- */
@@ -32,65 +32,65 @@
   position:sticky;top:calc(var(--ctl-h) + var(--s-6));
   display:grid;gap:var(--s-4);
   max-height:calc(100vh - var(--s-8));overflow-y:auto;
-  border-left:1px solid var(--rule);padding-left:var(--s-4);
+  border-left:1px solid var(--border);padding-left:var(--s-4);
 }
 @media (max-width:1000px){
   .mix-grid{grid-template-columns:1fr}
-  .mix-side{position:static;max-height:none;border-left:0;border-top:1px solid var(--rule);
+  .mix-side{position:static;max-height:none;border-left:0;border-top:1px solid var(--border);
             padding-left:0;padding-top:var(--s-4)}
 }
 
 /* --- le bandeau de chiffres --------------------------------------------- */
 .mix-sum{
   display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-6);
-  padding-bottom:var(--s-4);border-bottom:1px solid var(--rule);margin-bottom:var(--s-4);
+  padding-bottom:var(--s-4);border-bottom:1px solid var(--border);margin-bottom:var(--s-4);
 }
 .mix-fig{display:grid;gap:1px}
 .mix-fig b{
-  font-family:var(--mono);font-size:var(--t-num-md);font-weight:500;
+  font-family:var(--font-mono);font-size:var(--t-num-md);font-weight:500;
   font-variant-numeric:tabular-nums;line-height:var(--lh-tight);
 }
-.mix-fig__l{font-size:var(--t-2xs);color:var(--ink-2)}
-.mix-fig__s{font-size:var(--t-3xs);color:var(--ink-3)}
+.mix-fig__l{font-size:var(--t-2xs);color:var(--soft-foreground)}
+.mix-fig__s{font-size:var(--t-3xs);color:var(--muted-foreground)}
 
 /* --- la pile -------------------------------------------------------------
    Le niveau le plus haut en tête, le rez en bas, les sous-sols dessous : c'est
    la convention de coupe. Une rangée horizontale disait l'inverse d'un endroit
    à l'autre de la même vue. */
 .mix-stack{display:flex;flex-direction:column;gap:var(--s-3)}
-.mix-ground{height:2px;background:var(--ink-4);margin-top:var(--s-1)}
+.mix-ground{height:2px;background:var(--faint-foreground);margin-top:var(--s-1)}
 
 .mix-fl{
-  border:1px solid var(--rule);border-radius:var(--r-lg);
-  background:var(--panel);overflow:hidden;
+  border:1px solid var(--border);border-radius:var(--radius-lg);
+  background:var(--card);overflow:hidden;
 }
-.mix-fl.is-drop{border-color:var(--focus);box-shadow:inset 0 0 0 1px var(--focus)}
+.mix-fl.is-drop{border-color:var(--ring);box-shadow:inset 0 0 0 1px var(--ring)}
 .mix-fl__bar{
   display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);
-  padding:var(--s-2) var(--s-3);border-bottom:1px solid var(--rule-soft);
+  padding:var(--s-2) var(--s-3);border-bottom:1px solid var(--border-soft);
 }
 .mix-fl__bar .spacer{flex:1 1 var(--s-4)}
 .mix-fl__n{font-size:var(--t-sm);font-weight:600;font-variation-settings:"wdth" 104}
 .mix-fl__plate{display:inline-flex;align-items:center;gap:var(--s-2)}
 .mix-fl__plate input{
-  width:5.5em;font:inherit;font-family:var(--mono);font-size:var(--t-xs);
+  width:5.5em;font:inherit;font-family:var(--font-mono);font-size:var(--t-xs);
   text-align:right;padding:var(--s-1) var(--s-2);min-height:var(--tap-min);
-  border:1px solid var(--rule);border-radius:var(--r-md);
-  background:var(--paper);color:var(--ink);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  background:var(--background);color:var(--foreground);
 }
-.mix-fl__u,.mix-fl__meta,.mix-fl__h{font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-fl__u,.mix-fl__meta,.mix-fl__h{font-size:var(--t-2xs);color:var(--muted-foreground)}
 /* La hauteur de niveau est une autre nature de chiffre que le décompte des
    pièces : un filet les sépare, sinon « 0 m² bâtis 3,25 m » se lit d'un trait. */
-.mix-fl__h{padding-left:var(--s-3);border-left:1px solid var(--rule)}
-.mix-fl__hors{margin-left:var(--s-2);color:var(--ink-4)}
-.mix-fl__pct{font-size:var(--t-xs);color:var(--ink-2)}
-.mix-fl__pct.is-over{color:var(--danger);font-weight:600}
+.mix-fl__h{padding-left:var(--s-3);border-left:1px solid var(--border)}
+.mix-fl__hors{margin-left:var(--s-2);color:var(--faint-foreground)}
+.mix-fl__pct{font-size:var(--t-xs);color:var(--soft-foreground)}
+.mix-fl__pct.is-over{color:var(--destructive);font-weight:600}
 
 /* --- le canevas d'un niveau --------------------------------------------- */
-.mix-fl__canvas{position:relative;overflow:hidden;background:var(--paper)}
+.mix-fl__canvas{position:relative;overflow:hidden;background:var(--background)}
 .mix-empty{
   position:absolute;inset:0;margin:0;display:flex;align-items:center;justify-content:center;
-  font-size:var(--t-2xs);color:var(--ink-4);
+  font-size:var(--t-2xs);color:var(--faint-foreground);
 }
 /* La ligne de plateau et la bande de dépassement : on voit qu'un niveau déborde
    avant d'avoir lu le chiffre qui le dit. Elles passent AU-DESSUS des blocs —
@@ -99,32 +99,32 @@
    elle se marque par ses deux bords, sinon elle effacerait ce qu'elle désigne. */
 .mix-cap{
   position:absolute;left:0;right:0;height:0;z-index:3;
-  border-top:1px dashed var(--danger);pointer-events:none;
+  border-top:1px dashed var(--destructive);pointer-events:none;
 }
 .mix-cap span{
   position:absolute;right:var(--s-1);top:2px;
-  font-size:var(--t-3xs);color:var(--danger);
-  background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
+  font-size:var(--t-3xs);color:var(--destructive);
+  background:var(--card-veil);padding:0 var(--s-1);border-radius:var(--radius-sm);
 }
 .mix-over{
   position:absolute;left:0;right:0;z-index:2;pointer-events:none;
-  box-shadow:inset 3px 0 0 var(--danger),inset -3px 0 0 var(--danger);
+  box-shadow:inset 3px 0 0 var(--destructive),inset -3px 0 0 var(--destructive);
 }
 
 /* --- un bloc = une part de poste, à sa surface exacte -------------------- */
 .mixblk{
   position:absolute;overflow:hidden;cursor:grab;touch-action:none;
-  border:1px solid var(--ink);border-radius:var(--r-sm);
+  border:1px solid var(--foreground);border-radius:var(--radius-sm);
   padding:2px var(--s-1);
   display:flex;flex-direction:column;justify-content:center;
-  font-size:var(--t-3xs);line-height:var(--lh-tight);color:var(--ink);
+  font-size:var(--t-3xs);line-height:var(--lh-tight);color:var(--foreground);
 }
 .mixblk b{
   font-weight:600;font-size:var(--t-3xs);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   mix-blend-mode:normal;
 }
-.mixblk__a{font-family:var(--mono);font-size:var(--t-3xs);opacity:.82}
+.mixblk__a{font-family:var(--font-mono);font-size:var(--t-3xs);opacity:.82}
 .mixblk.is-tiny b,.mixblk.is-tiny .mixblk__a{display:none}
 /* Le nom est la PRISE DU BLOC ENTIER ; sous lui, les cellules sont les prises
    des pièces. Deux prises distinctes valent mieux qu'un modificateur à
@@ -159,18 +159,18 @@
   border-bottom:1px dashed color-mix(in srgb, currentColor 50%, transparent);
   cursor:grab;touch-action:none;
 }
-.mixpc:hover{background:color-mix(in srgb, var(--ink) 14%, transparent)}
+.mixpc:hover{background:color-mix(in srgb, var(--foreground) 14%, transparent)}
 /* Une surface à préciser porte le trait tireté, partout, sur tous les dessins. */
 .mixblk.is-est{border-style:dashed}
-.mixblk.is-sel{outline:2px solid var(--focus);outline-offset:-2px}
+.mixblk.is-sel{outline:2px solid var(--ring);outline-offset:-2px}
 .mixblk.is-dragging{opacity:.4}
 .mixblk:hover{border-width:2px}
 
 .mix-ghost{
   position:fixed;z-index:var(--z-tip);pointer-events:none;
-  background:var(--ink);color:var(--paper);
-  padding:var(--s-1) var(--s-2);border-radius:var(--r-md);
-  font-size:var(--t-2xs);box-shadow:var(--sh-2);
+  background:var(--primary);color:var(--primary-foreground);
+  padding:var(--s-1) var(--s-2);border-radius:var(--radius-md);
+  font-size:var(--t-2xs);box-shadow:var(--shadow-lg);
 }
 
 /* --- modifier la pile ---------------------------------------------------- */
@@ -180,26 +180,26 @@
   flex-direction:column;align-items:flex-start;gap:0;
   height:auto;padding-block:var(--s-2);text-align:left;white-space:normal;
 }
-.mix-why{font-size:var(--t-3xs);color:var(--ink-3);font-weight:400;line-height:var(--lh-snug)}
+.mix-why{font-size:var(--t-3xs);color:var(--muted-foreground);font-weight:400;line-height:var(--lh-snug)}
 
 /* --- le flanc : circulation, contrôle, bac ------------------------------- */
 .mix-circ{
-  border:1px dashed var(--rule-strong);border-radius:var(--r-lg);padding:var(--s-3);
+  border:1px dashed var(--border-strong);border-radius:var(--radius-lg);padding:var(--s-3);
 }
 .mix-circ h3{margin:0 0 var(--s-1)}
 .mix-circ__v{
-  margin:0;font-family:var(--mono);font-size:var(--t-num-md);font-weight:500;
+  margin:0;font-family:var(--font-mono);font-size:var(--t-num-md);font-weight:500;
   font-variant-numeric:tabular-nums;
 }
-.mix-circ__v .u{font-size:var(--t-2xs);color:var(--ink-3);margin-left:var(--s-2);font-weight:400}
-.mix-circ__n{margin:var(--s-1) 0 var(--s-2);font-size:var(--t-2xs);color:var(--ink-2)}
+.mix-circ__v .u{font-size:var(--t-2xs);color:var(--muted-foreground);margin-left:var(--s-2);font-weight:400}
+.mix-circ__n{margin:var(--s-1) 0 var(--s-2);font-size:var(--t-2xs);color:var(--soft-foreground)}
 .mix-circ__go{font-size:var(--t-2xs);padding:var(--s-1) var(--s-2);min-height:var(--tap-min)}
 
 .mix-issues__hd,.mix-tray__hd{
   display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-2);margin-bottom:var(--s-2);
 }
 .mix-issues__hd h3,.mix-tray__hd h3{margin:0}
-.mix-tray__hd .mono{font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-tray__hd .mono{font-size:var(--t-2xs);color:var(--muted-foreground)}
 .mix-ok{margin:0;font-size:var(--t-2xs);color:var(--ok)}
 
 .mix-list{margin:0;padding:0;list-style:none;display:grid;gap:var(--s-2)}
@@ -207,52 +207,52 @@
   /* La pastille et le texte sont désormais DANS le bouton, qui porte ses deux
      colonnes : laissée en grille, la ligne envoyait le panneau déplié dans la
      deuxième colonne, sur trois caractères de large. */
-  font-size:var(--t-2xs);color:var(--ink-2);line-height:var(--lh-snug);
+  font-size:var(--t-2xs);color:var(--soft-foreground);line-height:var(--lh-snug);
 }
 .mix-list li i{
-  font-style:normal;font-family:var(--mono);font-size:var(--t-3xs);
-  padding:1px var(--s-1);border-radius:var(--r-sm);white-space:nowrap;
+  font-style:normal;font-family:var(--font-mono);font-size:var(--t-3xs);
+  padding:1px var(--s-1);border-radius:var(--radius-sm);white-space:nowrap;
 }
 .mix-list li.e i{background:var(--danger-fill);color:var(--on-fill)}
-.mix-list li.w i{background:var(--rule-soft);color:var(--ink-3);border:1px solid var(--rule)}
-.mix-list li span{color:var(--ink-3)}
+.mix-list li.w i{background:var(--accent);color:var(--muted-foreground);border:1px solid var(--border)}
+.mix-list li span{color:var(--muted-foreground)}
 
-.mix-tray.is-drop{outline:2px solid var(--focus);outline-offset:var(--s-2);border-radius:var(--r-md)}
+.mix-tray.is-drop{outline:2px solid var(--ring);outline-offset:var(--s-2);border-radius:var(--radius-md)}
 .mix-cat{margin-bottom:var(--s-3)}
 .mix-cat__h{
   display:flex;justify-content:space-between;gap:var(--s-2);
-  font-size:var(--t-3xs);color:var(--ink-3);
-  padding-bottom:2px;border-bottom:1px solid var(--rule-soft);margin-bottom:var(--s-2);
+  font-size:var(--t-3xs);color:var(--muted-foreground);
+  padding-bottom:2px;border-bottom:1px solid var(--border-soft);margin-bottom:var(--s-2);
 }
 .mix-chips{display:flex;flex-wrap:wrap;gap:var(--s-1)}
 .mixchip{
   appearance:none;display:inline-flex;align-items:center;gap:var(--s-1);
-  font:inherit;font-size:var(--t-3xs);color:var(--ink-2);
-  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-md);
+  font:inherit;font-size:var(--t-3xs);color:var(--soft-foreground);
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
   padding:var(--s-1) var(--s-2);min-height:var(--tap-min);
   cursor:grab;touch-action:none;
 }
-.mixchip:hover{color:var(--ink);border-color:var(--rule-strong)}
-.mixchip .sw{width:9px;height:9px;border-radius:var(--r-sm);flex:none}
-.mixchip .mono{color:var(--ink-3)}
+.mixchip:hover{color:var(--foreground);border-color:var(--border-strong)}
+.mixchip .sw{width:9px;height:9px;border-radius:var(--radius-sm);flex:none}
+.mixchip .mono{color:var(--muted-foreground)}
 .mixchip.is-dragging{opacity:.4}
 .mix-tray__note{
-  margin:var(--s-3) 0 0;padding-top:var(--s-2);border-top:1px dashed var(--rule);
-  font-size:var(--t-3xs);color:var(--ink-3);line-height:var(--lh-snug);
+  margin:var(--s-3) 0 0;padding-top:var(--s-2);border-top:1px dashed var(--border);
+  font-size:var(--t-3xs);color:var(--muted-foreground);line-height:var(--lh-snug);
 }
-.mix-tray__note b{color:var(--ink-2);font-weight:500}
+.mix-tray__note b{color:var(--soft-foreground);font-weight:500}
 .mix-tray__note span{display:block;margin-top:2px}
 
 /* Le filet qui sépare l'enveloppe scolaire de ce qui est posé au terrain sans
    peser sur le plateau : cour, piscine, chauffage à distance. */
 .mix-hors{
   position:absolute;left:0;right:0;height:0;z-index:3;
-  border-top:1px solid var(--ink-4);pointer-events:none;
+  border-top:1px solid var(--faint-foreground);pointer-events:none;
 }
 .mix-hors span{
   position:absolute;left:var(--s-1);top:2px;
-  font-size:var(--t-3xs);color:var(--ink-3);
-  background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
+  font-size:var(--t-3xs);color:var(--muted-foreground);
+  background:var(--card-veil);padding:0 var(--s-1);border-radius:var(--radius-sm);
 }
 
 
@@ -263,40 +263,40 @@
 .mix-iss{
   display:grid;grid-template-columns:auto 1fr;gap:var(--s-2);align-items:baseline;
   width:100%;text-align:left;padding:var(--s-1) var(--s-2) var(--s-1) 0;
-  background:none;border:0;border-radius:var(--r-sm);cursor:pointer;
+  background:none;border:0;border-radius:var(--radius-sm);cursor:pointer;
   font:inherit;color:inherit;
 }
-.mix-iss:hover{background:var(--rule-soft)}
-.mix-list li.is-open{background:var(--rule-soft);border-radius:var(--r-md);padding:var(--s-1)}
+.mix-iss:hover{background:var(--accent)}
+.mix-list li.is-open{background:var(--accent);border-radius:var(--radius-md);padding:var(--s-1)}
 .mix-list li.is-open .mix-iss:hover{background:none}
 .mix-list li.ok{opacity:.72}
-.mix-list li.ok i{background:none;border:1px dashed var(--rule-strong);color:var(--ink-3)}
+.mix-list li.ok i{background:none;border:1px dashed var(--border-strong);color:var(--muted-foreground)}
 .mix-iss__p{display:grid;gap:var(--s-2);padding:var(--s-2) var(--s-2) var(--s-1)}
-.mix-iss__w{margin:0;font-size:var(--t-3xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.mix-iss__w{margin:0;font-size:var(--t-3xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 .mix-issues__hd--soft{margin-top:var(--s-4)}
-.chip--soft{background:var(--rule);color:var(--ink-2)}
+.chip--soft{background:var(--border);color:var(--soft-foreground)}
 .mix-reprendre{margin-left:auto}
 
 /* --- ajouter un niveau, là où il apparaîtra --------------------------------
    Un rang discret en tête et au pied de la pile : le geste est au bord qu'il
    prolonge, et non dans une barre d'outils à quatre cents pixels de là. */
 .mix-add{display:flex;justify-content:center;padding:var(--s-2) 0}
-.mix-add__b{border-style:dashed;color:var(--ink-3)}
-.mix-add__b:hover{color:var(--ink);border-style:solid}
+.mix-add__b{border-style:dashed;color:var(--muted-foreground)}
+.mix-add__b:hover{color:var(--foreground);border-style:solid}
 
 /* La corbeille d'un niveau : sur le niveau, jamais ailleurs. */
-.mix-fl__del{margin-left:var(--s-2);color:var(--ink-3);font-size:var(--t-md);line-height:1}
-.mix-fl__del:hover{color:var(--danger);border-color:var(--danger)}
+.mix-fl__del{margin-left:var(--s-2);color:var(--muted-foreground);font-size:var(--t-md);line-height:1}
+.mix-fl__del:hover{color:var(--destructive);border-color:var(--destructive)}
 
 /* --- ce que l'écart ouvert désigne -----------------------------------------
    Le niveau visé prend le filet de l'écart, les pièces en cause le portent.
    Lire un conflit et devoir ensuite chercher ses coupables dans la pile, c'est
    tout le travail laissé à faire. */
-.mix-fl.is-flagged{outline:2px solid var(--warn);outline-offset:3px;border-radius:var(--r-md)}
-.mix-fl.is-flagged.is-e{outline-color:var(--danger)}
+.mix-fl.is-flagged{outline:2px solid var(--warn);outline-offset:3px;border-radius:var(--radius-md)}
+.mix-fl.is-flagged.is-e{outline-color:var(--destructive)}
 .mixblk.is-flag{outline:2px solid var(--warn);outline-offset:-2px;z-index:2}
-.mixblk.is-flag.is-e{outline-color:var(--danger)}
-.mixblk.is-flag b{color:var(--ink)}
+.mixblk.is-flag.is-e{outline-color:var(--destructive)}
+.mixblk.is-flag b{color:var(--foreground)}
 .mix-fl__del svg{display:block}
 
 /* La circulation, dessinée à l'échelle sous les locaux du niveau. Hachurée et
@@ -306,15 +306,15 @@
    alors qu'ils étaient comptés dans le pourcentage écrit à côté. */
 .mix-circband{
   position:absolute;left:0;right:0;z-index:1;
-  border-block:1px solid var(--ink-4);
+  border-block:1px solid var(--faint-foreground);
 }
 .mix-circband span{
   position:absolute;left:var(--s-1);top:2px;
-  font-size:var(--t-3xs);color:var(--ink-3);
-  background:var(--panel-veil);padding:0 var(--s-1);border-radius:var(--r-sm);
+  font-size:var(--t-3xs);color:var(--muted-foreground);
+  background:var(--card-veil);padding:0 var(--s-1);border-radius:var(--radius-sm);
 }
 /* L'addition du niveau : utile + circulation = bâti. */
-.mix-fl__circ{color:var(--ink-3);padding-inline:var(--s-1)}
+.mix-fl__circ{color:var(--muted-foreground);padding-inline:var(--s-1)}
 
 /* --- le dé d'un réglage, et le lien d'un poste ------------------------------
    Des commandes discrètes, qui reviennent sur chaque niveau et chaque bloc :
@@ -323,14 +323,14 @@
    devient un cadenas, en retrait. */
 .btn.mix-de,.btn.mix-lien{
   min-height:var(--tap-min);padding:0 var(--s-2);gap:var(--s-1);
-  font-size:var(--t-2xs);color:var(--ink-3);background:var(--panel);
+  font-size:var(--t-2xs);color:var(--muted-foreground);background:var(--card);
 }
 .btn.mix-de svg,.btn.mix-lien svg{display:block;flex:none}
 .btn.mix-de[aria-pressed="true"],.btn.mix-de[aria-pressed="mixed"]{
-  background:var(--panel);color:var(--ink);border-color:var(--ink);
+  background:var(--card);color:var(--foreground);border-color:var(--foreground);
 }
 .btn.mix-de[aria-pressed="mixed"]{border-style:dashed}
-.btn.mix-lien[aria-pressed="true"]{background:var(--panel);color:var(--ink);border-color:var(--ink-3)}
+.btn.mix-lien[aria-pressed="true"]{background:var(--card);color:var(--foreground);border-color:var(--muted-foreground)}
 .btn.mix-de--compact,.btn.mix-lien--compact{min-width:var(--tap-min);padding:0 var(--s-1)}
 
 /* La pile porte son propre dé, en tête. */
@@ -339,14 +339,14 @@
   padding-bottom:var(--s-2);
 }
 .mix-pilehd .label{margin:0}
-.mix-pilehd__n{font-size:var(--t-xs);color:var(--ink-2)}
-.mix-pilehd__h{font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-pilehd__n{font-size:var(--t-xs);color:var(--soft-foreground)}
+.mix-pilehd__h{font-size:var(--t-2xs);color:var(--muted-foreground)}
 
 /* Sur un bloc, le lien et le dé se posent en haut à droite, au-dessus de tout. */
 .mixblk__ctl{
   position:absolute;top:2px;right:2px;z-index:1;display:flex;gap:2px;
 }
-.mixblk__ctl .btn{min-height:calc(var(--tap-min) - var(--s-1));background:var(--panel-veil)}
+.mixblk__ctl .btn{min-height:calc(var(--tap-min) - var(--s-1));background:var(--card-veil)}
 .mixblk.has-pcs .mixblk__lb{padding-right:calc(2 * var(--tap-min) + var(--s-1))}
 .mixblk:not(.has-pcs) .mixblk__lb{padding-right:calc(2 * var(--tap-min))}
 
@@ -359,8 +359,8 @@
 .mixblk.is-delie.is-delie-plein{border-style:dotted;background:none}
 .mixblk.is-delie .mixblk__pcs{gap:2px;margin:0}
 .mixblk.is-delie .mixpc{
-  border:1px solid var(--c);border-radius:var(--r-sm);
-  background-color:color-mix(in srgb, var(--c) calc(var(--fill-op) * 100%), var(--paper));
+  border:1px solid var(--c);border-radius:var(--radius-sm);
+  background-color:color-mix(in srgb, var(--c) calc(var(--fill-op) * 100%), var(--background));
 }
 .mixblk.is-delie.is-hatched .mixpc{
   background-image:repeating-linear-gradient(45deg,
@@ -372,54 +372,54 @@
 
 /* --- ce que tire le Shuffle ------------------------------------------------ */
 .mix-regl h3,.mix-adj h3{margin:0 0 var(--s-1)}
-.mix-regl__n{margin:0 0 var(--s-2);font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.mix-regl__n{margin:0 0 var(--s-2);font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 .mix-regl__l{list-style:none;margin:0;padding:0;display:grid}
 .mix-regl__l li{
   display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--s-1) var(--s-2);
-  padding:var(--s-2) 0;border-top:1px solid var(--rule-soft);
+  padding:var(--s-2) 0;border-top:1px solid var(--border-soft);
 }
 .mix-regl__t b{display:block;font-size:var(--t-xs);font-weight:500}
-.mix-regl__t span{display:block;font-size:var(--t-3xs);color:var(--ink-3)}
+.mix-regl__t span{display:block;font-size:var(--t-3xs);color:var(--muted-foreground)}
 .mix-regl__g{grid-column:1 / -1;width:max-content}
 .mix-regl__g .btn{min-height:var(--tap-min);font-size:var(--t-2xs)}
 .mix-regl__det{margin-top:var(--s-2)}
 .mix-postes{list-style:none;margin:var(--s-2) 0 0;padding:0;display:grid}
 .mix-postes li{
   display:grid;grid-template-columns:9px 1fr auto auto;align-items:center;gap:var(--s-2);
-  padding:var(--s-1) 0;border-top:1px solid var(--rule-soft);font-size:var(--t-2xs);
+  padding:var(--s-1) 0;border-top:1px solid var(--border-soft);font-size:var(--t-2xs);
 }
-.mix-postes .sw{width:9px;height:9px;border-radius:var(--r-sm)}
+.mix-postes .sw{width:9px;height:9px;border-radius:var(--radius-sm)}
 .mix-postes__n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* --- les adjacences -------------------------------------------------------- */
-.mix-adj__c{font-size:var(--t-2xs);color:var(--ink-3)}
+.mix-adj__c{font-size:var(--t-2xs);color:var(--muted-foreground)}
 .mix-adj__g{width:max-content;margin-bottom:var(--s-2)}
 .mix-adj__g .btn{min-height:var(--tap-min);font-size:var(--t-2xs)}
 .mix-adj__l{list-style:none;margin:0;padding:0;display:grid}
 .mix-adj__l li{
   display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:var(--s-2);
-  padding:var(--s-2) 0;border-top:1px solid var(--rule-soft);
+  padding:var(--s-2) 0;border-top:1px solid var(--border-soft);
 }
-.mix-adj__l li:not(.is-on) .mix-adj__t{color:var(--ink-3)}
+.mix-adj__l li:not(.is-on) .mix-adj__t{color:var(--muted-foreground)}
 .mix-adj__t{min-width:0;font-size:var(--t-2xs);line-height:var(--lh-snug)}
 .mix-adj__t b{font-weight:500;margin-right:var(--s-1)}
-.mix-adj__t q{display:block;font-size:var(--t-3xs);color:var(--ink-3);font-style:italic;quotes:"«\00a0" "\00a0»"}
-.mix-adj__l li.is-bad{box-shadow:inset 2px 0 0 var(--danger);padding-left:var(--s-2)}
-.mix-adj__bad{display:block;font-size:var(--t-3xs);color:var(--danger)}
+.mix-adj__t q{display:block;font-size:var(--t-3xs);color:var(--muted-foreground);font-style:italic;quotes:"«\00a0" "\00a0»"}
+.mix-adj__l li.is-bad{box-shadow:inset 2px 0 0 var(--destructive);padding-left:var(--s-2)}
+.mix-adj__bad{display:block;font-size:var(--t-3xs);color:var(--destructive)}
 
 /* L'interrupteur d'une adjacence : un rail et son curseur. L'état se lit aussi
    à la couleur du nom, et dans le libellé accessible. */
 .mix-sw{
   appearance:none;position:relative;flex:none;cursor:pointer;
   width:calc(var(--s-5) + var(--s-2));height:var(--s-4);margin-top:1px;
-  border:1px solid var(--rule-strong);border-radius:var(--r-full);background:var(--rule-soft);
+  border:1px solid var(--border-strong);border-radius:var(--radius-full);background:var(--accent);
   transition:background-color var(--dur-2) var(--ease),border-color var(--dur-2) var(--ease);
 }
 .mix-sw__k{
   position:absolute;top:1px;left:1px;width:calc(var(--s-4) - 4px);height:calc(var(--s-4) - 4px);
-  border-radius:var(--r-full);background:var(--panel);box-shadow:var(--sh-1);
+  border-radius:var(--radius-full);background:var(--card);box-shadow:var(--shadow-sm);
   transition:transform var(--dur-2) var(--ease);
 }
-.mix-sw[aria-checked="true"]{background:var(--ink);border-color:var(--ink)}
+.mix-sw[aria-checked="true"]{background:var(--primary);border-color:var(--primary)}
 .mix-sw[aria-checked="true"] .mix-sw__k{transform:translateX(var(--s-4))}
 @media (prefers-reduced-motion:reduce){.mix-sw,.mix-sw__k{transition:none}}

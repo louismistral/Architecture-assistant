@@ -16,7 +16,7 @@ export function scaleBar(k, m){
     role: "img", "aria-label": "Barre d’échelle de " + m + " mètres" });
   for(var i = 0; i < 4; i++){
     sb.appendChild(s("rect", { x: i * seg + .5, y: 4, width: seg, height: 6,
-      fill: i % 2 ? "var(--panel)" : "var(--ink-2)", stroke: "var(--ink-2)", "stroke-width": 1 }));
+      fill: i % 2 ? "var(--card)" : "var(--soft-foreground)", stroke: "var(--soft-foreground)", "stroke-width": 1 }));
   }
   box.appendChild(sb);
   box.appendChild(el("span","cap mono", m + " m"));

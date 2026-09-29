@@ -1,14 +1,14 @@
 /* --- schéma fonctionnel --- */
 .schema-wrap{overflow-x:auto;padding-bottom:6px}
 .schema-wrap svg{display:block;min-width:840px;width:100%;height:auto}
-.linkkey{display:flex;flex-wrap:wrap;gap:6px 24px;margin:2px 0 18px;font-size:12px;color:var(--ink-2)}
+.linkkey{display:flex;flex-wrap:wrap;gap:6px 24px;margin:2px 0 18px;font-size:12px;color:var(--soft-foreground)}
 .linkkey span{display:inline-flex;align-items:center;gap:8px}
 .linkkey svg{display:block;flex:none}
 .links{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:0 30px}
-.links li{display:grid;grid-template-columns:13px 1fr;gap:0 10px;padding:7px 0;border-top:1px solid var(--rule-soft);font-size:13px}
+.links li{display:grid;grid-template-columns:13px 1fr;gap:0 10px;padding:7px 0;border-top:1px solid var(--border-soft);font-size:13px}
 .links li .ic{padding-top:7px}
 .links li b{font-weight:500}
-.links li q{display:block;font-size:11.5px;color:var(--ink-3);font-style:italic;quotes:"«\00a0" "\00a0»"}
+.links li q{display:block;font-size:11.5px;color:var(--muted-foreground);font-style:italic;quotes:"«\00a0" "\00a0»"}
 
 
 /* --- volet Adjacences : une carte par grappe, en cascade -------------------
@@ -19,26 +19,26 @@
 .adj-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
   gap:var(--s-2) var(--s-5);margin:var(--s-4) 0 var(--s-4)}
 .adj-bar .linkkey{margin:0}
-.adj-etalon{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--t-2xs);color:var(--ink-3)}
+.adj-etalon{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--t-2xs);color:var(--muted-foreground)}
 .adj-etalon svg{display:block}
 .adj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
   grid-auto-rows:4px;grid-auto-flow:row dense;column-gap:var(--s-4);align-items:start}
 .adj-card{display:flex;flex-direction:column;gap:var(--s-3);min-width:0;
-  margin-bottom:var(--s-4);padding:var(--s-4);background:var(--panel);
-  border:1px solid var(--rule);border-radius:var(--r-lg)}
+  margin-bottom:var(--s-4);padding:var(--s-4);background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius-lg)}
 .adj-card.is-wide{grid-column:1 / -1}
 .adj-card__h{display:grid;gap:2px}
 .adj-card__eyebrow{font-size:var(--t-3xs);letter-spacing:var(--track-caps);text-transform:uppercase;
-  color:var(--ink-3);font-weight:600;font-variation-settings:"wdth" 88}
+  color:var(--muted-foreground);font-weight:600;font-variation-settings:"wdth" 88}
 .adj-card__h h3{margin:0;font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106;
   letter-spacing:-.01em;line-height:var(--lh-tight);text-wrap:balance}
-.adj-card__s{margin:var(--s-1) 0 0;font-size:var(--t-sm);color:var(--ink)}
-.adj-card__p,.adj-card__n{margin:0;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.adj-card__s{margin:var(--s-1) 0 0;font-size:var(--t-sm);color:var(--foreground)}
+.adj-card__p,.adj-card__n{margin:0;font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 .adj-card__fig{overflow-x:auto}
 .adj-card__fig svg{display:block;max-width:100%;height:auto;margin:0 auto}
 .adj-card__det{margin:0}
 .adj-card__det .links{grid-template-columns:1fr;margin-top:var(--s-2)}
 .adj-card.is-wide .adj-card__det .links{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .adj-free{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--s-1)}
-.adj-free li{font-size:var(--t-2xs);color:var(--ink-2);padding:2px var(--s-2);
-  border:1px dashed var(--rule-strong);border-radius:var(--r-sm)}
+.adj-free li{font-size:var(--t-2xs);color:var(--soft-foreground);padding:2px var(--s-2);
+  border:1px dashed var(--border-strong);border-radius:var(--radius-sm)}

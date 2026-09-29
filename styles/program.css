@@ -1,15 +1,15 @@
 /* --- panneaux du programme --- */
-.panel{border-bottom:1px solid var(--rule);padding-block:var(--s-5)}
+.panel{border-bottom:1px solid var(--border);padding-block:var(--s-5)}
 .panel--plain{border-bottom:0}
 .panel-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-1) var(--s-3);margin-bottom:var(--s-1)}
-.panel-rule{width:22px;height:3px;border-radius:var(--r-sm);align-self:center;background:var(--ink-4)}
+.panel-rule{width:22px;height:3px;border-radius:var(--radius-sm);align-self:center;background:var(--faint-foreground)}
 .panel-head h1,.panel-head h2,.panel-head h3{
   font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106;
   letter-spacing:-.01em;margin:0;
 }
-.panel-head .tot{font-family:var(--mono);font-size:var(--t-num-sm);font-weight:500;font-variant-numeric:tabular-nums}
-.panel-head .pct{font-size:var(--t-xs);color:var(--ink-3);font-family:var(--mono)}
-.panel-sub{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--s-1);max-width:64ch}
+.panel-head .tot{font-family:var(--font-mono);font-size:var(--t-num-sm);font-weight:500;font-variant-numeric:tabular-nums}
+.panel-head .pct{font-size:var(--t-xs);color:var(--muted-foreground);font-family:var(--font-mono)}
+.panel-sub{font-size:var(--t-sm);color:var(--soft-foreground);margin:0 0 var(--s-1);max-width:64ch}
 g.blk{cursor:default}
 
 /* --- la nomenclature ------------------------------------------------------
@@ -22,68 +22,68 @@ g.blk{cursor:default}
 .nomen__t{width:100%;border-collapse:collapse;font-size:var(--t-xs);min-width:620px}
 .nomen__t thead th{
   text-align:left;font-size:var(--t-3xs);letter-spacing:var(--track-caps);text-transform:uppercase;
-  color:var(--ink-3);font-weight:600;font-variation-settings:"wdth" 88;
-  padding:var(--s-2);border-bottom:1px solid var(--ink);background:var(--paper);
+  color:var(--muted-foreground);font-weight:600;font-variation-settings:"wdth" 88;
+  padding:var(--s-2);border-bottom:1px solid var(--foreground);background:var(--background);
 }
-.nomen__t th.n,.nomen__t td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.nomen__t td{padding:var(--s-2);border-bottom:1px solid var(--rule-soft);vertical-align:middle}
-.nomen__t tbody tr:not(.nomen__g):hover td{background:var(--panel)}
-.nomen__g th{padding:var(--s-6) var(--s-2) var(--s-2);text-align:left;font-weight:400;border-bottom:1px solid var(--rule)}
+.nomen__t th.n,.nomen__t td.n{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nomen__t td{padding:var(--s-2);border-bottom:1px solid var(--border-soft);vertical-align:middle}
+.nomen__t tbody tr:not(.nomen__g):hover td{background:var(--card)}
+.nomen__g th{padding:var(--s-6) var(--s-2) var(--s-2);text-align:left;font-weight:400;border-bottom:1px solid var(--border)}
 .nomen__t tbody:first-of-type .nomen__g th{padding-top:var(--s-4)}
 .nomen__gh{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s-3)}
 .nomen__gn{display:inline-flex;align-items:center;gap:var(--s-2);font-size:var(--t-md);font-weight:600;
-  font-variation-settings:"wdth" 106;letter-spacing:-.01em;color:var(--ink)}
-.nomen__gt{font-size:var(--t-md);font-weight:500;color:var(--ink)}
-.nomen__gs{display:block;margin-top:2px;font-size:var(--t-2xs);color:var(--ink-3)}
-.nomen__gd{display:block;font-size:var(--t-2xs);color:var(--ink-3);max-width:72ch}
+  font-variation-settings:"wdth" 106;letter-spacing:-.01em;color:var(--foreground)}
+.nomen__gt{font-size:var(--t-md);font-weight:500;color:var(--foreground)}
+.nomen__gs{display:block;margin-top:2px;font-size:var(--t-2xs);color:var(--muted-foreground)}
+.nomen__gd{display:block;font-size:var(--t-2xs);color:var(--muted-foreground);max-width:72ch}
 .nomen__nm{min-width:200px}
 .nomen__in{display:grid;grid-template-columns:10px 1fr;gap:var(--s-2);align-items:baseline}
 .nomen__in b{font-weight:500}
-.nomen__in .note{display:block;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
-.nomen .sw{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm);position:relative;top:1px}
-.nomen .sw--dashed{background:none!important;border:1px dashed var(--ink-3)}
-.nomen .sw--circ{border:1px solid var(--ink-4);background-image:repeating-linear-gradient(45deg,
+.nomen__in .note{display:block;font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
+.nomen .sw{display:inline-block;width:10px;height:10px;border-radius:var(--radius-sm);position:relative;top:1px}
+.nomen .sw--dashed{background:none!important;border:1px dashed var(--muted-foreground)}
+.nomen .sw--circ{border:1px solid var(--faint-foreground);background-image:repeating-linear-gradient(45deg,
   var(--hatch-ink) 0 1px, transparent 1px 4px)}
 .nomen__gl{width:180px}
 .nomen__gl svg{display:block}
-.nomen__t tr.is-circ td{color:var(--ink-2)}
+.nomen__t tr.is-circ td{color:var(--soft-foreground)}
 .nomen__part{display:flex;align-items:center;justify-content:flex-end;gap:var(--s-2)}
-.nomen__part i{display:block;height:4px;border-radius:var(--r-sm);background:var(--ink-4)}
-.nomen__off td{font-size:var(--t-xs);color:var(--ink-2);border-bottom:0}
-.nomen__off b{color:var(--ink);font-weight:500}
-.nomen__off .note{display:block;font-size:var(--t-2xs);color:var(--ink-3);margin-top:2px}
+.nomen__part i{display:block;height:4px;border-radius:var(--radius-sm);background:var(--faint-foreground)}
+.nomen__off td{font-size:var(--t-xs);color:var(--soft-foreground);border-bottom:0}
+.nomen__off b{color:var(--foreground);font-weight:500}
+.nomen__off .note{display:block;font-size:var(--t-2xs);color:var(--muted-foreground);margin-top:2px}
 
 .esttag{
   display:inline-block;font-size:var(--t-3xs);letter-spacing:.06em;text-transform:uppercase;
-  font-weight:600;font-variation-settings:"wdth" 88;color:var(--ink-3);
-  border:1px dashed var(--ink-4);border-radius:var(--r-sm);padding:0 var(--s-1);vertical-align:1px;
+  font-weight:600;font-variation-settings:"wdth" 88;color:var(--muted-foreground);
+  border:1px dashed var(--faint-foreground);border-radius:var(--radius-sm);padding:0 var(--s-1);vertical-align:1px;
 }
 
 .unpriced{
-  margin-top:var(--s-3);padding-top:var(--s-3);border-top:1px dashed var(--rule);
-  font-size:var(--t-xs);color:var(--ink-2);
+  margin-top:var(--s-3);padding-top:var(--s-3);border-top:1px dashed var(--border);
+  font-size:var(--t-xs);color:var(--soft-foreground);
 }
-.unpriced b{color:var(--ink);font-weight:500}
-.unpriced .note{display:block;font-size:var(--t-2xs);color:var(--ink-3);margin-top:2px}
+.unpriced b{color:var(--foreground);font-weight:500}
+.unpriced .note{display:block;font-size:var(--t-2xs);color:var(--muted-foreground);margin-top:2px}
 
 /* --- récapitulatif --- */
 .totals{margin-top:var(--s-6)}
 .totals h3{margin:0 0 var(--s-2)}
 .totals table{width:100%;border-collapse:collapse;font-size:var(--t-sm)}
-.totals th,.totals td{padding:var(--s-2) 0;text-align:left;border-bottom:1px solid var(--rule-soft);font-weight:400}
-.totals td.n,.totals th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.totals th,.totals td{padding:var(--s-2) 0;text-align:left;border-bottom:1px solid var(--border-soft);font-weight:400}
+.totals td.n,.totals th.n{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 .totals thead th{
   font-size:var(--t-2xs);letter-spacing:var(--track-caps);text-transform:uppercase;
-  color:var(--ink-3);font-weight:600;font-variation-settings:"wdth" 88;
+  color:var(--muted-foreground);font-weight:600;font-variation-settings:"wdth" 88;
 }
-.totals tbody th{color:var(--ink)}
-.totals tr.sum th,.totals tr.sum td{font-weight:600;border-top:1px solid var(--rule);border-bottom:none}
-.totals tr.soft th,.totals tr.soft td{color:var(--ink-3)}
+.totals tbody th{color:var(--foreground)}
+.totals tr.sum th,.totals tr.sum td{font-weight:600;border-top:1px solid var(--border);border-bottom:none}
+.totals tr.soft th,.totals tr.soft td{color:var(--muted-foreground)}
 .totals tr.grand th,.totals tr.grand td{
-  font-size:var(--t-md);font-weight:600;border-top:2px solid var(--ink);border-bottom:none;
+  font-size:var(--t-md);font-weight:600;border-top:2px solid var(--foreground);border-bottom:none;
   padding-top:var(--s-3);
 }
-.totals .sw{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm);margin-right:var(--s-2)}
+.totals .sw{display:inline-block;width:10px;height:10px;border-radius:var(--radius-sm);margin-right:var(--s-2)}
 
 
 /* --- rang de section ------------------------------------------------------
@@ -92,17 +92,17 @@ g.blk{cursor:default}
    trois sujets sans lien, et la chronologie du concours disparaît. */
 .secthead{
   display:flex;align-items:baseline;gap:var(--s-3);
-  margin-top:var(--s-7);padding-top:var(--s-3);border-top:2px solid var(--ink);
+  margin-top:var(--s-7);padding-top:var(--s-3);border-top:2px solid var(--foreground);
 }
 .secthead__n{
-  font-size:var(--t-num-sm);font-weight:500;color:var(--ink-3);
+  font-size:var(--t-num-sm);font-weight:500;color:var(--muted-foreground);
   font-variant-numeric:tabular-nums;
 }
 .secthead h2{
   margin:0;font-size:var(--t-lg);font-weight:600;
   font-variation-settings:"wdth" 106;letter-spacing:-.01em;
 }
-.secthead p{margin:2px 0 0;font-size:var(--t-sm);color:var(--ink-2);max-width:68ch}
+.secthead p{margin:2px 0 0;font-size:var(--t-sm);color:var(--soft-foreground);max-width:68ch}
 
 /* --- contraintes du concours --------------------------------------------- */
 .cons__grid{
@@ -115,27 +115,27 @@ g.blk{cursor:default}
   gap:0 var(--s-3);font-size:var(--t-xs);
 }
 .cons__dl dt{
-  color:var(--ink-2);padding:var(--s-2) 0;
-  border-top:1px solid var(--rule-soft);align-self:start;
+  color:var(--soft-foreground);padding:var(--s-2) 0;
+  border-top:1px solid var(--border-soft);align-self:start;
 }
 .cons__dl dd{
-  margin:0;padding:var(--s-2) 0;text-align:right;color:var(--ink);
-  border-top:1px solid var(--rule-soft);font-variant-numeric:tabular-nums;
+  margin:0;padding:var(--s-2) 0;text-align:right;color:var(--foreground);
+  border-top:1px solid var(--border-soft);font-variant-numeric:tabular-nums;
 }
 /* La raison d'un chiffre vit sous le chiffre, jamais dans un `title` : un
    attribut de survol n'existe ni au doigt, ni au clavier, ni sur mobile. */
 .cons__why{
-  display:block;font-family:var(--sans);font-size:var(--t-3xs);
-  color:var(--ink-3);line-height:var(--lh-snug);max-width:38ch;margin-left:auto;
+  display:block;font-family:var(--font-sans);font-size:var(--t-3xs);
+  color:var(--muted-foreground);line-height:var(--lh-snug);max-width:38ch;margin-left:auto;
 }
-.cons__tx{font-family:var(--sans)}
-.cons__note{margin:var(--s-2) 0 0;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
-.cons__qual{margin:0;padding-left:var(--s-4);font-size:var(--t-xs);color:var(--ink-2)}
+.cons__tx{font-family:var(--font-sans)}
+.cons__note{margin:var(--s-2) 0 0;font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
+.cons__qual{margin:0;padding-left:var(--s-4);font-size:var(--t-xs);color:var(--soft-foreground)}
 .cons__qual li{margin-bottom:var(--s-1)}
 
 /* Le sous-texte d'une ligne de récapitulatif : la circulation doit dire sur
    quoi elle porte, sinon on la croit calculée sur le total du programme. */
-.totals__s{display:block;font-size:var(--t-2xs);color:var(--ink-3);line-height:var(--lh-snug)}
+.totals__s{display:block;font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 
 @media (max-width:560px){.cons__grid{grid-template-columns:1fr}}
 
@@ -144,7 +144,7 @@ g.blk{cursor:default}
    barre d'application et porte le filet qui le sépare de ce qu'il gouverne :
    sans lui, en défilant, on ne savait plus dans quel volet on se trouvait. */
 .subtabs-bar{position:sticky;top:0;z-index:1;margin:var(--s-5) 0 var(--s-4);
-  padding:var(--s-3) 0;background:var(--paper);border-bottom:1px solid var(--rule)}
+  padding:var(--s-3) 0;background:var(--background);border-bottom:1px solid var(--border)}
 .subtabs{width:max-content;max-width:100%}
 .subpanel:focus-visible{outline:none}
 /* Le rang de section ouvre le volet : il n'a plus à s'en détacher comme quand
@@ -159,6 +159,6 @@ g.blk{cursor:default}
 /* --- un onglet à construire ------------------------------------------------
    Il dit ce qu'il sera, en une phrase, et rien de plus. */
 .tab-vide{max-width:64ch;margin:var(--s-8) auto;padding:var(--s-6);text-align:center;
-  border:1px dashed var(--rule-strong);border-radius:var(--r-lg)}
+  border:1px dashed var(--border-strong);border-radius:var(--radius-lg)}
 .tab-vide h2{margin:0 0 var(--s-2);font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106}
-.tab-vide p{margin:0;font-size:var(--t-sm);color:var(--ink-2)}
+.tab-vide p{margin:0;font-size:var(--t-sm);color:var(--soft-foreground)}

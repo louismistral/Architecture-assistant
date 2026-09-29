@@ -28,7 +28,7 @@
   max-height: calc(100vh - 120px); overflow:auto;
   padding-right: var(--s-2);
 }
-.mass-bloc{ border-top:1px solid var(--rule); padding-top:var(--s-3); }
+.mass-bloc{ border-top:1px solid var(--border); padding-top:var(--s-3); }
 .mass-bloc:first-child{ border-top:0; padding-top:0; }
 .mass-bloc__h{
   display:flex; align-items:baseline; gap:var(--s-2);
@@ -36,8 +36,8 @@
 }
 .mass-bloc__h .chip{ margin-left:auto; }
 .mass-note{
-  margin:var(--s-2) 0 0; font-size:var(--t-2xs); line-height:var(--lh-normal);
-  color:var(--ink-3);
+  margin:var(--s-2) 0 0; font-size:var(--t-2xs); line-height:var(--lh-base);
+  color:var(--muted-foreground);
 }
 .mass-deux{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
 .mass-deux .btn{ width:100%; }
@@ -47,10 +47,10 @@
 .mass-seed .segcap{ padding-inline:0 var(--s-2); }
 .mass-seed input{
   flex:1 1 auto; min-width:0;
-  font:inherit; font-family:var(--mono); font-size:var(--t-xs);
+  font:inherit; font-family:var(--font-mono); font-size:var(--t-xs);
   padding:var(--s-1) var(--s-2); min-height:var(--ctl-h);
-  border:1px solid var(--rule); border-radius:var(--r-md);
-  background:var(--panel); color:var(--ink);
+  border:1px solid var(--border); border-radius:var(--radius-md);
+  background:var(--card); color:var(--foreground);
 }
 
 /* Les partis : une grille de boutons plutôt qu'une liste déroulante. On les
@@ -66,64 +66,64 @@
   display:flex; align-items:center; gap:var(--s-2); margin-top:var(--s-2);
   font-size:var(--t-2xs);
 }
-.mass-par__n{ flex:1 1 auto; color:var(--ink-2); }
+.mass-par__n{ flex:1 1 auto; color:var(--soft-foreground); }
 .mass-par input{
   width:5.5em; height:var(--ctl-h); text-align:right;
-  background:var(--panel); color:var(--ink);
-  border:1px solid var(--rule); border-radius:var(--r-sm);
+  background:var(--card); color:var(--foreground);
+  border:1px solid var(--border); border-radius:var(--radius-sm);
   padding-inline:var(--s-2); font-size:var(--t-xs);
 }
-.mass-par__u{ width:1.6em; color:var(--ink-3); font-size:var(--t-3xs); }
+.mass-par__u{ width:1.6em; color:var(--muted-foreground); font-size:var(--t-3xs); }
 /* Un curseur porte son CHIFFRE et ses deux bornes : sans elles on ne sait pas
    ce qu'on règle, et sans lui on tâtonne. */
 .mass-cur{ display:block; margin-top:var(--s-3); font-size:var(--t-2xs); }
 .mass-cur__h{ display:flex; align-items:baseline; gap:var(--s-2); }
-.mass-cur__h .mono{ margin-left:auto; color:var(--ink); font-size:var(--t-xs); }
-.mass-cur input[type="range"]{ width:100%; margin-top:2px; accent-color:var(--focus); }
+.mass-cur__h .mono{ margin-left:auto; color:var(--foreground); font-size:var(--t-xs); }
+.mass-cur input[type="range"]{ width:100%; margin-top:2px; accent-color:var(--ring); }
 .mass-cur__p{
   display:flex; justify-content:space-between; gap:var(--s-2);
-  font-size:var(--t-3xs); color:var(--ink-3);
+  font-size:var(--t-3xs); color:var(--muted-foreground);
 }
 .mass-sous{ margin:var(--s-4) 0 var(--s-2); }
 .mass-bloc__h--soft{ margin-top:var(--s-3); }
 .mass-bloc__h--soft .btn{ margin-left:auto; }
-.mass-sel__l{ margin:0; font-size:var(--t-2xs); color:var(--ink-2); }
+.mass-sel__l{ margin:0; font-size:var(--t-2xs); color:var(--soft-foreground); }
 
 /* Le bilan : demandé, posé, écart. Trois colonnes de chiffres alignés — c'est
    la question à laquelle l'outil doit répondre à tout moment. */
 .mass-bil{ width:100%; border-collapse:collapse; font-size:var(--t-3xs); }
 .mass-bil th{
-  text-align:right; font-weight:600; color:var(--ink-3);
-  padding:2px 0; border-bottom:1px solid var(--rule);
+  text-align:right; font-weight:600; color:var(--muted-foreground);
+  padding:2px 0; border-bottom:1px solid var(--border);
   letter-spacing:var(--track-caps); text-transform:uppercase;
 }
 .mass-bil th:first-child, .mass-bil td:first-child{ text-align:left; }
-.mass-bil td{ text-align:right; padding:2px 0; border-bottom:1px solid var(--rule-soft); }
-.mass-bil__e{ color:var(--ink-3); }
+.mass-bil td{ text-align:right; padding:2px 0; border-bottom:1px solid var(--border-soft); }
+.mass-bil__e{ color:var(--muted-foreground); }
 .mass-bil__e.is-off{ color:var(--warn); font-weight:600; }
 
 /* Les alertes : trois niveaux, et la frontière entre eux se lit à la pastille. */
 .mass-al{ list-style:none; margin:0; padding:0; display:grid; gap:2px; }
 .mass-al__b{
   display:block; width:100%; text-align:left; cursor:pointer;
-  background:none; border:0; border-radius:var(--r-sm);
+  background:none; border:0; border-radius:var(--radius-sm);
   padding:var(--s-1) var(--s-2);
-  font:inherit; font-size:var(--t-2xs); line-height:var(--lh-normal); color:var(--ink-2);
+  font:inherit; font-size:var(--t-2xs); line-height:var(--lh-base); color:var(--soft-foreground);
 }
-.mass-al__b:hover{ background:var(--rule-soft); }
-.mass-al__i.is-open > .mass-al__b{ background:var(--rule-soft); }
+.mass-al__b:hover{ background:var(--accent); }
+.mass-al__i.is-open > .mass-al__b{ background:var(--accent); }
 
 /* Le panneau d'une alerte : ce qui la résoudrait, et « laisser comme ça ». Les
    deux se présentent de la même façon, parce qu'assumer un écart est une
    décision de projet et non un renoncement. */
 .mass-al__p{
   margin:2px 0 var(--s-2) var(--s-2);
-  padding-left:var(--s-2); border-left:2px solid var(--rule);
+  padding-left:var(--s-2); border-left:2px solid var(--border);
   display:grid; gap:2px;
 }
 .mass-al__w{
-  margin:0 0 var(--s-1); font-size:var(--t-3xs); line-height:var(--lh-normal);
-  color:var(--ink-3);
+  margin:0 0 var(--s-1); font-size:var(--t-3xs); line-height:var(--lh-base);
+  color:var(--muted-foreground);
 }
 .mass-act{
   display:block; width:100%; text-align:left; height:auto;
@@ -131,11 +131,11 @@
 }
 .mass-why{
   display:block; margin-top:1px;
-  font-size:var(--t-3xs); font-weight:400; color:var(--ink-3);
+  font-size:var(--t-3xs); font-weight:400; color:var(--muted-foreground);
   white-space:normal;
 }
 .mass-al__b .chip{ margin-right:var(--s-2); vertical-align:1px; }
-.mass-al__r{ color:var(--ink-3); font-size:var(--t-3xs); }
+.mass-al__r{ color:var(--muted-foreground); font-size:var(--t-3xs); }
 
 /* --- les deux vues ------------------------------------------------------- */
 .mass-vues{ display:grid; gap:var(--s-4); }
@@ -146,17 +146,17 @@
 .mass-vue__h{
   display:flex; align-items:baseline; gap:var(--s-2); margin-bottom:var(--s-2);
 }
-.mass-cam{ font-size:var(--t-3xs); color:var(--ink-3); }
+.mass-cam{ font-size:var(--t-3xs); color:var(--muted-foreground); }
 
 .plan, .vue3d{
-  position:relative; background:var(--panel);
-  border:1px solid var(--rule); border-radius:var(--r-md);
+  position:relative; background:var(--card);
+  border:1px solid var(--border); border-radius:var(--radius-md);
   overflow:hidden; height:min(62vh, 560px);
 }
 .plan__svg{ display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
 .vue3d__c{ display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
 .vue3d__fail{
-  margin:0; padding:var(--s-5); font-size:var(--t-2xs); color:var(--ink-3);
+  margin:0; padding:var(--s-5); font-size:var(--t-2xs); color:var(--muted-foreground);
 }
 
 /* --- le relevé, en plan --------------------------------------------------
@@ -167,15 +167,15 @@
    topographique : la demi-courbe, le mètre plein, les cinq mètres. Le relevé
    les donne tous les 50 cm — c'est la hiérarchie qui les rend lisibles, pas
    le fait d'en cacher. */
-.plan-ctr{ fill:none; stroke:var(--ink-4); stroke-width:.14; opacity:.42; }
+.plan-ctr{ fill:none; stroke:var(--faint-foreground); stroke-width:.14; opacity:.42; }
 .plan-ctr.is-maitre{ stroke-width:.26; opacity:.72; }
 .plan-ctr.is-cinq{ stroke-width:.42; opacity:.95; }
-.plan-par{ fill:none; stroke:var(--ink-4); stroke-width:.22; opacity:.7; stroke-dasharray:2.4 1.6; }
-.plan-rou{ fill:none; stroke:var(--ink-4); stroke-width:.45; opacity:.9; }
-.plan-foo{ fill:none; stroke:var(--ink-4); stroke-width:.3; opacity:.6; }
-.plan-mur{ fill:none; stroke:var(--ink-3); stroke-width:.3; opacity:.7; }
+.plan-par{ fill:none; stroke:var(--faint-foreground); stroke-width:.22; opacity:.7; stroke-dasharray:2.4 1.6; }
+.plan-rou{ fill:none; stroke:var(--faint-foreground); stroke-width:.45; opacity:.9; }
+.plan-foo{ fill:none; stroke:var(--faint-foreground); stroke-width:.3; opacity:.6; }
+.plan-mur{ fill:none; stroke:var(--muted-foreground); stroke-width:.3; opacity:.7; }
 .plan-bat{
-  fill:var(--ink-4); fill-opacity:.24; stroke:var(--ink-3); stroke-width:.35;
+  fill:var(--faint-foreground); fill-opacity:.24; stroke:var(--muted-foreground); stroke-width:.35;
 }
 .plan-enq{ fill:none; stroke:var(--warn); stroke-width:.4; stroke-dasharray:2 1.6; }
 .plan-per{
@@ -184,40 +184,40 @@
 
 /* --- les volumes, en plan ------------------------------------------------- */
 .plan-vol{ cursor:move; }
-.plan-vol__et{ fill:none; stroke:var(--ink-3); stroke-width:.25; stroke-dasharray:1.6 1.2; }
-.plan-vol__p{ fill:var(--site-emprise); fill-opacity:.55; stroke:var(--ink); stroke-width:.5; }
+.plan-vol__et{ fill:none; stroke:var(--muted-foreground); stroke-width:.25; stroke-dasharray:1.6 1.2; }
+.plan-vol__p{ fill:var(--site-emprise); fill-opacity:.55; stroke:var(--foreground); stroke-width:.5; }
 .plan-vol__p.is-fix{ stroke-dasharray:none; fill-opacity:.7; }
-.plan-cel{ fill-opacity:var(--fill-op); stroke:var(--paper); stroke-width:.12; }
-.plan-vol__c{ fill:none; stroke:var(--ink); stroke-width:.55; stroke-linejoin:round; }
+.plan-cel{ fill-opacity:var(--fill-op); stroke:var(--background); stroke-width:.12; }
+.plan-vol__c{ fill:none; stroke:var(--foreground); stroke-width:.55; stroke-linejoin:round; }
 /* Les cotes du volume choisi. */
 .plan-cote{ pointer-events:none; }
-.plan-cote__l{ fill:none; stroke:var(--focus); stroke-width:inherit; }
-.plan-cote__t{ font-size:inherit; fill:var(--focus); font-weight:600; paint-order:stroke;
-  stroke:var(--panel); stroke-width:.6; stroke-linejoin:round; }
+.plan-cote__l{ fill:none; stroke:var(--ring); stroke-width:inherit; }
+.plan-cote__t{ font-size:inherit; fill:var(--ring); font-weight:600; paint-order:stroke;
+  stroke:var(--card); stroke-width:.6; stroke-linejoin:round; }
 /* Les murs extérieurs, en poché : 50 cm autour de la surface utile. */
-.plan-mur{ fill:var(--ink); stroke:none; }
+.plan-mur{ fill:var(--foreground); stroke:none; }
 /* Les passerelles : une connexion, pas un volume — hachurée, bord fin. */
-.plan-pont{ fill:var(--site-emprise); fill-opacity:.35; stroke:var(--ink); stroke-width:.35;
+.plan-pont{ fill:var(--site-emprise); fill-opacity:.35; stroke:var(--foreground); stroke-width:.35;
   stroke-dasharray:1.2 .8; }
 .plan-vol.is-sel .plan-vol__c,
-.plan-vol.is-sel .plan-vol__p{ stroke:var(--focus); stroke-width:.9; }
+.plan-vol.is-sel .plan-vol__p{ stroke:var(--ring); stroke-width:.9; }
 /* Le second temps, en pointillé : la piscine et le chauffage à distance sont
    des ouvrages indépendants, réalisés plus tard — art. 2.2. */
 .plan-vol.is-ph .plan-vol__c,
 .plan-vol.is-ph .plan-vol__p{ stroke-dasharray:2.4 1.8; }
 .plan-vol.is-ph .plan-cel{ fill-opacity:calc(var(--fill-op) * .55); }
 .plan-vol__n{
-  font-size:2.6px; fill:var(--ink); font-weight:600; paint-order:stroke;
-  stroke:var(--panel); stroke-width:.7; stroke-linejoin:round;
+  font-size:2.6px; fill:var(--foreground); font-weight:600; paint-order:stroke;
+  stroke:var(--card); stroke-width:.7; stroke-linejoin:round;
 }
-.plan-poi__l{ stroke:var(--focus); stroke-width:.3; stroke-dasharray:1 .8; }
-.plan-poi__c{ fill:var(--panel); stroke:var(--focus); stroke-width:.5; cursor:grab; }
+.plan-poi__l{ stroke:var(--ring); stroke-width:.3; stroke-dasharray:1 .8; }
+.plan-poi__c{ fill:var(--card); stroke:var(--ring); stroke-width:.5; cursor:grab; }
 
-.plan-ech, .plan-nord{ fill:none; stroke:var(--ink-3); stroke-width:.35; }
-.plan-ech__t{ font-size:2.6px; fill:var(--ink-3); font-family:var(--mono); }
+.plan-ech, .plan-nord{ fill:none; stroke:var(--muted-foreground); stroke-width:.35; }
+.plan-ech__t{ font-size:2.6px; fill:var(--muted-foreground); font-family:var(--font-mono); }
 
 /* Le score de la proposition à l'écran. */
 .mass-score{ display:flex; align-items:baseline; gap:var(--s-3); margin:var(--s-3) 0 0; flex-wrap:wrap; }
 .mass-score__n{ font-size:var(--t-lg); color:var(--ok); }
-.mass-score__n.is-bas{ color:var(--danger); }
-.mass-score span{ font-size:var(--t-2xs); color:var(--ink-2); }
+.mass-score__n.is-bas{ color:var(--destructive); }
+.mass-score span{ font-size:var(--t-2xs); color:var(--soft-foreground); }

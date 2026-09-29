@@ -1,49 +1,242 @@
 /* ============================================================================
    Tokens — source unique des valeurs de dessin de l'interface.
    Aucune valeur brute (couleur, espace, taille, rayon, ombre) ne doit être
-   écrite ailleurs que dans ce fichier.
+   écrite ailleurs que dans ce fichier et dans les fichiers de thème
+   (`styles/themes/*.css`).
 
-   Structure des thèmes, dans cet ordre, sans exception :
-     1. `:root` nu          → la palette CLAIRE complète. Tout token naît ici.
-     2. `prefers-color-scheme: dark` gardé par `:not([data-theme="light"])`
-                            → redéfinit les tokens pour l'OS en sombre, tout en
-                              laissant un choix clair explicite l'emporter.
-     3. `:root[data-theme="dark"]` → redéfinit les mêmes, pour que la bascule
-                              gagne aussi dans l'autre sens.
+   TROIS COUCHES, et chacune ne lit que celle du dessus :
+
+     1. LE THÈME — les noms de shadcn/ui, tels quels : `--background`,
+        `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`,
+        `--muted`, `--accent`, `--destructive`, `--border`, `--input`, `--ring`,
+        `--chart-1…5`, `--sidebar-*`, `--radius`, `--font-*`, `--shadow-*`,
+        `--spacing`, `--tracking-normal`. Un thème shadcn (ui.shadcn.com/themes,
+        tweakcn.com) se colle donc tel quel : il ne redéfinit que cette couche.
+        « Saxon », le thème d'origine de l'application, est posé ici sur
+        `:root` : il est la valeur par défaut de tout thème qui tait un token.
+     2. LES DÉRIVÉS — ce que l'application nomme et que shadcn n'a pas : deux
+        encres de plus (`--soft-foreground`, `--faint-foreground`), deux filets
+        (`--border-soft`, `--border-strong`), la grille du plan, le voile des
+        libellés, les rayons et les pas d'espacement. Ils se CALCULENT à partir
+        de la couche 1 (`color-mix`, `calc`) : un thème installé les reçoit sans
+        rien écrire.
+     3. L'APPLICATION — ce qu'aucun thème ne doit toucher parce que cela porte
+        une information : les huit familles d'usage, les couches du relevé, les
+        états (`--warn`, `--ok`, les aplats `--*-fill`), l'échelle typographique.
+        Elles ne dépendent que du MODE (clair ou sombre), pas du thème.
+
+   LE THÈME ET LE MODE sont deux attributs de <html>, posés par `main.js` :
+     `data-theme="<id>"`   absent = Saxon ; sinon un fichier de `styles/themes/`
+     `data-mode="light|dark"` absent = suivre le système
+
+   Structure des modes, dans cet ordre, sans exception — pour le thème par
+   défaut comme pour chaque fichier de thème :
+     1. le bloc CLAIR complet. Tout token y naît ;
+     2. `prefers-color-scheme: dark` gardé par `:not([data-mode="light"])`
+        → le système en sombre, sauf choix clair explicite ;
+     3. `[data-mode="dark"]` → le choix sombre explicite.
    Un token défini uniquement dans 2 ou 3 n'existe pas pour le visiteur qui n'a
    rien choisi : c'est le bug classique du thème illisible.
    ========================================================================= */
 
+/* ==========================================================================
+   1 · LE THÈME PAR DÉFAUT — Saxon, clair
+   ========================================================================== */
+:root{
+  --background:#EDEEE9;           /* fond de page */
+  --foreground:#16191A;           /* texte principal — 15.2:1 */
+  --card:#F8F8F5;                 /* panneaux, contrôles, canevas */
+  --card-foreground:#16191A;
+  --popover:#F8F8F5;              /* modaux, menus */
+  --popover-foreground:#16191A;
+  --primary:#16191A;              /* LE bouton plein, l'état sélectionné */
+  --primary-foreground:#EDEEE9;
+  --secondary:#E3E5DE;
+  --secondary-foreground:#16191A;
+  --muted:#E3E5DE;
+  --muted-foreground:#636B66;     /* texte atténué — 4.7:1. Était #8A908C, à 2.79:1 :
+                                     le token le plus utilisé de l'app ne passait AA
+                                     sur aucun fond clair. */
+  --accent:#E3E5DE;               /* fond au survol, pilule choisie */
+  --accent-foreground:#16191A;
+  --destructive:#BA3E38;          /* ≥ 4.5:1 sur --background ET --card */
+  --border:#D6D9D1;               /* filets et bordures */
+  --input:#D6D9D1;                /* bordure des champs */
+  --ring:#226BC0;                 /* l'anneau de focus */
+  --chart-1:#DB5494;
+  --chart-2:#3278D7;
+  --chart-3:#3F9336;
+  --chart-4:#BF830C;
+  --chart-5:#0D95A9;
+  --sidebar:#F8F8F5;              /* la barre « Atelier et outils » */
+  --sidebar-foreground:#16191A;
+  --sidebar-primary:#16191A;
+  --sidebar-primary-foreground:#EDEEE9;
+  --sidebar-accent:#E3E5DE;
+  --sidebar-accent-foreground:#16191A;
+  --sidebar-border:#D6D9D1;
+  --sidebar-ring:#226BC0;
+
+  /* Trois pas de rayon dérivés d'un seul, comme shadcn. À 0.375rem :
+     2 px (pastilles), 4 px (contrôles), 6 px (panneaux), 10 px (grandes
+     surfaces). Les panneaux étaient à 8 px : on suit l'échelle. */
+  --radius:0.375rem;
+
+  /* La pile monospace était réécrite littéralement 43 fois dans le projet. */
+  --font-sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --font-serif:Georgia,"Times New Roman",serif;
+  --tracking-normal:0em;
+  --spacing:0.25rem;              /* le pas de base : 4 px */
+
+  /* Élévation dépensée par rôle : seule une surface qui flotte vraiment en reçoit. */
+  --shadow-2xs:0 1px 1px rgba(22,25,26,.04);
+  --shadow-xs:0 1px 2px rgba(22,25,26,.05);
+  --shadow-sm:0 1px 2px rgba(22,25,26,.06);
+  --shadow:0 2px 6px rgba(22,25,26,.08);
+  --shadow-md:0 4px 12px rgba(22,25,26,.10);
+  --shadow-lg:0 8px 24px rgba(22,25,26,.12);
+  --shadow-xl:0 14px 36px rgba(22,25,26,.14);
+  --shadow-2xl:0 24px 60px rgba(22,25,26,.18);
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-mode="light"]){
+    --background:#0F1110;
+    --foreground:#EFF1ED;
+    --card:#181B1A;
+    --card-foreground:#EFF1ED;
+    --popover:#181B1A;
+    --popover-foreground:#EFF1ED;
+    --primary:#EFF1ED;
+    --primary-foreground:#0F1110;
+    --secondary:#222624;
+    --secondary-foreground:#EFF1ED;
+    --muted:#222624;
+    --muted-foreground:#8B928D;     /* était #7A817C, à 4.34:1 sur --card */
+    --accent:#222624;
+    --accent-foreground:#EFF1ED;
+    --destructive:#D95B52;
+    --border:#2B302D;
+    --input:#2B302D;
+    --ring:#3D84DB;
+    --chart-1:#D363A6;
+    --chart-2:#4086DF;
+    --chart-3:#51A349;
+    --chart-4:#BF8900;
+    --chart-5:#21A3BA;
+    --sidebar:#181B1A;
+    --sidebar-foreground:#EFF1ED;
+    --sidebar-primary:#EFF1ED;
+    --sidebar-primary-foreground:#0F1110;
+    --sidebar-accent:#222624;
+    --sidebar-accent-foreground:#EFF1ED;
+    --sidebar-border:#2B302D;
+    --sidebar-ring:#3D84DB;
+    --shadow-2xs:0 1px 1px rgba(0,0,0,.3);
+    --shadow-xs:0 1px 2px rgba(0,0,0,.35);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow:0 2px 6px rgba(0,0,0,.45);
+    --shadow-md:0 4px 12px rgba(0,0,0,.5);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.55);
+    --shadow-xl:0 14px 36px rgba(0,0,0,.6);
+    --shadow-2xl:0 24px 60px rgba(0,0,0,.65);
+  }
+}
+
+:root[data-mode="dark"]{
+  --background:#0F1110;
+  --foreground:#EFF1ED;
+  --card:#181B1A;
+  --card-foreground:#EFF1ED;
+  --popover:#181B1A;
+  --popover-foreground:#EFF1ED;
+  --primary:#EFF1ED;
+  --primary-foreground:#0F1110;
+  --secondary:#222624;
+  --secondary-foreground:#EFF1ED;
+  --muted:#222624;
+  --muted-foreground:#8B928D;
+  --accent:#222624;
+  --accent-foreground:#EFF1ED;
+  --destructive:#D95B52;
+  --border:#2B302D;
+  --input:#2B302D;
+  --ring:#3D84DB;
+  --chart-1:#D363A6;
+  --chart-2:#4086DF;
+  --chart-3:#51A349;
+  --chart-4:#BF8900;
+  --chart-5:#21A3BA;
+  --sidebar:#181B1A;
+  --sidebar-foreground:#EFF1ED;
+  --sidebar-primary:#EFF1ED;
+  --sidebar-primary-foreground:#0F1110;
+  --sidebar-accent:#222624;
+  --sidebar-accent-foreground:#EFF1ED;
+  --sidebar-border:#2B302D;
+  --sidebar-ring:#3D84DB;
+  --shadow-2xs:0 1px 1px rgba(0,0,0,.3);
+  --shadow-xs:0 1px 2px rgba(0,0,0,.35);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 2px 6px rgba(0,0,0,.45);
+  --shadow-md:0 4px 12px rgba(0,0,0,.5);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.55);
+  --shadow-xl:0 14px 36px rgba(0,0,0,.6);
+  --shadow-2xl:0 24px 60px rgba(0,0,0,.65);
+}
+
+/* ==========================================================================
+   2 · LES DÉRIVÉS — calculés, jamais écrits par un thème
+   Posés sur `:root`, comme le thème : ils s'y résolvent avec ses valeurs et
+   suivent donc tout changement de thème ou de mode. (Une surface qui
+   redéfinirait `--foreground` pour elle seule ne les verrait pas bouger :
+   aucune ne le fait.)
+   ========================================================================== */
+:root{
+  /* texte secondaire — ≈ 5.9:1, entre l'encre et l'encre atténuée */
+  --soft-foreground:color-mix(in oklab,var(--foreground) 22%,var(--muted-foreground));
+  /* NON TEXTUEL uniquement — ≈ 3:1 : filets appuyés, pastilles, états
+     désactivés. Séparer ce rôle de `--muted-foreground` est ce qui permet à
+     celui-ci d'être lisible sans se confondre avec le texte secondaire. */
+  --faint-foreground:color-mix(in oklab,var(--muted-foreground) 72%,var(--border));
+  --border-soft:color-mix(in oklab,var(--border) 55%,var(--background));   /* filets internes */
+  --border-strong:color-mix(in oklab,var(--border) 86%,var(--foreground)); /* bordure au survol */
+  --grid:color-mix(in oklab,var(--border) 72%,var(--background));          /* quadrillage du plan */
+  --card-veil:color-mix(in srgb,var(--card) 82%,transparent); /* libellés posés sur la 3D */
+
+  /* rayons — l'échelle de shadcn, bornée à zéro pour un thème à angles vifs */
+  --radius-sm:max(0px,calc(var(--radius) - 4px));   /* pastilles, marques, segments */
+  --radius-md:max(0px,calc(var(--radius) - 2px));   /* contrôles, champs */
+  --radius-lg:var(--radius);                        /* panneaux, cartes */
+  --radius-xl:calc(var(--radius) + 4px);            /* grandes surfaces flottantes */
+  --radius-full:9999px;
+
+  /* espacement, sur le pas du thème (4 px par défaut) */
+  --s-1:calc(var(--spacing) * 1);    /*  4 */
+  --s-2:calc(var(--spacing) * 2);    /*  8 */
+  --s-3:calc(var(--spacing) * 3);    /* 12 */
+  --s-4:calc(var(--spacing) * 4);    /* 16 */
+  --s-5:calc(var(--spacing) * 6);    /* 24 */
+  --s-6:calc(var(--spacing) * 8);    /* 32 */
+  --s-7:calc(var(--spacing) * 12);   /* 48 */
+  --s-8:calc(var(--spacing) * 16);   /* 64 */
+}
+
+/* ==========================================================================
+   3 · L'APPLICATION — ne dépend que du mode
+   ========================================================================== */
 :root{
   color-scheme: light;
 
-  /* --- surfaces et encres ------------------------------------------------ */
-  --paper:#EDEEE9;          /* fond de page */
-  --panel:#F8F8F5;          /* fond des panneaux, contrôles, canevas */
-  --panel-veil:rgba(248,248,245,.82);  /* voile des libellés posés sur la toile 3D */
-  --ink:#16191A;            /* texte principal — 15.2:1 */
-  --ink-2:#565B59;          /* texte secondaire — 5.9:1 */
-  --ink-3:#636B66;          /* texte atténué — 4.7:1. Était #8A908C, à 2.79:1 : le token
-                               le plus utilisé de l'app ne passait AA sur aucun fond clair. */
-  --ink-4:#808884;          /* NON TEXTUEL uniquement — 3.1:1 : filets, pastilles, états
-                               désactivés. Séparer ce rôle du précédent est ce qui permet à
-                               --ink-3 de devenir lisible sans se confondre avec --ink-2. */
-  --rule:#D6D9D1;           /* filets et bordures */
-  --rule-soft:#E3E5DE;      /* filets internes, séparateurs de liste */
-  --rule-strong:#B9BEB4;    /* bordure au survol — était un token fantôme */
-  --grid:#DEE1D9;           /* quadrillage du plan */
-
-  /* --- couleurs sémantiques ---------------------------------------------
-     Séparées des familles d'usage : un token de famille détourné en couleur
+  /* --- états ------------------------------------------------------------
+     Séparés des familles d'usage : un token de famille détourné en couleur
      d'état (l'ancien `--f-spo` pour « validé », `--f-eau` pour le focus) fait
-     mentir la légende. Valeurs calculées pour ≥ 4.5:1 sur --paper ET --panel. */
-  /* texte, icône et bordure posés sur --paper ou --panel : ≥ 4.5:1 sur les deux */
-  --danger:#BA3E38;
+     mentir la légende. Texte, icône et bordure : ≥ 4.5:1 sur les fonds. */
   --warn:#955E00;
   --ok:#187A3B;
-  --focus:#226BC0;
   /* aplats pleins (badge, pastille) : ils portent leur propre fond, donc une seule
-     valeur sert les deux thèmes — blanc dessus à ≥ 4.5:1, détachement du fond ≥ 3:1 */
+     valeur sert les deux modes — blanc dessus à ≥ 4.5:1, détachement du fond ≥ 3:1 */
   --danger-fill:#C74B43;
   --warn-fill:#A4690C;
   --ok-fill:#298646;
@@ -56,19 +249,18 @@
      sens pour un même vert dans le même onglet. */
   --site-perimetre:#6D3BD4;
   --site-emprise:#2E7D46;
-  /* La masse en monochrome : blanc de maquette, dans les deux thèmes. Elle ne
+  /* La masse en monochrome : blanc de maquette, dans les deux modes. Elle ne
      porte AUCUNE information — c'est le mode où l'on ne regarde que la forme,
      et une masse teintée laissait chercher ce que la teinte voulait dire. */
   --site-mono:#FFFFFF;
 
   /* --- familles d'usage --------------------------------------------------
-     Huit familles. Chaque couleur passe ≥ 3:1 sur --panel dans les deux
-     thèmes. `--f-tec` reste un neutre — en dessin d'architecture le technique
-     se hachure — mais ne partage plus l'hex de --ink-3, qu'il copiait.
-     Note : huit teintes catégorielles ne peuvent pas être distinguées deux à
-     deux (28 paires, aucun ordre ne franchit le seuil). La couleur n'est donc
-     jamais seule à porter l'identité : partout un libellé, une infobulle ou
-     la hachure l'accompagne. */
+     Huit familles. Chaque couleur passe ≥ 3:1 sur --card dans les deux
+     modes. `--f-tec` reste un neutre — en dessin d'architecture le technique
+     se hachure. Huit teintes catégorielles ne peuvent pas être distinguées
+     deux à deux (28 paires, aucun ordre ne franchit le seuil) : la couleur
+     n'est donc jamais seule à porter l'identité. Aucun thème n'y touche —
+     elles sont la légende du projet, pas un habillage. */
   --f-cla:#DB5494;          /* classes et enseignement */
   --f-adm:#DD5A02;          /* bureaux et locaux du personnel */
   --f-eau:#3278D7;          /* locaux liés à l'eau */
@@ -80,11 +272,6 @@
   --f-ext:#196B39;          /* cour et extérieurs */
   --fill-op:0.20;           /* opacité des aplats de famille */
   --hatch-ink:rgba(0,0,0,.34);          /* opacité de la hachure du technique */
-
-  /* --- familles de caractères ---------------------------------------------
-     La pile monospace était réécrite littéralement 43 fois dans le projet. */
-  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 
   /* --- échelle typographique --------------------------------------------
      Sept pas, là où le projet en comptait vingt-deux entre 9.5 et 54 px.
@@ -106,34 +293,15 @@
   --lh-loose:1.65;
   --track-caps:.12em;       /* interlettrage des capitales */
 
-  /* --- échelle d'espacement, base 4 -------------------------------------- */
-  --s-1:4px;
-  --s-2:8px;
-  --s-3:12px;
-  --s-4:16px;
-  --s-5:24px;
-  --s-6:32px;
-  --s-7:48px;
-  --s-8:64px;
-
-  /* --- rayons ------------------------------------------------------------
-     Trois pas par rôle, au lieu de 2/3/4 px employés indifféremment. */
-  --r-sm:2px;               /* pastilles, marques, segments */
-  --r-md:4px;               /* contrôles, champs */
-  --r-lg:8px;               /* panneaux, surfaces flottantes */
-  --r-full:999px;
-
-  /* --- élévation ---------------------------------------------------------
-     Dépensée par rôle : seule une surface qui flotte vraiment en reçoit. */
-  --sh-1:0 1px 2px rgba(22,25,26,.06);
-  --sh-2:0 8px 24px rgba(22,25,26,.12);
-
   /* --- contrôles ---------------------------------------------------------
      Une hauteur unique pour tous les boutons et champs : c'est elle qui met
      fin aux cinq variantes de bouton qui divergeaient de 1 à 2 px. */
   --ctl-h:32px;
   --ctl-pad:0 var(--s-3);
   --tap-min:24px;           /* cible tactile minimale (WCAG 2.2 AA, 2.5.8) */
+
+  /* --- la barre latérale « Atelier et outils » ---------------------------- */
+  --sidebar-w:248px;
 
   /* --- mouvement ---------------------------------------------------------- */
   --dur-1:.09s;
@@ -146,26 +314,11 @@
 }
 
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
+  :root:not([data-mode="light"]){
     color-scheme: dark;
-    --paper:#0F1110;
-    --panel:#181B1A;
-    --panel-veil:rgba(24,27,26,.82);
-    --ink:#EFF1ED;
-    --ink-2:#A6ACA7;
-    --ink-3:#8B928D;          /* était #7A817C, à 4.34:1 sur --panel */
-    --ink-4:#6E756F;
-    --rule:#2B302D;
-    --rule-soft:#222624;
-    --rule-strong:#414743;
-    --grid:#242926;
-
-    --danger:#D95B52;
     --warn:#B77610;
     --ok:#3B9555;
-    --focus:#3D84DB;
     /* les aplats --*-fill ne changent pas : ils ne dépendent pas du fond de page */
-
     --site-perimetre:#9B7BE8;
     --site-emprise:#4C9A63;
     --f-cla:#D363A6;
@@ -178,32 +331,13 @@
     --f-ext:#46854A;
     --fill-op:0.28;
     --hatch-ink:rgba(0,0,0,.52);
-
-    --sh-1:0 1px 2px rgba(0,0,0,.4);
-    --sh-2:0 8px 24px rgba(0,0,0,.55);
   }
 }
 
-:root[data-theme="dark"]{
+:root[data-mode="dark"]{
   color-scheme: dark;
-  --paper:#0F1110;
-  --panel:#181B1A;
-  --panel-veil:rgba(24,27,26,.82);
-  --ink:#EFF1ED;
-  --ink-2:#A6ACA7;
-  --ink-3:#8B928D;
-  --ink-4:#6E756F;
-  --rule:#2B302D;
-  --rule-soft:#222624;
-  --rule-strong:#414743;
-  --grid:#242926;
-
-  --danger:#D95B52;
   --warn:#B77610;
   --ok:#3B9555;
-  --focus:#3D84DB;
-  /* les aplats --*-fill ne changent pas : ils ne dépendent pas du fond de page */
-
   --site-perimetre:#9B7BE8;
   --site-emprise:#4C9A63;
   --f-cla:#D363A6;
@@ -216,9 +350,6 @@
   --f-ext:#46854A;
   --fill-op:0.28;
   --hatch-ink:rgba(0,0,0,.52);
-
-  --sh-1:0 1px 2px rgba(0,0,0,.4);
-  --sh-2:0 8px 24px rgba(0,0,0,.55);
 }
 
 /* Sur pointeur grossier, les contrôles atteignent la cible tactile. */
