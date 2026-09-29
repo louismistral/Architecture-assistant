@@ -23,31 +23,45 @@ sont pas un sommaire : ils sont l'ordre dans lequel un concours se conçoit. **C
 sert de ce que le précédent a décidé.**
 
 ```
-Programme  →  Programme mixer  →  Massing  →  Typologie
-contraintes   répartition du      volumétrie  plans et
-et surfaces   programme sur       sur le site coupes
-              les niveaux
+⚙  Paramètres & contraintes      le cadre, hors chronologie
+01 Cahier des charges            surfaces, contraintes, adjacences
+02 Forensics                     le moodboard du groupe
+03 Programme mixer               répartition du programme sur les niveaux
+04 Massing                       volumétrie sur le site
+05 Typologies                    plans et coupes          ┐
+06 Tectonics                     la construction          │ à construire
+07 Materiality                   les matériaux            │
+08 Rendu                         les planches du concours ┘
 ```
 
 L'ancien ordre faisait l'inverse : l'onglet Site venait APRÈS le Plan, donc on dessinait
-la typologie d'un niveau avant d'avoir choisi le volume. La typologie a son onglet, vide :
-elle reste à construire.
+la typologie d'un niveau avant d'avoir choisi le volume. Les quatre derniers onglets
+existent, vides : ils disent où chaque chose viendra.
 
-L'application rend donc aujourd'hui **quatre vues, de deux natures** : une vue de
-*document*, qu'on lit, et des *outils*, qu'on opère. `document.body.dataset.kind` commute la
-mise en page :
+Les onglets vivent dans une **barre latérale, « Atelier et outils »**, une ligne par
+onglet, son numéro devant. Le bouton qui l'ouvre est à gauche de la barre du haut ; elle
+**pousse** le contenu (le plan et la 3D se recadrent au lieu d'être recouverts), et se
+pose par-dessus sur un écran étroit. Elle retient son état dans les préférences du
+compte. **Paramètres & contraintes** n'a pas de numéro mais une icône : il n'est pas une
+étape, il est le cadre — voir `docs/parametres.md`.
 
-| gabarit | vue | mise en page |
+Les vues sont **de deux natures** : des *documents*, qu'on lit, et des *outils*, qu'on
+opère. `document.body.dataset.kind` commute la mise en page :
+
+| gabarit | vues | mise en page |
 |---|---|---|
-| `doc` | Cahier des charges | colonne de lecture de 960 px, défilement assumé |
-| `tool` | Programme mixer | cadre plein, l'outil occupe la fenêtre |
+| `doc` | Paramètres & contraintes, Cahier des charges | colonne de lecture de 960 px, centrée dans la place que laisse la barre latérale |
+| `tool` | Forensics, Programme mixer, Massing, et les onglets à construire | cadre plein, l'outil occupe la fenêtre |
 
-Le chrome permanent (`.appbar`, collant, ~52 px) ne contient que le nom du projet, le
-total vivant, les onglets et la bascule de thème. **Tout contenu éditorial appartient à la
-vue qu'il décrit.**
+Le chrome permanent (`.appbar`, collant, ~52 px) a trois zones : à gauche le bouton de la
+barre « Atelier et outils » ; au centre le nom du projet et le total vivant ; à droite ce
+qui traverse tous les onglets — les variantes, le compte, le thème. **Tout contenu
+éditorial appartient à la vue qu'il décrit** : le compteur des surfaces à préciser a
+quitté le chrome, il se lit dans le volet Surfaces.
 
 La vue courante est dans le fragment d'URL (`#mixer/repartition`, `#mixer/contraintes`,
-`#massing/volumetrie`, `#programme/surfaces/fam`, `#typologie`) : rechargeable et
+`#massing/volumetrie`, `#programme/surfaces/fam`, `#parametres`, `#forensics`,
+`#typologie`, `#tectonique`, `#materialite`, `#rendu`) : rechargeable et
 partageable. L'identifiant de l'onglet reste `programme` ; les formes qui ont circulé avant
 — `#adjacences`, `#programme/adjacences` et `#programme/fam` — restent valables et mènent au
 volet qui les porte.
@@ -117,11 +131,12 @@ Il prend les surfaces et les organise sur des niveaux. Rien d'autre.
 ## Structure
 
 ```
-index.html            la coquille seule : barre d'application, #panels, #tip
+index.html            la coquille seule : barre d'application, barre latérale, #panels, #tip
 styles/
-  tokens.css          SOURCE UNIQUE de toute valeur de dessin — voir plus bas
+  tokens.css          SOURCE UNIQUE de toute valeur de dessin — trois couches, voir plus bas
+  themes/             les thèmes installés, au format shadcn/ui (neutral.css…)
   base.css            corps de page, [hidden], l'anneau de focus unique, infobulle
-  appbar.css          chrome permanent, les deux gabarits, chapô du cahier des charges, replis
+  appbar.css          chrome permanent, barre latérale, menu du thème, les deux gabarits
   controls.css        LE bouton, LE groupe de boutons, LA pastille de verdict
   program.css         panneaux, nomenclature, contraintes, rangs de section, récapitulatif
   schema.css          adjacences : cartes des grappes, en cascade
@@ -129,6 +144,8 @@ styles/
   massing.css         le massing : rail, plan et 3D, alertes
   doctrine.css        le volet Contraintes des outils : règles repliées, note, scripts
   variantes.css       le panneau des variantes et le modal de leurs informations
+  parametres.css      l'onglet Paramètres & contraintes
+  forensics.css       l'onglet Forensics : la toile et ses cartes
 src/
   data/               données pures, sans logique
     families.js       familles d'usage (id, couleur, libellé)        ← source unique
@@ -139,6 +156,7 @@ src/
     rules.js          contraintes du concours : distances, hauteurs libres, feu,
                       nappe, stationnement, circulation, second temps ← source unique
     supabase.js       l'adresse de la base et sa clé PUBLIABLE      ← source unique
+    themes.js         les thèmes installés et les trois modes            ← source unique
     doctrine.js       LA DOCTRINE DE PROJET — tout ce que le règlement NE dit pas et
                       que les deux générateurs appliquent : seuils, plafonds, poids,
                       rangs de dureté, inventaire des scripts   ← source unique
@@ -175,7 +193,10 @@ src/
     supa.js           jeton, session, requêtes REST
     compte.js         l'identité, l'équipe, ses membres
     reglages.js       les décisions de projet partagées au groupe
-    variantes.js      poser, lister, charger, supprimer une variante
+    variantes.js      poser, lister, charger, supprimer, rejouer une variante
+    recherche.js      la recherche automatique — tirer beaucoup, garder peu
+    prefs.js          les préférences du compte : thème, mode, tri et filtre, barre
+    forensics.js      la planche du groupe, ses images au stockage
   views/
     render.js         aiguillage par onglet, cahier des charges, récapitulatif, sources
     legend.js         chrome (total, compteur), chapô, surfaces à préciser, légende
@@ -191,27 +212,58 @@ src/
     plan.js           la vue en plan : relevé, volumes, sélection, déplacement, rotation
     vue3d.js          la vue 3D : terrain maillé, courbes drapées, existant, volumes
     variantes.js      le panneau des variantes, et le modal de leurs informations
+    parametres.js     Paramètres & contraintes : tout ce qui influe sur une variante
+    forensics.js      Forensics : la toile, les cartes, les gestes
+    icons.js          le jeu d'icônes, au trait
     tooltip.js        infobulle
-  main.js             thème, onglets, routage, premier rendu
+  main.js             thème et mode, barre latérale, onglets, routage, premier rendu
 Design-1.2.0-v38/     le plugin « Design » d'Anthropic, déposé ici pour servir de grille
                       d'audit (design-system, design-critique, ux-copy, a11y)
 ```
 
 ## Règles du projet
 
-**Aucune valeur de dessin hors de `tokens.css`.** Ni couleur, ni espace, ni taille, ni
-rayon, ni ombre, ni durée. Les seules exceptions légitimes sont les géométries calculées
-et posées en ligne par le JS — la position et la taille d'un bloc du mixer, la hauteur
-d'un canevas —, qui sont des surfaces à l'échelle et pas des choix de style.
+**Aucune valeur de dessin hors de `tokens.css` et des fichiers de thème.** Ni couleur, ni
+espace, ni taille, ni rayon, ni ombre, ni durée. Les seules exceptions légitimes sont les
+géométries calculées et posées en ligne par le JS — la position et la taille d'un bloc du
+mixer, une carte de Forensics, la hauteur d'un canevas —, qui sont des surfaces à
+l'échelle et pas des choix de style.
 
-**Les trois blocs de thème, dans cet ordre, sans exception.** `:root` nu porte la palette
-claire *complète* — tout token y naît. Puis `@media (prefers-color-scheme: dark)` gardé par
-`:not([data-theme="light"])`, puis `:root[data-theme="dark"]`. Un token défini seulement
-dans un bloc sombre n'existe pas pour le visiteur qui n'a rien choisi : c'est le bug
-classique du thème illisible.
+**Trois couches de tokens, et chacune ne lit que celle du dessus.**
 
-**Les couleurs de famille d'usage ne servent jamais d'état.** `--danger`, `--warn`, `--ok`
-et `--focus` existent pour ça.
+1. **Le thème** — les noms de shadcn/ui, tels quels : `--background`, `--foreground`,
+   `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`,
+   `--destructive`, `--border`, `--input`, `--ring`, `--chart-*`, `--sidebar-*`,
+   `--radius`, `--font-*`, `--shadow-*`, `--spacing`. Le thème d'origine, **Saxon**, est
+   posé sur `:root` ; un thème installé ne redéfinit que ces noms.
+2. **Les dérivés** — ce que l'app nomme et que shadcn n'a pas, CALCULÉ depuis la couche 1
+   (`color-mix`, `calc`) : `--soft-foreground` (texte secondaire), `--faint-foreground`
+   (non textuel), `--border-soft`, `--border-strong`, `--grid`, `--card-veil`, les rayons
+   `--radius-sm/md/lg/xl`, les pas `--s-1…8`.
+3. **L'application** — ce qu'aucun thème ne touche parce que cela porte une information :
+   les huit familles, les couches du relevé, `--warn`, `--ok`, les aplats `--*-fill`,
+   l'échelle typographique. Elles ne dépendent que du mode.
+
+**Le thème et le mode sont deux choix** : `data-theme` (absent = Saxon) et `data-mode`
+(absent = suivre le système) sur `<html>`, posés par `main.js` depuis les préférences du
+compte. Une liste déroulante dans la barre les propose, lue dans `src/data/themes.js`.
+
+**Installer un thème shadcn** (ui.shadcn.com/themes, tweakcn.com) : copier
+`styles/themes/neutral.css`, y coller son bloc `:root` et son bloc `.dark` aux trois
+places, ajouter une ligne à `src/data/themes.js`. La feuille se charge à la demande.
+
+**Les trois blocs de mode, dans cet ordre, sans exception** — pour Saxon comme pour
+chaque fichier de thème. Le bloc clair *complet* d'abord — tout token y naît. Puis
+`@media (prefers-color-scheme: dark)` gardé par `:not([data-mode="light"])`, puis
+`[data-mode="dark"]`. Un token défini seulement dans un bloc sombre n'existe pas pour le
+visiteur qui n'a rien choisi : c'est le bug classique du thème illisible.
+
+WebGL ne sait pas lire `var(--f-cla)` : `cssRGB()` fait résoudre le token par le
+navigateur et le ramène à trois octets par un canevas — un thème écrit en `oklch()`, les
+dérivés sont des `color-mix()`, et seule une conversion par le navigateur les lit tous.
+
+**Les couleurs de famille d'usage ne servent jamais d'état.** `--destructive`, `--warn`,
+`--ok` et `--ring` existent pour ça.
 
 **La couleur n'est jamais seule à porter une information.** Huit teintes catégorielles ne
 peuvent pas être distinguées deux à deux. Partout un libellé, une infobulle, une pastille
@@ -268,8 +320,12 @@ survol n'existe ni au doigt, ni au clavier, ni sur mobile.
   `render()`. Le bouton et le routage par hash suivent tout seuls.
 - **Un réglage du mixer et son dé** : `src/mix/opts.js` seul ; le tirage le lit dans
   `shuffle.js`, la vue le montre là où il se voit.
-- **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`), un bouton dans
-  `index.html`, et une branche dans `render()` (`src/views/render.js`).
+- **Un onglet** : ajouter une entrée dans `TABS` (`src/core/viewstate.js`) — son numéro
+  `n` ou son icône — et une branche dans `render()` (`src/views/render.js`). La ligne de
+  la barre latérale, l'ARIA et le routage suivent tout seuls.
+- **Un thème** : un fichier dans `styles/themes/`, une ligne dans `src/data/themes.js`.
+- **Une préférence de la personne** (qui ne change aucune variante) : une clé dans
+  `PREFS` (`src/net/prefs.js`), écrite par `setPref()`.
 - **L'état de vue** : `src/core/viewstate.js` — lu partout, écrit seulement par `main.js`.
 
 Règle du projet : chaque état mutable appartient à un seul module ; les autres le lisent
