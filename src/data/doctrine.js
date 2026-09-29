@@ -34,6 +34,8 @@
 /* ---------- les valeurs vivantes --------------------------------------------
    Un objet plat, lu par les générateurs à chaque appel. Jamais de copie, jamais
    de cache : bouger une valeur et rejouer le tirage doit suffire. */
+import { JUGES } from "./jugements.js";
+
 export var DOC = {
 
   /* === RÉPARTITION — combien de niveaux, et quoi à quel niveau ============ */
@@ -146,11 +148,19 @@ export var DOC = {
   passLarg: 3
 };
 
-/* Chaque critère NOTÉ du massing peut être désactivé : `on_<id>` vaut 1 ou 0.
-   La note se recalibre sur les critères actifs — le meilleur reste 100. */
-export var NOTES_MASS = ["dims", "distv", "soleil", "vue", "jour", "compa", "courq", "parti", "prog",
-                         "align", "pente", "elan", "connex", "terrain", "nappe"];
-NOTES_MASS.forEach(function(id){ DOC["on_" + id] = 1; });
+/* Le bac et le poids de chaque entrée de `JUGES` (`data/jugements.js`) :
+   `b_<id>` vaut 1 en règle dure, 0 en jugement ; `w_<id>` son poids, 0 à 10.
+   Un jugement de poids 0 ne compte pas ; la note reste sur 100. */
+JUGES.forEach(function(x){ DOC["b_" + x.id] = x.dur ? 1 : 0; DOC["w_" + x.id] = x.w; });
+export function estDure(x){ return DOC["b_" + x.id] === 1; }
+export function poidsJ(x){ return DOC["w_" + x.id]; }
+/* Les mesures qu'une règle dure au moins réclame : c'est ce que le générateur
+   fait respecter. Une mesure qui n'est plus que jugée ne bloque plus rien. */
+export function mesuresDures(){
+  var o = {};
+  JUGES.forEach(function(x){ if(estDure(x)) x.m.forEach(function(k){ o[k] = 1; }); });
+  return o;
+}
 
 /* Les valeurs de départ, pour « Rétablir ». Un réglage qu'on ne peut pas
    défaire n'est pas un réglage. */
