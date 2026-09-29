@@ -119,6 +119,11 @@ export var RULES = {
          accesAuto: "rue du Casino",          /* voitures, bus et dépose-minute */
          accesDoux: "chemin du Petit Mont" }, /* vélos et piétons */
 
+  /* --- 1.9 le coût -------------------------------------------------------- */
+  /* CFC 2 à 4, TTC, tel que le maître d'ouvrage l'estime. Le jugement le compare
+     au volume mesuré fois le prix au m³, une hypothèse (`data/donnees.js`). */
+  budget: 29000000,
+
   /* --- 2.7 l'école -------------------------------------------------------- */
   ecole: { eleves: 360, degres: "5H à 8H" },
 
