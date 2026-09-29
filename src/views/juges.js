@@ -21,10 +21,45 @@ import { saveSoon } from "../mix/store.js";
 
 var ferme = {};            /* bac + catégorie repliés, le temps de la session */
 
-function titre(x){
-  if(!x.r) return x.n;
-  for(var i = 0; i < REGLES.length; i++) if(REGLES[i].id === x.r) return REGLES[i].titre;
-  return x.r;
+function regle(id){ return REGLES.filter(function(r){ return r.id === id; })[0]; }
+function titre(x){ return x.r ? (regle(x.r) || {}).titre || x.r : x.n; }
+
+/* Ce que dit la composition à l'écran d'une mesure : le message d'une règle
+   dure enfreinte, ou la lecture d'une qualité. */
+function lecture(k, j){
+  if(!j) return "";
+  var d = j.dures.concat(j.dures.hors || []).filter(function(o){ return o.k === k; })[0];
+  if(d) return "enfreinte — " + d.msg;
+  var q = j.fortes.concat(j.prefs).filter(function(c){ return c.id === k; })[0];
+  return q ? q.txt : "tenue";
+}
+/* Pourquoi l'entrée compte, et comment elle se lit : le « pourquoi » de
+   l'entrée (ou de sa règle), puis chaque mesure avec sa règle de `REGLES` —
+   rien n'est redit, tout est lu à sa source. */
+function explication(x, j, part){
+  var g = el("details", "jg-x");
+  g.appendChild(el("summary", null, "Pourquoi · comment"));
+  var why = x.r ? (regle(x.r) || {}).pourquoi : x.d;
+  if(why) g.appendChild(el("p", null, why));
+  if(x.m.length){
+    var ul = el("ul");
+    x.m.forEach(function(k){
+      var r = regle(k), li = el("li");
+      li.appendChild(el("b", null, (r ? r.titre : k) + " — "));
+      if(!x.r && r && r.pourquoi) li.appendChild(document.createTextNode(r.pourquoi + " "));
+      var l = lecture(k, j);
+      if(l) li.appendChild(el("span", "jg-x__l", "À l'écran : " + l));
+      ul.appendChild(li);
+    });
+    g.appendChild(ul);
+  }
+  g.appendChild(el("p", "jg-x__e", estDure(x)
+    ? (x.m.length ? "Règle dure : une variante qui l'enfreint n'est jamais montrée."
+                  : "Règle dure non mesurée au massing : elle se vérifie à la main et ne bloque rien ici.")
+    : (x.m.length ? "Jugement : " + poidsJ(x) + "/10, soit " + part(x).toFixed(1).replace(".", ",")
+                    + " des 100 points ; il vaut la moyenne de ses mesures."
+                  : "Jugement non mesuré au massing : son curseur attend les onglets suivants et ne compte pas dans la note.")));
+  return g;
 }
 /* Les points d'un jugement : sa part des 100, parmi les jugements MESURÉS —
    ceux que le massing sait lire ; les autres attendent un onglet suivant. */
@@ -72,6 +107,7 @@ function ligne(x, j, part, refaire){
     cur.appendChild(i); cur.appendChild(lu);
     c.appendChild(cur);
   }
+  c.appendChild(explication(x, j, part));
   r.appendChild(c);
   var a = el("div", "jg-l__a");
   if(!d) a.appendChild(x.m.length ? pts(part(x)) : el("span", "jg-pts is-nm", "—"));
@@ -121,6 +157,27 @@ function bac(dur, j, part, refaire){
   return s;
 }
 
+function commentCaMarche(){
+  var g = el("details", "disclose jg-how");
+  g.appendChild(el("summary", null, "Comment ça marche"));
+  var ol = el("ol");
+  ["Le générateur essaie des dizaines de compositions. Chaque entrée nomme les MESURES qui la "
+     + "disent : distances, cour, pente, compacité, soleil… (« Pourquoi · comment » sur chaque ligne).",
+   "Règles dures : une mesure qu'une règle dure réclame bloque. Une composition qui l'enfreint est "
+     + "jetée — elle n'est jamais montrée. Un jugement passé en dure bloque quand il se lit défavorable.",
+   "Jugements : chaque mesure rend un score de 0 à 1 ; un jugement vaut la moyenne de ses mesures. "
+     + "Le curseur (0 à 10) dit ce qu'il pèse ; les jugements mesurés se partagent 100 points au prorata.",
+   "La note d'une variante est la somme de ces points : 100 si elle remplit tous les jugements. "
+     + "Le générateur montre la mieux notée ; « Shuffle massing » passe à la suivante.",
+   "Une entrée sans mesure (matériaux, rendu, coût…) ne se lit pas encore au massing : "
+     + "règle dure, elle se vérifie à la main ; jugement, son curseur attend les onglets suivants.",
+   "Déplacer une entrée ou régler un curseur change ce que le générateur retient : "
+     + "« Rejouer la volumétrie » l'applique. Bacs et poids sont partagés au groupe."
+  ].forEach(function(t){ ol.appendChild(el("li", null, t)); });
+  g.appendChild(ol);
+  return g;
+}
+
 function bouton(txt, f, cls){
   var b = el("button", "btn" + (cls ? " " + cls : ""), txt);
   b.type = "button";
@@ -155,6 +212,7 @@ export function jugesVue(rejouer){
     st.appendChild(d);
   });
   h.appendChild(st);
+  h.appendChild(commentCaMarche());
   host.appendChild(h);
 
   var bar = el("div", "jg-bar-outils");

@@ -54,3 +54,16 @@
 .jg-seuils{margin-top:var(--s-6)}
 
 @media (max-width:900px){ .jg-cols{grid-template-columns:minmax(0,1fr)} }
+
+/* l'explication d'une ligne, et « Comment ça marche » */
+.jg-x{font-size:var(--t-xs);color:var(--soft-foreground)}
+.jg-x summary{cursor:pointer;font-size:var(--t-2xs);color:var(--muted-foreground);inline-size:max-content}
+.jg-x summary:hover{color:var(--foreground)}
+.jg-x p,.jg-x ul{margin:var(--s-1) 0 0;line-height:var(--lh-snug);max-width:68ch}
+.jg-x ul{padding-left:var(--s-4)}
+.jg-x b{font-weight:600;color:var(--foreground)}
+.jg-x__l{display:block;color:var(--muted-foreground)}
+.jg-x__e{color:var(--muted-foreground);font-style:italic}
+.jg-how{margin-top:var(--s-4);max-width:80ch;font-size:var(--t-sm);color:var(--soft-foreground)}
+.jg-how ol{margin:var(--s-2) 0 0;padding-left:var(--s-5);line-height:var(--lh-snug)}
+.jg-how li+li{margin-top:var(--s-1)}

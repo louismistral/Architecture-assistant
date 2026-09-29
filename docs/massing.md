@@ -109,7 +109,7 @@ score = 100 × Σ w·s / Σ w        sur les jugements MESURÉS, w = le curseur
 
 Un jugement sans mesure (matériaux, rendu…) garde son curseur pour les onglets suivants mais
 n'entre pas dans la note. La couverture de la nappe part jugée : dure, elle rend « pavillons »
-impossible. Les seuils de chaque mesure restent en bas du volet, repliés. `views/note.js`
+impossible. Chaque ligne a son « Pourquoi · comment » (`POURQUOI` dans `jugements.js`, puis le `pourquoi` de chaque mesure dans `REGLES`, et sa lecture à l'écran) ; « Comment ça marche » explique le tout. Les seuils de chaque mesure restent en bas du volet, repliés. `views/note.js`
 dessine encore la note d'une variante enregistrée. Les paramètres de recherche (essais,
 reconnaissance, profondeur de mesure de la cour, passerelles) sont rangés à part, sous
 « Paramètres du générateur ».
