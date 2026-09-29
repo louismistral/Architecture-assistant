@@ -226,6 +226,9 @@ export function fermer(){
   ouvert = false;
   /* Fermer le panneau, c'est avoir vu ce qu'on venait d'enregistrer. */
   NOUVELLES = {};
+  /* Refermer, c'est renoncer aux suppressions en cours. */
+  for(var k in ALLUMEES) ALLUMEES[k].lacher();
+  ALLUMEES = {};
   ouvertOutil = null;
   panneau.hidden = true;
   majBoutons();
@@ -430,7 +433,7 @@ function carte(v){
   a.appendChild(btn("btn vc__info", "Infos", function(){ ouvrirModal(v); }));
   a.appendChild(meche("btn--icon vc__sup", null, "« " + v.name + " »", async function(){
     await supprimer(v.id); delete NOUVELLES[v.id]; peindre();
-  }));
+  }, v.id));
   d.appendChild(a);
 
   c.appendChild(d);
@@ -447,7 +450,12 @@ function carte(v){
    un bouton qui a quitté l'écran — fenêtre ou panneau refermé, liste repeinte —
    n'efface rien. */
 var MECHE = 4000;
-function meche(cls, texte, quoi, faire){
+/* Les mèches allumées sur des CARTES, par variante. Une suppression repeint
+   toute la liste : sans ce registre, la première variante partie éteignait
+   les mèches des autres. La carte neuve reprend celle de l'ancienne, au même
+   point, figée ou non. */
+var ALLUMEES = {};
+function meche(cls, texte, quoi, faire, cle){
   var b = btn("btn meche " + cls, null, null), a = null, ici = false, figeable = false;
   var faces = el("span", "meche__faces");
   [["poubelle", texte], ["annuler", texte && "Annuler"]].forEach(function(f, i){
@@ -473,14 +481,15 @@ function meche(cls, texte, quoi, faire){
     document[on ? "addEventListener" : "removeEventListener"]("visibilitychange", jouer);
   }
   /* Éteinte, la mèche reste où elle en était : elle s'efface en fondu, sans
-     revenir pleine. */
-  function eteindre(){ if(a){ a.onfinish = null; a.pause(); } poser(false); }
-  poser(false);
-
-  b.addEventListener("click", function(){
-    if(arme()){ eteindre(); return; }
+     revenir pleine. `lacher` éteint ce bouton-ci ; `eteindre` éteint la mèche
+     pour de bon, registre compris. */
+  function lacher(){ if(a){ a.onfinish = null; a.pause(); } poser(false); }
+  function eteindre(){
+    lacher();
+    if(cle && ALLUMEES[cle] && ALLUMEES[cle].b === b) delete ALLUMEES[cle];
+  }
+  function allumer(depuis){
     if(a) a.cancel();
-    ici = false; figeable = false;
     poser(true);
     /* Le tour se mesure en pixels : `pathLength` ne règle pas le pointillé
        partout (Chromium ici, Safari aussi), et la mèche restait pleine. */
@@ -488,14 +497,24 @@ function meche(cls, texte, quoi, faire){
     r.style.strokeDasharray = tour + "px";
     a = r.animate([{ strokeDashoffset:"0px" }, { strokeDashoffset:-tour + "px" }],
                   { duration:MECHE, easing:"linear", fill:"forwards" });
+    a.currentTime = depuis;
     jouer();
     a.onfinish = async function(){
-      poser(false);
+      eteindre();
       if(!b.getClientRects().length) return;
       b.disabled = true;
       try{ await faire(); }
       catch(e){ b.disabled = false; dit(e.message); }
     };
+    if(cle) ALLUMEES[cle] = { b:b, lacher:lacher,
+      etat:function(){ return { t:a.currentTime, ici:ici, figeable:figeable }; } };
+  }
+  poser(false);
+
+  b.addEventListener("click", function(){
+    if(arme()){ eteindre(); return; }
+    ici = false; figeable = false;
+    allumer(0);
   });
   b.addEventListener("keydown", function(e){
     if(e.key === "Escape" && arme()){ e.stopPropagation(); eteindre(); }
@@ -507,6 +526,17 @@ function meche(cls, texte, quoi, faire){
   });
   b.addEventListener("pointerleave", function(e){
     if(e.pointerType === "mouse"){ figeable = true; ici = false; jouer(); }
+  });
+
+  /* Reprendre la mèche d'une carte repeinte — une fois le bouton posé dans la
+     liste, car le tour ne se mesure que sur un bouton à l'écran. */
+  var vieille = cle && ALLUMEES[cle];
+  if(vieille) queueMicrotask(function(){
+    if(ALLUMEES[cle] !== vieille || !b.isConnected) return;
+    var e = vieille.etat();
+    vieille.lacher();
+    ici = e.ici; figeable = e.figeable;
+    allumer(e.t);
   });
   return b;
 }
