@@ -53,8 +53,8 @@
 
 /* La liste déroulante : un bouton qui dit le choix pris, son chevron qui se
    retourne à l'ouverture, et le menu de `appbar.css` aligné à gauche. */
-.menu--choix{display:inline-block;--menu-x:left}
-.menu--choix .menu__list{inset-inline:0 auto;min-inline-size:max(100%,160px)}
+.menu--choix{display:inline-block}
+.menu--choix .menu__list{min-inline-size:max(100%,160px)}
 .menu--choix .pr-sel{
   display:inline-flex;align-items:center;gap:var(--s-1);cursor:pointer;
   padding-inline:var(--s-2) var(--s-1);margin-inline-start:calc(var(--s-2) * -1);font-weight:500;

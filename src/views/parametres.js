@@ -105,7 +105,7 @@ function nombre(val, min, max, pas, unite, onSet, aria){
    dit le choix pris. Un nouveau choix y entre en fondu flou. */
 function choix(liste, val, onSet, aria){
   var pris = liste.filter(function(o){ return o.id === val; })[0] || liste[0];
-  var r = el("div", "menu menu--choix");
+  var r = el("div", "menu menu--gauche menu--choix");
   var b = el("button", "pr-sel");
   b.type = "button";
   b.setAttribute("aria-label", aria);

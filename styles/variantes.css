@@ -226,14 +226,15 @@
   background:var(--popover);color:var(--popover-foreground);
   border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);
 }
+/* Il s'ouvre en pop, comme le déroulant — à l'ouverture seulement : chaque
+   réglage le repeint, et il ne doit pas rejaillir à chaque clic. */
+.vp-pop.is-neuf{transform-origin:top left;animation:vp-pop var(--dur-2) var(--ease-out)}
+@keyframes vp-pop{from{opacity:0;transform:scale(.95)}}
 .vp-pop h4{
   margin:var(--s-1) 0 0;font-size:var(--t-3xs);font-weight:600;
   letter-spacing:var(--track-caps);text-transform:uppercase;color:var(--muted-foreground);
 }
 .vp-pop h4:first-child{margin-block-start:0}
-.vp-pop__tri{display:grid;grid-template-columns:7.5rem 1fr 1fr;align-items:center;gap:var(--s-1);font-size:var(--t-xs)}
-.vp-pop__tri.is-on>span{font-weight:600}
-.vp-pop__dir{min-block-size:var(--tap-min);padding-inline:var(--s-2);font-size:var(--t-2xs);white-space:normal;line-height:var(--lh-snug)}
 .vp-pop__note{display:flex;gap:var(--s-3)}
 .vp-pop__note label{display:flex;align-items:center;gap:var(--s-2);font-size:var(--t-xs);color:var(--soft-foreground)}
 .vp-pop__note input{

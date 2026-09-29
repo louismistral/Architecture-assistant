@@ -69,6 +69,9 @@
   transform-origin:top var(--menu-x);
   transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out);
 }
+/* Un déroulant qui s'ouvre sous le début de son bouton, et non sous sa fin. */
+.menu--gauche{--menu-x:left}
+.menu--gauche .menu__list{inset-inline:0 auto}
 .menu__list[data-cote="haut"]{inset-block:auto calc(100% + var(--s-1));transform-origin:bottom var(--menu-x)}
 .menu__list[data-etat="ferme"]{opacity:0;transform:scale(.95);transition-duration:var(--dur-1);pointer-events:none}
 .menu__pastille{

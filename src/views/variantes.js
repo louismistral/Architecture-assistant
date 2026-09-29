@@ -36,6 +36,7 @@ import { VARIANTES, charger, chargerVariantes, enregistrer, nomPropose,
          onVariantes, poserTrouvees, rejouerTout, renommer, supprimer } from "../net/variantes.js";
 import { PREFS, onPrefs, setPref } from "../net/prefs.js";
 import { icone } from "./icons.js";
+import { deroulant, item, titre } from "./menu.js";
 import { BORNES, RECH, TAG_RECHERCHE, rechercher } from "../net/recherche.js";
 import { MASS, PARTIS, partiOf } from "../mass/model.js";
 import { supaOn } from "../net/supa.js";
@@ -632,24 +633,27 @@ function setFiltre(k, val){
   peindre();
 }
 
-/* Un bouton d'outil : l'icône, et — une fois réglé — ce qu'il règle. */
+/* Un bouton d'outil : l'icône, et — une fois réglé — ce qu'il règle. Sans
+   `id`, il n'ouvre rien lui-même : c'est un déroulant qui le mène. */
 var LONG_MAX = 18;
+var popNeuf = false;         /* le réglage vient de s'ouvrir : il s'ouvre en pop */
 function boutonOutil(id, ic, nom, resume, compte){
-  var b = btn("btn vp-outil" + (resume ? " is-actif" : ""), null, function(){
+  var b = btn("btn vp-outil" + (resume ? " is-actif" : ""), null, id ? function(){
     ouvertOutil = ouvertOutil === id ? null : id;
+    popNeuf = !!ouvertOutil;
     peindre();
-  });
+  } : null);
   b.appendChild(icone(ic));
   if(resume){
     var txt = resume.length > LONG_MAX && compte ? String(compte) : resume;
     b.appendChild(el("span", "vp-outil__r", txt));
   }
-  b.setAttribute("aria-expanded", String(ouvertOutil === id));
+  if(id) b.setAttribute("aria-expanded", String(ouvertOutil === id));
   b.setAttribute("aria-label", nom + (resume ? " — " + resume : ""));
   b.title = nom + (resume ? " — " + resume : "");
   return b;
 }
-var ouvertOutil = null;      /* "tri" · "filtre" · "cherche" · null */
+var ouvertOutil = null;      /* "filtre" · "cherche" · null */
 
 function segment(liste, val, onPick, label){
   var g = el("div", "btn-group vp-seg");
@@ -676,29 +680,35 @@ function pilules(liste, choisis, onPick, label){
   });
   return g;
 }
-function popTri(){
-  var pop = el("div", "vp-pop");
-  pop.setAttribute("role", "dialog");
-  pop.setAttribute("aria-label", "Trier les variantes");
-  pop.appendChild(el("h4", null, "Trier par"));
+/* Le tri est UN choix — un critère, un sens : le déroulant du menu ◐
+   (`menu.js`), un titre par critère et ses deux sens dessous. Choisir le tri
+   par défaut, c'est revenir au défaut. */
+function menuTri(){
   var t = triCourant();
-  TRIS.forEach(function(x){
-    var r = el("div", "vp-pop__tri" + (t.k === x.k ? " is-on" : ""));
-    r.appendChild(el("span", null, x.n));
-    ["desc", "asc"].forEach(function(dir){
-      var b = btn("btn vp-pop__dir", x[dir], function(){ setPref("vTri", { k:x.k, dir:dir }); peindre(); });
-      b.setAttribute("aria-pressed", String(t.k === x.k && t.dir === dir));
-      r.appendChild(b);
+  var b = boutonOutil(null, "trier", "Trier",
+    triActif() ? triDe(t.k).n + (t.dir === "asc" ? " ↑" : " ↓") : "", 1);
+  var r = el("div", "menu menu--gauche vp-tri"), l = el("div", "menu__list");
+  r.appendChild(b); r.appendChild(l);
+  deroulant(r, b, l, function(l){
+    TRIS.forEach(function(x){
+      l.appendChild(titre(x.n));
+      ["desc", "asc"].forEach(function(dir){
+        l.appendChild(item(x[dir], null, t.k === x.k && t.dir === dir, function(){
+          setPref("vTri", x.k === TRI_DEF.k && dir === TRI_DEF.dir ? null : { k:x.k, dir:dir });
+          peindre();
+          /* La barre est refaite : le focus revient au bouton neuf. */
+          var nb = panneau.querySelector(".vp-tri .vp-outil");
+          if(nb) nb.focus({ preventScroll:true });
+        }));
+      });
     });
-    pop.appendChild(r);
   });
-  if(triActif()) pop.appendChild(btn("vp-lien", "Revenir au tri par défaut — note, la meilleure d'abord",
-    function(){ setPref("vTri", null); peindre(); }));
-  return pop;
+  return r;
 }
 function popFiltre(){
   var f = filtreCourant();
-  var pop = el("div", "vp-pop");
+  var pop = el("div", "vp-pop" + (popNeuf ? " is-neuf" : ""));
+  popNeuf = false;
   pop.setAttribute("role", "dialog");
   pop.setAttribute("aria-label", "Filtrer les variantes");
 
@@ -854,9 +864,8 @@ function peindre(){
   enr.setAttribute("aria-label", "Enregistrements");
   var barre = el("div", "vp-barre");
   var g = el("div", "vp-barre__g");
-  var t = triCourant(), ft = filtreCourant(), cf = critFiltre(ft);
-  g.appendChild(boutonOutil("tri", "trier", "Trier",
-    triActif() ? triDe(t.k).n + (t.dir === "asc" ? " ↑" : " ↓") : "", 1));
+  var ft = filtreCourant(), cf = critFiltre(ft);
+  g.appendChild(menuTri());
   g.appendChild(boutonOutil("filtre", "filtrer", "Filtrer",
     cf.length ? (cf.length === 1 ? cf[0] : cf.length + " filtres") : "", cf.length));
   if(ouvertOutil === "cherche" || PREFS.vCherche){
@@ -874,7 +883,6 @@ function peindre(){
   barre.appendChild(rl);
   /* Le réglage ouvert se pose SOUS la barre, par-dessus la liste : il ne la
      fait pas sauter à chaque ouverture. */
-  if(ouvertOutil === "tri") barre.appendChild(popTri());
   if(ouvertOutil === "filtre") barre.appendChild(popFiltre());
   enr.appendChild(barre);
 
