@@ -35,7 +35,6 @@ import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
 import { s as svg } from "../core/svg.js";
 import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
-import { doctrineSection, pilesBloc } from "./doctrine.js";
 import { RULES } from "../data/rules.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
@@ -227,7 +226,7 @@ function iconeLien(lie){
    dé maître dont la famille est partagée. Cliquer inverse — un maître mixte
    s'allume. `compact` : l'icône seule, sur un bloc où la place manque ; le nom
    de l'état reste dans le libellé accessible. */
-function deBtn(etat, quoi, fn, compact){
+export function deBtn(etat, quoi, fn, compact){
   var on = etat === true, mixte = etat === "mixed";
   var b = el("button","btn mix-de" + (compact ? " mix-de--compact" : ""));
   b.type = "button";
@@ -1177,10 +1176,9 @@ export function resizeMix(){
 
 /* ---------- le volet « Contraintes » ----------------------------------------
    Le mixer FAIT une répartition ; ce volet dit ce qui la gouverne, et le règle.
-   Les deux vivent sous le même onglet parce qu'on passe de l'un à l'autre à
-   chaque proposition qui déplaît : on lit le résultat, on corrige un poids, on
-   rejoue. Les avoir séparés par un onglet de premier rang aurait fait de ce
-   va-et-vient un voyage.
+   C'est la page Paramètres & contraintes filtrée sur le mixer (`render.js` la
+   pose) : un seul dessin des lignes, où qu'on les lise. Le mixer lui donne
+   deux choses — le geste qui rejoue, et les piles que le site admet.
 
    La navigation est INJECTÉE (`setMixNav`) plutôt qu'importée : `render.js`
    importe déjà ce module, et l'importer en retour ferait un cycle. C'est le
@@ -1188,14 +1186,42 @@ export function resizeMix(){
 var mixNav = null;
 export function setMixNav(f){ mixNav = f; }
 
-export function mixDoctrine(){
-  return doctrineSection("mix", function(){
-    seed(null);
-    repartir({ alea: true, etages: dePile });
-    selU = null; openIss = null; issFocus = null;
-    saveSoon();
-    /* On revient sur la répartition : régler une contrainte sans voir ce
-       qu'elle change, c'est régler à l'aveugle. */
-    if(mixNav) mixNav("repartition");
-  }, pilesBloc(pilesAdmissibles()));
+export function mixRejouer(){
+  seed(null);
+  repartir({ alea: true, etages: dePile });
+  selU = null; openIss = null; issFocus = null;
+  saveSoon();
+  /* On revient sur la répartition : régler une ligne sans voir ce qu'elle
+     change, c'est régler à l'aveugle. */
+  if(mixNav) mixNav("repartition");
+}
+
+/* Les piles que le site admet. Le mixer ne tire pas un nombre d'étages : il
+   construit la liste des piles admissibles — le CADRE : emprise d'un plateau,
+   étages au plus, sous-sol — et le LEVIER en prend une. La montrer, c'est
+   montrer d'où vient la pile qu'on a sous les yeux. */
+export function mixPiles(){
+  var s = el("section", "pr-piles");
+  s.appendChild(el("h4", "label", "Les piles que ce site admet"));
+  s.appendChild(el("p", "pr-note", "Déduites de l'aire posable, de la part qu'un plateau peut en "
+    + "prendre et de ce que le règlement cloue au rez. Le levier « nombre de niveaux » en tire une, "
+    + "l'orientation « pile compacte » préférant les plus basses."));
+  var t = el("table", "pr-piles__t");
+  var hr = el("tr");
+  ["Pile", "Plateau du rez", "Plateau d'étage", "Emprise admise"].forEach(function(x){
+    var th = el("th", null, x); th.scope = "col"; hr.appendChild(th);
+  });
+  t.appendChild(hr);
+  pilesAdmissibles().forEach(function(P){
+    var tr = el("tr");
+    tr.appendChild(el("td", null, (P.sous ? P.sous + " sous-sol · " : "")
+      + "rez" + (P.up ? " + " + P.up + " étage" + (P.up > 1 ? "s" : "") : " seul")
+      + (P.serre ? " — à l'étroit" : "")));
+    tr.appendChild(el("td", "mono n", fmt(P.plate) + " m²"));
+    tr.appendChild(el("td", "mono n", P.plateUp ? fmt(P.plateUp) + " m²" : "—"));
+    tr.appendChild(el("td", "mono n", fmt(P.emprise) + " m²"));
+    t.appendChild(tr);
+  });
+  s.appendChild(t);
+  return s;
 }

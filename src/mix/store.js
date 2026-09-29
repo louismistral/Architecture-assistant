@@ -8,11 +8,14 @@
    le cahier des charges, donc avant que le mixer ait jamais été ouvert. S'y ajoutent
    les écarts qu'on a assumés — les reprendre un par un à chaque ouverture
    reviendrait à ne jamais pouvoir en assumer un —, et le MASSING : volumes
-   posés, positions, rotations, parti et réglages. Aller au mixer et revenir ne
-   doit pas défaire une implantation qu'on vient de composer. S'y ajoute enfin
-   la DOCTRINE — les contraintes de projet qu'on a réglées dans l'un ou l'autre
-   volet « Contraintes » —, et d'elle on n'enregistre que les ÉCARTS au défaut :
-   tout enregistrer figerait dans ce navigateur les valeurs du jour.
+   posés, positions, rotations, parti et leviers. Aller au mixer et revenir ne
+   doit pas défaire une implantation qu'on vient de composer. S'y ajoutent
+   enfin les LIGNES de la recherche — cadre choisi, orientation, domaines des
+   leviers, paramètres du générateur (`data/lignes.js — V`) —, et d'elles on
+   n'enregistre que les ÉCARTS au défaut : tout enregistrer figerait dans ce
+   navigateur les valeurs du jour. Le JURY n'en fait pas partie : une variante
+   rechargée remet la recherche dans l'état où elle l'a produite, jamais les
+   poids qui la notent.
 
    Chaque section est restaurée indépendamment : perdre la pile vaut mieux que
    perdre aussi les surfaces.
@@ -21,7 +24,13 @@ import { el } from "../core/format.js";
 import { CIRCSET, COULOIR, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
 import { optsOf, setOpts } from "./opts.js";
-import { docOf, docReset, setDocs } from "../data/doctrine.js";
+import { ecarts, ecartsJury, poser, poserJury, retablir } from "../data/lignes.js";
+import "../data/leviers.js";
+import "../data/cadre.js";
+import "../data/orientation.js";
+import "../data/jugement.js";
+import "../data/donnees.js";
+import "../data/recherche.js";
 import { massOf, setMass } from "../mass/etat.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
@@ -77,11 +86,11 @@ export function snapshot(){
        parti et les réglages. Aller au mixer et revenir ne doit pas défaire
        une implantation qu'on a passé un quart d'heure à régler. */
     mass: massOf(),
-    /* LA DOCTRINE, et seulement ce qui s'écarte du défaut. Enregistrer l'objet
-       entier figerait dans ce navigateur les valeurs du jour, et une valeur
-       corrigée dans `data/doctrine.js` ne parviendrait jamais à qui a déjà
-       ouvert l'application. */
-    doc: docOf(),
+    /* LES LIGNES DE LA RECHERCHE, et seulement ce qui s'écarte du défaut.
+       Enregistrer l'objet entier figerait dans ce navigateur les valeurs du
+       jour, et une valeur corrigée dans le code ne parviendrait jamais à qui a
+       déjà ouvert l'application. Le jury n'y est pas. */
+    doc: ecarts(true),
     updatedAt: Date.now()
   };
 }
@@ -98,12 +107,13 @@ export function restore(o){
   try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
   try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
   try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
-  /* La doctrine d'un instantané est ce qui s'écarte du DÉFAUT : on repart du
-     défaut avant de la poser. Sans cela, une valeur réglée avant le chargement
-     survivait à une variante qui ne la touchait pas, et la variante ne se
-     reproduisait plus. Un instantané d'avant la doctrine (`doc` absent) ne
-     touche à rien. */
-  try{ if(o.doc){ docReset(); setDocs(o.doc); } }catch(_){ lost.push("contraintes"); }
+  /* Les lignes d'un instantané sont ce qui s'écarte du DÉFAUT : on repart du
+     défaut avant de les poser. Sans cela, une valeur réglée avant le
+     chargement survivait à une variante qui ne la touchait pas, et la variante
+     ne se reproduisait plus. Le jury n'est ni remis au défaut ni relu : il
+     reste celui du groupe. Un instantané d'avant (`doc` absent) ne touche à
+     rien ; ses anciennes clés — rangs, bacs, poids — sont ignorées. */
+  try{ if(o.doc){ retablir(true); poser(o.doc, true); } }catch(_){ lost.push("contraintes"); }
   return lost;
 }
 
@@ -123,7 +133,9 @@ export function saveSoon(){
   saveT = setTimeout(function(){
     var snap = snapshot();
     try {
-      localStorage.setItem(LSKEY, JSON.stringify(snap));
+      /* L'appareil garde aussi le JURY, à côté de l'instantané et non dedans :
+         une variante n'emporte pas les poids qui la notent. */
+      localStorage.setItem(LSKEY, JSON.stringify(Object.assign({ jury: ecartsJury() }, snap)));
       paint("Enregistré sur cet appareil", true);
     } catch(_){ failChip(); }
     apres.forEach(function(f){ try{ f(snap); }catch(_){} });
@@ -190,7 +202,9 @@ export function initStore(){
   try {
     var raw = localStorage.getItem(LSKEY);
     if(raw){
-      var lost = restore(JSON.parse(raw));
+      var lu = JSON.parse(raw);
+      var lost = restore(lu);
+      try{ poserJury(lu.jury); }catch(_){ lost.push("jugement"); }
       if(lost.length) badParts = lost;
     }
     localStorage.setItem(LSKEY + ".probe", "1");

@@ -32,12 +32,24 @@
    tiré à chaque Shuffle — la pile, le plateau d'un niveau, le lien d'un poste,
    une adjacence —, un réglage dont le dé est éteint est respecté tel quel.
 
-   Tous les poids, seuils et plafonds de ce fichier vivent dans
-   `src/data/doctrine.js`, et se règlent dans le volet « Contraintes » du mixer.
+   Trois espèces de lignes gouvernent ce fichier, et chacune se lit dans
+   l'état (`data/lignes.js — V`) :
+
+     le CADRE        ce qui ferme des niveaux ou plafonne la pile — les règles
+                     de niveau (`niv.js`), l'adjacence active, l'unité
+                     pédagogique, l'emprise d'un plateau (`data/cadre.js`) ;
+     l'ORIENTATION   les points de la note, chacun fois la force de son tag
+                     (`data/orientation.js`) ;
+     le GÉNÉRATEUR   la part du hasard (`data/recherche.js`).
+
+   Ce que les dés tirent — la pile, les plateaux, les liens, les adjacences —
+   sont les LEVIERS (`data/leviers.js`), et ils se tirent à parts égales.
    ========================================================================= */
 import { CIRC } from "../core/model.js";
 import { rng, shuffled } from "../core/rand.js";
-import { DOC } from "../data/doctrine.js";
+import { V, enVigueur, reculVise } from "../data/cadre.js";
+import { force } from "../data/orientation.js";
+import "../data/recherche.js";
 import { RULES } from "../data/rules.js";
 /* L'aire POSABLE de la parcelle, recul compris. Elle vit dans `mass/geom.js`
    parce que c'est là qu'est la géométrie du site — mais c'est une mesure de
@@ -49,7 +61,7 @@ import {
   BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBuilt, flCount,
   flNet, fuse, grade, lvlOf, nextUid, onFloor, place, setPlate, setStack, toTray, usable
 } from "./floors.js";
-import { CLSRE, UNITE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange } from "./niv.js";
+import { BRUYANT, CLSRE, UNITE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
 import {
   adjActive, deAdj, deLien, dePlateau, estLie, liens, lienId, setAdj, setLie
 } from "./opts.js";
@@ -77,10 +89,6 @@ PROX.forEach(function(l){
   (VOIS[l.a] = VOIS[l.a] || []).push({ o:l.b, id:l.id });
   (VOIS[l.b] = VOIS[l.b] || []).push({ o:l.a, id:l.id });
 });
-
-/* Ce qui fait du bruit, et ce qui demande le calme. Aucun article ne l'écrit :
-   c'est de l'usage scolaire, et c'est assumé comme tel dans la doctrine. */
-var BRUYANT = /Salle de sport double|Scène|^Cuisine|Réfectoire|foyer/;
 
 /* Ce poste est-il attaché à un autre par une adjacence ACTIVE ? */
 function attache(key){
@@ -110,8 +118,16 @@ function porteDes(re, i){
   return n;
 }
 
-/* La NOTE d'un niveau pour un poste. Positive = ce niveau lui va. Tous les
-   poids sont dans `doctrine.js` : c'est là qu'on corrige une répartition qui
+/* La force d'une ligne du CADRE dans la note : ce qui fait d'une adjacence
+   active une règle et non une préférence — elle écrase toute autre raison,
+   débordement compris. Ce n'est pas un réglage : c'est le sens du tag Imposé
+   dans la langue de la note. Assouplie en orientation, l'adjacence ne pèse
+   plus que ses points. */
+var IMPOSE = 400;
+
+/* La NOTE d'un niveau pour un poste. Positive = ce niveau lui va. Chaque terme
+   est une ligne d'orientation — sa valeur fois la force de son tag — ou le
+   poids d'un cadre. C'est dans les lignes qu'on corrige une répartition qui
    déplaît, et nulle part ailleurs. */
 function noteNiveau(p, f, pose){
   var s = 0, lv = FLOORS[f] ? FLOORS[f].lvl : 0;
@@ -121,20 +137,21 @@ function noteNiveau(p, f, pose){
      poser six cents mètres carrés là où il en reste cinquante n'est pas une
      variante, c'est une erreur qu'il faudra défaire. */
   var l = libre(f);
-  if(l <= 0) s -= DOC.debordPoids;
-  else s += DOC.placePoids * Math.min(1, l / Math.max(1, besoin));
+  if(l <= 0) s -= force("debord") * V.debordPts;
+  else s += force("place") * V.placePoids * Math.min(1, l / Math.max(1, besoin));
 
   /* 2 — les adjacences ACTIVES déjà posées : le niveau où est son partenaire,
      d'un poids qui écrase le reste — c'est une règle, pas une préférence. Plus
      c'est loin, plus ça coûte. Une adjacence éteinte ne pèse rien : les deux
      postes sont indépendants. */
+  var ADJ = enVigueur("adj") ? IMPOSE : force("adj") * V["pts:adj"];
   (VOIS[p.key] || []).forEach(function(v){
-    if(!adjActive(v.id)) return;
+    if(!ADJ || !adjActive(v.id)) return;
     var ls = pose[v.o];
     if(!ls || !ls.length) return;
     var d = Infinity;
     ls.forEach(function(g){ d = Math.min(d, Math.abs(g - f)); });
-    s += d === 0 ? DOC.adjDur : -DOC.adjDur * d;
+    s += d === 0 ? ADJ : -ADJ * d;
   });
 
   /* 3 — la grappe : là où elle pèse déjà, elle appelle le reste. C'est la même
@@ -146,26 +163,33 @@ function noteNiveau(p, f, pose){
     gr.forEach(function(k){ if(k !== p.key) set[k] = 1; });
     FLOORS.forEach(function(F, i){ tot += aireDes(set, i); });
     ici = aireDes(set, f);
-    if(tot > 0) s += DOC.grappePoids * (ici / tot);
+    if(tot > 0) s += force("grappe") * V.grappePts * (ici / tot);
   }
 
   /* 4 — la famille d'usage : à défaut d'exigence écrite, ce qui se ressemble
      s'assemble. Poids faible, c'est un départage. */
   var ft = 0, fi = aireFam(p.f, f);
   FLOORS.forEach(function(F, i){ ft += aireFam(p.f, i); });
-  if(ft > 0) s += DOC.famPoids * (fi / ft);
+  if(ft > 0) s += force("fam") * V.famPoids * (fi / ft);
 
   /* 5 — l'usage scolaire. Le rez reçoit le public, les parents, les livraisons
      et les usages hors horaire ; les classes montent ; le technique descend. */
-  if(CLSRE.test(p.n) && lv > 0) s += DOC.classeEtage * Math.min(lv, RULES.niv.classeMax);
+  if(CLSRE.test(p.n) && lv > 0) s += force("cla-haut") * V.classeEtage * Math.min(lv, RULES.niv.classeMax);
   /* …sauf s'il est attaché à un local précis par le schéma fonctionnel : le
      dépôt de la salle ACM descendait au sous-sol pour dix points de commodité
      technique, en laissant deux niveaux plus haut la salle qu'il dessert. */
-  if(p.f === "tec" && lv < 0 && !attache(p.key)) s += DOC.techSousSol;
+  if(p.f === "tec" && lv < 0 && !attache(p.key)) s += force("tec-bas") * V.techSousSol;
 
   /* 6 — bruyant contre calme, dans les deux sens. */
-  if(BRUYANT.test(p.n) && porteDes(CLSRE, f) > 0) s -= DOC.bruitCalme;
-  if(CLSRE.test(p.n) && porteDes(BRUYANT, f) > 0) s -= DOC.bruitCalme;
+  var bc = force("bruit-calme") * V.bruitCalme;
+  if(BRUYANT.test(p.n) && porteDes(CLSRE, f) > 0) s -= bc;
+  if(CLSRE.test(p.n) && porteDes(BRUYANT, f) > 0) s -= bc;
+
+  /* 7 — une règle de niveau qu'on a assouplie en orientation : ses points,
+     au niveau qu'elle voudrait. En vigueur, elle a déjà fermé les autres. */
+  s += prefereNiveau(p, lv, function(k){
+    return (pose[k] || []).map(function(i){ return lvlOf(i); });
+  });
 
   return s;
 }
@@ -173,21 +197,20 @@ function noteNiveau(p, f, pose){
 /* Le bruit de Gumbel : ajouté à des notes puis pris au maximum, il ÉCHANTILLONNE
    exactement la loi softmax de ces notes à la température donnée. C'est le seul
    endroit d'où vient la variation d'une répartition à l'autre — et à
-   température nulle il disparaît, donc « Shuffle » rend la meilleure. */
-var BRUIT = 40;
+   température nulle il disparaît, donc « Shuffle » rend la mieux orientée. */
 function bruit(alea){
-  if(!alea || DOC.temperature <= 0) return 0;
+  if(!alea || V.temperature <= 0) return 0;
   var u = rng();
   if(u <= 0) u = 1e-9;
   if(u >= 1) u = 1 - 1e-9;
-  return -Math.log(-Math.log(u)) * DOC.temperature * BRUIT;
+  return -Math.log(-Math.log(u)) * V.temperature * V.bruitEchelle;
 }
 
 /* Combien d'unités d'un poste un même niveau accepte. L'unité pédagogique est
    la seule limite de ce genre : un degré tient sur un niveau, avec ses
    dégagements — au-delà, on fait un couloir d'hôpital. */
 function capParNiveau(p, f){
-  if(!UNITE.test(p.n)) return Infinity;
+  if(!UNITE.test(p.n) || !enVigueur("unite")) return Infinity;
   /* Le plafond porte sur le NIVEAU, pas sur le poste : les salles standard et
      celles de réserve sont deux postes, et chacun respectait le sien — onze plus
      trois faisaient quatorze salles sur un plateau qui n'en admet que onze. */
@@ -195,16 +218,17 @@ function capParNiveau(p, f){
   BLOCKS.forEach(function(b){
     if(b.fl === f && UNITE.test(PMAP[b.key].n)) deja += b.q;
   });
-  return Math.max(0, Math.round(DOC.clsParNiveau) - deja);
+  return Math.max(0, Math.round(V.clsParNiveau) - deja);
 }
 /* Le contingent de salles de classe, et les niveaux qu'il demande. C'est une
    contrainte sur la PILE, pas seulement sur le remplissage : vingt et une
    salles à onze par niveau ne tiennent pas sur un seul étage, et proposer une
    pile qui ne peut pas les loger revient à proposer un avertissement. */
 function etagesDeClasses(){
+  if(!enVigueur("unite")) return 0;
   var n = 0;
   posables().forEach(function(p){ if(UNITE.test(p.n)) n += qOf(p.key); });
-  return Math.ceil(n / Math.max(1, Math.round(DOC.clsParNiveau)));
+  return Math.ceil(n / Math.max(1, Math.round(V.clsParNiveau)));
 }
 
 /* ---------- poser un poste ---------------------------------------------------
@@ -224,7 +248,7 @@ function poser(p, cand, alea, pose){
      quitte à déborder, et le contrôle dira le débordement. Sans cela, un niveau
      plein renvoyait la salle ACM un étage au-dessus du dépôt qui la sert. */
   var durs = {};
-  (VOIS[key] || []).forEach(function(v){
+  if(enVigueur("adj")) (VOIS[key] || []).forEach(function(v){
     if(adjActive(v.id)) (pose[v.o] || []).forEach(function(g){ durs[g] = 1; });
   });
   var want = {}, rest = q, i;
@@ -261,9 +285,10 @@ function poser(p, cand, alea, pose){
    Les WC garçons et filles et les vestiaires de classe suivent les classes, au
    prorata de celles que porte chaque niveau, avec au moins un WC de chaque
    genre là où il y a des classes. Un étage sans sanitaires ne se dessine pas.
-   Aucun article ne l'écrit : c'est une règle de projet, et elle est nommée
-   comme telle dans la doctrine. */
+   Aucun article ne l'écrit : c'est notre choix, la ligne `wc` du cadre
+   choisi — éteinte, les sanitaires se répartissent comme le reste. */
 function equilibrerWC(){
+  if(!enVigueur("wc")) return;
   var cls = [], use = [], i, tc = 0;
   for(i = 0; i < FLOORS.length; i++){ cls[i] = 0; use[i] = 0; }
   BLOCKS.forEach(function(b){
@@ -338,6 +363,11 @@ function equilibrerWC(){
    étages ne dépassent pas le plafond, et dont le rez porte au moins ce que le
    règlement y cloue — et l'on en prend une, les plus compactes d'abord. Une
    variante tirée est alors une variante VALABLE, et non une pile à corriger. */
+/* L'emprise qu'un plateau peut prendre : la part que le cadre admet de l'aire
+   posable — toute l'aire, quand la ligne est éteinte. */
+function empriseMax(){
+  return airePosable(reculVise()) * (enVigueur("plateau") ? V.plateauPart : 1);
+}
 export function pilesAdmissibles(){
   var besoinNet = 0, enterrable = 0, rezOblige = 0;
   posables().forEach(function(p){
@@ -349,8 +379,10 @@ export function pilesAdmissibles(){
   });
   var k = 1 / (1 - CIRC);
   var bati = besoinNet * k, rezMin = rezOblige * k;
-  var emprise = airePosable(RULES.dist.retrait) * DOC.plateauPart;
-  var sous = enterrable >= DOC.sousSolMin ? 1 : 0;
+  var emprise = empriseMax();
+  var seuil = enVigueur("soussol") ? V.sousSolMin : 0;
+  var sous = enterrable > 0 && enterrable >= seuil ? 1 : 0;
+  var etMax = enVigueur("etages") ? Math.max(0, Math.round(V.etagesMax)) : 6;
   var horsSol = Math.max(0, bati - (sous ? enterrable * k : 0));
 
   /* Les plateaux ne sont PAS uniformes, et c'est le point. Le rez porte tout ce
@@ -359,7 +391,7 @@ export function pilesAdmissibles(){
      unique pour toute la pile donnait au dernier étage la taille du rez, donc
      des niveaux vides qu'aucun programme ne demandait. */
   function arrondi(a){ return Math.max(PLATE_MIN, Math.ceil(a / 10) * 10); }
-  var pSous = sous ? Math.min(emprise, arrondi(enterrable * k * DOC.margePlateau)) : 0;
+  var pSous = sous ? Math.min(emprise, arrondi(enterrable * k * V.margePlateau)) : 0;
 
   /* Les niveaux que les classes réclament. Elles vont de préférence à l'étage,
      et le règlement ne les admet pas au-delà du 2ᵉ : la pile doit donc offrir
@@ -373,18 +405,17 @@ export function pilesAdmissibles(){
   var upCla = Math.max(0, Math.min(RULES.niv.classeMax, etagesDeClasses()));
 
   var out = [], up;
-  for(up = Math.min(upCla, Math.max(0, Math.round(DOC.etagesMax)));
-      up <= Math.max(0, Math.round(DOC.etagesMax)); up++){
-    var pRez = Math.max(rezMin, horsSol / (1 + up)) * DOC.margePlateau;
+  for(up = Math.min(upCla, etMax); up <= etMax; up++){
+    var pRez = Math.max(rezMin, horsSol / (1 + up)) * V.margePlateau;
     if(pRez > emprise) continue;                      /* le rez ne tient pas sur la parcelle */
     pRez = arrondi(pRez);
     /* Ce que le rez laisse aux étages se mesure sur sa CAPACITÉ, marge déduite,
        et non sur son plateau : le plateau du rez est gonflé du jeu qu'on lui
        laisse, et compter ce jeu comme du programme déjà logé rognait les étages
        de cent mètres carrés chacun — qui débordaient ensuite. */
-    var reste = horsSol - pRez / DOC.margePlateau;
+    var reste = horsSol - pRez / V.margePlateau;
     if(up > 0 && reste <= 1) continue;                /* un étage vide n'est pas une pile */
-    var pUp = up > 0 ? arrondi(reste / up * DOC.margePlateau) : 0;
+    var pUp = up > 0 ? arrondi(reste / up * V.margePlateau) : 0;
     if(pUp > emprise) continue;
     if(pRez + up * pUp < horsSol - 1) continue;       /* la pile ne loge pas le programme */
     var plates = [];
@@ -398,7 +429,7 @@ export function pilesAdmissibles(){
      maximale. Le contrôle dira qu'il manque de la surface — c'est mieux qu'une
      pile d'un seul niveau qu'on n'a pas demandée. */
   if(!out.length){
-    var nu = Math.max(0, Math.round(DOC.etagesMax)), pl = [], m = arrondi(emprise);
+    var nu = etMax, pl = [], m = arrondi(emprise);
     if(sous) pl.push(pSous);
     for(var q = 0; q <= nu; q++) pl.push(m);
     out.push({ sous:sous, up:nu, plates:pl, plate:m, plateUp:m,
@@ -411,13 +442,15 @@ export function proposerPile(alea){
   var garde = {};
   FLOORS.forEach(function(F){ garde[F.lvl] = F.plate; });
   if(alea && P.length > 1){
-    /* Les plus compactes d'abord : les poids décroissent géométriquement, donc
-       la pile la plus basse reste la plus probable sans que les autres soient
-       hors d'atteinte. */
-    var tot = 0, w = [], i;
-    for(i = 0; i < P.length; i++){ w[i] = Math.pow(0.55, i); tot += w[i]; }
-    var r = rng() * tot;
-    for(i = 0; i < P.length; i++){ r -= w[i]; if(r <= 0){ choix = P[i]; break; } }
+    /* Le LEVIER tire parmi les piles admissibles ; l'ORIENTATION « pile
+       compacte » retire ses points par étage de plus, et le hasard du mixer
+       s'y ajoute. La plus basse reste la plus probable, sans que les autres
+       soient hors d'atteinte. */
+    var best = -Infinity, pts = force("pile") * V.pileCompacte;
+    P.forEach(function(x, i){
+      var n = -pts * i + bruit(alea);
+      if(n > best){ best = n; choix = x; }
+    });
   }
   /* Un plateau dont le dé est éteint garde la valeur qu'on lui a donnée, si sa
      cote existe encore dans la pile tirée. */
@@ -445,11 +478,11 @@ function plateauxDeLaPile(){
    flanc du mixer, et l'on peut la figer en éteignant le dé. */
 function tirerReglages(){
   posables().forEach(function(p){
-    if(lienLibre(p.key) && deLien(p.key)) setLie(p.key, rng() < DOC.pLie);
+    if(lienLibre(p.key) && deLien(p.key)) setLie(p.key, rng() < .5);
   });
   liens().forEach(function(lk){
     var id = lienId(lk);
-    if(deAdj(id)) setAdj(id, rng() < DOC.pAdj);
+    if(deAdj(id)) setAdj(id, rng() < .5);
   });
 }
 
@@ -552,7 +585,7 @@ function tasserSommet(){
    l'EMPRISE que la parcelle admet ; c'est elle qu'on garde comme borne, et un
    niveau qui la dépasse est alors un vrai conflit, qu'il faut dire. */
 function ajusterPlateaux(){
-  var emprise = airePosable(RULES.dist.retrait) * DOC.plateauPart;
+  var emprise = empriseMax();
   FLOORS.forEach(function(F, i){
     /* Un plateau figé est une décision : on ne le corrige pas. S'il déborde,
        le contrôle le dit. */

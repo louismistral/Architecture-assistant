@@ -174,7 +174,7 @@ export function fixRelancer(){
 export function fixAuto(){
   if(MASS.parti === "auto") return null;
   return acte("Laisser le générateur choisir le parti",
-    "« Auto » essaie les douze partis et ne garde que ce qui respecte les contraintes dures",
+    "« Auto » essaie les douze partis et ne garde que ce qui tient dans le cadre",
     function(){ massSet("parti", "auto"); massVols(genMass()); return true; });
 }
 /* Le seul remède qui ne soit PAS ici : quand aucune implantation ne tient, la

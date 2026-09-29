@@ -20,24 +20,28 @@
         lisible : un U a une base et deux ailes du même côté qui tiennent un
         vide, une cour a au moins trois côtés autour d'un vide assez grand,
         des pavillons sont séparés… Une figure qui ne ressemble pas à son parti
-        est jetée ;
-     3. les RÈGLES DURES — c'est `gen.js`, une fois la figure posée d'un bloc
-        sur le site : rien ne la déforme après coup.
+        est jetée — c'est ce que veut dire l'option du LEVIER « parti », pas
+        une contrainte sur le bâtiment ;
+     3. le CADRE — c'est `gen.js`, une fois la figure posée d'un bloc sur le
+        site : rien ne la déforme après coup.
 
    La diversité vient de l'intérieur du parti : longueur des ailes, asymétrie,
    nombre de volumes, hauteurs, écarts, orientation, position sur la parcelle.
    ========================================================================= */
-import { DOC } from "../data/doctrine.js";
+import { V, courExigee } from "../data/cadre.js";
+import { distVisee } from "../data/orientation.js";
+import "../data/leviers.js";
 import { RULES } from "../data/rules.js";
 import { auModule } from "./model.js";
 import { coins, ecart } from "./geom.js";
 
 var M2 = function(){ return 2 * RULES.haut.mur; };
 /* Deux distances, qui ne se confondent pas : l'écart que la figure VISE entre
-   deux bâtiments — la distance souhaitée, jamais sous la distance incendie —,
-   et la distance INCENDIE, seule à juger qu'une figure tient. */
+   deux bâtiments — l'orientation « distance souhaitée », jamais sous la
+   distance incendie —, et la distance INCENDIE, le cadre, seule à juger
+   qu'une figure tient. */
 function FEU(){ return RULES.dist.entre; }
-function ECART(){ return Math.max(FEU(), DOC.distVoulue); }
+function ECART(){ return Math.max(FEU(), distVisee()); }
 function entre(r, a, b){ return a + r() * (b - a); }
 function ent(r, a, b){ return Math.floor(entre(r, a, b + .999)); }
 
@@ -99,12 +103,14 @@ function programme(slots, A, d){
    reste dans la LARGEUR souhaitée : `hauts` pour ceux qui montent au dernier
    étage, `bas` pour ceux qui restent au rez. */
 function besoins(A, d, r){
-  var cap = Math.max(1, DOC.largeurMax - M2()) * d * .96;
+  var cap = Math.max(1, V.largeurMax - M2()) * d * .96;
   var H = A.length;
   var hauts = H > 1 ? Math.ceil(A[1] / cap) : 0;
   var bas = Math.ceil((A[0] - (H > 1 ? A[1] : 0)) / cap);
-  if(r() < .35) hauts++;
-  if(r() < .35) bas++;
+  /* un volume de plus par classe de hauteur, à pile ou face : le levier
+     « figure » tire à parts égales */
+  if(r() < .5) hauts++;
+  if(r() < .5) bas++;
   return { hauts:Math.max(H > 1 ? 1 : 0, hauts), bas:Math.max(H > 1 ? 0 : 1, bas), H:H };
 }
 function slotsDe(b, r){
@@ -384,7 +390,7 @@ export function signature(pid, S, d){
       /* le vide que les quatre côtés tiennent : entre les ailes, de la base au
          bâtiment qui ferme la cour */
       var vide = (longueurBras(b0) - 2 * D) * (h0[0].y - D);
-      return vide >= DOC.courMin && longueurBras(b0) - 2 * D >= FEU();
+      return vide >= courExigee() && longueurBras(b0) - 2 * D >= FEU();
     case "pavillons": return B.length >= 3 && B.length === S.length;
     case "hameau":
       var ang = [];
@@ -415,7 +421,7 @@ export function composer(pid, A, d, r){
   var b = besoins(A, d, r);
   var S = slotsDe(b, r);
   /* Le hameau et les pavillons veulent des volumes plus petits et plus nombreux. */
-  if((pid === "pavillons" || pid === "hameau") && r() < .6)
+  if((pid === "pavillons" || pid === "hameau") && r() < .5)
     S.push({ haut: S.length && r() < .5 ? b.H : 1, p:entre(r, .7, 1) });
   if(pid === "terrasses") S.forEach(function(s){ if(s.haut > 1) s.gradin = true; });
   if(!programme(S, A, d)) return null;

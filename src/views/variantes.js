@@ -32,8 +32,10 @@ import { CPT, MEMBRES_PAR_EQUIPE, annulerInvite, choisirEquipe, connexion,
          quitterEquipe, refuserInvitation, rejoindre, renommerEquipe, retirer,
          sortir, transfererPropriete } from "../net/compte.js";
 import { REG, tirerReglages } from "../net/reglages.js";
-import { VARIANTES, charger, chargerVariantes, enregistrer, nomPropose,
-         onVariantes, poserTrouvees, rejouerTout, renommer, supprimer } from "../net/variantes.js";
+import { VARIANTES, aJour, charger, chargerVariantes, enregistrer, invalide, jugementDe,
+         moyennesMain, nomPropose, notifiee, noteDe, noterMain, onVariantes, poserTrouvees,
+         rejouerTout, renommer, supprimer } from "../net/variantes.js";
+import { AXES, scoreAxe } from "../data/jugement.js";
 import { PREFS, onPrefs, setPref } from "../net/prefs.js";
 import { icone } from "./icons.js";
 import { deroulant, item, titre } from "./menu.js";
@@ -407,8 +409,12 @@ function carte(v){
   var d = el("div", "vc__d");
   var t = el("div", "vc__t");
   t.appendChild(el("h3", "vc__nom", v.name));
-  var note = el("b", "vc__note mono", v.score == null ? "—" : (v.score > 0 ? "+" : "") + v.score);
-  if(v.score != null) note.classList.add(v.score >= 0 ? "is-haut" : "is-bas");
+  /* La note du jugement d'AUJOURD'HUI, refaite sur les mesures que la variante
+     a gardées ; une variante d'avant garde la sienne, en italique. */
+  var sc = noteDe(v, MOY);
+  var note = el("b", "vc__note mono" + (aJour(v) ? "" : " is-vieux"), sc == null ? "—" : String(sc));
+  if(sc != null) note.classList.add(invalide(v) ? "is-bas" : "is-haut");
+  note.title = aJour(v) ? "Note du jugement, sur 100" : "Note d'un ancien juge — « Reload » la refait";
   t.appendChild(note);
   d.appendChild(t);
 
@@ -423,6 +429,9 @@ function carte(v){
   if(estNouvelle(v)) tags.push(tag("new", "new", "Enregistrée à l'instant"));
   if(vieux.length) tags.push(tag("périmée", "perime", "Périmée — " + vieux.join(", ") + " depuis l'enregistrement. Elle reste chargeable."));
   if(estTrouvee(v)) tags.push(tag("algo", "algo", "Trouvée par la recherche automatique"));
+  /* Hors du cadre : elle n'est pas supprimée, elle est dite. */
+  if(invalide(v)) tags.push(tag("invalide", "perime", "Hors du cadre opposable — règlement ou AEAI. Elle reste notée et chargeable."));
+  else if(notifiee(v).length) tags.push(tag("hors cadre", "perime", "Hors du cadre choisi : " + notifiee(v).join(", ")));
   if(tags.length){
     var tg = el("div", "vc__tags");
     tags.forEach(function(x){ tg.appendChild(x); });
@@ -552,19 +561,29 @@ function partiReel(v){ return (v.thumbnail && v.thumbnail.parti) || v.parti || "
    c'est trop long à dire, combien de choses. Les trois réglages suivent le
    compte (`net/prefs.js`). Le vocabulaire est celui des listes qu'on connaît
    — Linear, Notion : un tri, des filtres qui se cumulent, une recherche. */
+/* La note générale, puis un sous-classement par axe du jugement : le plus
+   économique, le mieux inséré… Tout se relit sur les mesures, au poids du jour. */
 var TRIS = [
-  { k:"score",  n:"Note",            asc:"la moins bonne d'abord", desc:"la meilleure d'abord" },
+  { k:"score",  n:"Note",            asc:"la moins bonne d'abord", desc:"la meilleure d'abord" }
+].concat(AXES.map(function(a){
+  return { k:"ax:" + a.id, n:"Axe — " + a.n.split(",")[0].toLowerCase(),
+           asc:"la moins bonne d'abord", desc:"la meilleure d'abord" };
+})).concat([
   { k:"date",   n:"Date",            asc:"la plus ancienne d'abord", desc:"la plus récente d'abord" },
   { k:"name",   n:"Nom",             asc:"A → Z", desc:"Z → A" },
   { k:"author", n:"Auteur",          asc:"A → Z", desc:"Z → A" },
   { k:"parti",  n:"Type de massing", asc:"A → Z", desc:"Z → A" }
-];
+]);
 var TRI_DEF = { k:"score", dir:"desc" };
+/* La moyenne des notes manuelles, refaite à chaque peinture : ce que reçoit,
+   critère par critère, une variante qu'on n'a pas notée. */
+var MOY = {};
 function triCourant(){ var t = PREFS.vTri; return t && t.k ? t : TRI_DEF; }
 function triActif(){ var t = triCourant(); return t.k !== TRI_DEF.k || t.dir !== TRI_DEF.dir; }
 function triDe(k){ for(var i = 0; i < TRIS.length; i++) if(TRIS[i].k === k) return TRIS[i]; return TRIS[0]; }
 function cleTri(v, k){
-  if(k === "score") return v.score == null ? -Infinity : v.score;
+  if(k === "score"){ var n = noteDe(v, MOY); return n == null ? -Infinity : n; }
+  if(k.indexOf("ax:") === 0){ var a = scoreAxe(jugementDe(v, MOY), k.slice(3)); return a == null ? -Infinity : a; }
   if(k === "date") return v.created_at || "";
   if(k === "name") return (v.name || "").toLowerCase();
   if(k === "author") return nomDe(v.author_id).toLowerCase();
@@ -608,8 +627,9 @@ function critFiltre(f){
   return out;
 }
 function passeFiltre(v, f){
-  if(f.smin != null && !(v.score != null && v.score >= f.smin)) return false;
-  if(f.smax != null && !(v.score != null && v.score <= f.smax)) return false;
+  var sc = noteDe(v, MOY);
+  if(f.smin != null && !(sc != null && sc >= f.smin)) return false;
+  if(f.smax != null && !(sc != null && sc <= f.smax)) return false;
   if(f.auteurs.length && f.auteurs.indexOf(v.author_id) < 0) return false;
   if(f.etat !== "tout"){
     var p = perime(v.fingerprint).length > 0;
@@ -789,7 +809,7 @@ async function faireRejouer(){
   try{
     var r = await rejouerTout(function(i, n){ rejeu.i = i; rejeu.n = n; majRejeu(); }, function(){ return stop; });
     if(apresCharge) apresCharge();
-    bilanRech = r.faits + " variante" + (r.faits > 1 ? "s" : "") + " relue" + (r.faits > 1 ? "s" : "") + " par le juge actuel"
+    bilanRech = r.faits + " variante" + (r.faits > 1 ? "s" : "") + " relue" + (r.faits > 1 ? "s" : "") + " et mesurée" + (r.faits > 1 ? "s" : "")
       + (r.changes ? ", " + r.changes + " note" + (r.changes > 1 ? "s" : "") + " refaite" + (r.changes > 1 ? "s" : "") : ", aucune note à refaire")
       + (r.rates ? " · " + r.rates + " illisible" + (r.rates > 1 ? "s" : "") : "") + ".";
   }catch(e){ message = e.message; }
@@ -878,8 +898,8 @@ function peindre(){
   rl.appendChild(icone("recharger"));
   if(rejeu) rl.appendChild(el("span", "vp-outil__r vp-rejeu", "Relecture " + rejeu.i + " / " + rejeu.n + "…"));
   rl.disabled = !!rejeu || !!cherche || !VARIANTES.length;
-  rl.setAttribute("aria-label", "Reload — efface les « new », relit la liste et refait les notes avec le juge actuel");
-  rl.title = "Reload — efface les « new », relit la liste et refait les notes avec le juge actuel";
+  rl.setAttribute("aria-label", "Reload — efface les « new », relit la liste et remesure chaque variante pour le jugement");
+  rl.title = "Reload — efface les « new », relit la liste et remesure chaque variante pour le jugement";
   barre.appendChild(rl);
   /* Le réglage ouvert se pose SOUS la barre, par-dessus la liste : il ne la
      fait pas sauter à chaque ouverture. */
@@ -899,6 +919,7 @@ function peindreListe(){
   var liste = panneau && panneau.querySelector(".vp-liste");
   if(!liste) return;
   while(liste.firstChild) liste.removeChild(liste.firstChild);
+  MOY = moyennesMain();
   var neuves = VARIANTES.filter(estNouvelle)
                         .sort(function(a, b){ return (b.created_at || "").localeCompare(a.created_at || ""); });
   var f = filtreCourant(), q = (PREFS.vCherche || "").trim();
@@ -1038,7 +1059,7 @@ function ouvrirRecherche(){
 
   var s4 = el("section", "vm-sec");
   s4.appendChild(el("h4", null, "Ce qu'on garde"));
-  s4.appendChild(el("p", "vp-note", "Les meilleures notes du juge, sur 100 — à note égale, la moins fautive."));
+  s4.appendChild(el("p", "vp-note", "Les meilleures notes du jugement, sur 100 — à note égale, la moins fautive. Les générateurs cherchent par l’orientation ; le jugement classe ce qu’ils trouvent."));
   var cE = caseA("Sans erreur rouge", RECH.sansErreur, "ni au mixer, ni au massing");
   var cD = caseA("Un seul par parti", RECH.distincts, "pour ne pas garder trois fois le même peigne");
   s4.appendChild(cE); s4.appendChild(cD);
@@ -1084,7 +1105,7 @@ function majCherche(){
     cherche.top.forEach(function(t){
       var li = el("li");
       li.appendChild(el("span", null, partiOf(t.pid).n));
-      li.appendChild(el("b", "mono", (t.row.score > 0 ? "+" : "") + t.row.score));
+      li.appendChild(el("b", "mono", t.row.score + "/100"));
       l.appendChild(li);
     });
     chercheEl.appendChild(l);
@@ -1170,9 +1191,18 @@ export function ouvrirModal(v){
   var body = el("div", "vm__body");
 
   var s1 = el("section", "vm-sec");
-  var crit = (v.criteria || []).filter(function(c){ return c.pts != null; });
-  s1.appendChild(noteVue(v.score, crit, crit.length ? null
-    : "Variante enregistrée sans note."));
+  /* Le jugement d'aujourd'hui sur les mesures de la variante, et ses notes
+     À LA MAIN : un clic les écrit en base, et toutes les variantes se
+     reclassent — une variante notée se situe contre celles qu'on a notées. */
+  var jj = jugementDe(v);
+  s1.appendChild(noteVue(jj, {
+    ancienne: v.score,
+    main: v.criteria && v.criteria.main,
+    poser: jj ? async function(id, s){
+      try{ await noterMain(v.id, id, s); peindre(); ouvrirModal(v); }
+      catch(e){ dit(e.message); }
+    } : null
+  }));
   body.appendChild(s1);
 
   var s2 = el("section", "vm-sec");

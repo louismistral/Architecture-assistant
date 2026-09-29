@@ -263,3 +263,13 @@
 .mass-score__n{ font-size:var(--t-lg); color:var(--ok); }
 .mass-score__n.is-bas{ color:var(--destructive); }
 .mass-score span{ font-size:var(--t-2xs); color:var(--soft-foreground); }
+
+/* --- les leviers du massing : le dé du mixer, et la valeur quand elle est figée */
+.mass-lev{ list-style:none; margin:0 0 var(--s-2); padding:0; display:flex; flex-direction:column; gap:var(--s-1); }
+.mass-lev li{ display:flex; align-items:center; gap:var(--s-2); flex-wrap:wrap; }
+.mass-lev__n{ flex:1; min-width:9em; font-size:var(--t-xs); color:var(--soft-foreground); }
+.mass-lev__s{
+  min-block-size:var(--tap-min); padding:0 var(--s-2); font:inherit; font-size:var(--t-xs);
+  color:var(--foreground); background:var(--card); border:1px solid var(--input); border-radius:var(--radius-md);
+}
+input.mass-lev__s{ inline-size:5.5em; text-align:right; }

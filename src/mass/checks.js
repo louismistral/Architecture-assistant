@@ -1,21 +1,23 @@
 /* ============================================================================
    LE CONTRÔLE DE LA VOLUMÉTRIE
 
-   Le contrôle ne juge pas : `juge.js` le fait, et le générateur avec lui. Une
-   CONTRAINTE DURE enfreinte est une ERREUR, lue dans `dures()` — le contrôle
-   et le générateur disent donc la même chose, avec les mêmes mots. Le reste
+   Le contrôle ne note pas : le jugement le fait (`data/jugement.js`). Il dit
+   les ÉCARTS AU CADRE, lus dans `mesures.js — ecarts()` — le contrôle et le
+   générateur disent donc la même chose, avec les mêmes mots. C'est le canal
+   par lequel une composition retouchée à la main, ou chargée d'une variante
+   que le cadre a depuis rendue invalide, apprend ce qui cloche. Le reste
    s'avertit.
 
    Trois niveaux, et la frontière entre eux n'est pas une nuance de ton :
 
-     ERREUR   une règle ÉCRITE — le règlement, l'AEAI — ou une géométrie
-              impossible : un corps hors de la parcelle, deux corps qui
-              s'interpénètrent ;
-     AVERTIR  une règle de PROJET ou une marge qui se discute : le retrait de
-              cinq mètres, la profondeur, la surface qui s'écarte du programme,
-              un porte-à-faux ;
+     ERREUR   le cadre OPPOSABLE (Intangible) — le règlement, l'AEAI, le
+              programme : un corps hors de la parcelle, deux corps trop près ;
+              la variante est invalide ;
+     AVERTIR  le cadre CHOISI (Imposé) et les orientations qui se lisent mal :
+              le recul, la profondeur de façade, le jour entre corps ;
      INFO     ce qu'il faut savoir sans avoir à corriger : deux cages
-              d'escalier à prévoir, un gradin, un terrassement.
+              d'escalier à prévoir, un terrassement. Une ligne éteinte ne dit
+              plus rien ; une ligne Indicative, si.
 
    Chaque écart porte un CODE stable, construit sur l'identité du volume et non
    sur son rang : déplacer un corps ne doit pas renuméroter les écarts des
@@ -25,29 +27,37 @@ import { fmt, dec } from "../core/format.js";
 import { NAPPE, PER } from "../data/site.js";
 import { RULES } from "../data/rules.js";
 import { lvlOf } from "../mix/floors.js";
-import { DOC } from "../data/doctrine.js";
+/* `V` est ici la liste des volumes, comme partout dans ce fichier : les
+   valeurs vivantes s'appellent donc `VAL`. */
+import { V as VAL, courExigee, lu } from "../data/cadre.js";
+import "../data/orientation.js";
 import { assise, ecart, visAVis } from "./geom.js";
 import { lies, rectSol } from "./gen.js";
-import { courProgramme, courUtile, dures, terrainLibre } from "./juge.js";
+import { courProgramme, courUtile, ecarts, terrainLibre } from "./mesures.js";
 import { isAccepted } from "../mix/accept.js";
 import {
   fixAire, fixAuto, fixCarrer, fixEcarter, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
-import { MASS, bilan, niveaux, pontRect, profBornes, secondTemps,
+import { MASS, niveaux, pontRect, profBornes, secondTemps,
   volHaut, volTitre as nom } from "./model.js";
 
 var COUR = courProgramme();
 
-/* Pour chaque contrainte dure : l'article, et les gestes qui la réparent. */
+/* Pour chaque ligne du cadre : l'article, et les gestes qui la réparent. Une
+   ligne d'orientation passée en Imposé n'a pas de geste à elle : on relance. */
+function courFix(){ return [fixRelancer(),
+  fixSecond("non", "Ne pas représenter le second temps", "il libère le terrain qu’il occupe")]; }
 var DUR = {
-  perim:    { ref:"2.3",      fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
+  perimetre:{ ref:"2.3",      fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
+  recul:    { ref:"projet",   fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
   existant: { ref:"2.3",      fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
   dist:     { ref:"AEAI 15-15", fix:function(){ return [fixEcarter()]; } },
   facade:   { ref:"",         fix:function(i){ return [fixProfondeur(i), fixRelancer()]; } },
   module:   { ref:"",         fix:function(){ return [fixAire()]; } },
-  cour:     { ref:"2.10",     fix:function(){ return [fixRelancer(),
-    fixSecond("non", "Ne pas représenter le second temps", "il libère le terrain qu’il occupe")]; } },
+  surfaces: { ref:"2.7",      fix:function(){ return [fixAire()]; } },
+  "cour-prog": { ref:"2.10",  fix:courFix },
+  cour:     { ref:"projet",   fix:courFix },
   abri:     { ref:"",         fix:function(){ return [fixPile()]; } },
   sport:    { ref:"2.10",     fix:function(){ return [fixRelancer()]; } }
 };
@@ -67,12 +77,12 @@ export function massCheck(){
   }
   /* --- aucune variante valide : rien n'est proposé ------------------------ */
   if(!V.length && V.impossible){
-    dit("e", "tient", "Aucune composition ne respecte toutes les contraintes dures avec le "
+    dit("e", "tient", "Aucune composition ne tient dans le cadre avec le "
       + "parti « " + (V.parti || MASS.parti) + " » — aucune n’est donc proposée. Le générateur "
       + "a tout essayé, de " + dec(profBornes().lo) + " à " + dec(profBornes().hi) + " m de "
       + "profondeur ; l’aire posable est de " + fmt(Math.round(V.posable || 0)) + " m², recul "
       + "du PACom déduit. Essayer un autre parti, rejouer, ajouter un étage au mixer, ou "
-      + "desserrer une contrainte dans le volet Contraintes."
+      + "assouplir une ligne du cadre choisi dans Paramètres & contraintes."
       + (V.raison ? " En cause, et cela se règle au mixer : " + V.raison : ""), "2.3", "", -1,
       { fix:[fixAuto(), fixRelancer(), fixPile()] });
     return out;
@@ -83,13 +93,13 @@ export function massCheck(){
     return out;
   }
 
-  /* --- LES CONTRAINTES DURES, telles que le juge les lit ------------------ */
+  /* --- LE CADRE, tel que le générateur le lit ----------------------------- */
   V.ponts = MASS.pont;
-  dures(V, false).forEach(function(x){
-    var D = DUR[x.k] || { ref:"", fix:function(){ return []; } };
+  ecarts(V, false).forEach(function(x){
+    var D = DUR[x.k] || { ref:"", fix:function(){ return [fixRelancer()]; } };
     var v = V[x.v], id = v ? v.id : "", nm = v ? nom(v, x.v) : "";
     if(x.v2 >= 0 && V[x.v2]){ id += "|" + V[x.v2].id; nm += " · " + nom(V[x.v2], x.v2); }
-    dit("e", x.k + ":" + id, x.msg, D.ref, nm, x.v, { fix: D.fix(x.v) });
+    dit(x.sev, x.k + ":" + (x.c != null ? x.c : id), x.msg, D.ref, nm, x.v, { fix: D.fix(x.v) });
   });
 
   /* --- les passerelles rompues -------------------------------------------- */
@@ -102,17 +112,17 @@ export function massCheck(){
   for(i = 0; i < V.length; i++){
     var v = V[i], rc = rectSol(v), nm = nom(v, i);
 
-    /* --- LE JOUR ENTRE LES CORPS — une priorité, donc un avertissement ----- */
-    for(j = i + 1; j < V.length; j++){
+    /* --- LE JOUR ENTRE LES CORPS — une orientation, donc un avertissement -- */
+    for(j = i + 1; j < V.length && lu("jour"); j++){
       var o = rectSol(V[j]), e = ecart(rc, o), n2 = nom(V[j], j);
-      if(e < 0 || v.ph || V[j].ph || lies(v, V[j]) || DOC.ombreK <= 0) continue;
+      if(e < 0 || v.ph || V[j].ph || lies(v, V[j]) || VAL.ombreK <= 0) continue;
       if(visAVis(rc, o) <= 8) continue;
-      var req = Math.max(volHaut(v), volHaut(V[j])) * DOC.ombreK;
+      var req = Math.max(volHaut(v), volHaut(V[j])) * VAL.ombreK;
       if(req > RULES.dist.entre && e < req - .05){
         var manque = (req - e) / req;
         dit(manque > .25 ? "w" : "i", "jour:" + v.id + "|" + V[j].id,
           nm + " et " + n2.toLowerCase() + " sont à " + dec(e) + " m pour "
-          + dec(req) + " m d'écart utile — " + dec(DOC.ombreK) + " fois la hauteur "
+          + dec(req) + " m d'écart utile — " + dec(VAL.ombreK) + " fois la hauteur "
           + "du plus haut. Seuls les " + dec(RULES.dist.entre) + " m de la distance incendie sont dus ; en deçà de "
           + "l’écart utile, les façades qui se font face perdent du jour.", "2.9",
           nm + " · " + n2, i, { fix:[fixEcarter(), fixRelancer()] });
@@ -120,9 +130,9 @@ export function massCheck(){
     }
 
     /* --- l'élancement : un garde-fou secondaire ---------------------------- */
-    if(!v.fix && !v.ph){
+    if(!v.fix && !v.ph && lu("elan")){
       var pt = Math.min(rc.w, rc.d), lg = Math.max(rc.w, rc.d);
-      if(lg / Math.max(1, pt) > DOC.elanceMax){
+      if(lg / Math.max(1, pt) > VAL.elanceMax){
         dit("i", "elan:" + v.id, nm + " est " + Math.round(lg / pt) + " fois plus long "
           + "que large — " + dec(lg) + " × " + dec(pt) + " m.", "", nm, i,
           { fix:[fixCarrer(i), fixRelancer()] });
@@ -131,17 +141,18 @@ export function massCheck(){
 
     /* --- le terrain -------------------------------------------------------- */
     var as = assise(rc);
-    if(as.d > DOC.penteMax){
+    if(!lu("pente")){ /* éteinte : rien à dire du terrassement */ }
+    else if(as.d > VAL.penteMax){
       dit("w", "pente:" + v.id, nm + " est posé sur " + dec(as.d) + " m de dénivelé : "
         + "terrassement important, ou niveau décroché.", "2.3", nm, i,
         { fix: fixRelancer() });
-    } else if(as.d > DOC.penteMax / 2){
+    } else if(as.d > VAL.penteMax / 2){
       dit("i", "pente:" + v.id, nm + " couvre " + dec(as.d) + " m de dénivelé — "
         + dec(as.lo) + " à " + dec(as.hi) + " m sur mer.", "2.3", nm, i);
     }
 
     /* --- le sous-sol, quand il tient --------------------------------------- */
-    if(v.lv.some(function(x){ return lvlOf(x.i) < 0; })){
+    if(lu("nappe") && v.lv.some(function(x){ return lvlOf(x.i) < 0; })){
       var couv = as.z - NAPPE;
       if(couv >= RULES.dist.couverture - .005)
         dit("i", "nappe:" + v.id, "Sous " + nm.toLowerCase() + ", "
@@ -204,20 +215,12 @@ export function massCheck(){
     }
   }
 
-  /* --- la surface, niveau par niveau ------------------------------------- */
-  bilan().forEach(function(b){
-    var tol = Math.max(5, b.demande * .02);
-    if(Math.abs(b.ecart) > tol){
-      dit("w", "aire:" + b.i, b.nom + " — surface demandée " + fmt(Math.round(b.demande))
-        + " m², surface posée " + fmt(Math.round(b.pose)) + " m², différence "
-        + (b.ecart > 0 ? "+" : "−") + fmt(Math.round(Math.abs(b.ecart))) + " m².",
-        "2.7", b.nom, -1, { fix: fixAire() });
-    }
-  });
+  /* La surface, niveau par niveau, est au cadre (`surfaces`) : elle est lue
+     plus haut, avec les autres écarts. */
 
   /* --- ce qui reste de terrain ------------------------------------------- */
   var tl = terrainLibre(V), posable = tl.posable, libre = tl.libre, besoin = tl.besoin;
-  if(libre < besoin){
+  if(lu("terrain") && libre < besoin){
     dit("w", "terrain", "Il reste " + fmt(Math.round(libre)) + " m² de terrain libre sur les "
       + fmt(Math.round(posable)) + " m² posables : la cour de " + fmt(COUR) + " m² et les "
       + RULES.ext.voitures + " places de parc en demandent environ "
@@ -230,11 +233,11 @@ export function massCheck(){
   }
 
   /* --- la cour, quand elle tient ----------------------------------------- */
-  var cu = courUtile(V);
-  if(cu.a >= DOC.courMin)
+  var cu = courUtile(V), cm = courExigee();
+  if(cu.a >= cm)
     dit("i", "cour", "La cour offre " + fmt(Math.round(cu.a)) + " m² utiles devant "
       + (cu.v >= 0 ? nom(V[cu.v], cu.v).toLowerCase() : "une façade") + " — "
-      + fmt(DOC.courMin) + " m² au moins.", "2.10", "", -1);
+      + fmt(cm) + " m² au moins.", "2.10", "", -1);
   return out;
 }
 

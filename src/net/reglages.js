@@ -3,9 +3,17 @@
 
    Trois choses ne peuvent pas différer entre deux membres sans que l'outil
    mente : les huit surfaces « à préciser », la largeur du couloir, et les
-   écarts à la doctrine. Ce ne sont pas des préférences d'affichage, ce sont
-   des DÉCISIONS DE PROJET — si l'un travaille avec un couloir de 2,40 m et
-   l'autre de 3 m, leurs deux variantes ne se comparent plus.
+   écarts des LIGNES au défaut (`data/lignes.js — V`) — le cadre choisi,
+   l'orientation, les tags, les domaines des leviers, les paramètres du
+   générateur, et le JURY : les poids, les axes, les fonctions de score, le
+   prix au m³. Ce ne sont pas des préférences d'affichage, ce sont des
+   DÉCISIONS DE PROJET — si l'un travaille avec un couloir de 2,40 m et l'autre
+   de 3 m, leurs deux variantes ne se comparent plus ; deux membres ne peuvent
+   pas travailler avec deux jurys différents.
+
+   La colonne s'appelle encore `doctrine` : c'est le nom qu'elle a en base, et
+   il ne vaut pas une migration. Les clés d'avant (rangs, bacs, poids d'un
+   ancien juge) y sont ignorées à la lecture.
 
    La colonne `circulation` de la table porte la LARGEUR du couloir depuis que
    la circulation se déduit des pièces. Une ligne écrite avant y a laissé une
@@ -15,11 +23,11 @@
    écrit gagne, et l'on dit QUI : à deux, sur un concours, se voler un réglage
    se règle en se parlant, pas en verrouillant une table.
 
-   Ce qui reste à chacun : la composition à l'écran, les écarts assumés, les
-   interrupteurs du mixer. Travailler n'est pas publier.
+   Ce qui reste à chacun : la composition à l'écran, les écarts assumés, l'état
+   fixe ou libre des leviers. Travailler n'est pas publier.
    ========================================================================= */
 import { CIRCSET, COULOIR, loadCirc, recompute, userAreas } from "../core/model.js";
-import { docOf, setDocs } from "../data/doctrine.js";
+import { ecarts, poser } from "../data/lignes.js";
 import { applyAreas, onSave } from "../mix/store.js";
 import { CPT } from "./compte.js";
 import { selectApi, upsertApi } from "./supa.js";
@@ -30,7 +38,7 @@ var occupe = false;      /* on applique du distant : ne pas le renvoyer aussitô
 var minuteur = null;
 
 function partDeLEtat(){
-  return { areas: userAreas, circulation: CIRCSET ? COULOIR : null, doctrine: docOf() };
+  return { areas: userAreas, circulation: CIRCSET ? COULOIR : null, doctrine: ecarts(false) };
 }
 function signature(o){ return JSON.stringify([o.areas, o.circulation, o.doctrine]); }
 
@@ -48,7 +56,7 @@ export async function tirerReglages(){
   try{
     if(r.areas) applyAreas(r.areas);
     if(r.circulation != null) loadCirc(r.circulation);
-    if(r.doctrine) setDocs(r.doctrine);
+    if(r.doctrine) poser(r.doctrine, false);
     recompute();
   } finally { occupe = false; }
   dernier = signature({ areas:r.areas || {}, circulation:r.circulation, doctrine:r.doctrine || {} });

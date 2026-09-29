@@ -35,15 +35,18 @@ import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
 import { admissible, genMass, rectSol } from "../mass/gen.js";
 import { objMassing } from "../mass/export.js";
-import { jugementCourant } from "../mass/juge.js";
-import { DOC } from "../data/doctrine.js";
+import { evaluationCourante } from "../mass/mesures.js";
+import { V, reculVise } from "../data/cadre.js";
+import { OPTIONS } from "../data/leviers.js";
+import { noter } from "../data/jugement.js";
+import { ligne } from "../data/lignes.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massSet, massVols, niveaux, partiOf, plageVue,
+  massLev, massSet, massVols, niveaux, partiOf, plageVue,
   volHaut, volNiv
 } from "../mass/model.js";
-import { doctrineSection, etatDe } from "./doctrine.js";
-import { jugesVue } from "./juges.js";
+import { moyennesMain } from "../net/variantes.js";
+import { deBtn } from "./mixer.js";
 import { apercu } from "./rendu.js";
 import { planDiagrammes } from "../rendu/diagramme.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
@@ -272,20 +275,20 @@ function blocTirage(){
   r.appendChild(champSeed());
   b.appendChild(r);
 
-  /* LE SCORE de la proposition à l'écran : sur 100, calculé sur les seules
-     variantes qui respectent toutes les règles dures. */
+  /* LA NOTE DU JURY pour le bâtiment à l'écran — le jugement, qui ne sait rien
+     de la façon dont il a été produit. Une composition hors cadre est notée
+     comme les autres ; le cadre, lui, se dit à côté. */
   if(MASS.vol.length){
-    var j = jugementCourant(), sc = el("div", "mass-score");
-    if(j && j.total != null){
-      sc.appendChild(el("b", "mass-score__n mono", j.total + "/100"));
-      sc.appendChild(el("span", null, "✓ toutes les règles dures respectées"
-        + (MASS.vol.props ? " · proposition " + (MASS.vol.rang + 1) + " sur "
-          + MASS.vol.props.length + (MASS.parti === "auto" ? " — la meilleure de chaque parti" : "")
-          : "")));
-    } else {
-      sc.appendChild(el("b", "mass-score__n mono is-bas", "—"));
-      sc.appendChild(el("span", null, "une règle dure n'est pas respectée : pas de score"));
-    }
+    var ev = evaluationCourante(), sc = el("div", "mass-score");
+    var j = ev ? noter(ev.mes, null, moyennesMain()) : null;
+    sc.appendChild(el("b", "mass-score__n mono" + (ev && ev.invalide ? " is-bas" : ""),
+      j && j.total != null ? j.total + "/100" : "—"));
+    sc.appendChild(el("span", null, "au jugement"
+      + (ev && ev.invalide ? " · hors du cadre opposable : invalide"
+         : ev && ev.notifie ? " · hors du cadre choisi, voir le contrôle" : " · dans le cadre")
+      + (MASS.vol.props ? " · proposition " + (MASS.vol.rang + 1) + " sur "
+        + MASS.vol.props.length + (MASS.parti === "auto" ? ", la mieux orientée de chaque parti" : "")
+        : "")));
     b.appendChild(sc);
   }
 
@@ -356,14 +359,70 @@ function blocParti(){
   return b;
 }
 
-/* --- les réglages ---
-   Peu, et chacun avec son chiffre lisible : un curseur sans valeur ne se règle
-   pas, il se tâtonne. */
+/* --- les leviers ---
+   Ce que « Shuffle massing » tire, chacun avec le dé du mixer : allumé, le
+   hasard le tire dans son domaine ; éteint, la valeur est la nôtre. Toucher
+   une valeur la fige. Le parti a ses boutons au-dessus — Auto est son dé. Les
+   domaines, eux, sont au groupe : Paramètres & contraintes. */
 function blocParams(){
-  var b = bloc("Paramètres");
-  b.appendChild(el("p", "mass-note", "Le parti décide du nombre de volumes, selon le "
-    + "programme et la cote maximale. Profondeurs, distances, cour et seuils se règlent "
-    + "au volet Contraintes."));
+  var b = bloc("Leviers");
+  /* Un levier touché rejoue la volumétrie à l'instant, comme un parti choisi :
+     le classement d'avant répondait à d'autres leviers. */
+  function relever(){ saveSoon(); regenere(); redessine(); }
+  var ul = el("ul", "mass-lev");
+  function rangee(id, etat, onDe, ctl){
+    var l = ligne(id), li = el("li");
+    li.appendChild(el("span", "mass-lev__n", l.n));
+    li.appendChild(deBtn(etat, l.n, onDe));
+    if(ctl) li.appendChild(ctl);
+    ul.appendChild(li);
+  }
+  function opts(k, id){
+    var v = MASS.lev[k], sel = null;
+    if(v != null){
+      sel = el("select", "mass-lev__s");
+      sel.setAttribute("aria-label", ligne(id).n);
+      OPTIONS[k].forEach(function(o){
+        var op = el("option", null, o.n); op.value = o.id; op.selected = o.id === v; sel.appendChild(op);
+      });
+      sel.addEventListener("change", function(){ massLev(k, sel.value); relever(); });
+    }
+    rangee(id, v == null, function(on){
+      massLev(k, on ? null : OPTIONS[k][0].id); relever();
+    }, sel);
+  }
+  opts("cap", "lev-cap");
+  opts("sport", "lev-sport");
+  opts("ponts", "lev-ponts");
+  var pf = null;
+  if(MASS.lev.prof != null){
+    pf = el("input", "mono mass-lev__s");
+    pf.type = "number"; pf.step = "0.5"; pf.min = "1"; pf.value = String(MASS.lev.prof);
+    pf.setAttribute("aria-label", "Profondeur fixée, en m");
+    pf.addEventListener("change", function(){
+      var x = parseFloat(String(pf.value).replace(",", "."));
+      if(isFinite(x)) massLev("prof", x);
+      relever();
+    });
+  }
+  rangee("lev-prof", MASS.lev.prof == null, function(on){
+    massLev("prof", on ? null : Math.round((V.profMin + V.profMax) / 2)); relever();
+  }, pf);
+  var sc = null;
+  if(MASS.second !== "auto"){
+    sc = el("select", "mass-lev__s");
+    sc.setAttribute("aria-label", "Second temps");
+    [["un", "Réunis"], ["sep", "Séparés"], ["non", "Non représentés"]].forEach(function(o){
+      var op = el("option", null, o[1]); op.value = o[0]; op.selected = o[0] === MASS.second; sc.appendChild(op);
+    });
+    sc.addEventListener("change", function(){ massSet("second", sc.value); relever(); });
+  }
+  rangee("lev-second", MASS.second === "auto", function(on){
+    massSet("second", on ? "auto" : "sep"); relever();
+  }, sc);
+  b.appendChild(ul);
+  b.appendChild(el("p", "mass-note", "Toucher un levier rejoue la volumétrie. Domaines, cadre, orientation "
+    + "et jugement : Paramètres & contraintes."));
   return b;
 }
 
@@ -577,11 +636,11 @@ function cote(host, lb, v, k){
   i.type = "number"; i.className = "mono";
   /* Libre : les dimensions souhaitées ne bloquent pas, elles se notent. Seul
      le module s'applique à la main comme au générateur. */
-  i.min = String(DOC.module); i.step = String(DOC.module);
+  i.min = String(V.module); i.step = String(V.module);
   i.value = String(e0[k]);
   i.addEventListener("change", function(){
     var x = parseFloat(String(i.value).replace(",", "."));
-    if(!isFinite(x) || x < DOC.module){ i.value = String(e0[k]); return; }
+    if(!isFinite(x) || x < V.module){ i.value = String(e0[k]); return; }
     x = auModule(x);
     i.value = String(x);
     /* Toute la pile suit la cote du rez : un massing dont chaque étage aurait
@@ -811,7 +870,7 @@ function blocExport(){
   b.appendChild(el("p", "mass-note", "Coordonnées du relevé DOC/site_plan.3dm, en "
     + "centimètres, Z vers le haut : le fichier s’y pose en place. À l’import, ne coche "
     + "pas « Map OBJ Y to Rhino Z » et coche « Import OBJ groups as layers » — un calque "
-    + "par niveau, plus le périmètre et le recul de " + dec(RULES.dist.retrait, 0)
+    + "par niveau, plus le périmètre et le recul de " + dec(reculVise(), 0)
     + " m, drapés sur le terrain."));
   return b;
 }
@@ -829,35 +888,27 @@ function telecharger(){
 }
 
 /* ---------- le volet « Contraintes » ----------------------------------------
-   Le massing POSE une volumétrie ; ce volet dit ce qui la gouverne, et le
-   règle. Il porte en tête la NOTE de la composition à l'écran, critère par
-   critère : c'est la réponse à « pourquoi obtient-on ce résultat », et sans
-   elle les poids se règlent à l'aveugle.
+   Le massing POSE une volumétrie ; ce volet dit ce qui la gouverne. C'est la
+   page Paramètres & contraintes filtrée sur le massing (`render.js` la pose),
+   chaque ligne disant ce qu'elle pense de la composition à l'écran, et le
+   jugement en tête : c'est la réponse à « pourquoi obtient-on ce résultat ».
 
    La navigation est injectée plutôt qu'importée : `render.js` importe déjà ce
    module, et l'importer en retour ferait un cycle. */
 var massNav = null;
 export function setMassNav(f){ massNav = f; }
 
-export function massDoctrine(){
-  /* On arrive parfois ici SANS être passé par la volumétrie — un lien direct,
-     un rechargement sur `#massing/contraintes`. La note n'aurait alors rien à
-     montrer, alors que le programme, lui, est réparti. */
+/* On arrive parfois au volet SANS être passé par la volumétrie — un lien
+   direct, un rechargement sur `#massing/contraintes`. Les lignes n'auraient
+   alors rien à dire, alors que le programme, lui, est réparti. */
+export function massPrepare(){
   if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
-  function rejouer(){
-    if(aPoser() > 0){
-      massSet("graine", graineSuivante());
-      regenere();
-      saveSoon();
-    }
-    if(massNav) massNav("volumetrie");
+}
+export function massRejouer(){
+  if(aPoser() > 0){
+    massSet("graine", graineSuivante());
+    regenere();
+    saveSoon();
   }
-  /* En tête les deux bacs ; en bas, les seuils de chaque mesure. */
-  var host = el("div", "mass-contraintes");
-  host.appendChild(jugesVue(rejouer));
-  var seuils = el("details", "disclose jg-seuils");
-  seuils.appendChild(el("summary", null, "Seuils des mesures — la doctrine du massing"));
-  seuils.appendChild(doctrineSection("mass", rejouer, null, etatDe(jugementCourant())));
-  host.appendChild(seuils);
-  return host;
+  if(massNav) massNav("volumetrie");
 }
