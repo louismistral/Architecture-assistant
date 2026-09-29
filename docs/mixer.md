@@ -4,10 +4,11 @@ Répartir le programme sur les niveaux, puis contrôler ce qu'on a réparti.
 
 ```
 src/mix/prog.js       le programme vu comme des parts à poser ; adjacences par poste
-src/mix/niv.js        règles de niveau, cotes admissibles d'un poste
+src/mix/niv.js        la mécanique des règles de niveau (la table est au cadre, `data/cadre.js — NIV`)
 src/mix/floors.js     la pile de niveaux, les parts posées, déplacer / scinder
 src/mix/shuffle.js    la NOTE de niveau, le tirage, la proposition de pile
 src/mix/checks.js     contrôle d'une répartition → écarts, avec code et remèdes
+src/mix/mesures.js    les mesures brutes d'une répartition, pour le jugement
 src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
 src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
 src/mix/opts.js       les réglages et leur dé : la pile, les plateaux, le lien des postes,
@@ -25,10 +26,12 @@ pas.
 
 Chaque niveau candidat reçoit une note : la place qui y reste, les adjacences ACTIVES déjà
 satisfaites, la grappe qui y pèse, la famille d'usage, ce que l'usage scolaire veut au rez
-et ce qu'il veut à l'étage. Un bruit de Gumbel d'amplitude `DOC.temperature` s'y ajoute, et
-le meilleur gagne. À température nulle le tirage est déterministe et rend la meilleure
-répartition ; plus elle monte, plus il propose des variantes. Tous les poids sont dans
-`doctrine.js`.
+et ce qu'il veut à l'étage. Un bruit de Gumbel d'amplitude `V.temperature` — la part du hasard,
+`data/recherche.js` — s'y ajoute, et le meilleur gagne. À zéro le tirage est déterministe et rend
+la répartition la mieux orientée ; plus elle monte, plus il propose des variantes. Chaque terme de
+la note est une ligne d'ORIENTATION (`data/orientation.js`) — sa valeur en points fois la force de
+son tag, Prioritaire (× `V.forcePrio`, 5) ou Souhaité (× 1) — ou le poids d'un CADRE ; voir
+`docs/parametres.md`.
 
 > Ce qui a précédé : un poste allait au niveau LE PLUS VIDE, pondéré par la place restante —
 > c'était la seule note, on remplissait sans composer. Le « Shuffle » mélangeait les postes
@@ -43,9 +46,9 @@ Le tirage est la seule proposition : « Répartir », son jumeau ordonné, donna
 
 `pilesAdmissibles()` construit la liste des piles que le site admet : celles dont le plateau
 déduit tient dans l'emprise (l'aire POSABLE de la parcelle, 10'528 m², multipliée par
-`DOC.plateauPart`), dont les étages ne dépassent pas le plafond, dont le rez porte ce que le
-règlement y cloue, et dont les niveaux de classes suffisent au contingent. Le tirage en
-prend une, les plus compactes d'abord. **Une variante tirée est donc une variante VALABLE.**
+`V.plateauPart`, une ligne du cadre choisi), dont les étages ne dépassent pas le plafond, dont le rez porte ce que le
+règlement y cloue, et dont les niveaux de classes suffisent au contingent. Le levier en tire
+une, l'orientation « pile compacte » préférant les plus basses. **Une variante tirée est donc une variante VALABLE.**
 
 > Avant : le nombre d'étages se déduisait d'un plateau de 2'400 m², un nombre rond sans
 > rapport avec le site, et le sous-sol se décidait à PILE OU FACE — ce qui contredisait
@@ -78,7 +81,7 @@ entier donne, faute de mieux avant que les pièces soient posées.
 
 ## L'unité pédagogique
 
-`DOC.clsParNiveau` (11) plafonne les salles de classe d'un **niveau**, pas d'un poste : les
+`V.clsParNiveau` (11, cadre choisi) plafonne les salles de classe d'un **niveau**, pas d'un poste : les
 salles standard et celles de réserve sont deux postes, et chacun respectait le sien, ce qui
 faisait quatorze salles sur un plateau qui n'en admet que onze.
 
@@ -95,10 +98,9 @@ de proposer — celle que l'utilisateur a composée à la main lui appartient, m
 
 ## Le mixer ne refuse rien
 
-Une répartition hors règles est produite quand même, et `checks.js` la dit : rouge pour une
-règle écrite au règlement ou à l'AEAI, ambre pour une règle de projet ou une marge qui se
-discute. Le plateau, le nombre de niveaux et la part de circulation sont des choix de
-projet : leur dépassement est ambre.
+Une répartition hors règles est produite quand même, et `checks.js` la dit, avec la sévérité
+que le TAG de la ligne lui donne : rouge pour le cadre opposable (Intangible), ambre pour notre
+choix et pour une orientation. Une ligne éteinte ne dit plus rien.
 
 **Un écart se clique.** Il s'ouvre sur le geste qui le résoudrait — déplacer le poste au
 niveau que la règle admet, vider le niveau, porter le plateau à la surface qu'il faut, poser
@@ -123,8 +125,9 @@ faire.
 
 **Une adjacence active est une règle, une adjacence éteinte n'est rien.** Chaque lien du
 schéma fonctionnel s'allume ou s'éteint au flanc du mixer. Active, elle met ses deux postes
-au même niveau — le tirage la note d'un poids qui écrase toute autre raison (`DOC.adjDur`),
-débordement compris — et le contrôle la marque en ROUGE quand elle ne tient pas, avec trois
+au même niveau — c'est la ligne `adj` du cadre choisi : le tirage la note d'un poids qui écrase
+toute autre raison (`IMPOSE`, débordement compris) — et le contrôle la marque en ambre quand
+elle ne tient pas, avec trois
 remèdes : déplacer l'un, déplacer l'autre, ou l'éteindre. Éteinte, elle ne pèse rien et le
 contrôle n'en dit rien : les deux postes sont indépendants. Par défaut, les adjacences
 exigées sont actives et les mutualisations éteintes.
@@ -183,8 +186,8 @@ son dé ; « Exigées », « Toutes » et « Aucune » les règlent d'un coup, e
 tient pas porte la marque du contrôle.
 
 Ce que tire un dé allumé se tire AVANT la pose, sur la même seed (`tirerReglages()` dans
-`shuffle.js`) : un poste lié avec la probabilité `DOC.pLie`, une adjacence active avec
-`DOC.pAdj`. La valeur tirée devient la valeur du réglage — on la lit sur le bloc et au flanc,
+`shuffle.js`) : lié ou délié, actif ou éteint, à pile ou face — un levier libre tire à parts
+égales. La valeur tirée devient la valeur du réglage — on la lit sur le bloc et au flanc,
 et on la garde en éteignant le dé. Une proposition se rejoue donc à l'identique, liens et
 adjacences compris.
 

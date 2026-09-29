@@ -100,10 +100,22 @@ bouton. On nomme, puis on pose ; vide, la variante prend le nom proposé.
   ensemble : la liste repeinte après une suppression reprend les autres au
   même point (`ALLUMEES`). Elle a été haute comme une affiche : trois variantes
   remplissaient le panneau, et comparer demandait de défiler.
-- Le **modal** porte tout le reste — la note critère par critère, les graines,
-  les surfaces, les contrôles.
+- Le **modal** porte tout le reste — la note axe par axe, critère par critère, les
+  NOTES MANUELLES (cinq crans sur chaque critère sans mesure), les graines, les
+  surfaces, les contrôles.
 
-Les **étiquettes** se cumulent : `new`, `périmée`, `algo`.
+Les **étiquettes** se cumulent : `new`, `périmée`, `algo`, `invalide` (hors du cadre
+opposable), `hors cadre` (hors du cadre choisi). Une variante hors cadre n'est jamais
+supprimée : elle est notée comme les autres, et le dit.
+
+## La note se refait ici
+
+Chaque variante garde ses **mesures brutes** (`criteria.mes`) et ses notes manuelles
+(`criteria.main`) : la note affichée est celle du **jugement d'aujourd'hui**, avec les poids
+d'aujourd'hui (`noteDe()`). Changer un poids d'axe reclasse toutes les variantes sans en
+regénérer une. Une variante qu'on n'a pas notée à la main reçoit, pour ces critères, la moyenne
+des notes posées sur les autres. Une variante d'avant n'a pas de mesures : sa note, en
+italique, est celle de l'ancien juge, et « Reload » la mesure. Voir `docs/parametres.md`.
 
 ## Trier, filtrer, chercher
 
@@ -112,7 +124,7 @@ des filtres qui se cumulent, une recherche.
 
 | outil | règle |
 |---|---|
-| trier | note, date, nom, auteur, type de massing — dans un sens ou l'autre. Par défaut : la note, la meilleure d'abord |
+| trier | note, chaque AXE du jugement (le plus économique, le mieux inséré…), date, nom, auteur, type de massing — dans un sens ou l'autre. Par défaut : la note, la meilleure d'abord |
 | filtrer | note (de… à…), auteur, état (à jour · périmées), date (24 h · 7 · 30 jours), type de massing, origine (recherche auto · à la main) |
 | chercher | le nom, l'auteur, le type, les étiquettes |
 
@@ -141,18 +153,18 @@ panneau, quand on ouvre ses informations, ou au Reload.
 ## Reload
 
 Il remet la liste d'aplomb : les `new` tombent, la liste est relue, et chaque
-variante est **rejouée par le code d'aujourd'hui** (`rejouerTout()`) — sa note,
-ses critères, son verdict, ses surfaces et sa miniature sont recalculés et
-réécrits en base s'ils ont changé. Une note d'un ancien juge (vingt-trois
-critères, ou 670 sur 100) n'a plus de sens : elle est refaite, pas cachée.
+variante est **rejouée par le code d'aujourd'hui** (`rejouerTout()`) — ses
+mesures, ses écarts au cadre, son verdict, ses surfaces et sa miniature sont
+recalculés et réécrits en base s'ils ont changé ; ses notes manuelles restent.
+Une note d'un ancien juge n'a plus de sens : elle est refaite, pas cachée.
 
 L'**empreinte ne bouge pas** : elle dit sur quelle version du programme et du
 règlement la variante a été COMPOSÉE, et rejouer ne recompose rien. Une
 variante périmée le reste.
 
 Comme la recherche, Reload travaille sur l'état vivant et le remet tel quel —
-y compris la doctrine et les surfaces « à préciser », que `restore()` ne défait
-pas seul.
+y compris les lignes réglées et les surfaces « à préciser », que `restore()` ne
+défait pas seul.
 
 **« Charger » est la raison d'être de l'écran**, donc le seul bouton plein. Il
 remet le cahier des charges, le mixer et le massing dans l'état exact.
@@ -171,12 +183,15 @@ Elle porte trois familles de choses :
 - **ce qui se trie** — note, niveaux, corps, surfaces, en colonnes et non en
   JSON : trier cinquante variantes par note ne doit pas demander d'ouvrir
   cinquante états ;
-- **ce qui se montre** — verdict, détail de la note, polygones de la miniature,
-  pour dessiner le panneau sans rejouer un générateur par carte.
+- **ce qui se montre** — verdict, mesures, écarts au cadre, notes manuelles,
+  polygones de la miniature, pour dessiner le panneau sans rejouer un générateur
+  par carte.
 
-`restore()` repart de la doctrine **par défaut** avant de poser celle de
-l'instantané : une valeur réglée avant de charger une variante survivait sinon
-à une variante qui ne la touchait pas, et la variante ne se reproduisait plus.
+`restore()` repart des lignes de la recherche **par défaut** avant de poser celles
+de l'instantané : une valeur réglée avant de charger une variante survivait sinon
+à une variante qui ne la touchait pas, et la variante ne se reproduisait plus. Le
+JURY n'est pas dans l'instantané : charger une variante ne change jamais les poids
+qui la notent.
 
 L'état est celui de `snapshot()` dans `src/mix/store.js`, sans un octet de plus :
 un seul objet dit ce qu'est « l'état du projet », et deux choses le lisent —
@@ -191,7 +206,8 @@ graines séparées (`curSeed` pour le programme, `MASS.graine` pour le massing).
 
 Une variante s'appuie sur des nombres qu'on ne peut PAS changer depuis
 l'application : le programme, le règlement, les adjacences, le relevé, et les
-valeurs par DÉFAUT de la doctrine. Ceux-là changent en éditant le code.
+valeurs par DÉFAUT des lignes de la recherche. Ceux-là changent en éditant le code.
+Les défauts du jury n'y sont pas : un poids changé renote, il ne périme pas.
 
 Quand ils changent, une variante enregistrée avant ne dit plus la vérité. Elle
 porte donc l'**empreinte** de ces cinq sources (`core/empreinte.js`), comparée à
@@ -229,7 +245,8 @@ passage, donc il vaut « u au dernier calcul ».)
 | les variantes | la composition à l'écran |
 | les 8 surfaces à préciser | les écarts assumés |
 | la largeur du couloir | les réglages du mixer et leurs dés |
-| la doctrine réglée | |
+| les lignes réglées — cadre, orientation, tags, domaines, générateur | l'état fixe ou libre des leviers |
+| le jury — critères, poids, axes, prix au m³ | |
 
 Les trois réglages partagés sont des **décisions de projet** : si l'un travaille
 avec un couloir de 2,40 m et l'autre de 3 m, leurs deux variantes ne se comparent
@@ -244,8 +261,8 @@ groupe) et s'écrivent au fil de l'eau. Le dernier qui écrit gagne, et le panne
 dit QUI. À deux, sur un concours, se voler un réglage se règle en se parlant, pas
 en verrouillant une table.
 
-**Charger une variante change donc aussi les réglages du groupe** — c'est
-nécessaire : sans cela la variante ne se reproduirait pas.
+**Charger une variante change donc aussi les réglages du groupe** — ceux de la
+recherche, jamais le jury — : sans cela la variante ne se reproduirait pas.
 
 ## La recherche automatique — « algo search »
 
@@ -260,9 +277,9 @@ le fait seul. On y décide quatre choses :
 | combien d'essais, et combien on en garde | 30 · 3 |
 | ce qu'on garde : **sans erreur rouge** (mixer et massing), **un seul par parti** | oui · oui |
 
-On garde les meilleures **notes du juge** (`mass/juge.js — noter()`), sur 100 ;
-à note égale, la moins fautive. La note se lit, elle ne choisit pas la
-composition : le générateur choisit toujours par la hiérarchie. La recherche,
+On garde les meilleures **notes du jugement** (`data/jugement.js — noter()`), sur
+100 ; à note égale, la moins fautive. Le générateur cherche par l'orientation, le
+jugement classe ce qu'il trouve. La recherche,
 elle, trie ce que le générateur a rendu, et c'est exactement ce qu'on faisait
 à l'œil.
 

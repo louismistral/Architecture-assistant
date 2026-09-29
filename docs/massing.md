@@ -7,7 +7,7 @@ src/data/site.js      le relevé, engendré du fichier Rhino    ← source uniqu
 src/mass/geom.js      terrain interpolé, rectangles tournés, distances, alignements
 src/mass/model.js     l'état, les niveaux RELUS du mixer, le bilan de surface
 src/mass/gen.js       le générateur : générer → vérifier → noter → classer
-src/mass/juge.js      le jugement : contraintes dures, priorités fortes, préférences
+src/mass/mesures.js   ce qu'on lit sur une volumétrie : écarts au cadre, qualités, mesures
 src/mass/partis.js    les douze partis : figure exacte, programme, cohérence du parti
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
@@ -73,62 +73,45 @@ autre chose que ce que le tirage avait montré. Une seed illisible ou nulle reme
 courante sans rien tirer. Elle est enregistrée avec le reste (`mass/etat.js`) : après un
 rechargement, la seed affichée est celle de la volumétrie relue.
 
-## Générer, vérifier, noter, classer — un score sur 100
+## Le cadre élimine, l'orientation retient, le jugement classe
 
-`juge.js` juge une variante en deux temps, et le volet « Contraintes » les affiche tels quels,
-chaque ligne disant ce qu'elle pense de la composition à l'écran :
+Le massing ne juge plus : il MESURE (`mesures.js`), et trois moteurs lisent ces mesures — voir
+`docs/parametres.md`.
 
-| rang | effet | règles |
-|---|---|---|
-| **règles dures** | une seule enfreinte : la variante est SUPPRIMÉE, sans score (`dures()`) | périmètre et recul de 5 m (choix de projet) à tous les étages, passerelles comprises · **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 → AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · classes en façade (`profFacade()`, deux salles et leur couloir : 19,5 m) · module 0,50 m · cour utile ≥ 620 m² · abri PC au moins partiellement enterré · salle de sport 28 × 32 m, 7 m libres, rien au-dessus |
-| **priorités fortes** | mesures des jugements |  dimensions souhaitées · distance souhaitée · respect du parti · organisation du programme · orientation solaire · vue au nord-ouest · lumière entre bâtiments · compacité · cour généreuse |
-| **préférences** | mesures des jugements |  alignement · terrassement · élancement · connexions · nappe et sous-sol · accès et stationnement |
+| lecture | fonction | ce qu'elle rend | qui s'en sert |
+|---|---|---|---|
+| le **cadre** | `ecarts()` | ce que la variante enfreint, avec les mots du contrôle, rouge pour l'opposable, ambre pour notre choix | le générateur jette ; le contrôle notifie |
+| l'**orientation** | `qualites()` | pour chaque ligne, une qualité de −1 à +1 et un état | le générateur retient (`retenir()`) |
+| les **mesures** | `mesuresMass()` | des nombres bruts, sans seuil | le jugement (`data/jugement.js`) |
 
-**Les dimensions et la distance sont des réglages, pas des règles.** Largeur et profondeur
-min/max (`DOC.largeurMin/Max`, `profMin/Max`, cotes extérieures, murs compris) et la distance
-souhaitée (`DOC.distVoulue`) se règlent dans le volet Contraintes. Le générateur les VISE —
-les figures s'écartent de `max(distance incendie, distance souhaitée)`, `besoins()` découpe
-selon la largeur max —, mais un volume hors fourchette ou un écart sous la distance souhaitée
-ne fait que baisser le score. Seule la distance incendie bloque.
+Le cadre du massing : le périmètre (opposable) et notre **recul** de 5 m (choisi) à tous les
+étages, passerelles comprises · la **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 →
+AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · la salle de sport
+28 × 32 m, rien au-dessus · l'abri PC au moins partiellement enterré · chaque niveau loge sa
+surface · la cour du programme, et notre cour utile de 620 m² · les classes en façade
+(`profFacade()`, deux salles et leur couloir : 19,5 m) · le module de 0,50 m. Chaque ligne a
+son tag ; celles de notre choix se désactivent ou s'assouplissent en orientation.
 
-**Deux bacs — règles dures et jugements** (`data/jugements.js`, vue `views/juges.js`). Le volet
-Contraintes pose à gauche les RÈGLES DURES (les règles dures de `REGLES`, celles du règlement
-qui touchent au volume, les conditions éliminatoires A), à droite les JUGEMENTS B à J, tirés
-de concours gagnants. Chaque entrée passe d'un bac à l'autre ; son bac et son poids (curseur
-0–10) vivent dans `DOC` (`b_<id>`, `w_<id>`), partagés au groupe.
+L'orientation du massing : dimensions dans les domaines, distance souhaitée, soleil, vue, jour
+entre corps, compacité, cour généreuse (Prioritaires) ; alignement, terrassement, élancement,
+connexions, nappe, terrain libre (Souhaitées). Une ligne passée en Imposé jette la variante où
+elle se lit défavorable.
 
-Tout le brief y est en règles dures : les chiffres de `RULES` (site, mobilité, programme,
-normes) et le texte de `RULES.cadre`, sauf les points « à vérifier ». La poubelle d'une ligne
-l'efface (`x_<id>`) : elle ne bloque ni ne compte plus ; « Rétablir » ou « Revenir au tri de
-départ » la ramène.
+**Les dimensions sont des domaines de leviers.** Largeur et profondeur min/max
+(`V.largeurMin/Max`, `profMin/Max`, cotes extérieures, murs compris) sont les domaines où le
+générateur tire ses cotes ; la distance souhaitée (`V.distVoulue`) est une orientation — les
+figures s'écartent de `max(distance incendie, distance souhaitée)`, `besoins()` découpe selon
+la largeur max. Seule la distance incendie bloque.
 
-Chaque entrée nomme les MESURES du générateur qui la disent (`m`, ids de `dures()` et de
-`qualites()`). Une mesure réclamée par une règle dure BLOQUE (`mesuresDures()`) : une qualité
-passée en dure bloque quand elle se lit défavorable. Une règle dure passée aux jugements ne
-bloque plus, et vaut 1 tenue, 0 enfreinte (`dures().hors`). Chaque qualité rend
-s = (q + 1) / 2 ; un jugement vaut la moyenne de ses mesures, et
-
-```
-score = 100 × Σ w·s / Σ w        sur les jugements MESURÉS, w = le curseur
-```
-
-Un jugement sans mesure (matériaux, rendu…) garde son curseur pour les onglets suivants mais
-n'entre pas dans la note. La couverture de la nappe part jugée : dure, elle rend « pavillons »
-impossible. Chaque ligne a son « Pourquoi · comment » (`POURQUOI` dans `jugements.js`, puis le `pourquoi` de chaque mesure dans `REGLES`, et sa lecture à l'écran) ; « Comment ça marche » explique le tout. Les seuils de chaque mesure restent en bas du volet, repliés. `views/note.js`
-dessine encore la note d'une variante enregistrée. Les paramètres de recherche (essais,
-reconnaissance, profondeur de mesure de la cour, passerelles) sont rangés à part, sous
-« Paramètres du générateur ».
-
-Ont disparu, de l'interface ET de l'algorithme : les poids (`*Poids`), le coût du sous-sol
-hors règle (la nappe est désormais une préférence qualitative), l'éparpillement (doublon de la distance entre bâtiments), le maximum
-de cour, l'adresse du corps principal et sa « bande de 30 m » (une largeur de bande autour
-d'une voie, qui ne servait qu'à ce bonus), la « marge sans pénalité » du terrassement
-(1,6 m de dénivelé en deçà duquel le malus valait zéro), la force et le poids d'alignement,
-la profondeur de départ de 18,5 m.
+Ont disparu : les deux bacs (`data/jugements.js`, `views/juges.js`), le score calculé sur les
+mêmes rangs qui orientaient la recherche, « Respect du parti » (il lisait la signature du
+générateur : c'est désormais le sens du levier « parti »), et, avant eux, les poids (`*Poids`),
+l'éparpillement, le maximum de cour, l'adresse du corps principal et sa « bande de 30 m », la
+« marge sans pénalité » du terrassement, la force d'alignement, la profondeur de départ de 18,5 m.
 
 ## Générer, valider, comparer, choisir
 
-L'ordre est imposé : **1. le parti · 2. le programme · 3. les règles dures · 4. les priorités.**
+L'ordre est imposé : **1. les leviers — le parti, le programme · 2. le cadre · 3. l'orientation · 4. le jugement.**
 
 1. **Le parti construit la figure** (`partis.js — composer()`). Chaque parti a ses directives :
    un bloc compact est fait de deux rangs de volumes accolés ; une barre, d'une seule file ; des
@@ -148,17 +131,18 @@ L'ordre est imposé : **1. le parti · 2. le programme · 3. les règles dures �
    est jetée. Puis la figure est posée **d'un bloc** (`implanter()`) — position et angle, rien
    d'autre : aucune poussée corps par corps ne vient la déformer (`intact()` le vérifie). Viennent
    la salle de sport, le sous-sol et, parfois, des passerelles.
-4. **Les règles dures, toutes, sans exception** (`dures()`) décident si la variante entre dans
-   les résultats. Après le choix, les ouvrages du second temps sont posés et tout est revérifié :
-   s'ils font enfreindre une règle, ils ne sont pas posés ; si la variante ne tient plus, elle est
-   abandonnée. Rien qui enfreigne une règle dure n'arrive à l'écran.
-5. **Le score, puis le classement** (`classer()`). Chaque variante valide est notée sur 100 et
-   classée. En Auto, chaque parti essaie `DOC.essaisParti` fois et l'on garde la MEILLEURE de
-   chaque parti ; un parti imposé garde ses huit meilleures. Quand un parti imposé n'a presque
-   rien rendu, le générateur persévère jusqu'à dix fois le budget. `genMass()` rend la première
-   de la liste (`vols.props`, `vols.rang`, `vols.score`) ; « Shuffle massing » passe à la
-   suivante, et ne rejoue un tirage qu'au bout de la liste. Le score est affiché sous les
-   boutons : « 83/100 · proposition 1 sur 6 ».
+4. **Le cadre, tout entier** (`ecarts()`) décide si la variante entre dans les résultats.
+5. **L'orientation retient** (`retenir()`) : la préférence de chaque variante valide, mêlée à la
+   part du hasard (`V.hasardMass`) ; en Auto, chaque parti essaie `V.essaisParti` fois et l'on
+   garde la mieux placée de chaque parti ; un parti imposé garde ses huit mieux placées. Quand un
+   parti imposé n'a presque rien rendu, le générateur persévère jusqu'à dix fois le budget.
+6. **La dernière garde, puis le jugement classe.** Les ouvrages du second temps sont posés et tout
+   le cadre revérifié : s'ils le font enfreindre, ils ne sont pas posés ; si la variante ne tient
+   plus, elle est abandonnée. Ce qui reste est classé par la note du jury, bâtiment entier.
+   `genMass()` rend la première (`vols.props`, `vols.rang`, `vols.score` — la note,
+   `vols.pref` — l'orientation) ; « Shuffle massing » passe à la suivante, et ne rejoue un
+   tirage qu'au bout de la liste. La note est affichée sous les boutons : « 62/100 au jugement ·
+   dans le cadre · proposition 1 sur 8 ».
 
 Avec ce programme, la Barre ne tient presque jamais : une seule file de volumes d'au plus 28 m
 fait 130 m. Les pavillons, six à neuf bâtiments à la distance souhaitée les uns des autres, tiennent
@@ -185,11 +169,11 @@ aucune variante ainsi tirée ne tient, le générateur rejoue avec tous les corp
 Ici les 1ᵉʳ et 2ᵉ étages ont presque la même surface : on obtient surtout des R+2 à côté de rez
 seuls, plus rarement des R+1.
 
-## Les dimensions : une fourchette souhaitée, pas une limite
+## Les dimensions : un domaine, pas une limite
 
-Aucune cote de volume n'est plus une règle dure — seule la salle de sport double reste fixée
-à 28 × 32 m par le règlement. Les fourchettes du volet Contraintes (11–28 m par défaut)
-orientent `besoins()` et `profBornes()` et comptent dans le critère « Dimensions souhaitées ».
+Aucune cote de volume n'est du cadre — seule la salle de sport double reste fixée à 28 × 32 m
+par le règlement. Les domaines des leviers (11–28 m par défaut) règlent `besoins()` et
+`profBornes()`, et l'orientation « des corps dans leurs fourchettes » les relit.
 Aucune forme de repli n'est appliquée : ni décrochement, ni fusion, ni règle de porte-à-faux.
 
 Avec les réglages par défaut, un corps d'école vise au plus 28 × 19,5 m (les classes en façade), soit environ
