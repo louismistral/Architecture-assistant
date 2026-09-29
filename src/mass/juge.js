@@ -23,7 +23,7 @@
 import { dec, fmt } from "../core/format.js";
 import { ITEMBYKEY, ITEMS } from "../core/model.js";
 import { NAPPE, PER } from "../data/site.js";
-import { DOC, estDure, mesuresDures, poidsJ, reglesDe } from "../data/doctrine.js";
+import { DOC, efface, estDure, mesuresDures, poidsJ, reglesDe } from "../data/doctrine.js";
 import { JUGES } from "../data/jugements.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
@@ -494,7 +494,7 @@ export function noter(d, q){
   DURES_K.forEach(function(k){ sc[k] = hors[k] ? 0 : 1; });
   q.fortes.concat(q.prefs).forEach(function(c){ sc[c.id] = Math.max(0, Math.min(1, (c.q + 1) / 2)); });
   JUGES.forEach(function(x){
-    if(estDure(x) || !x.m.length) return;
+    if(estDure(x) || efface(x) || !x.m.length) return;
     var w = poidsJ(x), s = 0;
     x.m.forEach(function(k){ s += sc[k]; if(w) lus[k] = 1; });
     s /= x.m.length;

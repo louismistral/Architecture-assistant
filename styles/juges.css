@@ -67,3 +67,6 @@
 .jg-how{margin-top:var(--s-4);max-width:80ch;font-size:var(--t-sm);color:var(--soft-foreground)}
 .jg-how ol{margin:var(--s-2) 0 0;padding-left:var(--s-5);line-height:var(--lh-snug)}
 .jg-how li+li{margin-top:var(--s-1)}
+.jg-l__b{display:flex;align-items:center;gap:var(--s-3)}
+.jg-del{display:inline-flex;padding:2px;border:0;background:none;color:var(--muted-foreground);cursor:pointer;border-radius:var(--radius-sm)}
+.jg-del:hover{color:var(--destructive)}

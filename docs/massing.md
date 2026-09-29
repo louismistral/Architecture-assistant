@@ -97,6 +97,11 @@ qui touchent au volume, les conditions éliminatoires A), à droite les JUGEMENT
 de concours gagnants. Chaque entrée passe d'un bac à l'autre ; son bac et son poids (curseur
 0–10) vivent dans `DOC` (`b_<id>`, `w_<id>`), partagés au groupe.
 
+Tout le brief y est en règles dures : les chiffres de `RULES` (site, mobilité, programme,
+normes) et le texte de `RULES.cadre`, sauf les points « à vérifier ». La poubelle d'une ligne
+l'efface (`x_<id>`) : elle ne bloque ni ne compte plus ; « Rétablir » ou « Revenir au tri de
+départ » la ramène.
+
 Chaque entrée nomme les MESURES du générateur qui la disent (`m`, ids de `dures()` et de
 `qualites()`). Une mesure réclamée par une règle dure BLOQUE (`mesuresDures()`) : une qualité
 passée en dure bloque quand elle se lit défavorable. Une règle dure passée aux jugements ne

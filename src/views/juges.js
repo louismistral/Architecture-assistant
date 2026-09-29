@@ -14,7 +14,8 @@
 import { el } from "../core/format.js";
 import { CATS, JUGES } from "../data/jugements.js";
 import { FAM } from "../data/families.js";
-import { DOC, REGLES, docDefaut, estDure, poidsJ } from "../data/doctrine.js";
+import { DOC, REGLES, docDefaut, efface, estDure, poidsJ } from "../data/doctrine.js";
+import { icone } from "./icons.js";
 import { MASS, massSet } from "../mass/model.js";
 import { jugementCourant } from "../mass/juge.js";
 import { saveSoon } from "../mix/store.js";
@@ -65,7 +66,7 @@ function explication(x, j, part){
    ceux que le massing sait lire ; les autres attendent un onglet suivant. */
 function parts(){
   var tot = 0;
-  JUGES.forEach(function(x){ if(!estDure(x) && x.m.length) tot += poidsJ(x); });
+  JUGES.forEach(function(x){ if(!estDure(x) && !efface(x) && x.m.length) tot += poidsJ(x); });
   return function(x){ return !estDure(x) && x.m.length && tot ? 100 * poidsJ(x) / tot : 0; };
 }
 function pts(v){ return el("b", "jg-pts mono", v.toFixed(1).replace(".", ",")); }
@@ -115,13 +116,22 @@ function ligne(x, j, part, refaire){
   mv.type = "button";
   mv.title = d ? "Passer aux jugements : ne bloque plus, compte dans la note" : "Passer en règle dure : élimine la variante qui l'enfreint";
   mv.addEventListener("click", function(){ DOC["b_" + x.id] = d ? 0 : 1; saveSoon(); refaire(); });
-  a.appendChild(mv);
+  var bas = el("div", "jg-l__b");
+  bas.appendChild(mv);
+  var del = el("button", "jg-del");
+  del.type = "button";
+  del.setAttribute("aria-label", "Effacer « " + titre(x) + " »");
+  del.title = "Effacer : ne bloque ni ne compte plus (« Rétablir » la ramène)";
+  del.appendChild(icone("poubelle", 14));
+  del.addEventListener("click", function(){ DOC["x_" + x.id] = 1; saveSoon(); refaire(); });
+  bas.appendChild(del);
+  a.appendChild(bas);
   r.appendChild(a);
   return r;
 }
 
 function bac(dur, j, part, refaire){
-  var L = JUGES.filter(function(x){ return estDure(x) === dur; });
+  var L = JUGES.filter(function(x){ return !efface(x) && estDure(x) === dur; });
   var s = el("section", "jg-bac jg-bac--" + (dur ? "dur" : "jug"));
   var h = el("header", "jg-bac__h");
   h.appendChild(el("h2", null, dur ? "Règles dures" : "Jugements"));
@@ -194,7 +204,7 @@ export function jugesVue(rejouer){
     window.scrollTo(0, y);
   }
   var j = jugementCourant(), part = parts();
-  var nd = JUGES.filter(estDure).length;
+  var nd = JUGES.filter(estDure).length, nx = JUGES.filter(efface).length;
 
   var h = el("header", "jg__h");
   h.appendChild(el("p", "jg__eye", "Massing · Contraintes"));
@@ -204,7 +214,7 @@ export function jugesVue(rejouer){
     + "les remplit tous obtient 100. Seuls les jugements que le massing sait mesurer comptent ; "
     + "les autres attendent la typologie, la tectonique, le rendu."));
   var st = el("div", "jg-stats");
-  [[JUGES.length, "entrées"], [nd, "règles dures"], [JUGES.length - nd, "jugements"],
+  [[JUGES.length - nx, "entrées"], [nd, "règles dures"], [JUGES.length - nd - nx, "jugements"],
    [j && j.total != null ? j.total + " / 100" : "—", "note de la variante"]].forEach(function(o){
     var d = el("div");
     d.appendChild(el("b", "mono", String(o[0])));
@@ -237,8 +247,11 @@ export function jugesVue(rejouer){
   bar.appendChild(bouton("Jugements à égalité", function(){
     JUGES.forEach(function(x){ DOC["w_" + x.id] = 5; }); saveSoon(); refaire();
   }));
+  if(nx) bar.appendChild(bouton("Rétablir les " + nx + " effacées", function(){
+    JUGES.forEach(function(x){ DOC["x_" + x.id] = 0; }); saveSoon(); refaire();
+  }));
   bar.appendChild(bouton("Revenir au tri de départ", function(){
-    JUGES.forEach(function(x){ DOC["b_" + x.id] = docDefaut("b_" + x.id); DOC["w_" + x.id] = docDefaut("w_" + x.id); });
+    JUGES.forEach(function(x){ ["b_", "w_", "x_"].forEach(function(p){ DOC[p + x.id] = docDefaut(p + x.id); }); });
     saveSoon(); refaire();
   }));
   bar.appendChild(bouton("Copier en JSON", function(){
