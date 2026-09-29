@@ -21,7 +21,6 @@
    Un bouton rejoue le tirage sans quitter le volet.
    ========================================================================= */
 import { dec, el, fmt } from "../core/format.js";
-import { noteVue } from "./note.js";
 import {
   DOC, docDefaut, docModifie, docReset, docSet, rangsDe, reglesDe,
   scriptsDe, tiragesDe
@@ -247,20 +246,6 @@ export function doctrineSection(dom, rejouer, extra, etat){
   return p;
 }
 
-/* ---------- le jugement de la composition posée -----------------------------
-   « On obtient un tel résultat » : voilà pourquoi — sans un seul point. Les
-   contraintes dures, respectées ou non ; puis chaque priorité et chaque
-   préférence, favorable, neutre ou défavorable. Le détail est sur chaque ligne
-   plus bas ; ici, d'un coup d'œil. */
-export function jugementBloc(j){
-  if(!j){
-    var s = el("section", "doc-note");
-    s.appendChild(el("p", "cons__note", "Aucune composition posée. « Shuffle massing » "
-      + "en propose une."));
-    return s;
-  }
-  return noteVue(j.total, j.crit);
-}
 /* Ce que le jugement dit d'une ligne de la table : l'id de la ligne est celui
    du critère. Une ligne sans critère (un sous-seuil, un paramètre) n'a rien à
    dire. */

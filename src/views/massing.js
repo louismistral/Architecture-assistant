@@ -42,7 +42,8 @@ import {
   massSet, massVols, niveaux, partiOf, plageVue,
   volHaut, volNiv
 } from "../mass/model.js";
-import { doctrineSection, etatDe, jugementBloc } from "./doctrine.js";
+import { doctrineSection, etatDe } from "./doctrine.js";
+import { jugesVue } from "./juges.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
   vue3dPick } from "./vue3d.js";
@@ -812,13 +813,20 @@ export function massDoctrine(){
      un rechargement sur `#massing/contraintes`. La note n'aurait alors rien à
      montrer, alors que le programme, lui, est réparti. */
   if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
-  var j = jugementCourant();
-  return doctrineSection("mass", function(){
+  function rejouer(){
     if(aPoser() > 0){
       massSet("graine", graineSuivante());
       regenere();
       saveSoon();
     }
     if(massNav) massNav("volumetrie");
-  }, function(){ return jugementBloc(jugementCourant()); }, etatDe(j));
+  }
+  /* En tête les deux bacs ; en bas, les seuils de chaque mesure. */
+  var host = el("div", "mass-contraintes");
+  host.appendChild(jugesVue(rejouer));
+  var seuils = el("details", "disclose jg-seuils");
+  seuils.appendChild(el("summary", null, "Seuils des mesures — la doctrine du massing"));
+  seuils.appendChild(doctrineSection("mass", rejouer, null, etatDe(jugementCourant())));
+  host.appendChild(seuils);
+  return host;
 }

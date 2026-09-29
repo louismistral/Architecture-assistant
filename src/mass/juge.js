@@ -23,7 +23,8 @@
 import { dec, fmt } from "../core/format.js";
 import { ITEMBYKEY, ITEMS } from "../core/model.js";
 import { NAPPE, PER } from "../data/site.js";
-import { DOC, RANGS_MASS, reglesDe } from "../data/doctrine.js";
+import { DOC, estDure, mesuresDures, poidsJ, reglesDe } from "../data/doctrine.js";
+import { JUGES } from "../data/jugements.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
@@ -116,10 +117,15 @@ export function courUtile(vols){
    rend au premier écart — c'est ce que veut le générateur. `pile` marque un
    écart qu'aucune composition ne peut résoudre (il se règle au mixer) : le
    générateur ne jette pas une variante pour lui. */
+/* Les ids que mesure `dures()` ; toute autre mesure est une qualité. */
+var DURES_K = ["perim", "dist", "existant", "module", "facade", "sport", "abri", "cour"];
 export function dures(vols, vite){
-  var out = [];
+  /* Seules les mesures qu'une RÈGLE DURE réclame (`mesuresDures()`) bloquent ;
+     celles qu'on a passées aux jugements vont dans `out.hors`, que la note lit. */
+  var out = [], H = mesuresDures();
+  out.hors = [];
   function dit(k, v, msg, pile, v2){
-    out.push({ k:k, v:v, v2: v2 == null ? -1 : v2, msg:msg, pile:pile ? 1 : 0 });
+    (H[k] ? out : out.hors).push({ k:k, v:v, v2: v2 == null ? -1 : v2, msg:msg, pile:pile ? 1 : 0 });
   }
   var i, j, stop = function(){ return vite && out.length; };
 
@@ -212,6 +218,14 @@ export function dures(vols, vite){
     if(cu.a < DOC.courMin)
       dit("cour", -1, "La meilleure cour ne fait que " + fmt(Math.round(cu.a)) + " m² utiles "
         + "devant une façade d'école, pour " + fmt(DOC.courMin) + " m² au moins.");
+  }
+
+  /* un jugement passé en règle dure : il bloque quand il se lit défavorable */
+  if(!stop() && Object.keys(H).some(function(k){ return DURES_K.indexOf(k) < 0; })){
+    out.q = qualites(vols);
+    out.q.fortes.concat(out.q.prefs).forEach(function(c){
+      if(H[c.id] && c.niv === 0 && !stop()) dit(c.id, -1, c.n + " — " + c.txt);
+    });
   }
   return out;
 }
@@ -444,23 +458,13 @@ export function ensembles(E, ponts){
 }
 
 /* ---------- le choix -----------------------------------------------------------
-   `a` bat `b` s'il est au moins aussi bon partout et meilleur quelque part. */
-function bat(a, b){
-  var mieux = false;
-  for(var i = 0; i < a.length; i++){
-    if(a[i] < b[i]) return false;
-    if(a[i] > b[i]) mieux = true;
-  }
-  return mieux;
-}
-function niv(L){ return L.map(function(x){ return x.niv; }); }
 /* LE CLASSEMENT. `cands` : `[{ vols, pid, q }]`, toutes valides. Chacune reçoit
    son score sur 100 ; on garde la MEILLEURE de chaque parti — la diversité —,
    et l'on range tout par score décroissant. Le générateur montre la première,
    « Shuffle massing » passe à la suivante. Avec un seul parti, on garde ses
    meilleures variantes, dans l'ordre. */
 export function classer(cands, parParti){
-  cands.forEach(function(c){ c.score = noter([], c.q).total; });
+  cands.forEach(function(c){ c.score = noter(c.d || [], c.q).total; });
   cands.sort(function(a, b){ return b.score - a.score; });
   if(!parParti) return cands.slice(0, 8);
   var vu = {}, out = [];
@@ -474,37 +478,36 @@ export function jugement(vols){
   oublier();
   var q = qualites(vols), d = dures(vols, false);
   var n = noter(d, q);
-  return { dures:d, fortes:q.fortes, prefs:q.prefs, total:n.total, crit:n.crit };
+  return { dures:d, fortes:q.fortes, prefs:q.prefs, total:n.total, crit:n.crit, juges:n.juges };
 }
 
-/* ---------- la NOTE : une lecture, pas un choix -----------------------------
-   Chaque critère porte un score : sa qualité q (−1 à +1) fois le poids de son
-   rang (`RANGS_MASS`). Une contrainte dure respectée vaut 0 ; chaque écart en
-   coûte le poids. La somme se lit — elle dit d'un coup d'œil ce que la
-   composition gagne et ce qu'elle paie —, mais le générateur ne la lit pas :
-   il choisit par la hiérarchie, et c'est voulu. */
-function poidsDe(id){
-  for(var i = 0; i < RANGS_MASS.length; i++) if(RANGS_MASS[i].id === id) return RANGS_MASS[i].poids || 0;
-  return 0;
-}
 function majuscule(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
 export function noter(d, q){
-  /* LE SCORE SUR 100. Les règles dures n'y entrent pas : une variante qui en
-     enfreint une n'a pas de score, elle n'existe pas. Chaque critère ACTIF
-     rend une qualité q ∈ [−1, 1], ramenée à [0, 1] ; son rang dit ce qu'il pèse
-     (une priorité forte plus qu'une préférence). La moyenne pondérée, fois
-     100 : tout au mieux vaut 100, quel que soit le nombre de critères actifs. */
-  var crit = [], som = 0, pois = 0;
+  /* LE SCORE SUR 100. Une variante qui enfreint une règle dure n'a pas de
+     score : elle n'existe pas. Chaque MESURE rend un score de 0 à 1 — une
+     qualité q ∈ [−1, 1] ramenée à [0, 1], une règle dure passée aux jugements
+     1 tenue, 0 enfreinte (`d.hors`). Chaque JUGEMENT mesuré (`data/jugements.js`)
+     vaut la moyenne de ses mesures ; la note est leur moyenne pondérée par le
+     curseur, fois 100 : tout au mieux vaut 100. */
+  var sc = {}, hors = {}, crit = [], juges = [], som = 0, pois = 0, lus = {};
+  (d.hors || []).forEach(function(x){ hors[x.k] = 1; });
+  DURES_K.forEach(function(k){ sc[k] = hors[k] ? 0 : 1; });
+  q.fortes.concat(q.prefs).forEach(function(c){ sc[c.id] = Math.max(0, Math.min(1, (c.q + 1) / 2)); });
+  JUGES.forEach(function(x){
+    if(estDure(x) || !x.m.length) return;
+    var w = poidsJ(x), s = 0;
+    x.m.forEach(function(k){ s += sc[k]; if(w) lus[k] = 1; });
+    s /= x.m.length;
+    som += w * s; pois += w;
+    juges.push({ id:x.id, w:w, sc:s });
+  });
   [["forte", q.fortes], ["pref", q.prefs]].forEach(function(g){
     g[1].forEach(function(c){
-      var actif = DOC["on_" + c.id] !== 0;
-      var w = actif ? poidsDe(g[0]) : 0, sc = Math.max(0, Math.min(1, (c.q + 1) / 2));
-      som += w * sc; pois += w;
-      crit.push({ id:c.id, n:c.n, rang:g[0], niv:c.niv, txt:c.txt, actif:actif,
-                  pts: Math.round(sc * 100) });
+      crit.push({ id:c.id, n:c.n, rang:g[0], niv:c.niv, txt:c.txt, actif:!!lus[c.id],
+                  pts: Math.round(sc[c.id] * 100) });
     });
   });
-  return { total: d.length ? null : (pois ? Math.round(100 * som / pois) : 100), crit:crit };
+  return { total: d.length ? null : (pois ? Math.round(100 * som / pois) : 100), crit:crit, juges:juges };
 }
 export function jugementCourant(){
   if(!MASS.vol.length) return null;

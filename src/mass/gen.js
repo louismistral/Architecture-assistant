@@ -591,7 +591,7 @@ export function genMass(graine){
     }
     vols.parti = pid; vols.prof = prof;
     var d = dures(vols, true);
-    if(!d.length){ valides.push({ vols:vols, pid:pid, q:qualites(vols) }); return true; }
+    if(!d.length){ valides.push({ vols:vols, pid:pid, d:d, q:d.q || qualites(vols) }); return true; }
     rates.push({ vols:vols, pid:pid, k:d[0].k, pile:d[0].pile });
     return false;
   }
@@ -624,9 +624,10 @@ export function genMass(graine){
   classer(valides, partis.length > 1).forEach(function(c){
     poserSecond(c.vols, r);
     if(dures(c.vols, false).length) retirerSecond(c.vols);
-    if(dures(c.vols, false).length) return;
+    var d2 = dures(c.vols, false);
+    if(d2.length) return;
     /* le second temps compte dans la note (terrain, cour) : on la recalcule */
-    c.vols.score = noter([], qualites(c.vols)).total;
+    c.vols.score = noter(d2, d2.q || qualites(c.vols)).total;
     c.vols.valides = n0;
     props.push(c.vols);
   });
