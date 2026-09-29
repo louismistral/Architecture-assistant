@@ -117,7 +117,12 @@ export var RULES = {
   ext: { voitures: 70, velos: 50, bus: 2, depose: 4, mPlace: 25,
          busPassages: 4,                      /* passages des bus scolaires par jour */
          accesAuto: "rue du Casino",          /* voitures, bus et dépose-minute */
-         accesDoux: "chemin du Petit Mont" }, /* vélos et piétons */
+         accesDoux: "chemin du Petit Mont",   /* vélos et piétons */
+         /* le dessin du stationnement, cotes VSS courantes (m) : une place
+            perpendiculaire, l'allée qui la dessert, la baie des deux bus, une
+            place de dépose-minute en long, le pas d'un vélo, un abri à vélos */
+         place: [2.5, 5], allee: 6, baieBus: [45, 3.5], placeDepose: [6, 2.5],
+         pasVelo: 0.7, abriVelo: 5 },
 
   /* --- 2.7 l'école -------------------------------------------------------- */
   ecole: { eleves: 360, degres: "5H à 8H" },
