@@ -21,6 +21,7 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | le relevé du géomètre et sa regénération | `docs/releve.md` |
 | l'onglet Paramètres & contraintes | `docs/parametres.md` |
 | l'onglet Forensics, sa table et son stockage | `docs/forensics.md` |
+| l'onglet Rendu, ses planches PDF | `docs/rendu.md` |
 | les tokens, les thèmes shadcn, le mode | `README.md` — *Règles du projet* |
 
 ---
@@ -115,7 +116,8 @@ isolé. Sans quoi le conflit est garanti et illisible.
 02 Forensics                  le moodboard du groupe
 03 Programme mixer            répartition du programme sur les niveaux
 04 Massing                    volumétrie sur le site
-05 Typologies · 06 Tectonics · 07 Materiality · 08 Rendu      à construire
+05 Typologies · 06 Tectonics · 07 Materiality                  à construire
+08 Rendu                      les planches PDF de chaque étape — le massing seul, pour l'instant
 ```
 
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :
