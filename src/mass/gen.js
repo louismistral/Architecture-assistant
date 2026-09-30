@@ -543,9 +543,11 @@ function aval(){
    soleil-vue, ou un angle libre autour de l'axe ; libre, l'une des trois à
    parts égales. Les terrasses suivent les courbes : leurs rangs descendent la
    pente (le +v de la figure va vers l'aval). */
+var CAP = null;      /* d'où vient le dernier angle : « pente », « axe », « soleil », « libre » */
 function orientation(pid, r, centreSite){
+  CAP = "pente";
   if(pid === "terrasses") return aval() - Math.PI / 2;
-  var m = levier("cap", ["axe", "soleil", "libre"], r);
+  var m = CAP = levier("cap", ["axe", "soleil", "libre"], r);
   if(m === "axe") return axePer();
   if(m === "soleil") return angleSoleilVue(centreSite.cx, centreSite.cy);
   return axePer() + entre(r, -.7, .7);
@@ -605,6 +607,10 @@ export function genMass(graine){
       if(!intact(vols)){ rates.push({ pid:pid, k:"parti" }); return false; }
     }
     vols.parti = pid; vols.prof = prof;
+    /* la TRACE du raisonnement, pour la planche de diagrammes : la figure en
+       coordonnées locales avant implantation, l'angle et sa source, les
+       surfaces par niveau, la salle de sport, les bornes de profondeur */
+    vols.trace = { S:S, th:th, cap:CAP, prof:prof, A:Aecole.slice(), N:N, imp:imp, lo:B.lo, hi:hiE };
     var d = ecarts(vols, true);
     if(!d.length){ valides.push({ vols:vols, pid:pid, pref: preference(lecture(vols).q) }); return true; }
     rates.push({ vols:vols, pid:pid, k:d[0].k, pile:d[0].pile });
