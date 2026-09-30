@@ -34,14 +34,20 @@ l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pa
 
 ## Diagrammes — comment le volume est né
 
-UN volume, transformé sur place, geste après geste, jusqu'au bâtiment : site, reculer (l'aire
-posable), envelopper (l'emprise convexe des corps, à la hauteur du programme), évider (le parti
-ne garde que les corps ; le vide devient la cour), ancrer (la salle de sport), empiler (les
-hauteurs du mixer), orienter (le soleil sur les longues façades), creuser (le sous-sol),
-habiter (les couleurs de famille). Chaque case part de la précédente : même vue, même échelle,
-même endroit. Une case n'existe que si la décision a été prise pour la composition à l'écran.
+Le raisonnement du générateur, étape par étape, tel qu'il le tient :
 
-À la manière des diagrammes de BIG, et d'eux seuls : volumes blancs, ce qui change en orange
-(`ENCRE.accent`), flèches noires, un verbe en gras sous chaque case, les cases reliées par des
-flèches ; la grille prend le nombre de colonnes qui donne les plus grands dessins. La même
-planche s'affiche dans le rail du massing (bloc « Diagramme »), refaite à chaque génération.
+| étape | ce qu'on voit |
+|---|---|
+| PROGRAMME | une colonne par famille, haute de ses m² (`ITEMS`, `FAM`) |
+| EMPILER | les niveaux du mixer en dalles éclatées, découpées par famille (`postesDe`) |
+| DÉCOUPER | chaque corps et ses étages, alignés, à la profondeur tirée (`V.profMin/profMax`) |
+| ASSEMBLER | la figure du parti, hors du site |
+| POSER | la figure sur la parcelle, dans le recul visé |
+| VÉRIFIER | une case par essai : orange s'il tient toutes les règles dures, barré sinon (`vols.essais`, `vols.valides`, comptés par `genMass`) |
+| CLASSER | les meilleures variantes et leur note (`vols.props`) — les barres montrent l'écart |
+| HABITER | la composition retenue, dans les couleurs de ses familles |
+
+À la manière de BIG : un verbe en gras par case, volumes blancs, ce que l'étape fait en orange
+(`ENCRE.accent`), flèches entre les cases ; la grille prend le nombre de colonnes qui donne les
+plus grands dessins. La même planche s'affiche dans le rail du massing (bloc « Diagramme »),
+refaite à chaque génération.
