@@ -124,6 +124,10 @@ export function planDraw(){
     if(r) gVol.appendChild(svg("path", { d: chemin(coins(r), true), "class":"plan-pont" }));
   });
   root.appendChild(gVol);
+  /* les outils du volume choisi, par-dessus TOUT : aucun autre volume, aucune
+     étiquette ne doit couvrir une tirette qu'on veut attraper */
+  if(DESSUS) root.appendChild(DESSUS);
+  DESSUS = null;
 
   /* --- l'échelle et le nord --- */
   root.appendChild(repere(C));
@@ -132,6 +136,7 @@ export function planDraw(){
 /* Un volume : tous ses étages en trait fin, l'étage montré en plein. Le plan
    d'un massing n'est pas celui d'un bâtiment — il doit dire d'un coup d'œil la
    forme au sol ET la silhouette qui la surmonte. */
+var DESSUS = null;   /* poignée et tirettes du volume choisi, posées en dernier */
 function dessineVol(g, v, k){
   var sel = MASS.sel === v.id;
   /* Un ouvrage du SECOND TEMPS se dessine en pointillé — c'est ce que le
@@ -188,7 +193,12 @@ function dessineVol(g, v, k){
       + " · " + fmt(Math.round(ri.w * ri.d)) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);
-    if(sel){ gv.appendChild(cotation(rc, v)); gv.appendChild(poignee(rc)); if(!v.fix) gv.appendChild(tirettes(rc)); }
+    if(sel){
+      gv.appendChild(cotation(rc, v));
+      DESSUS = svg("g", { "class":"plan-outils" });
+      DESSUS.appendChild(poignee(rc));
+      if(!v.fix) DESSUS.appendChild(tirettes(rc));
+    }
   }
   g.appendChild(gv);
 }

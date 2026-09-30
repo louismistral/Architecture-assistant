@@ -246,19 +246,32 @@ export function postesDe(i, avecHors){
    (0 : +largeur, 1 : +profondeur, 2 : −largeur, 3 : −profondeur, dans l'axe du
    volume) avance de `delta` mètres, le côté opposé ne bouge pas, et l'autre
    dimension se resserre ou s'élargit pour que chaque étage garde ses m² — une
-   surface de programme ne se change pas, on change ses proportions. La cote
-   tirée tombe sur le module ; l'autre se calcule, au centimètre. `base` est
+   surface de programme ne se change pas, on change ses proportions. Les deux
+   cotes tombent sur le module de 0,50 m ; la surface en garde l'écart le plus
+   petit que le module permet. `base` est
    l'état de départ du geste (`{ x, y, lv }`), pour ne pas cumuler d'arrondis. */
 export function etirer(v, base, cote, delta){
-  var e0 = base.lv[0], k = cote % 2 ? "d" : "w", o = k === "w" ? "d" : "w";
-  var L = auModule(Math.max(V.module * 6, e0[k] + delta));
-  if(e0[o] * e0[k] / L < 3) L = auModule(e0[o] * e0[k] / 3);
+  var e0 = base.lv[0], k = cote % 2 ? "d" : "w", o = k === "w" ? "d" : "w", m = V.module;
+  /* les deux cotes sur le module : parmi les longueurs voisines de celle que
+     vise la souris, celle dont l'autre cote, arrondie au module, rend la
+     surface la plus juste */
+  /* aucun côté sous 6 m : en deçà, ce n'est plus un corps de bâtiment */
+  var MIN = 6, A = e0[k] * e0[o];
+  var vise = Math.max(MIN, Math.min(A / MIN, e0[k] + delta)), L = auModule(vise), err = Infinity;
+  for(var c = auModule(vise - 1); c <= auModule(vise + 1) + 1e-9; c += m){
+    var lo = auModule(A / c), er = Math.abs(lo * c - A) + Math.abs(c - vise) * .01;
+    if(c >= MIN && lo >= MIN && er < err){ err = er; L = c; }
+  }
   var f = L / e0[k], sg = cote < 2 ? 1 : -1, pas = (L - e0[k]) / 2 * sg;
+  /* chaque étage garde le rapport de son autre cote à celle du rez (un étage
+     en gradin reste en gradin) ; sa longueur s'ajuste à sa surface, sur le module */
+  var O = Math.max(m, auModule(A / L));
   v.lv.forEach(function(e, i){
     var b = base.lv[i];
-    e[k] = i === 0 ? L : auModule(b[k] * f);
-    e[o] = Math.round(b[o] * b[k] / e[k] * 100) / 100;
+    e[o] = i === 0 ? O : Math.max(m, auModule(O * b[o] / e0[o]));
+    e[k] = i === 0 ? L : Math.max(m, auModule(b[k] * b[o] / e[o]));
     e[k === "w" ? "dx" : "dy"] = (b[k === "w" ? "dx" : "dy"] || 0) * f;
+    e[o === "w" ? "dx" : "dy"] = (b[o === "w" ? "dx" : "dy"] || 0) * O / e0[o];
   });
   var ux = Math.cos(v.a), uy = Math.sin(v.a);
   if(k === "w"){ v.x = base.x + pas * ux; v.y = base.y + pas * uy; }
