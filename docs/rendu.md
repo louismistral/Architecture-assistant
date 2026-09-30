@@ -34,14 +34,15 @@ l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pa
 
 ## Diagrammes — comment le volume est né
 
-À la manière des diagrammes de BIG, et d'eux seuls : une suite de GESTES, chacun appliqué au
-résultat du précédent — occuper, reculer, compacter, découper, tourner, ancrer, empiler,
-creuser, relier, choisir, habiter. Même vue et même échelle d'une case à l'autre. Volumes
-blancs, ce que l'étape change en orange (`ENCRE.accent`), flèches noires ; les couleurs de
-famille (`cssRGB()`) n'arrivent qu'au dernier geste. « Choisir » montre côte à côte les
-meilleures variantes et leur note.
+UN volume, transformé sur place, geste après geste, jusqu'au bâtiment : site, reculer (l'aire
+posable), envelopper (l'emprise convexe des corps, à la hauteur du programme), évider (le parti
+ne garde que les corps ; le vide devient la cour), ancrer (la salle de sport), empiler (les
+hauteurs du mixer), orienter (le soleil sur les longues façades), creuser (le sous-sol),
+habiter (les couleurs de famille). Chaque case part de la précédente : même vue, même échelle,
+même endroit. Une case n'existe que si la décision a été prise pour la composition à l'écran.
 
-Une case n'existe que si le générateur a pris la décision pour la composition à l'écran (pas
-de recul visé, pas de salle de sport imposée, pas de sous-sol, pas de passerelle : pas de
-case). La grille prend le nombre de colonnes qui donne les plus grands dessins. La même planche
-s'affiche dans le rail du massing (bloc « Diagramme »), refaite à chaque génération.
+Le geste est dans l'esprit de BIG : volumes blancs, ce qui change en orange (`ENCRE.accent`),
+flèches noires. La MISE EN PAGE suit la planche de référence `diagramme.pdf` — et elle seule :
+titre court en capitales, grille de trois colonnes, contexte gris (`SITE.bat`), le numéro en
+gras en tête de la légende. La même planche s'affiche dans le rail du massing (bloc
+« Diagramme »), refaite à chaque génération.
