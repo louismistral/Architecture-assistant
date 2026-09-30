@@ -32,28 +32,21 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — la logique de composition
+## Diagrammes — comment ce volume a été trouvé
 
-Comment CE bâtiment a été composé, dans l'ordre du générateur, dessiné à partir de ce qu'il a
-réellement produit : `genMass` pose `vols.trace` = { S (la figure en coordonnées locales, avant
-implantation), th et cap (l'angle et sa source), prof, A et N (surfaces et hauteurs par
-niveau), imp (la salle de sport), lo/hi (bornes de profondeur) }, et `vols.T`, `vols.essais`,
-`vols.valides`, `vols.props`.
+Le générateur ne conçoit pas un parti : il TIRE des compositions au hasard dans un cadre fixe,
+écarte celles qui enfreignent une règle dure, et garde la mieux notée. La planche le dit tel
+quel, avec ce qu'il a réellement produit, sans rien reconstruire après coup :
 
-| case | ce qu'elle montre |
-|---|---|
-| LES SURFACES | les m² hors sol par niveau, en barres ; la part de la salle de sport au rez |
-| LE SPORT À PART | la salle double sort du rez, jamais découpée |
-| LA PROFONDEUR | une coupe : l'épaisseur tirée, et le maximum = deux classes + couloir |
-| LES CORPS | les corps hauts (jusqu'en haut, étages en retrait de largeur) et bas (rez seul) |
-| LA FIGURE | la règle du parti (`FIGURE`) appliquée à ces corps, hors site |
-| L'ANGLE | en plan : la figure avant et après rotation, et la source de l'angle (`CAP`) |
-| POSER | la figure d'un bloc sur la parcelle, dans le recul |
-| ANCRER | la salle de sport accolée à un corps, ou à part au point bas |
-| CREUSER | le sous-sol sous le corps le plus haut du terrain — s'il y en a un |
-| RELIER | les passerelles — s'il y en a |
-| TRIER | une case par essai : noir = retenue, orange = valide, blanc = écartée |
-| HABITER | la composition dans les couleurs du programme |
+| case | ce qu'elle montre | d'où |
+|---|---|---|
+| CE QUI EST FIXÉ | surfaces par niveau, salle de sport, recul, bornes de profondeur | `vols.trace` |
+| CE QUI EST TIRÉ | parti, profondeur, source de l'angle, angle, position, corps, salle de sport, passerelles | `vols.trace`, `vols.T` |
+| ESSAYER | une case par essai : noir la retenue, orange les valides, blanc les écartées | `vols.essais`, `vols.valides` |
+| ÉCARTER | les causes des essais écartés, comptées | `vols.echecs` |
+| LES SURVIVANTES | la meilleure de chaque parti et sa note | `vols.props` |
+| POURQUOI CELLE-CI | les axes du jugement, la retenue contre la deuxième ; une égalité est dite | `evaluer()` |
+| LE VOLUME RETENU | dans les couleurs du programme | |
 
-Volumes blancs, ce que l'étape fait en orange (`ENCRE.accent`), flèches noires, un verbe en
-gras. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
+`genMass` pose `vols.trace`, `vols.essais` et `vols.echecs` sur chaque variante qu'il rend.
+La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
