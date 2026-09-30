@@ -1,41 +1,35 @@
 /* ============================================================================
-   PLANCHE MASSING · DIAGRAMMES — la volumétrie expliquée, à la manière de BIG
+   PLANCHE MASSING · DIAGRAMMES — la volumétrie en quatre temps, à la manière de BIG
 
-   On raisonne À L'ENVERS : le volume est donné, on se demande par quels gestes
-   un architecte y serait arrivé, et POURQUOI chacun. Comme dans les diagrammes
-   de BIG, chaque geste a une raison lisible — le soleil, la vue, le Casino, le
-   sol, les enfants — et la raison est MESURÉE sur le volume final, jamais
-   inventée : la direction où s'ouvre la cour, le côté vers lequel le bâtiment
-   s'abaisse, l'orientation des terrasses se lisent dans sa géométrie.
+     01 LE CUBE        un cube : exactement les m³ du projet
+     02 DIVISER        le cube se partage en autant de volumes que le projet a de
+                       corps, chacun à son emprise au sol définitive, à la même
+                       hauteur — le volume ne change pas
+     03 ORIENTER       la figure tourne et se pose : chaque corps à sa place
+     04 LES NIVEAUX    chaque corps prend sa hauteur : c'est le volume généré
 
-     LE BLOC      le programme en une boîte, sur le site
-     TOURNER      dans l'axe qu'a pris le projet — pour le soleil, la parcelle
-     CREUSER      le vide devient la cour ; il s'ouvre vers …
-     FENDRE       les bâtiments se détachent : des passages entre eux
-     ABAISSER     le bâtiment descend du côté de …
-     ANCRER       la salle de sport, au sol
-     GRADINER     les étages se retirent : des terrasses tournées vers …
-     LE PROJET    le volume généré, IDENTIQUE, dans les couleurs du programme
-
-   Un geste n'est dessiné que si la forme finale le contient. La dernière case
-   dessine les étages de `etagesDe()` sans retouche ; chaque case précédente en
-   est déduite. Volumes blancs, le geste en orange, les raisons en flèches et
-   en icônes. La même planche s'affiche dans le rail du massing et s'imprime.
+   Tout se lit dans le volume final (`etagesDe()`), qui n'est jamais retouché :
+   les emprises des étapes 02-03 sont celles des corps posés (tournées en
+   arrière de l'angle de la figure pour l'étape 02), les hauteurs de l'étape 04
+   sont les vraies. Les textes s'adaptent : un seul corps, un angle nul, une
+   hauteur unique se disent comme tels. Volumes blancs, le geste en orange,
+   flèches noires, un verbe en gras. La même planche s'affiche dans le rail du
+   massing (`svg()`) et s'imprime (`pdf()`).
    ========================================================================= */
 import { fmt } from "../core/format.js";
 import { cssRGB } from "../core/gl.js";
 import { trace } from "../core/pdf.js";
-import { PER, SITE } from "../data/site.js";
+import { PER } from "../data/site.js";
 import { ENCRE, FORMATS } from "../data/planches.js";
-import { lvlOf } from "../mix/floors.js";
-import { airePoly, bbox, cibleVue, coins, ecart } from "../mass/geom.js";
+import { flName, lvlOf } from "../mix/floors.js";
+import { bbox, coins } from "../mass/geom.js";
 import { MASS, etagesDe, familleDom, famTok, partiOf } from "../mass/model.js";
 
 var E = ENCRE;
 var BLANC = [E.blanc, E.cote, E.cote2], ACC = [E.accent, [0.82, 0.29, 0.08], [0.7, 0.24, 0.06]];
-var CTXC = [[0.93, 0.93, 0.93], [0.85, 0.85, 0.85], [0.78, 0.78, 0.78]];
 var GRIS = [0.55, 0.55, 0.55], TXT = [0.3, 0.3, 0.3], TIRETS = { dash:[2.5, 1.8] };
-var VERT = [0.35, 0.6, 0.35], BLEU = [0.2, 0.45, 0.8];
+var CAP = { axe:"sur le plus long côté de la parcelle", soleil:"vers le meilleur compromis soleil-vue",
+            libre:"librement autour de l'axe de la parcelle", pente:"pour que ses rangs suivent la pente" };
 
 function couleur(f){
   var c = typeof document !== "undefined" ? cssRGB(famTok(f)) : [0.7, 0.7, 0.7];
@@ -53,18 +47,14 @@ function ccw(p){
   return a < 0 ? p.slice().reverse() : p;
 }
 function nb(x){ return String(Math.round(x * 10) / 10).replace(".", ","); }
-/* une direction du plan (y vers le nord), dite comme un architecte la dit */
-var CARD = ["l'est", "le nord-est", "le nord", "le nord-ouest", "l'ouest", "le sud-ouest", "le sud", "le sud-est"];
-function cardinal(dx, dy){ var a = Math.atan2(dy, dx); return CARD[((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8]; }
-function angleEntre(a, b){ var d = Math.abs(Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1])); return d; }
-function centre(q){ var x = 0, y = 0; q.forEach(function(p){ x += p[0]; y += p[1]; }); return [x / q.length, y / q.length]; }
+function deg(a){ var d = ((a * 180 / Math.PI) % 180 + 180) % 180; return Math.round(d > 90 ? d - 180 : d); }
 
-/* ---------- la vue ---------- */
+/* ---------- la vue : la même pour les quatre cases ---------- */
 function axo(cadre, pts, hmax){
   var r = -0.62, el = 0.5, c = Math.cos(r), s = Math.sin(r);
   function brut(x, y, z){ return [x * c - y * s, (x * s + y * c) * el + z * 0.9]; }
   var B = bbox(pts.map(function(p){ return brut(p[0], p[1], 0); }).concat(pts.map(function(p){ return brut(p[0], p[1], hmax); })));
-  var k = Math.min(cadre[2] / B.w, cadre[3] / B.h) * 0.9;
+  var k = Math.min(cadre[2] / B.w, cadre[3] / B.h) * 0.92;
   var ox = cadre[0] + (cadre[2] - B.w * k) / 2 - B.x0 * k, oy = cadre[1] + (cadre[3] - B.h * k) / 2 - B.y0 * k;
   var A = function(x, y, z){ var b = brut(x, y, z || 0); return [ox + b[0] * k, oy + b[1] * k]; };
   A.prof = function(x, y){ return x * s + y * c; };
@@ -79,7 +69,7 @@ function prisme(t, A, poly, z0, z1, c, o){
     if(n[0] * A.g[0] + n[1] * A.g[1] >= 0) continue;
     F.push({ a:a, b:b, d:A.prof((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), l:Math.abs(n[0]) > Math.abs(n[1]) });
   }
-  function st(fill){ return o.dash ? { stroke:o.trait || E.noir, lw:.5, dash:o.dash } : { fill:fill, stroke:o.trait || E.noir, lw:o.lw || .45 }; }
+  function st(fill){ return o.dash ? { stroke:E.noir, lw:.5, dash:o.dash } : { fill:fill, stroke:E.noir, lw:.5 }; }
   F.sort(function(u, v){ return v.d - u.d; }).forEach(function(f){
     t.poly([A(f.a[0], f.a[1], z0), A(f.b[0], f.b[1], z0), A(f.b[0], f.b[1], z1), A(f.a[0], f.a[1], z1)], st(c && (f.l ? c[1] : c[2])));
   });
@@ -91,36 +81,20 @@ function peindre(t, A, C){
     return Math.abs(da - db) > 3 ? db - da : a.z0 - b.z0;
   }).forEach(function(k){ prisme(t, A, k.q, k.z0, k.z1, k.c, k.o); });
 }
-function fleche(t, a, b, lw, col){
-  lw = lw || 1.4; col = col || E.noir;
+function fleche(t, a, b, lw){
+  lw = lw || 1.5;
   var dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n, h = 2.5 + lw * 1.8;
-  t.ligne([a, [b[0] - ux * h, b[1] - uy * h]], { stroke:col, lw:lw });
-  t.poly([b, [b[0] - ux * h * 2 + uy * h, b[1] - uy * h * 2 - ux * h], [b[0] - ux * h * 2 - uy * h, b[1] - uy * h * 2 + ux * h]], { fill:col });
+  t.ligne([a, [b[0] - ux * h, b[1] - uy * h]], { stroke:E.noir, lw:lw });
+  t.poly([b, [b[0] - ux * h * 2 + uy * h, b[1] - uy * h * 2 - ux * h], [b[0] - ux * h * 2 - uy * h, b[1] - uy * h * 2 + ux * h]], { fill:E.noir });
 }
-function soleil(t, p, r){
-  for(var i = 0; i < 12; i++){
-    var a = i / 12 * 2 * Math.PI;
-    t.ligne([[p[0] + Math.cos(a) * r * 1.5, p[1] + Math.sin(a) * r * 1.5], [p[0] + Math.cos(a) * r * 2.2, p[1] + Math.sin(a) * r * 2.2]], { stroke:E.soleil, lw:1 });
-  }
-  t.cercle(p[0], p[1], r, { fill:E.soleil });
+function cote(t, a, b, txt){
+  t.ligne([a, b], { stroke:E.accent, lw:.8 });
+  [a, b].forEach(function(p){ t.cercle(p[0], p[1], 1.3, { fill:E.accent }); });
+  t.texte((a[0] + b[0]) / 2 + 6, (a[1] + b[1]) / 2, txt, { size:8, gras:true, fill:E.accent });
 }
-/* un œil : la vue */
-function oeil(t, p, r){
-  t.poly([[p[0] - r * 1.6, p[1]], [p[0], p[1] + r * .9], [p[0] + r * 1.6, p[1]], [p[0], p[1] - r * .9]], { stroke:BLEU, lw:.8 });
-  t.cercle(p[0], p[1], r * .45, { fill:BLEU });
-}
+function sol(t, A){ t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.5 }); }
 
 /* ---------- lire le volume final ---------- */
-var CASINO = null;
-function casino(){
-  if(CASINO) return CASINO;
-  /* le Casino : le plus grand bâtiment du relevé */
-  var best = null, ba = 0;
-  SITE.bat.forEach(function(b, i){ var a = airePoly(b); if(a > ba){ ba = a; best = i; } });
-  CASINO = best == null ? null : { p:SITE.bat[best], c:centre(SITE.bat[best]),
-    h:SITE.bath[best] ? Math.max(4, SITE.bath[best][1] - SITE.bath[best][0]) : 10 };
-  return CASINO;
-}
 function lire(vols){
   var C = [], z00 = Infinity;
   vols.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) >= 0) z00 = Math.min(z00, e.z0); }); });
@@ -132,169 +106,121 @@ function lire(vols){
              z:function(e){ return [Math.max(0, e.z0 - z00), e.z1 - z00]; } });
   });
   var ecole = C.filter(function(c){ return !c.v.ph; });
-  /* la figure : l'école sans la salle de sport, qui a son propre geste */
-  var fig = ecole.filter(function(c){ return !c.v.fix; });
-  var maj = fig.slice().sort(function(a, b){ return b.sol.w * b.sol.d - a.sol.w * a.sol.d; })[0];
-  var th = maj ? maj.sol.a : 0;
-  function obb(pts, a){
-    var ct = Math.cos(a), st = Math.sin(a);
-    var B = bbox(pts.map(function(p){ return [p[0] * ct + p[1] * st, -p[0] * st + p[1] * ct]; }));
-    return { B:B, q:[[B.x0, B.y0], [B.x1, B.y0], [B.x1, B.y1], [B.x0, B.y1]].map(function(p){ return [p[0] * ct - p[1] * st, p[0] * st + p[1] * ct]; }) };
-  }
-  var P = [];
-  fig.forEach(function(c){ P = P.concat(coins(c.sol)); });
-  var O = obb(P, th), N = obb(P, 0), H = Math.max.apply(null, ecole.map(function(c){ return c.top; }).concat([1]));
-  var aireSol = 0, cx = 0, cy = 0;
-  fig.forEach(function(c){ var a = c.sol.w * c.sol.d; aireSol += a; cx += c.sol.x * a; cy += c.sol.y * a; });
-  var cm = [cx / aireSol, cy / aireSol];
-  var aB = O.B.w * O.B.h, cb = centre(O.q), vide = aB - aireSol;
-  /* le centre du vide : la boîte moins les emprises */
-  var cv = vide > 1 ? [(cb[0] * aB - cm[0] * aireSol) / vide, (cb[1] * aB - cm[1] * aireSol) / vide] : cb;
-  var grp = fig.map(function(c, i){ return i; });
-  function f(i){ return grp[i] === i ? i : (grp[i] = f(grp[i])); }
-  fig.forEach(function(a, i){ fig.forEach(function(b, k){ if(k > i && ecart(a.sol, b.sol) < .2) grp[f(i)] = f(k); }); });
-  var bats = {};
-  fig.forEach(function(c, i){ (bats[f(i)] = bats[f(i)] || []).push(c); });
-  var sport = ecole.filter(function(c){ return c.v.fix; })[0];
-  var nmax = Math.max.apply(null, ecole.filter(function(c){ return !c.v.fix; }).map(function(c){ return c.et.length; }).concat([1]));
-  var hauts = ecole.filter(function(c){ return !c.v.fix && c.et.length === nmax; }), bas = ecole.filter(function(c){ return !c.v.fix && c.et.length < nmax; });
-  function cmDe(L){ var x = 0, y = 0, a = 0; L.forEach(function(c){ var s = c.sol.w * c.sol.d; x += c.sol.x * s; y += c.sol.y * s; a += s; }); return a ? [x / a, y / a] : cm; }
-  var retraits = [];
-  ecole.forEach(function(c){ c.et.slice(1).forEach(function(e){ if(e.rc.w * e.rc.d < c.sol.w * c.sol.d - 1) retraits.push({ c:c, e:e }); }); });
-  return { C:C, ecole:ecole, fig:fig, O:O, N:N, th:th, H:H, aireSol:aireSol, cm:cm, cv:cv, vide:vide, part:vide / aB,
-           bats:Object.keys(bats).map(function(k){ return bats[k]; }), sport:sport, hauts:hauts, bas:bas, cmHaut:cmDe(hauts), cmBas:cmDe(bas), retraits:retraits };
-}
-function plein(c, z1, col){ return { x:c.sol.x, y:c.sol.y, q:coins(c.sol), z0:c.base, z1:z1, c:col }; }
-function etages(X, col, avecSecond){
-  var L = [];
-  X.C.forEach(function(c){
-    if(c.v.ph && !avecSecond) return;
-    c.et.forEach(function(e){ var z = c.z(e); L.push({ x:e.rc.x, y:e.rc.y, q:coins(e.rc), z0:z[0], z1:z[1], c:c.v.ph ? null : col(c, e), o:c.v.ph ? TIRETS : null }); });
+  /* les m³ du projet : chaque étage hors sol, emprise × hauteur */
+  var V = 0, emprise = 0;
+  ecole.forEach(function(c){
+    c.et.forEach(function(e){ V += e.rc.w * e.rc.d * (e.z1 - e.z0); });
+    emprise += c.sol.w * c.sol.d;
   });
-  return L;
+  /* l'angle de la figure et son centre : `vols.T` s'il est là, sinon le corps principal */
+  var maj = ecole.slice().sort(function(a, b){ return b.sol.w * b.sol.d - a.sol.w * a.sol.d; })[0];
+  var th = vols.T ? vols.T.a : maj ? maj.sol.a : 0;
+  var cx = 0, cy = 0;
+  ecole.forEach(function(c){ cx += c.sol.x * c.sol.w * c.sol.d; cy += c.sol.y * c.sol.w * c.sol.d; });
+  cx /= emprise || 1; cy /= emprise || 1;
+  /* un corps tourné en arrière de l'angle de la figure, autour de son centre */
+  function arriere(rc){
+    var x = rc.x - cx, y = rc.y - cy, c = Math.cos(-th), s = Math.sin(-th);
+    return { x:cx + x * c - y * s, y:cy + x * s + y * c, w:rc.w, d:rc.d, a:rc.a - th };
+  }
+  var H = Math.max.apply(null, ecole.map(function(c){ return c.top; }).concat([1]));
+  /* la hauteur PROPRE de chaque corps, sans la pente du terrain sous lui */
+  var hs = ecole.map(function(c){ return c.top - c.base; });
+  var hmin = Math.min.apply(null, hs.concat([H])), hmaxC = Math.max.apply(null, hs.concat([0]));
+  return { C:C, ecole:ecole, V:V, emprise:emprise, hU:V / Math.max(1, emprise), th:th, cx:cx, cy:cy, arriere:arriere, H:H, hmin:hmin, hmaxC:hmaxC };
 }
 
-/* ---------- les gestes, et pourquoi ---------- */
-function gestes(vols){
-  var X = lire(vols), S = [], K = casino(), pa = partiOf(vols.parti || MASS.parti);
-  var ctx = [];
-  if(K) ctx.push({ x:K.c[0], y:K.c[1], q:K.p, z0:0, z1:K.h, c:CTXC, o:{ lw:.25, trait:GRIS } });
-  function scene(t, A, L, plaque){
-    t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.5 });
-    if(plaque) plaque();
-    peindre(t, A, ctx.concat(L));
-  }
-  var aTh = Math.round(((X.th * 180 / Math.PI) % 180 + 180) % 180), aThS = aTh > 90 ? aTh - 180 : aTh;
-  var cN = centre(X.N.q), cO = centre(X.O.q);
+/* ---------- les quatre temps ---------- */
+function temps(vols){
+  var X = lire(vols), T = vols.trace || {}, n = X.ecole.length, S = [];
+  var cote3 = Math.cbrt(X.V), cube = coins({ x:X.cx, y:X.cy, w:cote3, d:cote3, a:0 });
+  var pa = partiOf(vols.parti || MASS.parti), ang = deg(X.th);
 
-  S.push({ n:"LE BLOC", d:"Le programme de l'école en une seule boîte de " + Math.round(X.N.B.w) + " × " + Math.round(X.N.B.h) + " m, "
-      + nb(X.H) + " m de haut, posée à côté du Casino — la salle de sport à part, elle aura son geste. Tout part de là.",
-    f:function(t, A){ scene(t, A, [{ x:cN[0], y:cN[1], q:X.N.q, z0:0, z1:X.H, c:ACC }]); } });
-
-  if(Math.abs(aThS) > 3) S.push({ n:"TOURNER", d:"La boîte tourne de " + aThS + "° pour suivre la parcelle et offrir ses longues façades au "
-      + cardinal(-Math.sin(X.th), Math.cos(X.th)).replace(/^le |^l'/, "") + " et au " + cardinal(Math.sin(X.th), -Math.cos(X.th)).replace(/^le |^l'/, "") + ".",
+  S.push({ n:"LE CUBE", d:"Le projet demande " + fmt(Math.round(X.V)) + " m³ hors sol : un cube de " + nb(cote3) + " m de côté. Tout part de là.",
     f:function(t, A){
-      scene(t, A, [{ x:cO[0], y:cO[1], q:X.O.q, z0:0, z1:X.H, c:ACC }], function(){
-        t.poly(X.N.q.map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.5, dash:[2.5, 1.8] });
-      });
-      var P = [], r0 = Math.max(X.O.B.w, X.O.B.h) * .6;
-      for(var i = 0; i <= 14; i++){ var a = X.th * i / 14; P.push(A(cO[0] + Math.cos(a) * r0, cO[1] + Math.sin(a) * r0, X.H + 4)); }
-      t.ligne(P.slice(0, -1), { stroke:E.noir, lw:1.5 }); fleche(t, P[P.length - 3], P[P.length - 1], 1.5);
+      sol(t, A);
+      peindre(t, A, [{ x:X.cx, y:X.cy, q:cube, z0:0, z1:cote3, c:ACC }]);
+      cote(t, A(cube[1][0], cube[1][1], 0), A(cube[1][0], cube[1][1], cote3), nb(cote3) + " m");
     } });
 
-  var dv = [X.cv[0] - X.cm[0], X.cv[1] - X.cm[1]], sud = angleEntre(dv, [0, -1]) < Math.PI / 3;
-  if(X.part > .12) S.push({ n:"CREUSER", d:"On vide la boîte de " + fmt(Math.round(X.vide)) + " m² : ce vide devient la cour des enfants. Elle s'ouvre vers "
-      + cardinal(dv[0], dv[1]) + (sud ? " — au soleil de midi, abritée par les bâtiments." : ", tenue par les bâtiments sur ses autres côtés."),
+  S.push({ n:"DIVISER", d:n > 1
+      ? "Le cube se divise en " + n + " volumes, chacun à son emprise au sol définitive (" + fmt(Math.round(X.emprise)) + " m² en tout), "
+        + nb(X.hU) + " m de haut pour garder les mêmes m³ — rangés selon le parti « " + pa.n.toLowerCase() + " »."
+      : "Le cube s'étale en un seul volume, à son emprise définitive (" + fmt(Math.round(X.emprise)) + " m²), " + nb(X.hU) + " m de haut : mêmes m³.",
     f:function(t, A){
-      scene(t, A, X.fig.map(function(c){ return plein(c, X.H, BLANC); }), function(){
-        t.poly(X.O.q.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.accent });
+      sol(t, A);
+      prisme(t, A, cube, 0, cote3, null, TIRETS);
+      var C = X.ecole.map(function(c){ var r = X.arriere(c.sol); return { x:r.x, y:r.y, q:coins(r), z0:0, z1:X.hU, c:ACC }; });
+      peindre(t, A, C);
+      C.slice(0, 7).forEach(function(k){
+        var dx = k.x - X.cx, dy = k.y - X.cy, l = Math.hypot(dx, dy);
+        if(l > 8) fleche(t, A(X.cx, X.cy, cote3 * .8), A(k.x - dx / l * 3, k.y - dy / l * 3, X.hU + 3), 1.1);
       });
-      prisme(t, A, X.O.q, 0, X.H, null, TIRETS);
-      if(sud) soleil(t, A(X.cv[0], X.cv[1] - 70, X.H * .8), 5);
-      fleche(t, A(X.cv[0], X.cv[1], X.H + 14), A(X.cv[0], X.cv[1], 2), 1.4);
     } });
 
-  if(X.bats.length > 1) S.push({ n:"FENDRE", d:"Le bâtiment se fend en " + X.bats.length + " : les fentes laissent passer les enfants et le regard, "
-      + "à 5 m au moins l'un de l'autre.",
+  S.push({ n:"ORIENTER", d:Math.abs(ang) < 2
+      ? "La figure garde l'axe nord-sud et se pose sur la parcelle, à la place où tout tient."
+      : "La figure tourne de " + ang + "°" + (CAP[T.cap] ? ", " + CAP[T.cap] : "") + ", et se pose sur la parcelle, à la place où tout tient.",
     f:function(t, A){
-      scene(t, A, X.fig.map(function(c){ return plein(c, X.H, ACC); }));
-      /* une flèche au travers de chaque fente : entre les centres de deux bâtiments voisins */
-      var cs = X.bats.map(cmDeB);
-      for(var i = 0; i < cs.length - 1 && i < 3; i++){
-        var a = cs[i], b = cs[i + 1], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], dx = b[1] - a[1], dy = -(b[0] - a[0]), l = Math.hypot(dx, dy) || 1;
-        fleche(t, A(m[0] - dx / l * 25, m[1] - dy / l * 25, 1), A(m[0] + dx / l * 25, m[1] + dy / l * 25, 1), 1.3, VERT);
+      sol(t, A);
+      X.ecole.forEach(function(c){ t.poly(coins(X.arriere(c.sol)).map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.5, dash:[2.5, 1.8] }); });
+      peindre(t, A, X.ecole.map(function(c){ return { x:c.sol.x, y:c.sol.y, q:coins(c.sol), z0:c.base, z1:c.base + X.hU, c:ACC }; }));
+      if(Math.abs(ang) >= 2){
+        var P = [], r0 = Math.sqrt(X.emprise) * .9;
+        for(var i = 0; i <= 16; i++){ var a = X.th * i / 16; P.push(A(X.cx + Math.cos(a) * r0, X.cy + Math.sin(a) * r0, X.hU + 5)); }
+        t.ligne(P.slice(0, -1), { stroke:E.noir, lw:1.5 });
+        fleche(t, P[P.length - 3], P[P.length - 1], 1.5);
       }
     } });
 
-  if(X.bas.length && X.hauts.length){
-    var db = [X.cmBas[0] - X.cmHaut[0], X.cmBas[1] - X.cmHaut[1]];
-    var versK = K && angleEntre(db, [K.c[0] - X.cmHaut[0], K.c[1] - X.cmHaut[1]]) < Math.PI / 3;
-    S.push({ n:"ABAISSER", d:"Le bâtiment descend vers " + (versK ? "le Casino : il ne le domine pas et garde le bâtiment inventorié en vue. "
-        : cardinal(db[0], db[1]) + " : l'échelle baisse vers le bord de la parcelle. ")
-        + X.bas.length + " corps ne gardent que le rez, " + X.hauts.length + " montent à " + X.hauts[0].et.length + " niveaux.",
-      f:function(t, A){
-        scene(t, A, X.ecole.filter(function(c){ return !c.v.fix; }).map(function(c){ return plein(c, X.bas.indexOf(c) >= 0 ? c.top : X.H, X.bas.indexOf(c) >= 0 ? ACC : BLANC); }));
-        X.bas.forEach(function(c){ prisme(t, A, coins(c.sol), c.base, X.H, null, TIRETS); });
-        X.bas.slice(0, 4).forEach(function(c){ fleche(t, A(c.sol.x, c.sol.y, X.H + 8), A(c.sol.x, c.sol.y, c.top + 2), 1.1); });
-      } });
-  }
-
-  if(X.sport){
-    var basSol = X.sport.base <= Math.min.apply(null, X.ecole.map(function(c){ return c.base; })) + .5;
-    S.push({ n:"ANCRER", d:"La salle de sport double, 28 × 32 m et 7 m libres, se pose " + (X.sport.v.joint ? "contre l'école, au rez" : "à part")
-        + (basSol ? ", sur le point bas du terrain : sa hauteur s'y enfonce au lieu de dominer." : ", au sol : rien ne la surmonte."),
-      f:function(t, A){
-        scene(t, A, X.ecole.map(function(c){ return plein(c, c === X.sport ? c.top : (X.bas.indexOf(c) >= 0 ? c.top : X.H), c === X.sport ? ACC : BLANC); }));
-        fleche(t, A(X.sport.sol.x, X.sport.sol.y, X.H + 14), A(X.sport.sol.x, X.sport.sol.y, X.sport.top + 2), 1.4);
-      } });
-  }
-
-  if(X.retraits.length){
-    var dt = [0, 0];
-    X.retraits.forEach(function(r){ dt[0] += r.c.sol.x - r.e.rc.x; dt[1] += r.c.sol.y - r.e.rc.y; });
-    var dir = Math.hypot(dt[0], dt[1]) > .5 ? cardinal(dt[0], dt[1]) : null;
-    var vv = cibleVue(), vueOk = dir && angleEntre(dt, [vv.x - X.cm[0], vv.y - X.cm[1]]) < Math.PI / 3;
-    S.push({ n:"GRADINER", d:"Les étages se retirent" + (dir ? " vers " + dir : " des deux côtés") + " : le toit du dessous devient terrasse"
-        + (vueOk ? ", tournée vers la vue." : dir && /sud/.test(dir) ? ", au soleil." : ", une cour haute pour les classes."),
-      f:function(t, A){
-        scene(t, A, etages(X, function(c, e){ return X.retraits.some(function(r){ return r.e === e; }) ? BLANC : BLANC; }));
-        X.retraits.forEach(function(r){ var z = r.c.z(r.e); prisme(t, A, coins(r.c.sol), z[0], z[0] + .3, ACC); });
-        if(vueOk){ var p0 = A(X.cm[0], X.cm[1], X.H + 6); oeil(t, [p0[0] + 30, p0[1] + 16], 5); }
-      } });
-  }
-
-  S.push({ n:"LE PROJET", d:"Le volume généré, identique, étage par étage dans les couleurs du programme ; piscine et chauffage à distance en pointillé. "
-      + pa.n + ".",
-    f:function(t, A){ scene(t, A, etages(X, function(c, e){ return couleur(familleDom(e.e.i)); }, true)); } });
+  /* 4 · les niveaux : le volume généré, tel quel */
+  var niv = {};
+  X.ecole.forEach(function(c){ c.et.forEach(function(e){ niv[lvlOf(e.e.i)] = e.e.i; }); });
+  var noms = Object.keys(niv).sort(function(a, b){ return a - b; }).map(function(l){ return flName(niv[l]).toLowerCase(); });
+  var haut = X.ecole.filter(function(c){ return Math.abs(c.top - c.base - X.hmaxC) < .01; })[0];
+  var bas = X.ecole.slice().sort(function(a, b){ return (a.top - a.base) - (b.top - b.base); })[0];
+  S.push({ n:"LES NIVEAUX", d:(X.hmaxC - X.hmin < .5
+        ? "Tous les corps prennent la même hauteur, " + nb(X.hmaxC) + " m"
+        : "Chaque corps prend sa hauteur, de " + nb(X.hmin) + " m à " + nb(X.hmaxC) + " m : il ne monte que des niveaux qu'il porte (" + noms.join(", ") + ")")
+      + ". C'est le volume généré, identique ; piscine et chauffage à distance en pointillé.",
+    f:function(t, A){
+      sol(t, A);
+      var C = [];
+      X.C.forEach(function(c){ c.et.forEach(function(e){
+        var z = c.z(e);
+        C.push({ x:e.rc.x, y:e.rc.y, q:coins(e.rc), z0:z[0], z1:z[1], c:c.v.ph ? null : couleur(familleDom(e.e.i)), o:c.v.ph ? TIRETS : null });
+      }); });
+      peindre(t, A, C);
+      if(haut){ var q = coins(haut.sol)[1]; cote(t, A(q[0], q[1], haut.base), A(q[0], q[1], haut.top), nb(haut.top - haut.base) + " m"); }
+      if(bas && bas !== haut){ var q2 = coins(bas.sol)[1]; cote(t, A(q2[0], q2[1], bas.base), A(q2[0], q2[1], bas.top), nb(bas.top - bas.base) + " m"); }
+    } });
   S.X = X;
+  S.cube = cote3;
   return S;
-  function cmDeB(L){ var x = 0, y = 0, a = 0; L.forEach(function(c){ var s = c.sol.w * c.sol.d; x += c.sol.x * s; y += c.sol.y * s; a += s; }); return [x / a, y / a]; }
 }
 
-/* ---------- la planche ---------- */
+/* ---------- la planche : quatre cases, deux par deux ---------- */
 export function planDiagrammes(vols){
-  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50, g = 34;
+  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50, g = 40;
   t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
-  var S = gestes(vols), n = S.length, X = S.X, top = F.h - m - 76;
-  var cols = n <= 4 ? n : n <= 6 ? 3 : 4, rows = Math.ceil(n / cols);
+  var S = temps(vols), n = S.length, X = S.X, cols = 2, rows = Math.ceil(n / cols);
+  /* le même cadrage partout : la parcelle, le cube, les corps */
   var pts = PER.slice();
-  X.C.forEach(function(c){ pts = pts.concat(coins(c.sol)); });
-  var K = casino();
-  if(K) pts = pts.concat(K.p);
-  t.texte(m, F.h - m - 26, "LA VOLUMÉTRIE, GESTE PAR GESTE", { size:30, gras:true });
-  t.texte(m, F.h - m - 46, "Comment arriver à cette forme : d'une boîte au projet, chaque geste et sa raison · " + partiOf(vols.parti || MASS.parti).n,
-    { size:10, fill:[0.4, 0.4, 0.4] });
-  var cw = (F.w - 2 * m - (cols - 1) * g) / cols, ch = (top - m - (rows - 1) * g) / rows;
+  X.C.forEach(function(c){ pts = pts.concat(coins(c.sol)).concat(coins(X.arriere(c.sol))); });
+  var hm = Math.max(S.cube, X.H) * 1.2;
+  t.texte(m, F.h - m - 26, "LA VOLUMÉTRIE EN QUATRE TEMPS", { size:30, gras:true });
+  t.texte(m, F.h - m - 46, "Un cube, divisé, orienté, étagé · " + partiOf(vols.parti || MASS.parti).n, { size:10, fill:[0.4, 0.4, 0.4] });
+  var top = F.h - m - 76, cw = (F.w - 2 * m - (cols - 1) * g) / cols, ch = (top - m - (rows - 1) * g) / rows;
   S.forEach(function(s, i){
     var col = i % cols, row = Math.floor(i / cols);
     var x = m + col * (cw + g), y = top - (row + 1) * ch - row * g;
-    t.decoupe([[x, y + 52], [x + cw, y + 52], [x + cw, y + ch], [x, y + ch]]);
-    s.f(t, axo([x, y + 58, cw, ch - 62], pts, X.H * 1.35));
+    t.decoupe([[x, y + 56], [x + cw, y + 56], [x + cw, y + ch], [x, y + ch]]);
+    s.f(t, axo([x, y + 62, cw, ch - 66], pts, hm));
     t.fin();
-    t.texte(x, y + 38, ("0" + (i + 1)).slice(-2), { size:9, gras:true, fill:E.accent });
-    t.texte(x + 18, y + 38, s.n, { size:15, gras:true });
-    coupe(s.d, Math.round(cw / 3.9)).slice(0, 3).forEach(function(l, k){ t.texte(x, y + 24 - k * 9, l, { size:7.5, fill:TXT }); });
-    if(col < cols - 1 && i < n - 1) fleche(t, [x + cw + 6, y + ch / 2 + 30], [x + cw + g - 6, y + ch / 2 + 30], 1);
+    t.texte(x, y + 40, ("0" + (i + 1)).slice(-2), { size:11, gras:true, fill:E.accent });
+    t.texte(x + 24, y + 40, s.n, { size:18, gras:true });
+    coupe(s.d, Math.round(cw / 4)).slice(0, 3).forEach(function(l, k){ t.texte(x, y + 24 - k * 10, l, { size:8.5, fill:TXT }); });
+    if(col < cols - 1 && i < n - 1) fleche(t, [x + cw + 8, y + ch / 2 + 30], [x + cw + g - 8, y + ch / 2 + 30], 1.2);
   });
   t.texte(F.w - m, m - 24, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.45, 0.45, 0.45], ancre:"end" });
   return t;
