@@ -7,8 +7,8 @@
    vue, même échelle, même endroit. Les volumes sont blancs, ce que le geste
    change en orange, les flèches disent le geste. Une case n'existe que si la
    décision a été prise pour la composition à l'écran (pas de sous-sol : pas
-   de « creuser »). La mise en page suit la planche de référence : une grille
-   de trois colonnes, le contexte en gris, le numéro en tête de légende.
+   de « creuser »). À la manière des diagrammes de BIG : une suite de cases
+   reliées par des flèches, un verbe en gras sous chacune.
 
    Tout est lu dans l'état (`genMass`, le mixer, le jugement). La même planche
    s'affiche dans le rail du massing (`svg()`) et s'imprime (`pdf()`).
@@ -16,7 +16,7 @@
 import { fmt } from "../core/format.js";
 import { cssRGB } from "../core/gl.js";
 import { trace } from "../core/pdf.js";
-import { PER, SITE } from "../data/site.js";
+import { PER } from "../data/site.js";
 import { RULES } from "../data/rules.js";
 import { V, reculVise } from "../data/cadre.js";
 import "../data/leviers.js";
@@ -127,23 +127,8 @@ function corps(vols, z00, col, o){
   return C;
 }
 
-/* ---------- le contexte : les bâtiments voisins, en gris ---------- */
-var CTX = null;
-function contexte(){
-  if(CTX) return CTX;
-  var B = bbox(PER);
-  CTX = [];
-  SITE.bat.forEach(function(b, i){
-    var c = bbox(b);
-    if(c.cx < B.x0 - 40 || c.cx > B.x1 + 40 || c.cy < B.y0 - 40 || c.cy > B.y1 + 40) return;
-    var h = SITE.bath[i] ? Math.max(3, SITE.bath[i][1] - SITE.bath[i][0]) : 6;
-    CTX.push({ x:c.cx, y:c.cy, q:b, z0:0, z1:h, c:[E.cote, E.cote2, [0.68, 0.68, 0.68]], o:{ lw:.2 } });
-  });
-  return CTX;
-}
-/* la scène d'une case : le sol, puis le contexte et les corps, du plus loin
-   au plus proche, dans une seule liste */
-function scene(t, A, C){ sol(t, A); peindre(t, A, contexte().concat(C || [])); }
+/* la scène d'une case : le sol, puis les corps du plus loin au plus proche */
+function scene(t, A, C){ sol(t, A); peindre(t, A, C || []); }
 
 /* ---------- les gestes ---------- */
 function etapes(vols){
@@ -215,27 +200,36 @@ function etapes(vols){
   function blanc(){ return BLANC; }
 }
 
-/* ---------- la planche : la mise en page de la référence ----------
-   Un titre court en capitales, puis une grille de trois colonnes (quatre
-   au-delà de neuf cases) ; sous chaque dessin, le numéro en gras, le geste,
-   une ligne pour dire pourquoi. */
+/* ---------- la planche ----------
+   Un grand titre, puis les gestes en bandes, reliés par des flèches ; sous
+   chaque dessin, le numéro, le verbe en gras, une ligne pour dire pourquoi.
+   La grille prend le nombre de colonnes qui donne les plus grands dessins. */
 export function planDiagrammes(vols){
-  var F = FORMATS.A2, t = trace(F.w, F.h), m = 48, gx = 28, gy = 18;
+  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50, g = 30;
   t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
-  var S = etapes(vols), n = S.length, cols = n <= 9 ? 3 : 4, rows = Math.ceil(n / cols);
-  t.texte(m, F.h - m - 14, "PROCESSUS DE CONCEPTION — MASSING", { size:18, gras:true });
-  var top = F.h - m - 34, cw = (F.w - 2 * m - (cols - 1) * gx) / cols, ch = (top - m - (rows - 1) * gy) / rows;
+  var S = etapes(vols), n = S.length, top = F.h - m - 76;
+  var cols = 3, best = 0;
+  for(var c = 2; c <= 6; c++){
+    var r0 = Math.ceil(n / c), w0 = (F.w - 2 * m - (c - 1) * g) / c, h0 = (top - m - (r0 - 1) * g) / r0 - 62;
+    var e0 = Math.min(w0 / 2.2, h0);
+    if(e0 > best){ best = e0; cols = c; }
+  }
+  var rows = Math.ceil(n / cols);
+  t.texte(m, F.h - m - 26, "COMMENT LE VOLUME EST NÉ", { size:30, gras:true });
+  t.texte(m, F.h - m - 46, n + " gestes, du site au bâtiment · " + partiOf(vols.parti || MASS.parti).n, { size:10, fill:[0.4, 0.4, 0.4] });
+  var cw = (F.w - 2 * m - (cols - 1) * g) / cols, ch = (top - m - (rows - 1) * g) / rows;
   S.forEach(function(s, i){
     var col = i % cols, row = Math.floor(i / cols);
-    var x = m + col * (cw + gx), y = top - (row + 1) * ch - row * gy;
-    var cadre = [x, y + 44, cw, ch - 44];
-    t.decoupe([[x, y + 40], [x + cw, y + 40], [x + cw, y + ch], [x, y + ch]]);
+    var x = m + col * (cw + g), y = top - (row + 1) * ch - row * g;
+    var cadre = [x, y + 58, cw, ch - 62];
+    t.decoupe([[x, y + 52], [x + cw, y + 52], [x + cw, y + ch], [x, y + ch]]);
     s.f(t, axo(cadre, S.hmax), cadre);
     t.fin();
-    t.texte(x, y + 16, ("0" + (i + 1)).slice(-2), { size:20, gras:true });
-    t.texte(x + 36, y + 26, s.n, { size:10, gras:true, fill:E.accent });
-    coupe(s.d, Math.round((cw - 36) / 3.7)).slice(0, 2).forEach(function(l, k){ t.texte(x + 36, y + 15 - k * 9, l, { size:7.5, fill:[0.3, 0.3, 0.3] }); });
+    t.texte(x, y + 38, ("0" + (i + 1)).slice(-2), { size:9, gras:true, fill:E.accent });
+    t.texte(x + 18, y + 38, s.n, { size:15, gras:true });
+    coupe(s.d, Math.round(cw / 3.9)).slice(0, 3).forEach(function(l, k){ t.texte(x, y + 24 - k * 9, l, { size:7.5, fill:[0.3, 0.3, 0.3] }); });
+    if(col < cols - 1 && i < n - 1) fleche(t, [x + cw + 6, y + ch / 2 + 30], [x + cw + g - 6, y + ch / 2 + 30], 1);
   });
-  t.texte(F.w - m, m - 22, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.45, 0.45, 0.45], ancre:"end" });
+  t.texte(F.w - m, m - 24, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.45, 0.45, 0.45], ancre:"end" });
   return t;
 }
