@@ -29,20 +29,19 @@ La base est `DOC/site-plan_base.pdf` (A2, 1:500, Illustrator). Son calage (`BASE
 
 Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le style de la base
 (toitures blanches, ombres grises vers le sud-est, `ENCRE`), le second temps en pointillé.
-Hors parcelle, une seule chose : l'échelle graphique (`BASE.barre`), à gauche du nord de la base.
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — le processus
+## Diagrammes — comment le volume est né
 
-Le raisonnement du générateur (`genMass`), dans son ordre, une case par décision RÉELLEMENT
-prise pour la composition à l'écran : le site, le programme mis en volume, le recul, la figure
-du parti, l'orientation, la salle de sport (s'il y en a une), les étages, le sous-sol (s'il y
-en a un), les passerelles (s'il y en a), le tri. Le nombre de cases suit, la grille aussi
-(3 colonnes jusqu'à 9 cases, 4 au-delà). Chaque case dit ce qui a décidé, lu dans l'état :
-hauteurs du mixer, recul, profondeur tirée, angle, essais et variantes valides, note.
+À la manière des diagrammes de BIG, et d'eux seuls : une suite de GESTES, chacun appliqué au
+résultat du précédent — occuper, reculer, compacter, découper, tourner, ancrer, empiler,
+creuser, relier, choisir, habiter. Même vue et même échelle d'une case à l'autre. Volumes
+blancs, ce que l'étape change en orange (`ENCRE.accent`), flèches noires ; les couleurs de
+famille (`cssRGB()`) n'arrivent qu'au dernier geste. « Choisir » montre côte à côte les
+meilleures variantes et leur note.
 
-Le style est celui de la référence `diagramme.pdf` : fond blanc, contexte gris (`SITE.bat`),
-parcelle au trait rouge, volume saumon et flancs brique, flèches noires, soleil ; les couleurs
-de famille (`cssRGB()`) n'arrivent qu'à la dernière case. La même planche s'affiche dans le rail
-du massing (bloc « Diagramme »), refaite à chaque génération ; un clic mène au rendu.
+Une case n'existe que si le générateur a pris la décision pour la composition à l'écran (pas
+de recul visé, pas de salle de sport imposée, pas de sous-sol, pas de passerelle : pas de
+case). La grille prend le nombre de colonnes qui donne les plus grands dessins. La même planche
+s'affiche dans le rail du massing (bloc « Diagramme »), refaite à chaque génération.
