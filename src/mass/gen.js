@@ -653,7 +653,12 @@ export function genMass(graine){
     props.push(c.vols);
   });
   props.sort(function(a, b){ return (b.score || 0) - (a.score || 0); });
+  /* ce qui a fait échouer les essais, compté — gardé aussi quand ça réussit :
+     c'est la moitié de l'histoire d'une variante (la planche de diagrammes) */
+  var echecs = {};
+  rates.forEach(function(x){ echecs[x.k] = (echecs[x.k] || 0) + 1; });
   if(props.length){
+    props.forEach(function(v){ v.echecs = echecs; });
     props.forEach(function(v, k){ v.rang = k; v.props = props; });
     return props[0];
   }
