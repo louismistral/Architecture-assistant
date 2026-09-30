@@ -242,6 +242,28 @@ export function postesDe(i, avecHors){
    s'ajoute AUTOUR. `volRect` rend l'emprise ARCHITECTURALE, murs compris — c'est
    elle que mesurent le périmètre, les distances, la cour et le dessin —, et
    `volInt` l'intérieur, où l'on pave le programme. */
+/* ÉTIRER un volume par un de ses côtés, À SURFACE CONSTANTE : le côté `cote`
+   (0 : +largeur, 1 : +profondeur, 2 : −largeur, 3 : −profondeur, dans l'axe du
+   volume) avance de `delta` mètres, le côté opposé ne bouge pas, et l'autre
+   dimension se resserre ou s'élargit pour que chaque étage garde ses m² — une
+   surface de programme ne se change pas, on change ses proportions. La cote
+   tirée tombe sur le module ; l'autre se calcule, au centimètre. `base` est
+   l'état de départ du geste (`{ x, y, lv }`), pour ne pas cumuler d'arrondis. */
+export function etirer(v, base, cote, delta){
+  var e0 = base.lv[0], k = cote % 2 ? "d" : "w", o = k === "w" ? "d" : "w";
+  var L = auModule(Math.max(V.module * 6, e0[k] + delta));
+  if(e0[o] * e0[k] / L < 3) L = auModule(e0[o] * e0[k] / 3);
+  var f = L / e0[k], sg = cote < 2 ? 1 : -1, pas = (L - e0[k]) / 2 * sg;
+  v.lv.forEach(function(e, i){
+    var b = base.lv[i];
+    e[k] = i === 0 ? L : auModule(b[k] * f);
+    e[o] = Math.round(b[o] * b[k] / e[k] * 100) / 100;
+    e[k === "w" ? "dx" : "dy"] = (b[k === "w" ? "dx" : "dy"] || 0) * f;
+  });
+  var ux = Math.cos(v.a), uy = Math.sin(v.a);
+  if(k === "w"){ v.x = base.x + pas * ux; v.y = base.y + pas * uy; }
+  else { v.x = base.x - pas * uy; v.y = base.y + pas * ux; }
+}
 export function volInt(v, e){
   return local({ x:v.x, y:v.y, w:e.w, d:e.d, a:v.a }, e.dx || 0, e.dy || 0);
 }

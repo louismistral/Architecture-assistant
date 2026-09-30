@@ -273,3 +273,6 @@
   color:var(--foreground); background:var(--card); border:1px solid var(--input); border-radius:var(--radius-md);
 }
 input.mass-lev__s{ inline-size:5.5em; text-align:right; }
+/* les tirettes : étirer un côté du volume choisi, à surface constante */
+.plan-tir__c{ fill:var(--card); stroke:var(--ring); stroke-width:.45; cursor:ew-resize; }
+.plan-tir__c:hover{ fill:var(--ring); }

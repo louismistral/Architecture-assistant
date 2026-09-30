@@ -19,7 +19,7 @@ import { dec, fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
+import { MASS, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
   volRect, vu } from "../mass/model.js";
 import { admissible } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
@@ -188,7 +188,7 @@ function dessineVol(g, v, k){
       + " · " + fmt(Math.round(ri.w * ri.d)) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);
-    if(sel){ gv.appendChild(cotation(rc, v)); gv.appendChild(poignee(rc)); }
+    if(sel){ gv.appendChild(cotation(rc, v)); gv.appendChild(poignee(rc)); if(!v.fix) gv.appendChild(tirettes(rc)); }
   }
   g.appendChild(gv);
 }
@@ -250,6 +250,20 @@ function poignee(rc){
   return g;
 }
 
+/* Les TIRETTES : un carré au milieu de chaque côté du volume choisi. On en
+   tire une, le côté avance, l'opposé reste — et le volume garde ses m²
+   (`mass/model.js — etirer`). Pas sur une salle aux cotes imposées. */
+function tirettes(rc){
+  var g = svg("g", { "class":"plan-tir" }), c = Math.cos(rc.a), s2 = Math.sin(rc.a), t = 2.2;
+  [[rc.w / 2, 0], [0, rc.d / 2], [-rc.w / 2, 0], [0, -rc.d / 2]].forEach(function(p, i){
+    var x = rc.x + p[0] * c - p[1] * s2, y = rc.y + p[0] * s2 + p[1] * c;
+    g.appendChild(svg("rect", { x:(x - t / 2).toFixed(2), y:(Y(y) - t / 2).toFixed(2), width:t, height:t,
+      transform:"rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " " + x.toFixed(2) + " " + Y(y).toFixed(2) + ")",
+      "class":"plan-tir__c", "data-cote":String(i) }));
+  });
+  return g;
+}
+
 /* L'échelle et le nord. Un plan sans échelle n'est pas un plan. */
 function repere(C){
   var g = svg("g", { "class":"plan__rep" });
@@ -307,6 +321,17 @@ function wirePlan(){
     if(!root || !host || !host.contains(e.target)) return;
     var w = monde(e);
     if(!w) return;
+    var tir = e.target.closest ? e.target.closest("[data-cote]") : null;
+    if(tir && MASS.sel){
+      var vt = volDe(MASS.sel), ct = +tir.getAttribute("data-cote");
+      /* l'axe du côté tiré, et l'état de départ du geste */
+      var ax = ct % 2 ? [-Math.sin(vt.a), Math.cos(vt.a)] : [Math.cos(vt.a), Math.sin(vt.a)];
+      if(ct >= 2) ax = [-ax[0], -ax[1]];
+      drag = { mode:"etire", v:vt, cote:ct, ax:ax, w0:w, live:false,
+               base:{ x:vt.x, y:vt.y, lv:vt.lv.map(function(e){ return Object.assign({}, e); }) } };
+      e.preventDefault();
+      return;
+    }
     var poi = e.target.closest ? e.target.closest("[data-poi]") : null;
     if(poi && MASS.sel){
       var v0 = volDe(MASS.sel);
@@ -341,7 +366,12 @@ function wirePlan(){
     }
     var w = monde(e);
     if(!w) return;
-    if(drag.mode === "bouge"){
+    if(drag.mode === "etire"){
+      /* ce que la souris a parcouru le long de la normale du côté tiré ; les
+         règles dures ne bloquent pas le geste — le contrôle les signale */
+      var dl = (w.x - drag.w0.x) * drag.ax[0] + (w.y - drag.w0.y) * drag.ax[1];
+      etirer(drag.v, drag.base, drag.cote, dl);
+    } else if(drag.mode === "bouge"){
       var nx = Math.round((w.x + drag.dx) * 10) / 10;
       var ny = Math.round((w.y + drag.dy) * 10) / 10;
       /* Un bâtiment ne sort pas du périmètre du concours, et la souris n'y
