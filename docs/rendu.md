@@ -32,23 +32,15 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — la volumétrie, geste par geste
+## Diagrammes — la volumétrie en quatre temps
 
-On raisonne À L'ENVERS : le volume est donné, on cherche par quels gestes un architecte y
-serait arrivé, et pourquoi chacun — à la manière des diagrammes de BIG, où chaque geste a une
-raison lisible. La raison est MESURÉE sur le volume final (`lire()`), jamais inventée ; la
-dernière case dessine les étages de `etagesDe()` sans retouche.
+| temps | ce qu'il montre |
+|---|---|
+| 01 LE CUBE | un cube qui fait exactement les m³ hors sol du projet (Σ emprise × hauteur de chaque étage) |
+| 02 DIVISER | le cube partagé en autant de volumes que le projet a de corps, chacun à son emprise au sol DÉFINITIVE, à la hauteur qui garde les m³ ; la figure tournée en arrière de son angle |
+| 03 ORIENTER | la figure tourne de son angle (source : `vols.trace.cap`) et se pose : chaque corps à sa place, même hauteur |
+| 04 LES NIVEAUX | chaque corps prend sa vraie hauteur : le volume généré, identique (`etagesDe()`), en couleurs de programme, les hauteurs extrêmes cotées |
 
-| geste | ce qu'il fait | sa raison, lue sur la forme | quand |
-|---|---|---|---|
-| LE BLOC | le programme de l'école (hors salle de sport) en une boîte, axée au nord | — | toujours |
-| TOURNER | la boîte prend l'axe du plus grand corps | les longues façades vers … | angle > 3° |
-| CREUSER | le vide de la boîte devient la cour | la direction où elle s'ouvre (le soleil si c'est le sud) | vide > 12 % |
-| FENDRE | l'école se sépare en bâtiments | passages entre eux (flèches vertes) | plusieurs bâtiments |
-| ABAISSER | les corps qui portent moins de niveaux descendent | vers le Casino (le plus grand bâtiment du relevé) ou vers un bord | s'il y en a |
-| ANCRER | la salle de sport se pose | accolée ou à part, sur le point bas | salle imposée |
-| GRADINER | les étages se retirent en terrasses | vers la vue (`cibleVue`) ou le soleil | s'il y en a |
-| LE PROJET | le volume généré, identique, en couleurs de programme | — | toujours |
-
-Volumes blancs, le geste en orange, raisons en flèches et icônes (soleil, œil), le Casino en
-gris clair. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
+Le volume final n'est jamais retouché : tout est lu dessus (`lire()`). Les textes s'adaptent
+(un seul corps, un angle nul, une hauteur unique). La même planche s'affiche dans le rail du
+massing (bloc « Diagramme »).
