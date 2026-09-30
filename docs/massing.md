@@ -249,8 +249,10 @@ Le plan est en mètres sur le relevé : courbes de niveau, parcelles, routes, mu
 existants, périmètre. On y zoome, on s'y déplace, on sélectionne un volume en cliquant, on le déplace
 en le tirant, on le tourne par sa poignée, on l'ÉTIRE par les tirettes au milieu de ses côtés — et
 la 3D suit à l'instant. Étirer se fait À SURFACE CONSTANTE (`model.js — etirer`) : le côté tiré
-avance, l'opposé reste, l'autre dimension s'ajuste pour que chaque étage garde ses m² ; la cote
-tirée tombe sur le module. Le geste n'est pas bloqué par les règles dures : le contrôle les
+avance, l'opposé reste, l'autre dimension s'ajuste pour que chaque étage garde ses m². Les DEUX
+cotes tombent sur le module de 0,50 m (on choisit, autour de la cote visée, celle qui garde la
+surface la plus juste — quelques m² d'écart au plus, que le bilan montre) ; aucun côté sous 6 m ;
+un étage en gradin reste en gradin. Les tirettes et la poignée se dessinent par-dessus tout. Le geste n'est pas bloqué par les règles dures : le contrôle les
 signale en rouge. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.

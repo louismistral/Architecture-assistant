@@ -32,22 +32,23 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — l'évolution du volume
+## Diagrammes — la volumétrie, geste par geste
 
-Le volume est généré ; la planche en fait le RÉTRO-DESSIN, d'une boîte très simple jusqu'au
-volume généré, par des transformations crédibles. Le raisonnement s'adapte au volume, jamais
-l'inverse : la dernière case dessine les étages tels que `etagesDe()` les donne, sans retouche,
-et chaque étape est tirée de cette géométrie finale (`analyse()`).
+On raisonne À L'ENVERS : le volume est donné, on cherche par quels gestes un architecte y
+serait arrivé, et pourquoi chacun — à la manière des diagrammes de BIG, où chaque geste a une
+raison lisible. La raison est MESURÉE sur le volume final (`lire()`), jamais inventée ; la
+dernière case dessine les étages de `etagesDe()` sans retouche.
 
-| étape | ce qu'elle fait | quand |
-|---|---|---|
-| LE BLOC | la plus petite boîte, dans l'axe de la plus grande emprise, qui contient tout le projet à sa hauteur maximale | toujours |
-| DÉTACHER / ÉVIDER / DÉCOUPER | ne garder que les emprises réelles, pleine hauteur ; le vide (m², %) devient cour | toujours — le verbe suit le nombre de bâtiments et la part de vide |
-| ANCRER | la salle de sport descend à sa hauteur | salle de sport imposée |
-| ABAISSER | les corps qui portent moins de niveaux descendent | s'il y en a |
-| EN RETRAIT | les étages plus petits que le rez se retirent | s'il y en a |
-| LE SECOND TEMPS | piscine et CAD en pointillé | s'ils sont posés |
-| LE VOLUME | le volume généré, identique, dans les couleurs du programme | toujours |
+| geste | ce qu'il fait | sa raison, lue sur la forme | quand |
+|---|---|---|---|
+| LE BLOC | le programme de l'école (hors salle de sport) en une boîte, axée au nord | — | toujours |
+| TOURNER | la boîte prend l'axe du plus grand corps | les longues façades vers … | angle > 3° |
+| CREUSER | le vide de la boîte devient la cour | la direction où elle s'ouvre (le soleil si c'est le sud) | vide > 12 % |
+| FENDRE | l'école se sépare en bâtiments | passages entre eux (flèches vertes) | plusieurs bâtiments |
+| ABAISSER | les corps qui portent moins de niveaux descendent | vers le Casino (le plus grand bâtiment du relevé) ou vers un bord | s'il y en a |
+| ANCRER | la salle de sport se pose | accolée ou à part, sur le point bas | salle imposée |
+| GRADINER | les étages se retirent en terrasses | vers la vue (`cibleVue`) ou le soleil | s'il y en a |
+| LE PROJET | le volume généré, identique, en couleurs de programme | — | toujours |
 
-Aucune étape n'est ajoutée pour faire nombre. Volumes blancs, ce que l'étape change en orange,
-flèches noires. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
+Volumes blancs, le geste en orange, raisons en flèches et icônes (soleil, œil), le Casino en
+gris clair. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
