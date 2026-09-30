@@ -28,10 +28,7 @@ export var BASE = {
   pdf: "DOC/site-plan_base.pdf",
   apercu: "DOC/site-plan_base.jpg",   /* le même, en image, pour l'écran */
   format: "A2", echelle: ECHELLE,
-  k: 1000 / ECHELLE * MM, ox: 277.546, oy: 249.798,
-  /* l'échelle graphique : ses graduations en mètres, calée à gauche du nord
-     de la base (fin de la barre à x = `fin`, en points, à la hauteur `y`) */
-  barre: { m:[0, 5, 10, 20, 30, 40, 50], fin:1522, y:24 }
+  k: 1000 / ECHELLE * MM, ox: 277.546, oy: 249.798
 };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
@@ -39,10 +36,10 @@ export var BASE = {
 export var ENCRE = {
   noir: [0, 0, 0], blanc: [1, 1, 1], ombre: [0.41, 0.41, 0.41],
   trait: [0.41, 0.41, 0.41], fin: [0.6, 0.6, 0.6], rouge: [0.85, 0.2, 0.18],
-  /* les diagrammes, à la manière de la planche de référence (`diagramme.pdf`) :
-     le volume saumon et ses flancs brique, le contexte gris */
-  volume: [0.96, 0.66, 0.55], flanc: [0.8, 0.3, 0.17], contexte: [0.9, 0.9, 0.9],
-  fantome: [0.99, 0.9, 0.86], soleil: [0.98, 0.72, 0.1],
+  /* les diagrammes, à la manière de BIG : volumes blancs aux flancs gris, un
+     sol à peine teinté, et UNE couleur pour ce que l'étape change */
+  sol: [0.94, 0.94, 0.93], cote: [0.86, 0.86, 0.86], cote2: [0.76, 0.76, 0.76],
+  accent: [0.95, 0.38, 0.12], soleil: [0.98, 0.72, 0.1],
   /* l'ombre portée d'un volume : décalage par mètre de hauteur, vers le SE */
   ombreParM: [0.3, -0.3]
 };
