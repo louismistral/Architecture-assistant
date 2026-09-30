@@ -567,7 +567,7 @@ export function genMass(graine){
   var partis = MASS.parti === "auto" ? PARTIS_LIBRES : [MASS.parti];
   var B = profBornes(), hiE = Math.max(B.lo, Math.min(B.hi, profFacade()));
   var centreSite = bbox(PER);
-  var valides = [], rates = [];
+  var valides = [], rates = [], nEssais = 0;
 
   /* L'aire bâtie d'école par niveau hors sol : ce que la figure doit loger. */
   var Aecole = N.map(function(n, k){ return Math.max(0, n.A - (imp && k === 0 ? imp.aire : 0)); });
@@ -578,6 +578,7 @@ export function genMass(graine){
      sous-sol, les passerelles ; 2. le CADRE — tout entier — décide si elle
      entre dans les résultats ; 3. l'ORIENTATION ne départage qu'ensuite. */
   function essai(pid){
+    nEssais++;
     /* La profondeur — un levier : fixée, la nôtre ; libre, tirée sous la cote
        de façade, pleine pour une barre et un bloc compact, plus mince pour des
        pavillons et un hameau. */
@@ -642,7 +643,7 @@ export function genMass(graine){
     var ev = evaluer(c.vols);
     c.vols.score = ev.jugement.total;
     c.vols.pref = c.pref;
-    c.vols.valides = n0;
+    c.vols.valides = n0; c.vols.essais = nEssais;
     props.push(c.vols);
   });
   props.sort(function(a, b){ return (b.score || 0) - (a.score || 0); });
