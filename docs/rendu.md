@@ -32,16 +32,22 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — le volume en quatre gestes
+## Diagrammes — l'évolution du volume
 
-| case | ce qu'elle montre |
-|---|---|
-| 01 LE BLOC | tout le volume de l'école (hors salle de sport) en un seul bloc, à l'emprise de la figure : trop profond pour éclairer une classe |
-| 02 SÉPARER | le bloc partagé en corps de la profondeur tirée, rangés selon le parti ; même volume — s'il ne se partage pas, la case le dit |
-| 03 ORIENTER | la figure tourne (angle et source : axe, soleil-vue, libre, pente) et se pose d'un bloc sur la parcelle |
-| 04 LES NIVEAUX | chaque corps monte de ce qu'il porte, le dernier niveau en orange ; la salle de sport, accolée ou à part |
+Le volume est généré ; la planche en fait le RÉTRO-DESSIN, d'une boîte très simple jusqu'au
+volume généré, par des transformations crédibles. Le raisonnement s'adapte au volume, jamais
+l'inverse : la dernière case dessine les étages tels que `etagesDe()` les donne, sans retouche,
+et chaque étape est tirée de cette géométrie finale (`analyse()`).
 
-Chaque geste garde le même volume et part du précédent. Tout vient de ce que le générateur a
-produit : `vols.trace` (la figure en coordonnées locales, l'angle et sa source), `vols.T` (la
-translation), `etagesDe()` (les étages posés). Volumes blancs, ce que le geste change en
-orange, flèches noires. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
+| étape | ce qu'elle fait | quand |
+|---|---|---|
+| LE BLOC | la plus petite boîte, dans l'axe de la plus grande emprise, qui contient tout le projet à sa hauteur maximale | toujours |
+| DÉTACHER / ÉVIDER / DÉCOUPER | ne garder que les emprises réelles, pleine hauteur ; le vide (m², %) devient cour | toujours — le verbe suit le nombre de bâtiments et la part de vide |
+| ANCRER | la salle de sport descend à sa hauteur | salle de sport imposée |
+| ABAISSER | les corps qui portent moins de niveaux descendent | s'il y en a |
+| EN RETRAIT | les étages plus petits que le rez se retirent | s'il y en a |
+| LE SECOND TEMPS | piscine et CAD en pointillé | s'ils sont posés |
+| LE VOLUME | le volume généré, identique, dans les couleurs du programme | toujours |
+
+Aucune étape n'est ajoutée pour faire nombre. Volumes blancs, ce que l'étape change en orange,
+flèches noires. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
