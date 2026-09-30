@@ -1,54 +1,39 @@
 /* ============================================================================
-   PLANCHE MASSING · DIAGRAMMES — comment ce volume a été trouvé
+   PLANCHE MASSING · DIAGRAMMES — le volume en quatre gestes, à la manière de BIG
 
-   Le générateur ne « conçoit » pas un parti : il TIRE des compositions au
-   hasard dans un cadre fixe, écarte celles qui enfreignent une règle dure, et
-   garde la mieux notée. La planche le dit tel quel, avec ce qu'il a réellement
-   produit — rien n'y est reconstruit après coup :
+     01 LE BLOC       tout le volume de l'école en un seul bloc
+     02 SÉPARER       comment ce bloc se partage en corps — s'il se partage
+     03 ORIENTER      la figure tourne et se pose sur la parcelle
+     04 LES NIVEAUX   chaque corps monte de ce qu'il porte : le jeu des niveaux
 
-     CE QUI EST FIXÉ      les surfaces du mixer, la salle de sport, le recul,
-                          les bornes de profondeur                (vols.trace)
-     CE QUI EST TIRÉ      pour ce volume : parti, profondeur, angle et sa
-                          source, position, salle de sport, passerelles
-     ESSAYER              une case par essai                      (vols.essais)
-     ÉCARTER              pourquoi les autres ont été écartés     (vols.echecs)
-     LES SURVIVANTES      la meilleure de chaque parti, et sa note (vols.props)
-     POURQUOI CELLE-CI    ses axes du jugement contre la deuxième (evaluer)
-     LE VOLUME RETENU     dans les couleurs du programme
-
-   Volumes blancs, ce qui compte en orange, un verbe en gras par case. La même
-   planche s'affiche dans le rail du massing (`svg()`) et s'imprime (`pdf()`).
+   Chaque geste part du précédent et garde le même volume. Tout vient de ce que
+   le générateur a réellement produit : la figure en coordonnées locales,
+   l'angle et sa source (`vols.trace`, posé par `genMass`), la translation
+   (`vols.T`), les étages posés (`etagesDe`). Volumes blancs, ce que le geste
+   change en orange, flèches noires, un verbe en gras. La même planche
+   s'affiche dans le rail du massing (`svg()`) et s'imprime (`pdf()`).
    ========================================================================= */
 import { fmt } from "../core/format.js";
-import { cssRGB } from "../core/gl.js";
 import { trace } from "../core/pdf.js";
 import { PER } from "../data/site.js";
 import { reculVise } from "../data/cadre.js";
 import "../data/leviers.js";
 import "../data/recherche.js";
 import { ENCRE, FORMATS } from "../data/planches.js";
-import { lvlOf } from "../mix/floors.js";
-import { bbox, coins } from "../mass/geom.js";
-import { MASS, etagesDe, familleDom, famTok, partiOf } from "../mass/model.js";
-import { evaluer } from "../mass/mesures.js";
+import { flName, lvlOf } from "../mix/floors.js";
+import { airePoly, bbox, coins, ligneRecul } from "../mass/geom.js";
+import { MASS, etagesDe, partiOf } from "../mass/model.js";
 
 var E = ENCRE;
 var BLANC = [E.blanc, E.cote, E.cote2], ACC = [E.accent, [0.82, 0.29, 0.08], [0.7, 0.24, 0.06]];
 var GRIS = [0.55, 0.55, 0.55], TXT = [0.3, 0.3, 0.3], TIRETS = { dash:[2.5, 1.8] };
-
-/* les causes d'un essai écarté, dites en clair (`genMass` et `ecarts()`) */
-var CAUSE = {
-  parti: "la figure ne tient pas son parti", perimetre: "ne tient pas dans la parcelle",
-  recul: "sort du recul", dist: "moins de 5 m entre bâtiments", existant: "trop près de l'existant",
-  sport: "pas de place pour la salle de sport", abri: "abri PC mal posé", surfaces: "surfaces non tenues",
-  cour: "cour trop petite", "cour-prog": "cour du programme non tenue"
+var CAP = {
+  axe:    "alignée sur le plus long côté de la parcelle",
+  soleil: "tournée vers le meilleur compromis entre le soleil et la vue",
+  libre:  "tournée librement autour de l'axe de la parcelle",
+  pente:  "ses rangs suivent la pente"
 };
-var CAP = { axe:"le plus long côté de la parcelle", soleil:"le compromis soleil-vue", libre:"un angle libre autour de l'axe", pente:"la pente" };
 
-function couleur(f){
-  var c = typeof document !== "undefined" ? cssRGB(famTok(f)) : [0.7, 0.7, 0.7];
-  return [c, c.map(function(v){ return v * .82; }), c.map(function(v){ return v * .68; })];
-}
 function coupe(s, n){
   var L = [], l = "";
   s.split(" ").forEach(function(m){ if((l + " " + m).trim().length > n){ L.push(l.trim()); l = m; } else l += " " + m; });
@@ -62,9 +47,8 @@ function ccw(p){
 }
 function nb(x){ return String(Math.round(x * 10) / 10).replace(".", ","); }
 function deg(a){ var d = ((a * 180 / Math.PI) % 180 + 180) % 180; return Math.round(d > 90 ? d - 180 : d); }
-function barre(t, x, y, w, h, fill){ t.poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], { fill:fill }); }
 
-/* ---------- l'axonométrie du site ---------- */
+/* ---------- la vue : la même axonométrie pour les quatre cases ---------- */
 function axo(cadre, hmax){
   var r = -0.62, el = 0.5, c = Math.cos(r), s = Math.sin(r);
   function brut(x, y, z){ return [x * c - y * s, (x * s + y * c) * el + z * 0.9]; }
@@ -84,152 +68,173 @@ function prisme(t, A, poly, z0, z1, c, o){
     if(n[0] * A.g[0] + n[1] * A.g[1] >= 0) continue;
     F.push({ a:a, b:b, d:A.prof((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), l:Math.abs(n[0]) > Math.abs(n[1]) });
   }
-  function st(fill){ return o.dash ? { stroke:E.noir, lw:.4, dash:o.dash } : { fill:fill, stroke:E.noir, lw:o.lw || .4 }; }
+  function st(fill){ return o.dash ? { stroke:E.noir, lw:.5, dash:o.dash } : { fill:fill, stroke:E.noir, lw:.5 }; }
   F.sort(function(u, v){ return v.d - u.d; }).forEach(function(f){
     t.poly([A(f.a[0], f.a[1], z0), A(f.b[0], f.b[1], z0), A(f.b[0], f.b[1], z1), A(f.a[0], f.a[1], z1)], st(c && (f.l ? c[1] : c[2])));
   });
   t.poly(p.map(function(q){ return A(q[0], q[1], z1); }), st(c && c[0]));
 }
-/* une composition posée sur son site ; `col(v, e)` dit la couleur */
-function composition(t, A, vols, col, second){
-  var z00 = Infinity, C = [];
-  vols.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) >= 0) z00 = Math.min(z00, e.z0); }); });
-  vols.forEach(function(v){
-    if(v.ph && !second) return;
-    etagesDe(v).forEach(function(e){
-      if(lvlOf(e.e.i) < 0) return;
-      C.push({ x:e.rc.x, y:e.rc.y, q:coins(e.rc), z0:Math.max(0, e.z0 - z00), z1:e.z1 - z00, c:col(v, e), o:v.ph ? TIRETS : null });
-    });
-  });
-  t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.4 });
+function peindre(t, A, C){
   C.sort(function(a, b){
     var da = A.prof(a.x, a.y), db = A.prof(b.x, b.y);
     return Math.abs(da - db) > 3 ? db - da : a.z0 - b.z0;
   }).forEach(function(k){ prisme(t, A, k.q, k.z0, k.z1, k.c, k.o); });
 }
-function hauteur(vols){
-  var h = 12;
-  vols.forEach(function(v){ var et = etagesDe(v); if(et.length) h = Math.max(h, et[et.length - 1].z1 - et[0].z0); });
-  return h;
+function fleche(t, a, b, lw){
+  lw = lw || 1.5;
+  var dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n, h = 2.5 + lw * 1.8;
+  t.ligne([a, [b[0] - ux * h, b[1] - uy * h]], { stroke:E.noir, lw:lw });
+  t.poly([b, [b[0] - ux * h * 2 + uy * h, b[1] - uy * h * 2 - ux * h], [b[0] - ux * h * 2 - uy * h, b[1] - uy * h * 2 + ux * h]], { fill:E.noir });
 }
-/* des lignes de texte, « libellé : valeur », dans un cadre */
-function tableau(t, cadre, L){
-  var lh = Math.min(16, cadre[3] / (L.length + 1)), y = cadre[1] + cadre[3] - lh;
-  L.forEach(function(r){
-    t.texte(cadre[0], y, r[0], { size:7.5, fill:TXT });
-    t.texte(cadre[0] + cadre[2] * .42, y, r[1], { size:8, gras:true, fill:r[2] ? E.accent : E.noir });
-    y -= lh;
-  });
+function cote(t, a, b, txt){
+  t.ligne([a, b], { stroke:E.accent, lw:.8 });
+  [a, b].forEach(function(p){ t.cercle(p[0], p[1], 1.3, { fill:E.accent }); });
+  t.texte((a[0] + b[0]) / 2 + 6, (a[1] + b[1]) / 2, txt, { size:8, gras:true, fill:E.accent });
+}
+function sol(t, A, recul){
+  t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.5 });
+  if(recul) t.poly(recul.map(function(p){ return A(p[0], p[1], 0); }), { stroke:GRIS, lw:.5, dash:[3, 2] });
 }
 
-/* ---------- les cases ---------- */
+/* ---------- la figure : du repère local au site ---------- */
+function repere(vols){
+  var T = vols.trace || {}, S = (T.S || []).slice(), pos = vols.T;
+  if(!S.length || !pos) return null;
+  var cx = 0, cy = 0;
+  S.forEach(function(s){ cx += s.x; cy += s.y; });
+  cx /= S.length; cy /= S.length;
+  /* un point local → le site, tourné de `a` (l'angle posé, ou 0 avant rotation) */
+  function site(p, a){
+    var x = p[0] - cx, y = p[1] - cy;
+    return [pos.x + x * Math.cos(a) - y * Math.sin(a), pos.y + x * Math.sin(a) + y * Math.cos(a)];
+  }
+  function empreinte(s, a){
+    var q = coins({ x:s.x, y:s.y, w:s.w + 1, d:s.d + 1, a:s.a || 0 });
+    return q.map(function(p){ return site(p, a); });
+  }
+  return { S:S, site:site, empreinte:empreinte, a:pos.a };
+}
+
+/* ---------- les quatre gestes ---------- */
 function etapes(vols){
-  var T = vols.trace || {}, N = T.N || [], hmax = hauteur(vols), props = vols.props || [vols];
-  var sport = vols.filter(function(v){ return v.fix && !v.ph; })[0], RV = reculVise();
-  var n = vols.essais || 1, ok = vols.valides || 1, ech = vols.echecs || {};
-  var S = [];
+  var R = repere(vols), T = vols.trace || {}, ecole = vols.filter(function(v){ return !v.ph; });
+  /* la salle de sport n'est pas un corps de la figure : elle se pose à part,
+     après ; le bloc ne porte que ce que la figure loge */
+  var sport = ecole.filter(function(v){ return v.fix; })[0], figure = ecole.filter(function(v){ return !v.fix; });
+  var RV = reculVise();
+  var recul = RV ? ligneRecul(RV).slice().sort(function(a, b){ return airePoly(b) - airePoly(a); })[0] : null;
+  /* le volume réel de l'école hors sol, et sa hauteur la plus haute */
+  var volume = 0, z00 = Infinity, hmax = 0;
+  figure.forEach(function(v){ etagesDe(v).forEach(function(e){
+    if(lvlOf(e.e.i) < 0) return;
+    volume += e.rc.w * e.rc.d * (e.z1 - e.z0); z00 = Math.min(z00, e.z0);
+  }); });
+  if(!isFinite(z00)) z00 = 0;
+  ecole.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) >= 0) hmax = Math.max(hmax, e.z1 - z00); }); });
+  /* les emprises de la figure, et la hauteur qu'aurait chaque corps si le
+     volume restait réparti également : même volume, d'un geste à l'autre */
+  var emprise = 0;
+  if(R) R.S.forEach(function(s){ emprise += (s.w + 1) * (s.d + 1); });
+  var hUni = emprise ? volume / emprise : hmax;
+  /* le bloc : le rectangle qui enveloppe la figure non tournée, à la hauteur
+     qui garde le volume */
+  var pts0 = [];
+  if(R) R.S.forEach(function(s){ pts0 = pts0.concat(R.empreinte(s, 0)); });
+  var B0 = pts0.length ? bbox(pts0) : bbox(PER);
+  var bloc = [[B0.x0, B0.y0], [B0.x1, B0.y0], [B0.x1, B0.y1], [B0.x0, B0.y1]];
+  var hBloc = volume / Math.max(1, B0.w * B0.h);
+  var HM = Math.max(hmax, hBloc, hUni) * 1.25;
+  var S = [], n = R ? R.S.length : ecole.length, pa = partiOf(vols.parti || MASS.parti);
 
-  S.push({ n:"CE QUI EST FIXÉ", d:"Avant tout tirage : les surfaces que le mixer a rangées par niveau, la salle de sport, le recul, les bornes de profondeur. Rien de cela ne varie.",
-    f:function(t, cadre){
-      var L = N.map(function(x){ return [x.nom, fmt(Math.round(x.A)) + " m² bâtis"]; });
-      if(T.imp) L.push(["Salle de sport double", T.imp.d + " × " + T.imp.w + " m, au rez"]);
-      L.push(["Recul sur le périmètre", RV ? nb(RV) + " m" : "aucun"]);
-      L.push(["Entre bâtiments", "5 m (AEAI)"]);
-      if(T.lo != null) L.push(["Profondeur d'un corps", "entre " + nb(T.lo + 1) + " et " + nb(T.hi + 1) + " m"]);
-      tableau(t, cadre, L);
+  S.push({ n:"LE BLOC", d:"Tout le volume de l'école" + (sport ? " hors salle de sport" : "") + ", " + fmt(Math.round(volume)) + " m³, en un seul bloc : "
+      + Math.round(B0.w) + " × " + Math.round(B0.h) + " m sur " + nb(hBloc) + " m. Trop profond pour éclairer une classe.",
+    f:function(t, A){
+      sol(t, A, recul);
+      peindre(t, A, [{ x:B0.cx, y:B0.cy, q:bloc, z0:0, z1:hBloc, c:ACC }]);
+      cote(t, A(B0.x1, B0.y0, 0), A(B0.x1, B0.y0, hBloc), nb(hBloc) + " m");
     } });
 
-  S.push({ n:"CE QUI EST TIRÉ", d:"Pour CE volume, le hasard a donné ces valeurs, dans le cadre fixé. Un autre tirage donne un autre volume.",
-    f:function(t, cadre){
-      var L = [["Parti", partiOf(vols.parti || MASS.parti).n, 1]];
-      if(vols.prof) L.push(["Profondeur des corps", nb(vols.prof + 1) + " m", 1]);
-      if(T.cap) L.push(["Orientation", CAP[T.cap] || T.cap, 1]);
-      if(vols.T) L.push(["Angle posé", deg(vols.T.a) + "°", 1]);
-      if(vols.T) L.push(["Position (centre)", Math.round(vols.T.x) + " / " + Math.round(vols.T.y) + " m", 1]);
-      if(T.S) L.push(["Corps", T.S.filter(function(s){ return s.haut > 1; }).length + " hauts, " + T.S.filter(function(s){ return s.haut <= 1; }).length + " au rez", 1]);
-      if(sport) L.push(["Salle de sport", sport.joint ? "accolée à un corps" : "à part, au point bas", 1]);
-      L.push(["Passerelles", String((vols.ponts || []).length), 1]);
-      tableau(t, cadre, L);
-    } });
-
-  S.push({ n:"ESSAYER", d:n + " compositions tirées ainsi. En noir la retenue, en orange les " + ok + " qui tiennent toutes les règles dures, en blanc les écartées.",
-    f:function(t, cadre){
-      var cols = Math.ceil(Math.sqrt(n * cadre[2] / cadre[3])), rows = Math.ceil(n / cols);
-      var s = Math.min(cadre[2] / cols, cadre[3] / rows), c0 = s * .72;
-      var x0 = cadre[0] + (cadre[2] - cols * s) / 2, y0 = cadre[1] + (cadre[3] + rows * s) / 2;
-      for(var i = 0; i < n; i++){
-        var x = x0 + (i % cols) * s, y = y0 - (Math.floor(i / cols) + 1) * s;
-        var q = [[x, y], [x + c0, y], [x + c0, y + c0], [x, y + c0]];
-        t.poly(q, i === 0 ? { fill:E.noir } : i < ok ? { fill:E.accent } : { stroke:GRIS, lw:.4 });
-      }
-    } });
-
-  var K = Object.keys(ech).sort(function(a, b){ return ech[b] - ech[a]; });
-  if(K.length) S.push({ n:"ÉCARTER", d:(n - ok) + " essais écartés, chacun à la première règle dure enfreinte. La cause la plus fréquente : " + (CAUSE[K[0]] || K[0]) + ".",
-    f:function(t, cadre){
-      var mx = ech[K[0]], bh = Math.min(16, cadre[3] / (K.length + 1)), W = cadre[2] * .45, y = cadre[1] + cadre[3] - bh;
-      K.forEach(function(k){
-        t.texte(cadre[0], y + 3, CAUSE[k] || k, { size:7, fill:TXT });
-        barre(t, cadre[0] + cadre[2] * .5, y, W * ech[k] / mx, bh * .7, E.cote2);
-        t.texte(cadre[0] + cadre[2] * .5 + W * ech[k] / mx + 4, y + 3, String(ech[k]), { size:7, gras:true });
-        y -= bh;
+  S.push({ n:"SÉPARER", d:n > 1
+      ? "Le bloc se partage en " + n + " corps de " + nb((vols.prof || 0) + 1) + " m de profondeur — deux classes et leur couloir, chaque classe en façade — "
+        + "rangés selon le parti « " + pa.n.toLowerCase() + " », à 5 m au moins quand ils ne se touchent pas."
+      : "Le bloc reste d'un seul tenant : un corps de " + nb((vols.prof || 0) + 1) + " m de profondeur suffit.",
+    f:function(t, A){
+      sol(t, A, recul);
+      prisme(t, A, bloc, 0, hBloc, null, TIRETS);
+      var C = [];
+      if(R) R.S.forEach(function(s){
+        var q = R.empreinte(s, 0), c = bbox(q);
+        C.push({ x:c.cx, y:c.cy, q:q, z0:0, z1:hUni, c:ACC });
+      });
+      peindre(t, A, C);
+      /* les flèches : du centre du bloc vers chaque corps */
+      C.slice(0, 6).forEach(function(k){
+        var dx = k.x - B0.cx, dy = k.y - B0.cy, l = Math.hypot(dx, dy);
+        if(l > 8) fleche(t, A(B0.cx, B0.cy, hBloc + 5), A(k.x - dx / l * 3, k.y - dy / l * 3, hUni + 5), 1.1);
       });
     } });
 
-  var P = props.slice(0, 6);
-  S.push({ n:"LES SURVIVANTES", d:"Parmi les valides, la meilleure de chaque parti, avec sa note au jugement. Toutes sont réglementaires ; seule la note les sépare.",
-    f:function(t, cadre){
-      var c = Math.min(3, P.length), r = Math.ceil(P.length / c), w = cadre[2] / c, h = cadre[3] / r;
-      P.forEach(function(p, i){
-        var x = cadre[0] + (i % c) * w, y = cadre[1] + cadre[3] - (Math.floor(i / c) + 1) * h;
-        var A = axo([x + 2, y + 12, w - 4, h - 14], hmax);
-        composition(t, A, p, function(){ return p === vols ? ACC : BLANC; });
-        t.texte(x + w / 2, y + 2, partiOf(p.parti).n + " · " + (p.score != null ? p.score : "—"), { size:6.5, gras:p === vols, ancre:"middle" });
-      });
+  S.push({ n:"ORIENTER", d:"La figure est " + (CAP[T.cap] || "tournée") + " : " + deg(R ? R.a : 0) + "°. "
+      + "Elle se pose d'un bloc sur la parcelle, à la première place où tout tient" + (RV ? ", à " + nb(RV) + " m du bord." : "."),
+    f:function(t, A){
+      sol(t, A, recul);
+      if(!R) return;
+      R.S.forEach(function(s){ t.poly(R.empreinte(s, 0).map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.5, dash:[2.5, 1.8] }); });
+      var C = [];
+      R.S.forEach(function(s){ var q = R.empreinte(s, R.a), c = bbox(q); C.push({ x:c.cx, y:c.cy, q:q, z0:0, z1:hUni, c:ACC }); });
+      peindre(t, A, C);
+      /* l'arc de la rotation, autour du centre de la figure */
+      var P = [], r0 = Math.max(B0.w, B0.h) * .62, a1 = R.a;
+      for(var i = 0; i <= 16; i++){ var a = a1 * i / 16; P.push(A(vols.T.x + Math.cos(a) * r0, vols.T.y + Math.sin(a) * r0, hUni + 6)); }
+      t.ligne(P.slice(0, -1), { stroke:E.noir, lw:1.5 });
+      fleche(t, P[P.length - 3], P[P.length - 1], 1.5);
     } });
 
-  var e1 = evaluer(vols), e2 = props[1] ? evaluer(props[1]) : null;
-  if(e1 && e2) S.push({ n:"POURQUOI CELLE-CI", d:"Axe par axe, la retenue (orange) contre la deuxième, " + partiOf(props[1].parti).n.toLowerCase() + " (gris) : "
-      + e1.jugement.total + " contre " + e2.jugement.total + " sur 100"
-      + (e1.jugement.total === e2.jugement.total ? " — à égalité, c'est l'ordre du tirage qui les départage (préférence d'orientation, et 20 % de hasard)." : "."),
-    f:function(t, cadre){
-      var A1 = e1.jugement.axes, A2 = e2.jugement.axes, bh = Math.min(20, cadre[3] / (A1.length + 1)), W = cadre[2] * .42, y = cadre[1] + cadre[3] - bh;
-      A1.forEach(function(a, i){
-        var b = A2[i] || {}, s1 = a.s == null ? 0 : a.s, s2 = b.s == null ? 0 : b.s;
-        coupe(a.n, 30).slice(0, 2).forEach(function(l, k){ t.texte(cadre[0], y + 5 - k * 7, l, { size:6.5, fill:TXT }); });
-        var x = cadre[0] + cadre[2] * .52;
-        barre(t, x, y + bh * .38, W * s1, bh * .3, E.accent);
-        barre(t, x, y + bh * .02, W * s2, bh * .3, E.cote2);
-        t.texte(x + W * Math.max(s1, s2) + 4, y + bh * .2, Math.round(100 * s1) + " / " + Math.round(100 * s2), { size:6.5, gras:true });
-        y -= bh;
+  var top = 0;
+  ecole.forEach(function(v){ etagesDe(v).forEach(function(e){ top = Math.max(top, lvlOf(e.e.i)); }); });
+  var hauts = ecole.filter(function(v){ return etagesDe(v).some(function(e){ return lvlOf(e.e.i) === top; }); });
+  var niv = {};
+  ecole.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) >= 0) niv[e.e.i] = e.h; }); });
+  S.push({ n:"LES NIVEAUX", d:"Chaque corps monte de ce qu'il porte : " + hauts.length + " montent jusqu'au " + flName(Object.keys(niv).length ? +Object.keys(niv).sort(function(a, b){ return lvlOf(b) - lvlOf(a); })[0] : 0).toLowerCase()
+      + ", les autres restent plus bas ; les étages se retirent en largeur"
+      + (sport ? " ; la salle de sport, 7 m libres, " + (sport.joint ? "s'accole au rez" : "se pose à part") : "") + ". "
+      + Object.keys(niv).sort(function(a, b){ return lvlOf(a) - lvlOf(b); }).map(function(i){ return flName(+i).toLowerCase() + " " + nb(niv[i]) + " m"; }).join(", ") + ".",
+    f:function(t, A){
+      sol(t, A, recul);
+      var C = [];
+      vols.forEach(function(v){
+        etagesDe(v).forEach(function(e){
+          if(lvlOf(e.e.i) < 0) return;
+          C.push({ x:e.rc.x, y:e.rc.y, q:coins(e.rc), z0:Math.max(0, e.z0 - z00), z1:e.z1 - z00,
+                   c:v.ph ? null : lvlOf(e.e.i) === top ? ACC : BLANC, o:v.ph ? TIRETS : null });
+        });
       });
+      peindre(t, A, C);
+      var h = hauts[0] && etagesDe(hauts[0]);
+      if(h && h.length){ var q0 = coins(h[0].rc)[1]; cote(t, A(q0[0], q0[1], 0), A(q0[0], q0[1], hmax), nb(hmax) + " m"); }
     } });
-
-  S.push({ n:"LE VOLUME RETENU", d:"La composition la mieux notée, dans les couleurs du programme ; piscine et chauffage à distance en pointillé.",
-    f:function(t, cadre){
-      composition(t, axo(cadre, hmax), vols, function(v, e){ return couleur(familleDom(e.e.i)); }, true);
-    } });
+  S.hmax = HM;
   return S;
 }
 
-/* ---------- la planche ---------- */
+/* ---------- la planche : quatre cases, deux par deux ---------- */
 export function planDiagrammes(vols){
-  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50, g = 34;
+  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50, g = 40;
   t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
-  var S = etapes(vols), n = S.length, cols = n <= 4 ? n : Math.ceil(n / 2), rows = Math.ceil(n / cols);
-  t.texte(m, F.h - m - 26, "COMMENT CE VOLUME A ÉTÉ TROUVÉ", { size:30, gras:true });
-  t.texte(m, F.h - m - 46, "Tirer des compositions dans un cadre fixe, écarter ce qui enfreint une règle dure, garder la mieux notée.",
-    { size:10, fill:[0.4, 0.4, 0.4] });
+  var S = etapes(vols), n = S.length, cols = 2, rows = Math.ceil(n / cols);
+  t.texte(m, F.h - m - 26, "LE VOLUME EN QUATRE GESTES", { size:30, gras:true });
+  t.texte(m, F.h - m - 46, partiOf(vols.parti || MASS.parti).n + " — un bloc, séparé, orienté, étagé", { size:10, fill:[0.4, 0.4, 0.4] });
   var top = F.h - m - 76, cw = (F.w - 2 * m - (cols - 1) * g) / cols, ch = (top - m - (rows - 1) * g) / rows;
   S.forEach(function(s, i){
     var col = i % cols, row = Math.floor(i / cols);
     var x = m + col * (cw + g), y = top - (row + 1) * ch - row * g;
-    t.decoupe([[x, y + 52], [x + cw, y + 52], [x + cw, y + ch], [x, y + ch]]);
-    s.f(t, [x, y + 60, cw, ch - 66]);
+    t.decoupe([[x, y + 56], [x + cw, y + 56], [x + cw, y + ch], [x, y + ch]]);
+    s.f(t, axo([x, y + 62, cw, ch - 66], S.hmax));
     t.fin();
-    t.texte(x, y + 38, ("0" + (i + 1)).slice(-2), { size:9, gras:true, fill:E.accent });
-    t.texte(x + 18, y + 38, s.n, { size:15, gras:true });
-    coupe(s.d, Math.round(cw / 3.9)).slice(0, 3).forEach(function(l, k){ t.texte(x, y + 24 - k * 9, l, { size:7.5, fill:TXT }); });
+    t.texte(x, y + 40, ("0" + (i + 1)).slice(-2), { size:11, gras:true, fill:E.accent });
+    t.texte(x + 24, y + 40, s.n, { size:18, gras:true });
+    coupe(s.d, Math.round(cw / 4)).slice(0, 3).forEach(function(l, k){ t.texte(x, y + 24 - k * 10, l, { size:8.5, fill:TXT }); });
+    if(col < cols - 1 && i < n - 1) fleche(t, [x + cw + 8, y + ch / 2 + 30], [x + cw + g - 8, y + ch / 2 + 30], 1.2);
   });
   t.texte(F.w - m, m - 24, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.45, 0.45, 0.45], ancre:"end" });
   return t;
