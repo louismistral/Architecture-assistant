@@ -10,7 +10,6 @@
 .rd-carte__h{display:flex;align-items:baseline;gap:var(--s-3);flex-wrap:wrap}
 .rd-carte__h h2{margin:0;font-size:var(--t-lg);font-weight:600}
 .rd-carte__s{font-size:var(--t-xs);color:var(--muted-foreground)}
-.rd-carte__d{margin:0;font-size:var(--t-sm);color:var(--soft-foreground);max-width:70ch}
 .rd-carte .btn{align-self:flex-start}
 .rd-apercu{border:1px solid var(--border);background:var(--papier);line-height:0}
 .rd-apercu svg{display:block;inline-size:100%;block-size:auto}

@@ -3,8 +3,8 @@
 
    La base (`DOC/site-plan_base.pdf`) reste telle quelle ; on y AJOUTE, dans la
    seule parcelle rouge, la volumétrie à l'écran — dans le style de la base :
-   toitures blanches, ombres portées grises vers le sud-est —, et sous le nord
-   de la base, l'échelle graphique. L'échelle est celle de la base, 1:500
+   toitures blanches, ombres portées grises vers le sud-est. L'échelle est
+   celle de la base, 1:500
    (`BASE.echelle`) : on ne la recalcule ni ne l'ajuste jamais — la planche
    s'imprime à 100 %.
    ========================================================================= */
@@ -17,20 +17,6 @@ import { etagesDe, pontRect } from "../mass/model.js";
 var E = ENCRE;
 function P(p){ return [BASE.ox + BASE.k * p[0], BASE.oy + BASE.k * p[1]]; }
 function rect(rc){ return coins(rc).map(P); }
-
-/* L'échelle graphique : des graduations en mètres, alternées noir et blanc,
-   chacune longue de ce qu'elle vaut au 1:500. */
-function echelle(t){
-  var b = BASE.barre, m = b.m, L = m[m.length - 1] * BASE.k, x0 = b.fin - L, h = 3;
-  for(var i = 0; i < m.length - 1; i++){
-    var a = x0 + m[i] * BASE.k, c = x0 + m[i + 1] * BASE.k;
-    t.poly([[a, b.y], [c, b.y], [c, b.y + h], [a, b.y + h]], { fill: i % 2 ? E.blanc : E.noir, stroke:E.noir, lw:.4 });
-  }
-  m.forEach(function(v, i){
-    t.texte(x0 + v * BASE.k, b.y - 8, String(v) + (i === m.length - 1 ? " m" : ""), { size:6, ancre:"middle" });
-  });
-  t.texte(x0 - 8, b.y, "1:" + BASE.echelle, { size:7, gras:true, ancre:"end" });
-}
 
 export function planSituation(vols){
   var F = FORMATS[BASE.format], t = trace(F.w, F.h);
@@ -56,6 +42,5 @@ export function planSituation(vols){
     t.texte(c[0], c[1] - 2.5, v.nom || "second temps", { size:7, ancre:"middle" });
   });
   t.fin();
-  echelle(t);
   return t;
 }
