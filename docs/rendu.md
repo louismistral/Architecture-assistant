@@ -41,8 +41,7 @@ hauteurs du mixer), orienter (le soleil sur les longues façades), creuser (le s
 habiter (les couleurs de famille). Chaque case part de la précédente : même vue, même échelle,
 même endroit. Une case n'existe que si la décision a été prise pour la composition à l'écran.
 
-Le geste est dans l'esprit de BIG : volumes blancs, ce qui change en orange (`ENCRE.accent`),
-flèches noires. La MISE EN PAGE suit la planche de référence `diagramme.pdf` — et elle seule :
-titre court en capitales, grille de trois colonnes, contexte gris (`SITE.bat`), le numéro en
-gras en tête de la légende. La même planche s'affiche dans le rail du massing (bloc
-« Diagramme »), refaite à chaque génération.
+À la manière des diagrammes de BIG, et d'eux seuls : volumes blancs, ce qui change en orange
+(`ENCRE.accent`), flèches noires, un verbe en gras sous chaque case, les cases reliées par des
+flèches ; la grille prend le nombre de colonnes qui donne les plus grands dessins. La même
+planche s'affiche dans le rail du massing (bloc « Diagramme »), refaite à chaque génération.
