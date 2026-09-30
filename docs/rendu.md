@@ -32,22 +32,27 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — comment le volume est né
+## Diagrammes — pourquoi ce volume
 
-Le raisonnement du générateur, étape par étape, tel qu'il le tient :
+La planche est PROPRE À LA FORME posée, à la manière des diagrammes de BIG pour la LEGO House :
+le contexte en gris clair, le volume en blanc, ce que la case explique en orange, un verbe en
+gras. Le geste central dépend du parti (`GESTE` : un bloc se SERRE, une barre s'ÉTIRE, un U
+ENCADRE, une cour se FERME, des pavillons se DISPERSENT…), et chaque case dit, avec les
+mesures de la composition (`evaluationCourante()` : `mes` et `qualites`), ce que ce geste lui
+vaut :
 
-| étape | ce qu'on voit |
+| case | ce qu'elle explique |
 |---|---|
-| PROGRAMME | une colonne par famille, haute de ses m² (`ITEMS`, `FAM`) |
-| EMPILER | les niveaux du mixer en dalles éclatées, découpées par famille (`postesDe`) |
-| DÉCOUPER | chaque corps et ses étages, alignés, à la profondeur tirée (`V.profMin/profMax`) |
-| ASSEMBLER | la figure du parti, hors du site |
-| POSER | la figure sur la parcelle, dans le recul visé |
-| VÉRIFIER | une case par essai : orange s'il tient toutes les règles dures, barré sinon (`vols.essais`, `vols.valides`, comptés par `genMass`) |
-| CLASSER | les meilleures variantes et leur note (`vols.props`) — les barres montrent l'écart |
-| HABITER | la composition retenue, dans les couleurs de ses familles |
+| LE SITE | la parcelle, le recul visé |
+| UN BLOC | tout le volume en un bloc — trop profond pour éclairer une classe |
+| (geste du parti) | le bloc se transforme en la figure du parti, et sa compacité |
+| LA COUR | le vide que la forme tient, en m² utiles |
+| LA PROFONDEUR | la profondeur des corps de classes : toutes en façade |
+| LE SOLEIL | l'orientation des longues façades |
+| LA VUE | si la vue compte : l'ouverture vers le dégagement |
+| ANCRER | si une salle de sport est imposée : au rez, rien au-dessus |
+| LA HAUTEUR | le nombre de niveaux et la hauteur, le corps le plus haut coté |
+| L'ÉCOLE | le programme en couleurs, la note, les points forts |
 
-À la manière de BIG : un verbe en gras par case, volumes blancs, ce que l'étape fait en orange
-(`ENCRE.accent`), flèches entre les cases ; la grille prend le nombre de colonnes qui donne les
-plus grands dessins. La même planche s'affiche dans le rail du massing (bloc « Diagramme »),
-refaite à chaque génération.
+La même planche s'affiche dans le rail du massing (bloc « Diagramme »), refaite à chaque
+génération.
