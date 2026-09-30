@@ -14,7 +14,7 @@ src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
 src/mass/export.js    le fichier .obj pour Rhino — une fonction pure, qui rend du texte
 src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
-src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation
+src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation, étirement
 src/views/vue3d.js    la 3D : terrain maillé, courbes drapées, existant, volumes
 ```
 
@@ -247,7 +247,11 @@ ici.
 
 Le plan est en mètres sur le relevé : courbes de niveau, parcelles, routes, murets, bâtiments
 existants, périmètre. On y zoome, on s'y déplace, on sélectionne un volume en cliquant, on le déplace
-en le tirant, on le tourne par sa poignée — et la 3D suit à l'instant. La 3D montre le terrain MAILLÉ
+en le tirant, on le tourne par sa poignée, on l'ÉTIRE par les tirettes au milieu de ses côtés — et
+la 3D suit à l'instant. Étirer se fait À SURFACE CONSTANTE (`model.js — etirer`) : le côté tiré
+avance, l'opposé reste, l'autre dimension s'ajuste pour que chaque étage garde ses m² ; la cote
+tirée tombe sur le module. Le geste n'est pas bloqué par les règles dures : le contrôle les
+signale en rouge. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.
 
