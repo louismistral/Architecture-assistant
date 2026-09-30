@@ -32,27 +32,28 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — pourquoi ce volume
+## Diagrammes — la logique de composition
 
-La planche est PROPRE À LA FORME posée, à la manière des diagrammes de BIG pour la LEGO House :
-le contexte en gris clair, le volume en blanc, ce que la case explique en orange, un verbe en
-gras. Le geste central dépend du parti (`GESTE` : un bloc se SERRE, une barre s'ÉTIRE, un U
-ENCADRE, une cour se FERME, des pavillons se DISPERSENT…), et chaque case dit, avec les
-mesures de la composition (`evaluationCourante()` : `mes` et `qualites`), ce que ce geste lui
-vaut :
+Comment CE bâtiment a été composé, dans l'ordre du générateur, dessiné à partir de ce qu'il a
+réellement produit : `genMass` pose `vols.trace` = { S (la figure en coordonnées locales, avant
+implantation), th et cap (l'angle et sa source), prof, A et N (surfaces et hauteurs par
+niveau), imp (la salle de sport), lo/hi (bornes de profondeur) }, et `vols.T`, `vols.essais`,
+`vols.valides`, `vols.props`.
 
-| case | ce qu'elle explique |
+| case | ce qu'elle montre |
 |---|---|
-| LE SITE | la parcelle, le recul visé |
-| UN BLOC | tout le volume en un bloc — trop profond pour éclairer une classe |
-| (geste du parti) | le bloc se transforme en la figure du parti, et sa compacité |
-| LA COUR | le vide que la forme tient, en m² utiles |
-| LA PROFONDEUR | la profondeur des corps de classes : toutes en façade |
-| LE SOLEIL | l'orientation des longues façades |
-| LA VUE | si la vue compte : l'ouverture vers le dégagement |
-| ANCRER | si une salle de sport est imposée : au rez, rien au-dessus |
-| LA HAUTEUR | le nombre de niveaux et la hauteur, le corps le plus haut coté |
-| L'ÉCOLE | le programme en couleurs, la note, les points forts |
+| LES SURFACES | les m² hors sol par niveau, en barres ; la part de la salle de sport au rez |
+| LE SPORT À PART | la salle double sort du rez, jamais découpée |
+| LA PROFONDEUR | une coupe : l'épaisseur tirée, et le maximum = deux classes + couloir |
+| LES CORPS | les corps hauts (jusqu'en haut, étages en retrait de largeur) et bas (rez seul) |
+| LA FIGURE | la règle du parti (`FIGURE`) appliquée à ces corps, hors site |
+| L'ANGLE | en plan : la figure avant et après rotation, et la source de l'angle (`CAP`) |
+| POSER | la figure d'un bloc sur la parcelle, dans le recul |
+| ANCRER | la salle de sport accolée à un corps, ou à part au point bas |
+| CREUSER | le sous-sol sous le corps le plus haut du terrain — s'il y en a un |
+| RELIER | les passerelles — s'il y en a |
+| TRIER | une case par essai : noir = retenue, orange = valide, blanc = écartée |
+| HABITER | la composition dans les couleurs du programme |
 
-La même planche s'affiche dans le rail du massing (bloc « Diagramme »), refaite à chaque
-génération.
+Volumes blancs, ce que l'étape fait en orange (`ENCRE.accent`), flèches noires, un verbe en
+gras. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
