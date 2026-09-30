@@ -32,21 +32,16 @@ Tout ce qui est ajouté est découpé par la parcelle : les volumes dans le styl
 **L'échelle est 1:500 et ne change jamais** : `BASE.k` se déduit de `BASE.echelle`, rien ne
 l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pas dessiné.
 
-## Diagrammes — comment ce volume a été trouvé
+## Diagrammes — le volume en quatre gestes
 
-Le générateur ne conçoit pas un parti : il TIRE des compositions au hasard dans un cadre fixe,
-écarte celles qui enfreignent une règle dure, et garde la mieux notée. La planche le dit tel
-quel, avec ce qu'il a réellement produit, sans rien reconstruire après coup :
+| case | ce qu'elle montre |
+|---|---|
+| 01 LE BLOC | tout le volume de l'école (hors salle de sport) en un seul bloc, à l'emprise de la figure : trop profond pour éclairer une classe |
+| 02 SÉPARER | le bloc partagé en corps de la profondeur tirée, rangés selon le parti ; même volume — s'il ne se partage pas, la case le dit |
+| 03 ORIENTER | la figure tourne (angle et source : axe, soleil-vue, libre, pente) et se pose d'un bloc sur la parcelle |
+| 04 LES NIVEAUX | chaque corps monte de ce qu'il porte, le dernier niveau en orange ; la salle de sport, accolée ou à part |
 
-| case | ce qu'elle montre | d'où |
-|---|---|---|
-| CE QUI EST FIXÉ | surfaces par niveau, salle de sport, recul, bornes de profondeur | `vols.trace` |
-| CE QUI EST TIRÉ | parti, profondeur, source de l'angle, angle, position, corps, salle de sport, passerelles | `vols.trace`, `vols.T` |
-| ESSAYER | une case par essai : noir la retenue, orange les valides, blanc les écartées | `vols.essais`, `vols.valides` |
-| ÉCARTER | les causes des essais écartés, comptées | `vols.echecs` |
-| LES SURVIVANTES | la meilleure de chaque parti et sa note | `vols.props` |
-| POURQUOI CELLE-CI | les axes du jugement, la retenue contre la deuxième ; une égalité est dite | `evaluer()` |
-| LE VOLUME RETENU | dans les couleurs du programme | |
-
-`genMass` pose `vols.trace`, `vols.essais` et `vols.echecs` sur chaque variante qu'il rend.
-La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
+Chaque geste garde le même volume et part du précédent. Tout vient de ce que le générateur a
+produit : `vols.trace` (la figure en coordonnées locales, l'angle et sa source), `vols.T` (la
+translation), `etagesDe()` (les étages posés). Volumes blancs, ce que le geste change en
+orange, flèches noires. La même planche s'affiche dans le rail du massing (bloc « Diagramme »).
