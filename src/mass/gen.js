@@ -770,15 +770,6 @@ export function poserSecondTemps(vols){
   poserSecond(vols, alea(MASS.graine));
   return true;
 }
-/* Une volumétrie relue d'avant le concept (ou retouchée sans) le reçoit à
-   l'ouverture : sans quoi elle restait en cubes jusqu'au prochain tirage. */
-export function conceptCourant(){
-  var v = MASS.vol;
-  if(!v.length || v.concept || v.impossible) return;
-  v.ponts = MASS.pont;
-  if(!v.parti) v.parti = MASS.parti;
-  v.concept = concevoir(v, alea(MASS.graine || 1), function(){ return !ecarts(v, false).length; });
-}
 export function relierCourant(){
   MASS.pont = relier(MASS.vol);
   return MASS.pont.length > 0;
