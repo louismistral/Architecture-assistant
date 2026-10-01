@@ -53,7 +53,11 @@ export var RULES = {
     puits: { cote: 3, h: 1.0 },       /* lanterneau */
     auvent: { larg: 10, prof: 4, h: 3.2, ep: 0.30 },
     rampe: { larg: 2, pente: 0.06 },
-    sous: { larg: 6, h: 4 }
+    sous: { larg: 6, h: 4 },
+    galerie: { prof: 2.2, ep: 0.30 },  /* coursive extérieure, par étage */
+    atrium: { part: 0.45, h: 1.4 },   /* verrière : part de la profondeur */
+    garde: 1.10,                      /* garde-corps d'un toit accessible (SIA 358) */
+    porteFaux: [3, 4.5]               /* le débord qui couvre une entrée */
   },
 
   /* --- hauteurs ---------------------------------------------------------- */
