@@ -12,7 +12,8 @@ src/mass/partis.js    les douze partis : figure exacte, programme, cohérence du
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
-src/mass/archi.js     l'architecture d'un volume : toit, lanterneaux, entrée, rampe, sous-passage
+src/mass/archi.js     l'architecture d'un volume : toit, lanterneaux, verrière, entrée, coursives, rampe, sous-passage
+src/mass/concepts.js  le concept : une idée par composition, et les opérations qui la servent
 src/mass/export.js    le fichier .obj pour Rhino — une fonction pure, qui rend du texte
 src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
 src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation, étirement
@@ -286,7 +287,22 @@ déjà ailleurs. Les choix vivent dans `v.ar` (enregistré par `etat.js`), la g�
 `mass/archi.js — archiDe()`, une fois pour le plan, la 3D et l'export (groupe `Architecture`). Les
 cotes de dessin sont des hypothèses : `RULES.archi`. Aucun élément ne touche une surface ; le
 sous-passage coupe le rez sans que le bilan le décompte — le rail le dit. Une nouvelle volumétrie
-repart de cubes nus.
+reçoit celle de son concept.
+
+## Le concept : une volumétrie valide devient un projet
+
+Chaque composition retenue reçoit UNE idée (`mass/concepts.js — concevoir`), choisie parmi les deux
+que son parti admet (`PAR_PARTI`), plus « paysage » si la pente dépasse 1,5 m sous une emprise :
+la cour comme cœur, le bâtiment-paysage, le village de pavillons, la lumière au cœur, la barre
+suspendue. Seules les opérations qui servent l'idée sont posées, chacune avec sa raison, lue au
+rail (bloc **Concept**) : entrées tournées vers la cour, vers le haut du terrain ou au sud ;
+coursives ; toit-terrasse, végétalisé, à deux pans ; sheds au nord sur la salle de sport ;
+verrière au cœur du corps le plus profond ; lanterneaux sur les corps de plus de 14 m ; rampe aval ;
+gradins ; porte-à-faux qui couvre l'entrée ; sous-passage d'une barre de plus de 24 m. Le CADRE
+tient toujours : un débord qui le fait enfreindre est rendu (le porte-à-faux essaie plus court,
+puis l'autre façade), un élément dehors qui sort du recul est retiré et nommé. Le tirage est à part :
+le concept ne change ni l'implantation ni son classement. `MASS.vol.concept` s'enregistre ; le bloc
+Architecture du volume reprend chaque choix à la main.
 
 ## L'export vers Rhino
 
