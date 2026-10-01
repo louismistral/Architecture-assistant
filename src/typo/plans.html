@@ -1,0 +1,1217 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Typologies Saxon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Mise en page : un outil plein cadre — rail de commandes à gauche, planche à droite,
+   bilan des surfaces sous la planche. Le plan est dessiné comme un rendu de concours :
+   poché noir, cloisons à l'échelle, mobilier au trait fin, familles en lavis. */
+:root{
+  --paper:#FBFAF7; --paper-2:#F1EFEA; --panel:#FFFFFF; --ink:#1D1F1E; --ink-soft:#5E6662;
+  --line:#DAD7D0; --hatch:#B9B5AC; --accent:#2F5D50; --warn:#B4541F; --ok:#2E7D4F;
+  --f-cla:#DB5494; --f-adm:#DD5A02; --f-eau:#3278D7; --f-tec:#79867F; --f-spo:#3F9336;
+  --f-uap:#BF830C; --f-pis:#0D95A9; --f-ext:#196B39;
+  --wash:20%;
+  --font-sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#171918; --paper-2:#202322; --panel:#1C1F1E; --ink:#ECEAE4; --ink-soft:#A3A9A5;
+    --line:#343836; --hatch:#4A4F4C; --accent:#8CC5B2; --warn:#E8945E; --ok:#78C596;
+    --f-cla:#D363A6; --f-adm:#DA6022; --f-eau:#4086DF; --f-tec:#8D9891; --f-spo:#51A349;
+    --f-uap:#BF8900; --f-pis:#21A3BA; --f-ext:#46854A; --wash:30%; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#171918; --paper-2:#202322; --panel:#1C1F1E; --ink:#ECEAE4; --ink-soft:#A3A9A5;
+  --line:#343836; --hatch:#4A4F4C; --accent:#8CC5B2; --warn:#E8945E; --ok:#78C596;
+  --f-cla:#D363A6; --f-adm:#DA6022; --f-eau:#4086DF; --f-tec:#8D9891; --f-spo:#51A349;
+  --f-uap:#BF8900; --f-pis:#21A3BA; --f-ext:#46854A; --wash:30%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:14px;line-height:1.45}
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0;min-height:100vh}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.main{order:-1}.stage{height:62vh;min-height:360px}}
+[hidden]{display:none!important}
+.rail{border-right:1px solid var(--line);background:var(--panel);padding:20px 18px;display:flex;flex-direction:column;gap:22px}
+@media (max-width:860px){.rail{border-right:0;border-bottom:1px solid var(--line);padding:16px}}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand .num{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);letter-spacing:.06em}
+.brand h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em}
+.brand p{margin:4px 0 0;color:var(--ink-soft);font-size:13px;text-wrap:balance}
+.grp{display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:600}
+select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);width:100%}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;padding:7px 4px;border:0;background:var(--paper);color:var(--ink);cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:600}
+.tg{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.tg input{accent-color:var(--accent);width:15px;height:15px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bilan{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.bilan .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+.bilan .sep{grid-column:1/-1;border-top:1px solid var(--line);margin:4px 0}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;font-family:var(--font-mono)}
+.pill.ok{background:color-mix(in oklab,var(--ok) 16%,transparent);color:var(--ok)}
+.pill.warn{background:color-mix(in oklab,var(--warn) 16%,transparent);color:var(--warn)}
+.non{margin:0;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+.non li{display:flex;justify-content:space-between;gap:8px}
+.non li span:last-child{font-family:var(--font-mono);color:var(--warn)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:12px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid var(--ink-soft)}
+.note{font-size:12px;color:var(--ink-soft);margin:0}
+.main{display:flex;flex-direction:column;min-width:0}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line)}
+@media (max-width:860px){.bar{padding:12px 16px}}
+.bar h2{margin:0;font-size:16px;font-weight:600}
+.bar h2 small{font-weight:400;color:var(--ink-soft);margin-left:6px;font-size:13px}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.btn{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-soft)}
+.stage{position:relative;height:min(74vh,820px);min-height:420px;background:var(--paper);overflow:hidden;touch-action:none;cursor:grab}
+.stage.drag{cursor:grabbing}
+.stage svg{width:100%;height:100%;display:block}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);padding:7px 10px;border-radius:6px;font-size:12.5px;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.tip b{display:block;font-weight:600}
+.tip span{font-family:var(--font-mono);font-size:11.5px;opacity:.85}
+.cartouche{position:absolute;right:14px;bottom:14px;background:var(--panel);border:1px solid var(--ink);font-size:11px;display:grid;grid-template-columns:auto auto;pointer-events:none}
+.cartouche div{padding:4px 8px;border-bottom:1px solid var(--line)}
+.cartouche div:nth-child(odd){color:var(--ink-soft);border-right:1px solid var(--line)}
+.cartouche div:nth-last-child(-n+2){border-bottom:0}
+@media (max-width:560px){.cartouche{display:none}}
+.table-wrap{padding:18px 20px 28px;overflow-x:auto}
+@media (max-width:860px){.table-wrap{padding:16px}}
+table{border-collapse:collapse;width:100%;min-width:540px;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);font-weight:600}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+th.n{text-align:right}
+td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px}
+.st-ok{color:var(--ok)} .st-warn{color:var(--warn)}
+/* ---- le dessin ---- */
+.mur{fill:var(--ink)}
+.circ{fill:var(--paper-2)}
+.room{stroke:var(--ink);stroke-width:.12}
+.cell{stroke:var(--ink);stroke-width:.08}
+.fam-cla{fill:color-mix(in oklab,var(--f-cla) var(--wash),var(--paper))}
+.fam-adm{fill:color-mix(in oklab,var(--f-adm) var(--wash),var(--paper))}
+.fam-eau{fill:color-mix(in oklab,var(--f-eau) var(--wash),var(--paper))}
+.fam-tec{fill:color-mix(in oklab,var(--f-tec) var(--wash),var(--paper))}
+.fam-spo{fill:color-mix(in oklab,var(--f-spo) var(--wash),var(--paper))}
+.fam-uap{fill:color-mix(in oklab,var(--f-uap) var(--wash),var(--paper))}
+.fam-pis{fill:color-mix(in oklab,var(--f-pis) var(--wash),var(--paper))}
+.fam-ext{fill:color-mix(in oklab,var(--f-ext) var(--wash),var(--paper))}
+.mono .room,.mono .cell{fill:var(--paper)}
+.room:hover,.cell:hover{fill:color-mix(in oklab,var(--accent) 22%,var(--paper))}
+.libre{fill:url(#hach);stroke:var(--ink);stroke-width:.08}
+.cagef{fill:var(--paper);stroke:var(--ink);stroke-width:.12}
+.part{stroke:var(--ink);stroke-width:.12;fill:none}
+.gap{fill:var(--paper-2)}
+.gapw{fill:var(--paper)}
+.porte{stroke:var(--ink);fill:none;stroke-width:.7;vector-effect:non-scaling-stroke}
+.arc{stroke:var(--ink-soft);fill:none;stroke-width:.5;vector-effect:non-scaling-stroke;stroke-dasharray:2 2}
+.vitre{stroke:var(--ink);stroke-width:.5;vector-effect:non-scaling-stroke;fill:none}
+.mb{fill:none;stroke:var(--ink);stroke-width:.55;vector-effect:non-scaling-stroke}
+.mb.ch{stroke:var(--ink-soft)}
+.mb.eq{fill:color-mix(in oklab,var(--ink) 7%,transparent)}
+.mb.tab{fill:var(--ink)}
+.mb.cab{stroke-width:.45}
+.mb.pmr{stroke-dasharray:3 2;stroke:var(--ink-soft)}
+.mb.pat{stroke-dasharray:1.5 1.5}
+.mb.rid{stroke-dasharray:6 3;stroke:var(--ink-soft)}
+.mb.tapis{fill:color-mix(in oklab,var(--f-uap) 18%,transparent);stroke:var(--ink-soft)}
+.mb.terrain{stroke:var(--f-spo);stroke-width:.8}
+.mb.bassin{fill:color-mix(in oklab,var(--f-pis) 30%,transparent);stroke:var(--ink)}
+.mb.ligne{stroke:var(--f-pis);stroke-dasharray:4 3}
+.mb.lit{stroke-width:.45}
+.mb.marche{stroke-width:.45}
+.mb.asc{fill:color-mix(in oklab,var(--ink) 10%,transparent)}
+.mb.fleche{stroke-width:.6;marker-end:url(#fl)}
+.site{fill:none;stroke:var(--ink-soft);stroke-width:.9;vector-effect:non-scaling-stroke;stroke-dasharray:8 4 2 4}
+.exist{fill:var(--hatch);stroke:var(--ink-soft);stroke-width:.5;vector-effect:non-scaling-stroke}
+.ombre{fill:none;stroke:var(--ink-soft);stroke-width:.6;vector-effect:non-scaling-stroke;stroke-dasharray:3 3}
+.lab{font-family:var(--font-sans);fill:var(--ink);font-weight:600;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.14;stroke-linejoin:round}
+.lab .m2{font-family:var(--font-mono);font-weight:400;fill:var(--ink-soft)}
+.dim{stroke:var(--ink-soft);stroke-width:.6;vector-effect:non-scaling-stroke}
+.dimt{font-family:var(--font-mono);fill:var(--ink-soft);pointer-events:none}
+.entree{fill:var(--accent)}
+.nord{fill:var(--ink)}
+.hideF .mbg{display:none}
+.hideD .dimg{display:none}
+.hideS .siteg{display:none}
+@media (prefers-reduced-motion:no-preference){.stage svg g.vue{transition:opacity .2s}}
+</style>
+
+<div class="app">
+  <aside class="rail" aria-label="Commandes">
+    <div class="brand">
+      <span class="num">05 · TYPOLOGIES</span>
+      <h1>Plans par niveau</h1>
+      <p>Centre scolaire de Saxon. Chaque plan est tiré de la répartition du mixer et des volumes du massing.</p>
+    </div>
+    <div class="grp">
+      <label class="lbl" for="parti">Parti du massing</label>
+      <select id="parti"></select>
+    </div>
+    <div class="grp">
+      <span class="lbl" id="niv-l">Niveau</span>
+      <div class="seg" id="niv" role="group" aria-labelledby="niv-l"></div>
+    </div>
+    <div class="grp">
+      <span class="lbl">Affichage</span>
+      <label class="tg"><input type="checkbox" id="t-meubles" checked> Mobilier</label>
+      <label class="tg"><input type="checkbox" id="t-couleurs" checked> Couleurs du programme</label>
+      <label class="tg"><input type="checkbox" id="t-cotes" checked> Cotes</label>
+      <label class="tg"><input type="checkbox" id="t-site" checked> Périmètre et existant</label>
+    </div>
+    <div class="grp">
+      <span class="lbl">Bilan du niveau</span>
+      <div class="bilan" id="bilan"></div>
+    </div>
+    <div class="grp" id="non-g">
+      <span class="lbl">Non posé à ce niveau</span>
+      <ul class="non" id="non"></ul>
+    </div>
+    <div class="grp">
+      <span class="lbl">Familles</span>
+      <div class="legend" id="legend"></div>
+    </div>
+    <p class="note">Surfaces à l'axe des cloisons, au m² du règlement : une pièce change de proportions, jamais de surface. Couloir de 2,40 m décalé pour que les salles tombent juste. Cages de 24 m², empilées. Données : répartition et volumétrie de référence du dépôt (seed 1).</p>
+  </aside>
+
+  <main class="main">
+    <div class="bar">
+      <h2 id="titre">Plan</h2>
+      <div class="tools">
+        <button class="btn" id="z-in" aria-label="Zoomer">+</button>
+        <button class="btn" id="z-out" aria-label="Dézoomer">−</button>
+        <button class="btn" id="z-fit">Cadrer</button>
+        <button class="btn" id="copy">Copier le SVG</button>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan d'étage">
+        <defs>
+          <pattern id="hach" width="0.8" height="0.8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="0.8" height="0.8" fill="var(--paper)"/>
+            <line x1="0" y1="0" x2="0" y2="0.8" stroke="var(--hatch)" stroke-width="0.12"/>
+          </pattern>
+          <marker id="fl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/>
+          </marker>
+        </defs>
+        <g id="vue" class="vue"></g>
+      </svg>
+      <div class="tip" id="tip" hidden></div>
+      <div class="cartouche" id="cartouche"></div>
+    </div>
+    <div class="table-wrap">
+      <table id="tab">
+        <thead><tr><th>Poste</th><th class="n">Nb</th><th class="n">Demandé m²</th><th class="n">Dessiné m²</th><th>État</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+var DATA = {"floors":[{"i":0,"name":"Sous-sol","short":"S-s","lvl":-1,"h":3.2,"circ":{"couloir":27.54534138012399,"cages":24,"front":22.954451150103324},"net":870,"rooms":[{"key":"tech|Abri PC","n":"Abri PC","f":"tec","q":1,"u":750,"hors":0,"solid":0},{"key":"tech|Local technique","n":"Local technique","f":"tec","q":1,"u":120,"hors":0,"solid":0}]},{"i":1,"name":"Rez-de-chaussée","short":"Rez","lvl":0,"h":7.4,"circ":{"couloir":324.6633278017305,"cages":48,"front":270.55277316810873},"net":2669,"rooms":[{"key":"sport|Salle de sport double","n":"Salle de sport double","f":"spo","q":2,"u":448,"hors":0,"solid":1},{"key":"infra|Piscine","n":"Piscine","f":"pis","q":1,"u":500,"hors":1,"solid":0},{"key":"ext|Cour d'école avec préau couvert","n":"Cour d'école avec préau couvert","f":"ext","q":1,"u":500,"hors":1,"solid":0},{"key":"infra|Local chauffage CAD","n":"Local chauffage CAD","f":"tec","q":1,"u":400,"hors":1,"solid":0},{"key":"sport|Hall d'entrée / foyer","n":"Hall d'entrée / foyer","f":"spo","q":1,"u":150,"hors":0,"solid":0},{"key":"uape|Salles d'activité","n":"Salles d'activité","f":"uap","q":2,"u":72,"hors":0,"solid":0},{"key":"ecole|Hall d'entrée","n":"Hall d'entrée","f":"cla","q":1,"u":120,"hors":0,"solid":0},{"key":"ecole|Salle des maîtres","n":"Salle des maîtres","f":"adm","q":1,"u":72,"hors":0,"solid":0},{"key":"ecole|Salle de réunion","n":"Salle de réunion","f":"adm","q":1,"u":72,"hors":0,"solid":0},{"key":"uape|Réfectoire","n":"Réfectoire","f":"eau","q":1,"u":72,"hors":0,"solid":0},{"key":"tech|Conciergerie / vestiaire personnel nett.","n":"Conciergerie / vestiaire personnel nett.","f":"tec","q":1,"u":72,"hors":0,"solid":0},{"key":"sport|Cuisine","n":"Cuisine","f":"eau","q":1,"u":50,"hors":0,"solid":0},{"key":"ecole|Salle détente / allaitement","n":"Salle détente / allaitement","f":"adm","q":1,"u":36,"hors":0,"solid":0},{"key":"ecole|Bureau direction et admin.","n":"Bureau direction et admin.","f":"adm","q":2,"u":18,"hors":0,"solid":0},{"key":"uape|Hall UAPE","n":"Hall UAPE","f":"uap","q":1,"u":30,"hors":0,"solid":0},{"key":"uape|Salle de pause","n":"Salle de pause","f":"adm","q":1,"u":20,"hors":0,"solid":0},{"key":"uape|Bureau de direction","n":"Bureau de direction","f":"adm","q":1,"u":18,"hors":0,"solid":0},{"key":"uape|Local de rangement","n":"Local de rangement","f":"tec","q":1,"u":18,"hors":0,"solid":0},{"key":"ecole|Local reproduction","n":"Local reproduction","f":"adm","q":1,"u":9,"hors":0,"solid":0},{"key":"uape|Toilettes UAPE","n":"Toilettes UAPE","f":"eau","q":4,"u":2,"hors":0,"solid":0},{"key":"uape|Économat","n":"Économat","f":"tec","q":1,"u":6,"hors":0,"solid":0},{"key":"sport|Local de rangement","n":"Local de rangement","f":"tec","q":1,"u":160,"hors":0,"solid":0},{"key":"sport|Vestiaires élèves","n":"Vestiaires élèves","f":"eau","q":4,"u":35,"hors":0,"solid":0},{"key":"sport|Scène","n":"Scène","f":"spo","q":1,"u":120,"hors":0,"solid":0},{"key":"sport|Vestiaires professeurs","n":"Vestiaires professeurs","f":"eau","q":2,"u":15,"hors":0,"solid":0},{"key":"sport|Local de nettoyage","n":"Local de nettoyage","f":"tec","q":1,"u":10,"hors":0,"solid":0},{"key":"ecole|Salle ACM","n":"Salle ACM","f":"cla","q":1,"u":72,"hors":0,"solid":0},{"key":"ecole|Salles d'appui / soutien","n":"Salles d'appui / soutien","f":"cla","q":4,"u":36,"hors":0,"solid":0},{"key":"ecole|Dépôt matériel ACM","n":"Dépôt matériel ACM","f":"tec","q":2,"u":36,"hors":0,"solid":0},{"key":"ecole|Local pédago-thérapeutique","n":"Local pédago-thérapeutique","f":"cla","q":1,"u":36,"hors":0,"solid":0},{"key":"sport|Toilettes publiques","n":"Toilettes publiques","f":"eau","q":6,"u":2,"hors":0,"solid":0},{"key":"sport|Toilette individuelle","n":"Toilette individuelle","f":"eau","q":1,"u":3,"hors":0,"solid":0},{"key":"ecole|WC PMR","n":"WC PMR","f":"eau","q":1,"u":3,"hors":0,"solid":0},{"key":"ecole|WC garçons","n":"WC garçons","f":"eau","q":2,"u":2,"hors":0,"solid":0},{"key":"ecole|WC filles","n":"WC filles","f":"eau","q":2,"u":2,"hors":0,"solid":0},{"key":"ecole|Vestiaires de classe","n":"Vestiaires de classe","f":"eau","q":3,"u":10,"hors":0,"solid":0}]},{"i":2,"name":"1ᵉʳ étage","short":"1ᵉʳ","lvl":1,"h":3.2,"circ":{"couloir":149.89174082951152,"cages":48,"front":124.90978402459294},"net":1032,"rooms":[{"key":"ecole|Salles de classe standard","n":"Salles de classe standard","f":"cla","q":7,"u":72,"hors":0,"solid":0},{"key":"ecole|Salle de classe de réserve","n":"Salle de classe de réserve","f":"cla","q":3,"u":72,"hors":0,"solid":0},{"key":"ecole|Salle de dédoublement","n":"Salle de dédoublement","f":"cla","q":2,"u":72,"hors":0,"solid":0},{"key":"ecole|Salle ACM","n":"Salle ACM","f":"cla","q":1,"u":72,"hors":0,"solid":0},{"key":"ecole|WC garçons","n":"WC garçons","f":"eau","q":4,"u":2,"hors":0,"solid":0},{"key":"ecole|WC filles","n":"WC filles","f":"eau","q":4,"u":2,"hors":0,"solid":0},{"key":"ecole|Vestiaires de classe","n":"Vestiaires de classe","f":"eau","q":8,"u":10,"hors":0,"solid":0}]},{"i":3,"name":"2ᵉ étage","short":"2ᵉ","lvl":2,"h":3.2,"circ":{"couloir":127.92440984103762,"cages":48,"front":106.60367486753135},"net":874,"rooms":[{"key":"ecole|Salles de classe standard","n":"Salles de classe standard","f":"cla","q":11,"u":72,"hors":0,"solid":0},{"key":"ecole|WC garçons","n":"WC garçons","f":"eau","q":3,"u":2,"hors":0,"solid":0},{"key":"ecole|WC filles","n":"WC filles","f":"eau","q":3,"u":2,"hors":0,"solid":0},{"key":"ecole|Vestiaires de classe","n":"Vestiaires de classe","f":"eau","q":7,"u":10,"hors":0,"solid":0}]}],"partis":{"auto":{"n":"Auto","real":"compact","vols":[{"id":"v1","nom":null,"x":115.2,"y":75.5,"a":-0.178,"bat":"b1","lv":[{"i":0,"w":23,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":19.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":19.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":16.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":101,"y":58.3,"a":-0.178,"bat":"b1","lv":[{"i":1,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":20,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":125.1,"y":53.9,"a":-0.178,"bat":"b1","lv":[{"i":0,"w":27,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":20,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":93.1,"y":79.5,"a":-0.178,"bat":"b1","lv":[{"i":1,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":75.6,"y":62.8,"a":-0.178,"bat":"b1","lv":[{"i":1,"w":26,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":51,"y":33,"a":-0.257,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":110,"y":28,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":154,"y":38,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"compact":{"n":"Bloc compact","real":"compact","vols":[{"id":"v1","nom":null,"x":115.2,"y":75.5,"a":-0.178,"bat":"b1","lv":[{"i":0,"w":23,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":19.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":19.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":16.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":101,"y":58.3,"a":-0.178,"bat":"b1","lv":[{"i":1,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":20,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":125.1,"y":53.9,"a":-0.178,"bat":"b1","lv":[{"i":0,"w":27,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":20,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":93.1,"y":79.5,"a":-0.178,"bat":"b1","lv":[{"i":1,"w":23.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":75.6,"y":62.8,"a":-0.178,"bat":"b1","lv":[{"i":1,"w":26,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":51,"y":33,"a":-0.257,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":110,"y":28,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":154,"y":38,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"barre":{"n":"Barre","real":"barre","vols":[{"id":"v1","nom":null,"x":41.1,"y":32.1,"a":0.14,"bat":"b1","lv":[{"i":1,"w":19.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":19.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":16.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":140.4,"y":46.1,"a":0.14,"bat":"b1","lv":[{"i":0,"w":27,"d":18,"dx":0,"dy":0,"keys":null},{"i":1,"w":25,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":25,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":21.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":115.4,"y":42.6,"a":0.14,"bat":"b1","lv":[{"i":0,"w":24,"d":18,"dx":0,"dy":0,"keys":null},{"i":1,"w":23.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":23.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":20.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":89.6,"y":38.9,"a":0.14,"bat":"b1","lv":[{"i":1,"w":26.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":63.6,"y":35.3,"a":0.14,"bat":"b1","lv":[{"i":1,"w":24,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":81,"y":69,"a":0.217,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":116,"y":88,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]}],"ponts":[]},"barres":{"n":"Barres parallèles","real":"barres","vols":[{"id":"v1","nom":null,"x":75.5,"y":32.8,"a":-0.387,"bat":"b1","lv":[{"i":1,"w":20,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":20,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":17,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":84.1,"y":69.9,"a":-0.387,"bat":"b2","lv":[{"i":1,"w":15.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":15.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":13,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":42.9,"y":46.1,"a":-0.387,"bat":"b1","lv":[{"i":1,"w":15.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":15.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":13.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":58.1,"y":39.9,"a":-0.387,"bat":"b1","lv":[{"i":1,"w":15.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":15.5,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":13,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":113.7,"y":57.9,"a":-0.387,"bat":"b2","lv":[{"i":0,"w":27,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":17.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v6","nom":null,"x":98.4,"y":64.1,"a":-0.387,"bat":"b2","lv":[{"i":0,"w":23,"d":18.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":13.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"v7","nom":null,"x":94.3,"y":25.2,"a":-0.387,"bat":"b1","lv":[{"i":1,"w":18.5,"d":18.5,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":137.5,"y":48.2,"a":-0.387,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":116,"y":88,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]}],"ponts":[]},"L":{"n":"Forme en L","real":"L","vols":[{"id":"v1","nom":null,"x":138.1,"y":31.1,"a":1.675,"bat":"b1","lv":[{"i":0,"w":27,"d":18,"dx":0,"dy":0,"keys":null},{"i":1,"w":25.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":25.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":22,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":135.6,"y":55,"a":1.675,"bat":"b1","lv":[{"i":0,"w":24,"d":18,"dx":0,"dy":0,"keys":null},{"i":1,"w":20.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":20.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":17.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":114.6,"y":54,"a":3.246,"bat":"b1","lv":[{"i":1,"w":22,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":22,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":19,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":89,"y":51.3,"a":3.246,"bat":"b1","lv":[{"i":1,"w":27.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":62.6,"y":48.6,"a":3.246,"bat":"b1","lv":[{"i":1,"w":23.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":105,"y":84,"a":0.063,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":88,"y":20,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":32,"y":30,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"U":{"n":"Forme en U","real":"U","vols":[{"id":"v1","nom":null,"x":109.8,"y":89.9,"a":2.173,"bat":"b1","lv":[{"i":0,"w":24,"d":18,"dx":0,"dy":0,"keys":null},{"i":1,"w":22,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":22,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":19,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":122.7,"y":71.2,"a":2.173,"bat":"b1","lv":[{"i":0,"w":27,"d":18,"dx":0,"dy":0,"keys":null},{"i":1,"w":21.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":21.5,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":18.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":105.1,"y":57,"a":3.744,"bat":"b1","lv":[{"i":1,"w":25,"d":18,"dx":0,"dy":0,"keys":null},{"i":2,"w":25,"d":18,"dx":0,"dy":0,"keys":null},{"i":3,"w":21,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":89.5,"y":78.4,"a":3.744,"bat":"b1","lv":[{"i":1,"w":26.5,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":67.9,"y":63.5,"a":3.744,"bat":"b1","lv":[{"i":1,"w":24,"d":18,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":54,"y":30,"a":-0.257,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":118,"y":26,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":86,"y":20,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"cour":{"n":"Cour","real":"cour","vols":[{"id":"v1","nom":null,"x":110.7,"y":97.6,"a":2.123,"bat":"b1","lv":[{"i":0,"w":27,"d":16,"dx":0,"dy":0,"keys":null},{"i":1,"w":24,"d":16,"dx":0,"dy":0,"keys":null},{"i":2,"w":24,"d":16,"dx":0,"dy":0,"keys":null},{"i":3,"w":20.5,"d":16,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":55.4,"y":48.5,"a":2.123,"bat":"b2","lv":[{"i":1,"w":28.5,"d":16,"dx":0,"dy":0,"keys":null},{"i":2,"w":28.5,"d":16,"dx":0,"dy":0,"keys":null},{"i":3,"w":24,"d":16,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":106.3,"y":64.3,"a":3.694,"bat":"b1","lv":[{"i":0,"w":6,"d":10,"dx":0,"dy":0,"keys":null},{"i":1,"w":24.5,"d":16,"dx":0,"dy":0,"keys":null},{"i":2,"w":24.5,"d":16,"dx":0,"dy":0,"keys":null},{"i":3,"w":21,"d":16,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":93.5,"y":91.7,"a":3.694,"bat":"b1","lv":[{"i":1,"w":17.5,"d":16,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":87.1,"y":52.5,"a":3.694,"bat":"b1","lv":[{"i":1,"w":18.5,"d":16,"dx":0,"dy":0,"keys":null}]},{"id":"v6","nom":null,"x":123,"y":77.5,"a":2.123,"bat":"b1","lv":[{"i":0,"w":27,"d":16,"dx":0,"dy":0,"keys":null},{"i":1,"w":21,"d":16,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":120,"y":33,"a":2.106,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":82,"y":22,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":32,"y":30,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"pavillons":{"n":"Pavillons","real":"pavillons","vols":[{"id":"v1","nom":null,"x":118.1,"y":36.1,"a":0.602,"bat":"p2","lv":[{"i":1,"w":18.5,"d":15,"dx":0,"dy":0,"keys":null},{"i":2,"w":18.5,"d":15,"dx":0,"dy":0,"keys":null},{"i":3,"w":15.5,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":65.2,"y":61.8,"a":0.602,"bat":"p7","lv":[{"i":1,"w":18,"d":15,"dx":0,"dy":0,"keys":null},{"i":2,"w":18,"d":15,"dx":0,"dy":0,"keys":null},{"i":3,"w":15,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":128.7,"y":74.2,"a":0.602,"bat":"p6","lv":[{"i":0,"w":27,"d":15,"dx":0,"dy":0,"keys":null},{"i":1,"w":17.5,"d":15,"dx":0,"dy":0,"keys":null},{"i":2,"w":17.5,"d":15,"dx":0,"dy":0,"keys":null},{"i":3,"w":15,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":143.2,"y":51.7,"a":0.602,"bat":"p3","lv":[{"i":0,"w":27,"d":15,"dx":0,"dy":0,"keys":null},{"i":1,"w":14,"d":15,"dx":0,"dy":0,"keys":null},{"i":2,"w":14,"d":15,"dx":0,"dy":0,"keys":null},{"i":3,"w":12,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":115,"y":92.9,"a":0.602,"bat":"p9","lv":[{"i":0,"w":10.5,"d":10.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":14,"d":15,"dx":0,"dy":0,"keys":null},{"i":2,"w":14,"d":15,"dx":0,"dy":0,"keys":null},{"i":3,"w":12,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v6","nom":null,"x":81.1,"y":42,"a":0.602,"bat":"p4","lv":[{"i":1,"w":15.5,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v7","nom":null,"x":90.9,"y":76.3,"a":0.602,"bat":"p8","lv":[{"i":1,"w":16.5,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v8","nom":null,"x":96.9,"y":20.8,"a":0.602,"bat":"p1","lv":[{"i":1,"w":17,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"v9","nom":null,"x":105.9,"y":57.3,"a":0.602,"bat":"p5","lv":[{"i":1,"w":12,"d":15,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":42,"y":33,"a":-0.257,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]}],"ponts":[{"a":"v3","b":"v5","i":2},{"a":"v3","b":"v4","i":2},{"a":"v1","b":"v4","i":2}]},"hameau":{"n":"Hameau","real":"hameau","vols":[{"id":"v1","nom":null,"x":41.8,"y":48.2,"a":0.748,"bat":"h2","lv":[{"i":1,"w":16.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":16.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":14,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":112.4,"y":83,"a":2.315,"bat":"h1","lv":[{"i":0,"w":27,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":20.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":20.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":17.5,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":85.9,"y":89.2,"a":0.748,"bat":"h2","lv":[{"i":1,"w":22,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":22,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":18.5,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":99.3,"y":25.3,"a":0.154,"bat":"h3","lv":[{"i":0,"w":19.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":20.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":20.5,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":17.5,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":126.6,"y":72.3,"a":0.745,"bat":"h1","lv":[{"i":0,"w":27,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":19,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":19,"d":12.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":16,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v6","nom":null,"x":80.3,"y":22.3,"a":0.154,"bat":"h3","lv":[{"i":1,"w":16,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v7","nom":null,"x":28,"y":35.5,"a":0.748,"bat":"h2","lv":[{"i":1,"w":19,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v8","nom":null,"x":71.1,"y":75.4,"a":0.748,"bat":"h2","lv":[{"i":1,"w":16.5,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"v9","nom":null,"x":56.4,"y":61.8,"a":0.748,"bat":"h2","lv":[{"i":1,"w":21.5,"d":12.5,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":125,"y":37.1,"a":0.154,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":88,"y":52,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]}],"ponts":[]},"terrasses":{"n":"Terrasses","real":"terrasses","vols":[{"id":"v1","nom":null,"x":94.9,"y":40.7,"a":0.602,"bat":"t1","lv":[{"i":1,"w":19.5,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":19.5,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":19.5,"d":16.5,"dx":0,"dy":-1.5,"keys":null}]},{"id":"v2","nom":null,"x":112.4,"y":52.7,"a":0.602,"bat":"t1","lv":[{"i":1,"w":21,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":21,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":21,"d":16.5,"dx":0,"dy":-1.5,"keys":null}]},{"id":"v3","nom":null,"x":131.1,"y":65.6,"a":0.602,"bat":"t1","lv":[{"i":0,"w":27,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":22.5,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":22.5,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":22.5,"d":16.5,"dx":0,"dy":-1.5,"keys":null}]},{"id":"v4","nom":null,"x":90.7,"y":78.6,"a":0.602,"bat":"t2","lv":[{"i":1,"w":24,"d":19.5,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":110.9,"y":92.4,"a":0.602,"bat":"t2","lv":[{"i":0,"w":20.5,"d":19.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":23,"d":19.5,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":54,"y":33,"a":-3.089,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":152,"y":38,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":122,"y":24,"a":0.529,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"peigne":{"n":"Peigne","real":"peigne","vols":[{"id":"v1","nom":null,"x":112.2,"y":38.3,"a":-0.938,"bat":"b1","lv":[{"i":1,"w":21,"d":13,"dx":0,"dy":0,"keys":null},{"i":2,"w":21,"d":13,"dx":0,"dy":0,"keys":null},{"i":3,"w":18,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":123.6,"y":50.1,"a":0.633,"bat":"b1","lv":[{"i":0,"w":27,"d":13,"dx":0,"dy":0,"keys":null},{"i":1,"w":17.5,"d":13,"dx":0,"dy":0,"keys":null},{"i":2,"w":17.5,"d":13,"dx":0,"dy":0,"keys":null},{"i":3,"w":15,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":79.3,"y":83.1,"a":-0.938,"bat":"b1","lv":[{"i":1,"w":16,"d":13,"dx":0,"dy":0,"keys":null},{"i":2,"w":16,"d":13,"dx":0,"dy":0,"keys":null},{"i":3,"w":13.5,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":95.6,"y":91.8,"a":0.633,"bat":"b1","lv":[{"i":1,"w":21.5,"d":13,"dx":0,"dy":0,"keys":null},{"i":2,"w":21.5,"d":13,"dx":0,"dy":0,"keys":null},{"i":3,"w":18.5,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":139,"y":61.4,"a":0.633,"bat":"b1","lv":[{"i":0,"w":27,"d":13,"dx":0,"dy":0,"keys":null},{"i":1,"w":18.5,"d":13,"dx":0,"dy":0,"keys":null},{"i":2,"w":18.5,"d":13,"dx":0,"dy":0,"keys":null},{"i":3,"w":16,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v6","nom":null,"x":108.2,"y":69.9,"a":0.633,"bat":"b1","lv":[{"i":1,"w":16,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v7","nom":null,"x":125,"y":20.8,"a":-0.938,"bat":"b1","lv":[{"i":0,"w":17,"d":13,"dx":0,"dy":0,"keys":null},{"i":1,"w":20.5,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v8","nom":null,"x":99.9,"y":55,"a":-0.938,"bat":"b1","lv":[{"i":1,"w":18.5,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"v9","nom":null,"x":89.2,"y":69.6,"a":-0.938,"bat":"b1","lv":[{"i":1,"w":15.5,"d":13,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":45,"y":39,"a":-0.813,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":88,"y":20,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":154,"y":38,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]},"libre":{"n":"Composition libre","real":"libre","vols":[{"id":"v1","nom":null,"x":121.9,"y":76.8,"a":-1.178,"bat":"l2","lv":[{"i":0,"w":27,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":22.5,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":22.5,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":19,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"v2","nom":null,"x":78.8,"y":56.2,"a":1.861,"bat":"l1","lv":[{"i":1,"w":20,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":20,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":17,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"v3","nom":null,"x":130,"y":57.4,"a":-1.178,"bat":"l2","lv":[{"i":0,"w":27,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":1,"w":17.5,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":17.5,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":15,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"v4","nom":null,"x":91.5,"y":19.5,"a":0.29,"bat":"l1","lv":[{"i":1,"w":19,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":2,"w":19,"d":15.5,"dx":0,"dy":0,"keys":null},{"i":3,"w":16.5,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"v5","nom":null,"x":84.7,"y":36.5,"a":1.861,"bat":"l1","lv":[{"i":1,"w":19,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"v6","nom":null,"x":112.9,"y":98.5,"a":-1.178,"bat":"l2","lv":[{"i":0,"w":8.5,"d":10,"dx":0,"dy":0,"keys":null},{"i":1,"w":22.5,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"v7","nom":null,"x":73.1,"y":75.1,"a":1.861,"bat":"l1","lv":[{"i":1,"w":17.5,"d":15.5,"dx":0,"dy":0,"keys":null}]},{"id":"vsport","nom":null,"x":42,"y":33,"a":-0.257,"bat":null,"lv":[{"i":1,"w":32,"d":28,"dx":0,"dy":0,"keys":["sport|Salle de sport double"]}]},{"id":"ph1","nom":"Piscine","x":122,"y":26,"a":-0.257,"bat":null,"lv":[{"i":1,"w":22,"d":22.5,"dx":0,"dy":0,"keys":["infra|Piscine"]}]},{"id":"ph2","nom":"Local chauffage CAD","x":154,"y":38,"a":-0.257,"bat":null,"lv":[{"i":1,"w":20,"d":20,"dx":0,"dy":0,"keys":["infra|Local chauffage CAD"]}]}],"ponts":[]}},"site":{"per":[[12.3,40.8],[45,76.4],[48.2,76.9],[50.6,77.1],[55.3,79],[56,85.3],[80.8,102.4],[110.6,122.9],[116.4,122.1],[147.1,82.8],[164.2,60.9],[176.4,44.6],[176.8,35.4],[157.7,13],[155.1,12.3],[141,5.3],[124.9,2],[115.6,3.8],[108.1,11],[104.6,8.2],[103.6,6.2],[100.7,0],[68.4,4.2],[12.8,18.8],[0,17.8],[7.4,27.3],[12.3,40.8]],"bat":[[[148.9,129.4],[138.7,142.9],[125.2,132.8],[135.3,119.2],[148.9,129.4]],[[188.9,6.8],[188.6,2.5],[182.8,3.4],[182.6,3.5],[183.4,7.2],[188.9,6.8]],[[183.6,169.6],[173.7,162.5],[158.8,183.4]],[[168.7,190.5],[183.6,169.6]],[[198.2,-25.3],[195.9,-33.3],[189.7,-31.5],[185.9,-30.4],[186,-30],[187.1,-26.1],[188.2,-22.4],[198.2,-25.3]],[[232.9,133.7],[229.6,128.4],[228.1,129],[225.5,130.3],[228.2,134.3],[229.3,135.9],[232.9,133.7]],[[126.2,155.5],[128.9,152],[131.4,148.7],[132.2,147.7],[123.1,140.8],[122.7,140.5],[115.9,149.5],[121.1,153.5],[122,152.3],[126.2,155.5]],[[220.1,149.3],[214.2,145.1],[213.4,146.3],[208.3,142.6],[206.4,145.2],[205.5,144.6],[205.3,144.9],[200.9,151],[200.7,151.3],[201.6,152],[199.5,154.8],[204.7,158.5],[204,159.5],[203.8,159.6],[210.4,164.3],[216.8,155.3],[216.1,154.9],[220.1,149.3]],[[107.2,156.4],[105.2,145.2],[94.3,160.5],[101,165.4],[107.2,156.4]],[[184.4,140.8],[187.7,136.7],[188.3,137.2],[196.1,127.3],[189.7,122.4],[188.9,123.5],[183.9,119.6],[181.8,122.3],[180.9,121.6],[175.8,128.1],[176.7,128.8],[174.7,131.3],[179.7,135.2],[178.8,136.4],[179.1,136.6],[184.4,140.8]],[[-1.4,42.6],[-4.3,38.2],[-6,39.4],[-3.1,43.7],[-1.4,42.6]],[[216.3,140.1],[212.3,137.2],[212.1,137.5],[208.3,142.6],[213.4,146.3],[214.2,145.1],[217.3,140.8],[216.3,140.1]],[[184.3,91.7],[176.1,85.5],[170,93.6],[178,99.9],[184.3,91.7]],[[159.2,107.4],[153.3,102.7],[152,104.3],[148.6,101.6],[145.4,105.7],[144.3,104.8],[143.9,105.3],[141.8,108],[141.5,108.3],[151.9,116.6],[152.9,115.3],[157,110.1],[159.2,107.4]],[[111.4,135.9],[103.8,130.5],[86.6,155.1],[94.3,160.5],[105.2,145.2],[105.6,144.6],[111.4,135.9]],[[179.1,71.9],[181.1,69.2],[183.9,71.3],[187.1,67.2],[184.3,65.1],[178,60.4],[172.8,67.2],[179.1,71.9]],[[234.2,126.1],[229.6,128.4],[232.9,133.7]],[[31.2,98.7],[20,90.8],[11.9,102.5],[23.1,110.4],[31.2,98.7]],[[229.5,13.5],[228.2,7.9],[216.3,10.7],[212.9,11.5],[216.6,27.2],[210.1,28.7],[206.7,29.5],[210.5,45.8],[213.9,44.9],[220.3,43.5],[225.8,42.2],[222.1,26.5],[232,24.2]],[[232,24.2],[229.5,13.5]],[[116,-29.9],[108.4,-31.3],[107.5,-26.2],[115,-24.8],[114.3,-21],[121.7,-19.7],[123.2,-27.7],[123.3,-28.5],[116,-29.8],[116,-29.9]],[[-0.7,68],[-3.8,65.7],[-5.1,67.6],[-2.1,69.9],[-0.7,68]],[[199.9,-6.8],[198,-13.3],[193,-11.8],[194.2,-7.6],[194.8,-5.3],[199.9,-6.8]],[[170,15.5],[174.8,10.3],[176.3,11.7],[176.9,12.3],[178.4,10.7],[177.6,10],[179,8.1],[183.2,7.2],[182.6,3.5],[182.2,3.5],[174.9,4.6],[169.8,5.7],[168.1,7.6],[166.8,6.4],[162.2,7.3],[161.7,7.8],[165,10.9],[170,15.5]],[[78.2,144.7],[86.7,132.2],[76.8,125.5],[76.3,126.2],[71.3,122.7],[71.8,122.1],[71.2,121.8],[73.2,118.9],[70.5,116.9],[70.1,112.5],[67.1,110.5],[63.3,111.1],[63.2,111.3],[60.6,109.5],[58.2,113.1],[54.7,110.7],[61.3,101.3],[62,100.2],[47.6,90.3],[40.3,101.1],[42.6,102.6],[34.3,114.7],[36.2,116],[36,116.3],[42,120.4],[42.2,120.1],[44.2,121.5],[44.5,121],[44.7,121.1],[44.9,121.2],[45.2,121.3],[45.6,121.3],[45.9,121.3],[46.2,121.3],[46.4,121.2],[46.7,121.1],[46.9,121],[47.1,120.9],[47.3,120.7],[47.4,120.5],[47.6,120.3],[47.7,120.1],[70,135.4],[68.4,137.8],[70,139.1],[69.8,139.4],[76.1,143.7],[76.3,143.4],[78.2,144.7]],[[17.3,4.1],[7.6,-15.8],[-2,-11.1],[7.6,9.1],[17.3,4.1]],[[7.4,38.7],[3.4,32.7],[-4.5,38],[-4.3,38.2],[-1.4,42.6],[-0.3,44.1],[7.4,38.7]],[[161.5,157.5],[151.3,149.4],[137.6,166.7],[147.8,174.8],[161.5,157.5]],[[215.8,132.2],[200.3,121.3],[196.6,126.5],[212.1,137.5],[212.3,137.2],[215.8,132.2]],[[168.5,126.4],[166.9,125.1],[165.1,127.5],[166.7,128.8],[168.5,126.4]],[[223.6,176.4],[228.7,169.8],[223.6,166],[225,164.2],[223.2,162.8],[221.8,164.7],[215.8,172.5],[216.4,173],[218.6,174.6],[220.5,176],[221.4,174.8],[222.9,175.9],[223.6,176.4]]],"mur":0.5}};
+</script>
+<script>
+/* ===== Générateur de plans : lit la pile du mixer et les volumes du massing =====
+   Règles tenues :
+   - une surface de programme ne change pas : largeur = surface ÷ profondeur de bande ;
+   - couloir de 2,40 m le long du grand côté de chaque volume ; sa position se
+     décale pour que les locaux courants (la salle de 72 m²) tombent juste ;
+   - autant de cages que le mixer en compte, empilées au même endroit à chaque niveau ;
+   - halls traversants ; locaux dont le front dépasserait 12,5 m en pleine profondeur ;
+   - les petits locaux d'un chapitre se groupent en blocs qui comblent les restes. */
+var PG = (function(){
+  var COULOIR = 2.40, MUR = 0.50, CAGE_A = 24, FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6;
+
+  function chapOf(key){ return key.split("|")[0]; }
+  function local(cx, cy, a, x, y){
+    var c = Math.cos(a), s = Math.sin(a);
+    return [cx + x * c - y * s, cy + x * s + y * c];
+  }
+
+  function unites(rooms){
+    var out = [];
+    rooms.forEach(function(r){
+      if(r.hors) return;
+      var base = { key:r.key, n:r.n, f:r.f, chap:chapOf(r.key) };
+      if(r.u <= 4) out.push(Object.assign({}, base, { a:r.q * r.u, cab:r.q, lab:r.n + (r.q > 1 ? " · " + r.q : "") }));
+      else for(var k = 0; k < r.q; k++)
+        out.push(Object.assign({}, base, { a:r.u, lab:r.n + (r.q > 1 ? " " + (k + 1) : "") }));
+    });
+    return out;
+  }
+
+  function cadre(v, e){
+    var p = local(v.x, v.y, v.a, e.dx || 0, e.dy || 0);
+    return { v:v, e:e, cx:p[0], cy:p[1], a:v.a, L:e.w, D:e.d, deux:e.d >= 14,
+             trav:[], full:[], rooms:[], cages:[], libre:[], bb:{} };
+  }
+  /* la bande A (y local < 0) regarde (sin a, −cos a) ; le sud est (0, −1) */
+  function bandeSud(f){ return Math.cos(f.a) > 0 ? "A" : "B"; }
+
+  /* la position du couloir : la profondeur de bande qui loge le plus de locaux courants */
+  function regler(f, uStar, cageIn){
+    var c = COULOIR, Z = f.zr - f.zl;
+    if(!f.deux){
+      f.bb = { B:f.D - c }; f.yc0 = -f.D / 2; f.yc1 = -f.D / 2 + c; return;
+    }
+    var tot = f.D - c, best = null;
+    for(var bA = BMIN; bA <= tot - BMIN + 1e-9; bA += 0.05){
+      var bB = tot - bA, s = 0;
+      [["A", bA], ["B", bB]].forEach(function(p){
+        var len = Z - (cageIn === p[0] ? CAGE_A / p[1] : 0), w = uStar / p[1];
+        if(w / p[1] > 1.6 || p[1] / w > 1.6) return;      /* proportions de salle */
+        s += Math.floor(len / w + 1e-6) * 1000 + (len - Math.floor(len / w + 1e-6) * w < 1.4 ? 50 : 0);
+      });
+      s -= Math.abs(bA - bB) * 2;
+      if(!best || s > best.s) best = { s:s, bA:bA, bB:bB };
+    }
+    f.bb = { A:best.bA, B:best.bB };
+    f.yc0 = -f.D / 2 + best.bA; f.yc1 = f.yc0 + c;
+  }
+
+  function genNiveau(D0, parti, i){
+    var fl = D0.floors[i], vols = D0.partis[parti].vols;
+    var F = [], fixes = [], non = [];
+    vols.forEach(function(v){
+      v.lv.forEach(function(e){
+        if(e.i !== i) return;
+        var f = cadre(v, e);
+        if(e.keys){ f.fixe = true; fixes.push(f); } else F.push(f);
+      });
+    });
+    fixes.forEach(function(f){
+      var rs = fl.rooms.filter(function(r){ return f.e.keys.indexOf(r.key) >= 0; }), a = 0;
+      rs.forEach(function(r){ a += r.q * r.u; });
+      var r0 = rs[0] || { n:f.v.nom || "Volume", f:"tec", key:"" };
+      f.rooms.push({ key:r0.key, n:r0.n, f:r0.f, lab:r0.n, a:a, kind:"fixe",
+                     x0:-f.L / 2, W:f.L, H:f.D, frame:"full" });
+    });
+    var U = unites(fl.rooms.filter(function(r){
+      return !fixes.some(function(f){ return f.e.keys.indexOf(r.key) >= 0; });
+    }));
+    if(!F.length){ U.forEach(function(u){ non.push(u); }); return { F:fixes, non:non, fl:fl }; }
+
+    var ancre = null;
+    vols.forEach(function(v){ if(v.lv.some(function(e){ return e.keys && e.keys.join().indexOf("sport|") >= 0; })) ancre = v; });
+    function dist(f, v){ return Math.hypot(f.cx - v.x, f.cy - v.y); }
+    function ordreVol(chap){
+      var L = F.slice();
+      if(chap === "sport" && ancre) L.sort(function(p, q){ return dist(p, ancre) - dist(q, ancre); });
+      else if(chap === "uape" && ancre) L.sort(function(p, q){ return dist(q, ancre) - dist(p, ancre); });
+      return L;
+    }
+    function reste(f){ var u = f.cageRes || 0; f.trav.concat(f.full).forEach(function(r){ u += r.W; }); return f.L - u; }
+
+    var bTyp = (F[0].D - COULOIR) / 2;
+    var trav = [], full = [], band = [];
+    U.forEach(function(u){
+      if(/^Hall|foyer/i.test(u.n)) trav.push(u);
+      else if(u.a / bTyp > FRONT_MAX) full.push(u);
+      else band.push(u);
+    });
+
+    /* les cages : autant que le mixer en compte, dans les plus grands volumes à étages */
+    var nCages = Math.max(1, Math.round(((fl.circ && fl.circ.cages) || 24) / CAGE_A));
+    var tot = function(v){ var a = 0; v.lv.forEach(function(e){ a += e.w * e.d; }); return a; };
+    var ici = F.map(function(f){ return f.v.id; });
+    var avecCage = vols.filter(function(v){ return v.lv.length > 1 && ici.indexOf(v.id) >= 0; })
+      .sort(function(p, q){ return tot(q) - tot(p); }).slice(0, nCages).map(function(v){ return v.id; });
+    if(D0.floors.length > 1 && !avecCage.length) avecCage = [F.slice().sort(function(p, q){ return q.L * q.D - p.L * p.D; })[0].v.id];
+
+    F.forEach(function(f){ f.cageRes = avecCage.indexOf(f.v.id) >= 0 ? 4.5 : 0; });
+
+    /* les grands locaux, en pleine profondeur, au bout des volumes */
+    full.sort(function(p, q){ return p.a - q.a; });
+    full.forEach(function(u){
+      var L = ordreVol(u.chap), restant = u.a, parts = [];
+      for(var k = 0; k < L.length && restant > 1e-6; k++){
+        if(restant / L[k].D <= reste(L[k]) - 4){ parts.push([L[k], restant]); restant = 0; }
+      }
+      if(restant > 1e-6 && u.a < 300){ band.push(u); return; }
+      if(restant > 1e-6){
+        L.slice().sort(function(p, q){ return reste(q) * q.D - reste(p) * p.D; }).forEach(function(f){
+          if(restant <= 1e-6) return;
+          var cap = Math.max(0, reste(f)) * f.D;
+          if(cap < 20) return;
+          var a = Math.min(cap, restant); parts.push([f, a]); restant -= a;
+        });
+      }
+      if(restant > 1e-6) non.push(Object.assign({}, u, { a:restant }));
+      parts.forEach(function(p, j){
+        p[0].full.push(Object.assign({}, u, { a:p[1], W:p[1] / p[0].D, kind:"full",
+          lab:u.lab + (parts.length > 1 ? " (" + (j + 1) + "/" + parts.length + ")" : "") }));
+      });
+    });
+
+    /* les halls, traversants */
+    trav.forEach(function(u){
+      var L = ordreVol(u.chap), ok = false;
+      if(u.chap !== "sport") L.sort(function(p, q){ return (p.trav.length - q.trav.length) || (reste(q) - reste(p)); });
+      for(var k = 0; k < L.length && !ok; k++){
+        if(u.a / L[k].D <= reste(L[k]) - 4){ L[k].trav.push(Object.assign({}, u, { W:u.a / L[k].D, kind:"trav" })); ok = true; }
+      }
+      if(!ok) band.push(u);
+    });
+
+    /* la surface courante de ce niveau, pour régler le couloir */
+    var freq = {};
+    band.forEach(function(u){ if(u.a >= PETIT) freq[u.a] = (freq[u.a] || 0) + u.a; });
+    var uStar = 72, fm = 0;
+    Object.keys(freq).forEach(function(k){ if(freq[k] > fm){ fm = freq[k]; uStar = +k; } });
+
+    F.forEach(function(f){
+      var x = -f.L / 2;
+      f.trav.forEach(function(r){ r.x0 = x; r.H = f.D; r.frame = "full"; x += r.W; f.rooms.push(r); });
+      var xr = f.L / 2;
+      f.full.forEach(function(r){ xr -= r.W; r.x0 = xr; r.H = f.D; r.frame = "full"; f.rooms.push(r); });
+      f.zl = x; f.zr = xr;
+      f.sud = f.deux ? bandeSud(f) : "B"; f.nord = f.deux ? (f.sud === "A" ? "B" : "A") : "B";
+      var cage = avecCage.indexOf(f.v.id) >= 0 && f.zr - f.zl > 3.4;
+      regler(f, uStar, cage ? f.nord : null);
+      f.bandes = {};
+      Object.keys(f.bb).forEach(function(k){ f.bandes[k] = [[f.zl, f.zr]]; });
+      if(cage){
+        var W = CAGE_A / f.bb[f.nord];
+        var cx = Math.max(f.zl + W / 2, Math.min(f.zr - W / 2, -(f.e.dx || 0)));
+        f.cages.push({ bande:f.nord, x0:cx - W / 2, W:W, H:f.bb[f.nord] });
+        prendre(f, f.nord, cx - W / 2, W);
+      }
+    });
+
+    /* les bandes au plus juste, chapitre par chapitre */
+    var ordre = { cla:0, uap:1, adm:2, eau:3, spo:4, tec:5, pis:6, ext:7 };
+    var enseigne = function(u){ return u.f === "cla" || u.f === "uap"; };
+    var grands = band.filter(function(u){ return u.a >= PETIT; });
+    var petits = band.filter(function(u){ return u.a < PETIT; });
+    function poser(f, bk, it, x){
+      var b = f.bb[bk], W = it.a / b;
+      f.rooms.push({ a:it.a, W:W, H:b, x0:x, frame:bk, kind:"band",
+                     key:it.key, n:it.n, f:it.f, lab:it.lab, cab:it.cab });
+      return W;
+    }
+    ["sport", "uape", "ecole", "tech", "infra"].forEach(function(chap){
+      ordreVol(chap).forEach(function(f){
+        (f.deux ? [f.sud, f.nord] : ["B"]).forEach(function(bk){
+          f.bandes[bk].forEach(function(iv){
+            var cand = grands.filter(function(u){ return u.chap === chap; });
+            var sud = bk === f.sud && f.deux;
+            cand.sort(function(p, q){ return sud ? (enseigne(q) - enseigne(p)) : (enseigne(p) - enseigne(q)); });
+            var pick = sac(cand, iv[1] - iv[0], f.bb[bk]);
+            pick.sort(function(p, q){ return (ordre[p.f] - ordre[q.f]) || (q.a - p.a); });
+            pick.forEach(function(it){ iv[0] += poser(f, bk, it, iv[0]); grands.splice(grands.indexOf(it), 1); });
+          });
+        });
+      });
+    });
+    grands.forEach(function(u){ petits.push(u); });
+    var chapO = { ecole:0, uape:1, sport:2, tech:3, infra:4 };
+    petits.sort(function(p, q){ return (chapO[p.chap] - chapO[q.chap]) || (q.a - p.a); });
+    F.forEach(function(f){
+      Object.keys(f.bandes).forEach(function(bk){
+        var b = f.bb[bk];
+        f.bandes[bk].forEach(function(iv){
+          if(iv[1] - iv[0] < 1.4) return;
+          var cap = (iv[1] - iv[0]) * b, pris = [], a = 0;
+          petits.slice().forEach(function(u){
+            if(a + u.a <= cap + 1e-6 && pris.length < 8){ pris.push(u); a += u.a; petits.splice(petits.indexOf(u), 1); }
+          });
+          if(!pris.length) return;
+          if(pris.length === 1 && pris[0].a >= PETIT){ iv[0] += poser(f, bk, pris[0], iv[0]); return; }
+          var W = a / b;
+          f.rooms.push({ a:a, W:W, H:b, x0:iv[0], frame:bk, kind:"bloc", cel:treemap(pris, W, b), f:pris[0].f });
+          iv[0] += W;
+        });
+      });
+    });
+    petits.forEach(function(u){ non.push(u); });
+
+    F.forEach(function(f){
+      Object.keys(f.bandes).forEach(function(bk){
+        f.bandes[bk].forEach(function(iv){
+          if(iv[1] - iv[0] > 0.05) f.libre.push({ frame:bk, x0:iv[0], W:iv[1] - iv[0], H:f.bb[bk], a:(iv[1] - iv[0]) * f.bb[bk] });
+        });
+      });
+    });
+    return { F:F.concat(fixes), non:non, fl:fl };
+  }
+
+  /* sac à dos sur les largeurs : le sous-ensemble qui remplit le mieux la longueur */
+  function sac(items, Lmax, b){
+    var S = 0.02, N = Math.floor(Lmax / S + 1e-6), n = items.length;
+    if(!n || N <= 0) return [];
+    var w = items.map(function(it){ return Math.ceil(it.a / b / S - 1e-6); });
+    var ok = new Uint8Array(N + 1), from = new Int32Array(N + 1), prev = new Int32Array(N + 1);
+    ok[0] = 1;
+    for(var i = 0; i < n; i++){
+      for(var c = N; c >= w[i]; c--){
+        if(ok[c - w[i]] && !ok[c]){ ok[c] = 1; from[c] = i; prev[c] = c - w[i]; }
+      }
+    }
+    var c2 = N; while(c2 > 0 && !ok[c2]) c2--;
+    var out = [];
+    while(c2 > 0){ out.push(items[from[c2]]); c2 = prev[c2]; }
+    return out;
+  }
+  function prendre(f, bk, x0, W){
+    var out = [];
+    f.bandes[bk].forEach(function(iv){
+      if(iv[1] <= x0 || iv[0] >= x0 + W) out.push(iv);
+      else { if(iv[0] < x0) out.push([iv[0], x0]); if(iv[1] > x0 + W) out.push([x0 + W, iv[1]]); }
+    });
+    f.bandes[bk] = out;
+  }
+  /* treemap binaire : chaque cellule garde sa surface exacte */
+  function treemap(list, W, H){
+    var out = [];
+    (function rec(L, x, y, w, h){
+      if(L.length === 1){ out.push(Object.assign({}, L[0], { u0:x, v0:y, W:w, H:h })); return; }
+      var tot = 0; L.forEach(function(c){ tot += c.a; });
+      var best = 1, bd = Infinity, acc = 0;
+      for(var k = 1; k < L.length; k++){
+        acc += L[k - 1].a;
+        var d = Math.abs(acc - tot / 2); if(d < bd){ bd = d; best = k; }
+      }
+      var A = L.slice(0, best), B = L.slice(best), aA = 0; A.forEach(function(c){ aA += c.a; });
+      var t = aA / tot;
+      if(w * t >= 1.8 && w * (1 - t) >= 1.8 && w >= h * 0.5){ rec(A, x, y, w * t, h); rec(B, x + w * t, y, w * (1 - t), h); }
+      else { rec(A, x, y, w, h * t); rec(B, x, y + h * t, w, h * (1 - t)); }
+    })(list, 0, 0, W, H);
+    return out;
+  }
+
+  /* repère d'un local → repère de l'étage : u le long de la bande, v depuis le couloir */
+  function versEtage(f, frame, x0, u, v){
+    if(frame === "A") return [x0 + u, f.yc0 - v];
+    if(frame === "B") return [x0 + u, f.yc1 + v];
+    return [x0 + u, -f.D / 2 + v];
+  }
+  function versMonde(f, x, y){ return local(f.cx, f.cy, f.a, x, y); }
+
+  return { genNiveau:genNiveau, local:local, versEtage:versEtage, versMonde:versMonde,
+           COULOIR:COULOIR, MUR:MUR };
+})();
+if(typeof module !== "undefined") module.exports = PG;
+
+</script>
+<script>
+/* ===== Mobilier et équipements, dans le repère du local =====
+   u le long du couloir (0 → W), v du couloir vers la façade (0 → H).
+   Chaque fonction rend une liste de primitives : r (rectangle), c (cercle),
+   l (ligne), a (arc de porte). Les cotes sont celles d'un mobilier scolaire. */
+var MEUBLES = (function(){
+  function R(u, v, w, h, k){ return { t:"r", u:u, v:v, w:w, h:h, k:k || "" }; }
+  function C(u, v, r, k){ return { t:"c", u:u, v:v, r:r, k:k || "" }; }
+  function L(u1, v1, u2, v2, k){ return { t:"l", u1:u1, v1:v1, u2:u2, v2:v2, k:k || "" }; }
+
+  function etageres(W, H, out, cotes, p){
+    p = p || 0.5;
+    if(cotes.indexOf("f") >= 0) out.push(R(0.15, H - p - 0.05, W - 0.3, p));
+    if(cotes.indexOf("g") >= 0 && H > 2) out.push(R(0.05, 0.9, p, H - 1.0 - (cotes.indexOf("f") >= 0 ? p : 0)));
+    if(cotes.indexOf("d") >= 0 && H > 2) out.push(R(W - p - 0.05, 0.9, p, H - 1.0 - (cotes.indexOf("f") >= 0 ? p : 0)));
+    return out;
+  }
+
+  /* salle de classe : tableau sur le mur gauche, élèves face à lui, jour de la façade à gauche des élèves */
+  function classe(W, H){
+    var o = [];
+    o.push(R(0.06, H * 0.5 - 2, 0.1, 4, "tab"));                 /* tableau */
+    o.push(R(1.0, H * 0.5 - 0.8, 0.7, 1.6));                    /* bureau du maître */
+    o.push(R(1.85, H * 0.5 - 0.22, 0.42, 0.44, "ch"));
+    o.push(R(0.4, 0.06, 0.6, 0.45, "eq"));                       /* lavabo */
+    if(W > 5) o.push(R(1.3, 0.06, Math.max(0, W - 2.9), 0.45));  /* armoires côté couloir */
+    var u = 2.9, n = 0;
+    while(u + 0.55 + 0.45 <= W - 0.4){
+      for(var v = 1.0; v + 1.3 <= H - 0.5; v += 1.75){
+        o.push(R(u, v, 0.55, 1.3));
+        o.push(R(u + 0.62, v + 0.1, 0.38, 0.38, "ch"));
+        o.push(R(u + 0.62, v + 0.82, 0.38, 0.38, "ch"));
+        n += 2;
+      }
+      u += 1.35;
+    }
+    return o;
+  }
+  function tableReunion(W, H, o){
+    var tw = Math.min(W - 2.0, 8), th = Math.min(1.2, H - 2.2);
+    if(tw < 1.2 || th < 0.7) return o;
+    var u0 = (W - tw) / 2, v0 = (H - th) / 2;
+    o.push(R(u0, v0, tw, th));
+    for(var u = u0 + 0.35; u + 0.4 <= u0 + tw - 0.1; u += 0.7){
+      o.push(R(u, v0 - 0.5, 0.4, 0.4, "ch")); o.push(R(u, v0 + th + 0.1, 0.4, 0.4, "ch"));
+    }
+    return o;
+  }
+  function appui(W, H){
+    var o = []; etageres(W, H, o, "g", 0.45);
+    var tw = Math.min(1.6, W - 1.8), th = Math.min(3.2, H - 2.4), u0 = (W - tw) / 2 + 0.2, v0 = (H - th) / 2;
+    if(tw > 0.8){
+      o.push(R(u0, v0, tw, th));
+      for(var v = v0 + 0.3; v + 0.4 <= v0 + th; v += 0.8){
+        o.push(R(u0 - 0.5, v, 0.4, 0.4, "ch")); o.push(R(u0 + tw + 0.1, v, 0.4, 0.4, "ch"));
+      }
+    }
+    return o;
+  }
+  function acm(W, H){
+    var o = []; etageres(W, H, o, "g", 0.6);
+    o.push(R(0.8, 0.06, W - 1.8, 0.6, "eq"));                    /* plans de travail, éviers */
+    for(var u = 1.6; u + 1.2 <= W - 0.6; u += 2.6)
+      for(var v = 1.6; v + 2.4 <= H - 0.6; v += 3.3){
+        o.push(R(u, v, 1.2, 2.4));
+        [[-0.35, 0.5], [-0.35, 1.9], [1.55, 0.5], [1.55, 1.9]].forEach(function(p){ o.push(C(u + p[0], v + p[1], 0.18, "ch")); });
+      }
+    return o;
+  }
+  function activite(W, H){
+    var o = []; etageres(W, H, o, "f", 0.45);
+    o.push(R(0.4, 0.8, Math.min(3.2, W * 0.4), Math.min(3.2, H * 0.45), "tapis"));
+    var u0 = Math.min(3.2, W * 0.4) + 1.6;
+    for(var u = u0; u + 0.6 <= W - 0.8; u += 2.3)
+      for(var v = 1.6; v + 0.6 <= H - 1.2; v += 2.4){
+        o.push(C(u, v, 0.6));
+        [[0, -0.95], [0, 0.95], [-0.95, 0], [0.95, 0]].forEach(function(p){ o.push(C(u + p[0], v + p[1], 0.2, "ch")); });
+      }
+    return o;
+  }
+  function maitres(W, H){
+    var o = [];
+    o.push(R(W - 0.7, 0.9, 0.62, Math.min(3.6, H - 1.2), "eq"));    /* agencement cuisine */
+    o.push(R(0.1, H - 0.45, Math.min(W - 0.2, 4), 0.4));            /* casiers */
+    return tableReunion(W - 0.8, H, o);
+  }
+  function detente(W, H){
+    var o = [];
+    var s = Math.min(2.4, W - 1.2);
+    if(s > 1) { o.push(R(0.6, H - 1.5, s, 0.9)); o.push(R(0.6, H - 1.5 - 1.6, 0.9, 1.6)); }
+    o.push(C(0.6 + s / 2 + 0.3, H - 2.6, 0.45));
+    if(W > 3.5) o.push(R(W - 0.7, 0.9, 0.62, Math.min(2.4, H - 1.5), "eq"));
+    return o;
+  }
+  function bureau(W, H){
+    var o = [], n = Math.max(1, Math.floor((W - 0.3) / 2.5));
+    var pas = (W - 0.3) / n;
+    for(var k = 0; k < n; k++){
+      var u = 0.15 + k * pas + (pas - 1.6) / 2;
+      o.push(R(u, H - 0.95, 1.6, 0.8));
+      o.push(R(u + 0.6, H - 1.55, 0.45, 0.45, "ch"));
+    }
+    if(H > 4) o.push(R(0.1, 0.9, 0.4, Math.min(2.4, H - 2.8)));
+    return o;
+  }
+  function repro(W, H){
+    var o = [R(W / 2 - 0.6, H - 0.85, 1.2, 0.75, "eq")];
+    if(H > 3) o.push(R(0.08, 0.9, 0.6, H - 1.9));
+    return o;
+  }
+  /* sanitaires : cabines de 0,95 × 1,50 le long du plus grand côté, lavabos en face */
+  function wc(W, H, n, pmr){
+    var o = [];
+    if(pmr || n === 1){
+      var cw = Math.min(W, H);
+      o.push({ t:"e", u:W / 2, v:H - 0.38, rx:0.2, ry:0.3, k:"eq" });
+      o.push(R(0.1, H / 2 - 0.25, 0.45, 0.5, "eq"));
+      if(cw > 1.4) o.push(C(W / 2, H / 2, 0.75, "pmr"));
+      return o;
+    }
+    var long = H >= W, Lg = long ? H : W, prof = long ? W : H;
+    var cabDepth = Math.min(1.5, prof - 0.9);
+    var m = Math.max(1, Math.min(n, Math.floor((Lg - 0.9) / 0.95)));
+    for(var k = 0; k < m; k++){
+      var s = 0.9 + k * 0.95;
+      if(long){
+        o.push(R(W - cabDepth, s, cabDepth, 0.95, "cab"));
+        o.push({ t:"e", u:W - 0.35, v:s + 0.475, rx:0.28, ry:0.2, k:"eq" });
+      } else {
+        o.push(R(s, H - cabDepth, 0.95, cabDepth, "cab"));
+        o.push({ t:"e", u:s + 0.475, v:H - 0.35, rx:0.2, ry:0.28, k:"eq" });
+      }
+    }
+    var nl = Math.max(1, Math.min(4, Math.round(n / 2)));
+    for(var j = 0; j < nl; j++){
+      if(long && W - cabDepth > 0.9) o.push(R(0.08, 0.9 + j * 0.7, 0.45, 0.55, "eq"));
+      else if(!long && H - cabDepth > 0.9) o.push(R(0.9 + j * 0.7, 0.08 + 0.0, 0.55, 0.45, "eq"));
+    }
+    return o;
+  }
+  function vestiaire(W, H, douches){
+    var o = [];
+    var dz = douches ? Math.min(2.4, W * 0.3) : 0;
+    o.push(R(0.1, 0.9, 0.4, H - 1.0));                             /* banc + patères */
+    o.push(L(0.05, 0.9, 0.05, H - 0.1, "pat"));
+    if(W - dz > 2.2){ o.push(R(W - dz - 0.5, 0.9, 0.4, H - 1.0)); o.push(L(W - dz - 0.05, 0.9, W - dz - 0.05, H - 0.1, "pat")); }
+    if(W - dz > 3.6) o.push(R(W / 2 - dz / 2 - 0.2, 1.6, 0.4, H - 2.4));
+    if(douches){
+      for(var v = 0.9; v + 1.0 <= H - 0.1; v += 1.0){
+        o.push(R(W - dz, v, dz, 1.0, "cab"));
+        o.push(C(W - dz / 2, v + 0.5, 0.12, "eq"));
+      }
+    }
+    return o;
+  }
+  function vestiaireClasse(W, H){
+    var o = [], long = H >= W;
+    if(long){ o.push(R(0.1, 0.9, 0.4, H - 1.0)); if(W > 1.6) o.push(R(W - 0.5, 0.9, 0.4, H - 1.0)); }
+    else { o.push(R(0.9, H - 0.5, W - 1.0, 0.4)); if(H > 1.6) o.push(R(0.9, 0.1 + 0.9, W - 1.0, 0.4)); }
+    return o;
+  }
+  function cuisine(W, H){
+    var o = [];
+    o.push(R(0.05, H - 0.7, W - 0.1, 0.65, "eq"));
+    o.push(R(0.05, 0.9, 0.65, H - 1.65, "eq"));
+    if(W > 4) o.push(R(W - 0.7, 0.9, 0.65, H - 1.65, "eq"));
+    [0.35, 0.95].forEach(function(du){ [0.2, 0.45].forEach(function(dv){ o.push(C(1.6 + du, H - 0.7 + dv, 0.13)); }); });
+    if(W > 4.5 && H > 4.5) o.push(R(W / 2 - 1.2, H / 2 - 0.6, 2.4, 1.2, "eq"));
+    return o;
+  }
+  function refectoire(W, H){
+    var o = [];
+    for(var u = 1.0; u + 0.8 <= W - 0.8; u += 2.2)
+      for(var v = 1.2; v + 2.4 <= H - 0.6; v += 3.2){
+        o.push(R(u, v, 0.8, 2.4));
+        for(var k = 0; k < 4; k++){ o.push(R(u - 0.45, v + 0.15 + k * 0.6, 0.38, 0.38, "ch")); o.push(R(u + 0.87, v + 0.15 + k * 0.6, 0.38, 0.38, "ch")); }
+      }
+    return o;
+  }
+  function hall(W, H, sport){
+    var o = [];
+    if(sport) o.push(R(W - 0.75, H * 0.3, 0.65, Math.min(4, H * 0.4), "eq"));      /* buvette */
+    else o.push(R(W - 1.1, H * 0.35, 0.7, 1.8));                                    /* accueil */
+    for(var k = 0; k < Math.min(3, Math.floor(W / 3)); k++){
+      o.push(R(1.0 + k * 2.6, 1.0, 1.8, 0.5)); o.push(R(1.0 + k * 2.6, H - 1.5, 1.8, 0.5));
+    }
+    o.push(C(W * 0.45, H / 2, 0.55, "tapis"));
+    return o;
+  }
+  function scene(W, H){
+    var o = [];
+    for(var k = 0; k < 3; k++) o.push(L(0.25 + k * 0.3, 0.6, 0.25 + k * 0.3, H - 0.6, "pat"));
+    o.push(L(W - 1.2, 0.3, W - 1.2, H - 0.3, "rid"));
+    o.push(L(1.6, 0.3, 1.6, H - 0.3, "rid"));
+    return o;
+  }
+  function sport(W, H){
+    var o = [], m = 1.0, w = W - 2 * m, h = H - 2 * m;
+    o.push(R(m, m, w, h, "terrain"));
+    o.push(L(W / 2, m, W / 2, H - m, "terrain"));
+    o.push(C(W / 2, H / 2, 1.8, "terrain"));
+    [[m, 1], [W - m, -1]].forEach(function(p){
+      o.push(R(p[1] > 0 ? p[0] : p[0] - 5.8, H / 2 - 2.45, 5.8, 4.9, "terrain"));
+      o.push(C(p[0] + p[1] * 1.6, H / 2, 0.23, "terrain"));
+    });
+    o.push(L(W / 2, 0.2, W / 2, H - 0.2, "rid"));                     /* rideau de séparation */
+    return o;
+  }
+  function piscine(W, H){
+    var bw = Math.min(16.66, W - 4), bh = Math.min(8, H - 6), u0 = (W - bw) / 2, v0 = (H - bh) / 2;
+    var o = [R(u0, v0, bw, bh, "bassin")];
+    for(var k = 1; k < 4; k++) o.push(L(u0 + 0.6, v0 + k * bh / 4, u0 + bw - 0.6, v0 + k * bh / 4, "ligne"));
+    for(var s = 0; s < 3; s++) o.push(L(u0 + 0.3 * (s + 1), v0, u0 + 0.3 * (s + 1), v0 + 1.6, "pat"));
+    return o;
+  }
+  function abri(W, H){
+    var o = [];
+    for(var u = 1.2; u + 0.8 <= W - 0.4; u += 2.4)
+      for(var v = 1.6; v + 1.9 <= H - 0.4; v += 2.1){
+        o.push(R(u, v, 0.8, 1.9, "lit")); o.push(R(u + 0.8, v, 0.8, 1.9, "lit"));
+      }
+    return o;
+  }
+  function chauffage(W, H){
+    var o = [];
+    for(var k = 0; k < 3; k++) o.push(C(3 + k * 4.2, H / 2, 1.2, "eq"));
+    o.push(R(W - 4, 1, 3, H - 2, "eq"));
+    return o;
+  }
+  function technique(W, H){
+    var o = [];
+    for(var u = 1.2; u + 1.6 <= W - 0.6; u += 2.8) o.push(R(u, H * 0.25, 1.6, Math.min(3, H * 0.5), "eq"));
+    return o;
+  }
+  function concierge(W, H){
+    var o = bureau(Math.min(W, 3), H);
+    if(W > 4){ o.push(R(W - 0.7, 0.9, 0.6, H - 1.6)); }
+    o.push(R(W / 2, 0.06, 0.6, 0.5, "eq"));
+    return o;
+  }
+  function cage(W, H){
+    /* deux volées de 1,20 m, palier côté couloir et côté façade, ascenseur 1,6 × 1,8 */
+    var o = [], fw = Math.min(1.2, (W - 0.15) / 2), pal = 1.5;
+    var v0 = pal, v1 = H - pal - (H > 7 ? 0.4 : 0);
+    o.push(L(fw + 0.075, v0, fw + 0.075, v1, "pat"));
+    for(var v = v0; v <= v1 + 1e-6; v += 0.28){ o.push(L(0, v, fw, v, "marche")); o.push(L(W - fw, v, W, v, "marche")); }
+    o.push(L(fw / 2, v0 + 0.2, fw / 2, v1 - 0.2, "fleche"));
+    if(H - v1 > 1.8) o.push(R((W - 1.6) / 2, v1 + 0.15, Math.min(1.6, W - 0.2), Math.min(1.8, H - v1 - 0.2), "asc"));
+    return o;
+  }
+
+  function pour(r, W, H){
+    var n = r.n || "";
+    if(r.kind === "cage") return cage(W, H);
+    if(/sport double/i.test(n)) return sport(W, H);
+    if(/^Piscine/i.test(n)) return piscine(W, H);
+    if(/chauffage/i.test(n)) return chauffage(W, H);
+    if(/Abri/i.test(n)) return abri(W, H);
+    if(/classe|dédoublement/i.test(n)) return classe(W, H);
+    if(/ACM/.test(n) && !/Dépôt/.test(n)) return acm(W, H);
+    if(/appui|pédago/i.test(n)) return appui(W, H);
+    if(/activité/i.test(n)) return activite(W, H);
+    if(/maîtres/i.test(n)) return maitres(W, H);
+    if(/réunion/i.test(n)) return tableReunion(W, H, []);
+    if(/détente|pause/i.test(n)) return detente(W, H);
+    if(/Bureau/i.test(n)) return bureau(W, H);
+    if(/reproduction/i.test(n)) return repro(W, H);
+    if(/PMR|individuelle/i.test(n)) return wc(W, H, 1, true);
+    if(/WC|Toilette/i.test(n)) return wc(W, H, r.cab || 2);
+    if(/Vestiaires (élèves|professeurs)/i.test(n)) return vestiaire(W, H, true);
+    if(/Vestiaires de classe/i.test(n)) return vestiaireClasse(W, H);
+    if(/Cuisine/i.test(n)) return cuisine(W, H);
+    if(/Réfectoire/i.test(n)) return refectoire(W, H);
+    if(/Hall|foyer/i.test(n)) return hall(W, H, /foyer/i.test(n));
+    if(/Scène/i.test(n)) return scene(W, H);
+    if(/Conciergerie/i.test(n)) return concierge(W, H);
+    if(/technique|CVSE/i.test(n)) return technique(W, H);
+    if(/rangement|Dépôt|Économat|nettoyage/i.test(n)) return etageres(W, H, [], W > H ? "f" : "gd", 0.5);
+    return [];
+  }
+  return { pour:pour };
+})();
+if(typeof module !== "undefined") module.exports = MEUBLES;
+
+</script>
+<script>
+(function(){
+  var FAMS = [["cla","Classes"],["adm","Personnel"],["eau","Eau, sanitaires"],["tec","Technique"],
+              ["spo","Sport"],["uap","UAPE"],["pis","Piscine"]];
+  var st = { parti:"compact", niv:1, meubles:true, couleurs:true, cotes:true, site:true };
+  try { var s0 = JSON.parse(localStorage.getItem("typo-saxon") || "null"); if(s0) Object.assign(st, s0); } catch(e){}
+  if(!DATA.partis[st.parti]) st.parti = "compact";
+  if(st.niv >= DATA.floors.length) st.niv = 1;
+  function save(){ try { localStorage.setItem("typo-saxon", JSON.stringify(st)); } catch(e){} }
+
+  var $ = function(id){ return document.getElementById(id); };
+  var svg = $("svg"), vue = $("vue"), stage = $("stage"), tip = $("tip");
+  var INFO = [];
+  var fmt = function(x, d){ return x.toLocaleString("fr-CH", { minimumFractionDigits:d == null ? 1 : d, maximumFractionDigits:d == null ? 1 : d }); };
+
+  /* ---------- commandes ---------- */
+  var sel = $("parti");
+  Object.keys(DATA.partis).forEach(function(k){
+    if(k === "auto") return;
+    var o = document.createElement("option"); o.value = k; o.textContent = DATA.partis[k].n; sel.appendChild(o);
+  });
+  sel.value = st.parti;
+  sel.addEventListener("change", function(){ st.parti = sel.value; save(); dessiner(true); });
+  var seg = $("niv");
+  DATA.floors.forEach(function(fl, i){
+    var b = document.createElement("button"); b.type = "button"; b.textContent = fl.short.replace("ᵉʳ","er").replace("ᵉ","e");
+    b.title = fl.name; b.addEventListener("click", function(){ st.niv = i; save(); dessiner(false); });
+    seg.appendChild(b);
+  });
+  [["t-meubles","meubles","hideF"],["t-cotes","cotes","hideD"],["t-site","site","hideS"]].forEach(function(p){
+    var el = $(p[0]); el.checked = st[p[1]];
+    el.addEventListener("change", function(){ st[p[1]] = el.checked; save(); classes(); });
+  });
+  var tc = $("t-couleurs"); tc.checked = st.couleurs;
+  tc.addEventListener("change", function(){ st.couleurs = tc.checked; save(); classes(); });
+  function classes(){
+    svg.classList.toggle("hideF", !st.meubles); svg.classList.toggle("hideD", !st.cotes);
+    svg.classList.toggle("hideS", !st.site); svg.classList.toggle("mono", !st.couleurs);
+  }
+  $("legend").innerHTML = FAMS.map(function(f){
+    return '<span><i style="background:color-mix(in oklab,var(--f-' + f[0] + ') var(--wash),var(--paper))"></i>' + f[1] + '</span>';
+  }).join("");
+
+  /* ---------- géométrie ---------- */
+  function P(f, x, y){ var w = PG.versMonde(f, x, y); return [w[0], -w[1]]; }
+  function pts(f, list){ return list.map(function(p){ var q = P(f, p[0], p[1]); return q[0].toFixed(3) + "," + q[1].toFixed(3); }).join(" "); }
+  function rectL(f, x0, y0, x1, y1){ return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]; }
+  function fr(f, frame, x0, u, v){ return PG.versEtage(f, frame, x0, u, v); }
+  function rectF(f, frame, x0, u0, v0, w, h){
+    return [fr(f, frame, x0, u0, v0), fr(f, frame, x0, u0 + w, v0), fr(f, frame, x0, u0 + w, v0 + h), fr(f, frame, x0, u0, v0 + h)];
+  }
+  function esc(s){ return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  function angDeg(f){ var d = -f.a * 180 / Math.PI; while(d > 90) d -= 180; while(d < -90) d += 180; return d; }
+
+  var bounds;
+  function grow(x, y){ bounds[0] = Math.min(bounds[0], x); bounds[1] = Math.min(bounds[1], y); bounds[2] = Math.max(bounds[2], x); bounds[3] = Math.max(bounds[3], y); }
+
+  /* ---------- dessin d'un niveau ---------- */
+  function dessiner(recadrer){
+    var res = PG.genNiveau(DATA, st.parti, st.niv), fl = res.fl;
+    INFO = []; bounds = [Infinity, Infinity, -Infinity, -Infinity];
+    var out = { site:[], ombre:[], fond:[], rooms:[], part:[], ouv:[], mb:[], lab:[], dim:[] };
+    var rects = res.F.map(function(f){ return { f:f }; });
+    function dansAutre(f, x, y){
+      var w = PG.versMonde(f, x, y);
+      return res.F.some(function(g){
+        if(g === f) return false;
+        var c = Math.cos(-g.a), s = Math.sin(-g.a), dx = w[0] - g.cx, dy = w[1] - g.cy;
+        var lx = dx * c - dy * s, ly = dx * s + dy * c;
+        return Math.abs(lx) <= g.L / 2 + 0.6 && Math.abs(ly) <= g.D / 2 + 0.6;
+      });
+    }
+
+    /* site, existant, et l'emprise des volumes absents de ce niveau */
+    var per = DATA.site.per.map(function(p){ return p[0] + "," + (-p[1]); }).join(" ");
+    out.site.push('<polygon class="site" points="' + per + '"/>');
+    DATA.site.bat.forEach(function(b){
+      var ferme = b.length > 3 && b[0][0] === b[b.length - 1][0] && b[0][1] === b[b.length - 1][1];
+      out.site.push('<' + (ferme ? "polygon" : "polyline") + ' class="exist" points="' + b.map(function(p){ return p[0] + "," + (-p[1]); }).join(" ") + '"' + (ferme ? "" : ' style="fill:none"') + '/>');
+    });
+    DATA.partis[st.parti].vols.forEach(function(v){
+      if(v.lv.some(function(e){ return e.i === st.niv; })) return;
+      var e = v.lv[0], f = { cx:0, cy:0, a:v.a };
+      var p = PG.local(v.x, v.y, v.a, e.dx || 0, e.dy || 0); f.cx = p[0]; f.cy = p[1];
+      out.ombre.push('<polygon class="ombre" points="' + pts(f, rectL(f, -e.w / 2 - 0.5, -e.d / 2 - 0.5, e.w / 2 + 0.5, e.d / 2 + 0.5)) + '"/>');
+    });
+
+    var circDessinee = 0, cagesA = 0, libreA = 0, pose = {};
+    res.F.forEach(function(f){
+      var L = f.L, D = f.D, m = PG.MUR;
+      rectL(f, -L / 2 - m, -D / 2 - m, L / 2 + m, D / 2 + m).forEach(function(p){ var q = P(f, p[0], p[1]); grow(q[0], q[1]); });
+      out.fond.push('<polygon class="mur" points="' + pts(f, rectL(f, -L / 2 - m, -D / 2 - m, L / 2 + m, D / 2 + m)) + '"/>');
+      out.fond.push('<polygon class="circ" points="' + pts(f, rectL(f, -L / 2, -D / 2, L / 2, D / 2)) + '"/>');
+      if(!f.fixe) circDessinee += (f.zr - f.zl) * PG.COULOIR;
+
+      f.rooms.forEach(function(r){
+        if(r.kind === "bloc"){
+          r.cel.forEach(function(c){
+            local1(f, r.frame, r.x0, c, c.u0, c.v0, c.W, c.H, "cell", true);
+            pose[c.key] = (pose[c.key] || 0) + c.a;
+          });
+          return;
+        }
+        local1(f, r.frame, r.x0, r, 0, 0, r.W, r.H, "room", false);
+        pose[r.key] = (pose[r.key] || 0) + r.a;
+      });
+      f.cages.forEach(function(c){
+        cagesA += c.W * c.H;
+        out.rooms.push('<polygon class="cagef" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, c.bande, c.x0, 0, 0, c.W, c.H)) + '"/>');
+        INFO.push({ lab:"Escalier et ascenseur", n:"Cage d'escalier", a:c.W * c.H, W:c.W, H:c.H, f:"" });
+        meubles(f, c.bande, c.x0, { kind:"cage" }, 0, 0, c.W, c.H);
+        porte(f, c.bande, c.x0, c.W - 0.15, 0, 1.2);
+        etiquette(f, c.bande, c.x0, 0, 0, c.W, c.H, "Cage", c.W * c.H, true);
+      });
+      f.libre.forEach(function(l){
+        libreA += l.a;
+        out.rooms.push('<polygon class="libre" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, l.frame, l.x0, 0, 0, l.W, l.H)) + '"/>');
+        INFO.push({ lab:"Réserve", n:"Surface que le programme ne remplit pas", a:l.a, W:l.W, H:l.H, f:"" });
+        if(l.W > 1.2) etiquette(f, l.frame, l.x0, 0, 0, l.W, l.H, "Réserve", l.a, false);
+      });
+
+      /* cotes hors tout, murs compris */
+      if(!f.fixe || true){
+        var o = 2.2, yA = -D / 2 - m - o, xB = L / 2 + m + o;
+        var a1 = P(f, -L / 2 - m, yA), a2 = P(f, L / 2 + m, yA);
+        out.dim.push('<line class="dim" x1="' + a1[0] + '" y1="' + a1[1] + '" x2="' + a2[0] + '" y2="' + a2[1] + '"/>');
+        [-L / 2 - m, L / 2 + m].forEach(function(x){ var t1 = P(f, x - 0.4, yA - 0.4), t2 = P(f, x + 0.4, yA + 0.4); out.dim.push('<line class="dim" x1="' + t1[0] + '" y1="' + t1[1] + '" x2="' + t2[0] + '" y2="' + t2[1] + '"/>'); });
+        var tm = P(f, 0, yA - 0.5);
+        out.dim.push('<text class="dimt" font-size="0.95" text-anchor="middle" transform="translate(' + tm[0] + ',' + tm[1] + ') rotate(' + angDeg(f) + ')">' + fmt(L + 2 * m, 2) + '</text>');
+        var b1 = P(f, xB, -D / 2 - m), b2 = P(f, xB, D / 2 + m);
+        out.dim.push('<line class="dim" x1="' + b1[0] + '" y1="' + b1[1] + '" x2="' + b2[0] + '" y2="' + b2[1] + '"/>');
+        [-D / 2 - m, D / 2 + m].forEach(function(y){ var t1 = P(f, xB - 0.4, y - 0.4), t2 = P(f, xB + 0.4, y + 0.4); out.dim.push('<line class="dim" x1="' + t1[0] + '" y1="' + t1[1] + '" x2="' + t2[0] + '" y2="' + t2[1] + '"/>'); });
+        var tb = P(f, xB + 0.6, 0);
+        out.dim.push('<text class="dimt" font-size="0.95" text-anchor="middle" transform="translate(' + tb[0] + ',' + tb[1] + ') rotate(' + (angDeg(f) - 90) + ')">' + fmt(D + 2 * m, 2) + '</text>');
+        if(f.deux && !f.fixe){
+          /* profondeurs des deux bandes et du couloir */
+          var xs = -L / 2 - m - o, ys = [-D / 2, f.yc0, f.yc1, D / 2];
+          var c1 = P(f, xs, -D / 2), c2 = P(f, xs, D / 2);
+          out.dim.push('<line class="dim" x1="' + c1[0] + '" y1="' + c1[1] + '" x2="' + c2[0] + '" y2="' + c2[1] + '"/>');
+          ys.forEach(function(y){ var t1 = P(f, xs - 0.35, y - 0.35), t2 = P(f, xs + 0.35, y + 0.35); out.dim.push('<line class="dim" x1="' + t1[0] + '" y1="' + t1[1] + '" x2="' + t2[0] + '" y2="' + t2[1] + '"/>'); });
+          for(var k = 0; k < 3; k++){
+            var tt = P(f, xs - 0.6, (ys[k] + ys[k + 1]) / 2);
+            out.dim.push('<text class="dimt" font-size="0.7" text-anchor="middle" transform="translate(' + tt[0] + ',' + tt[1] + ') rotate(' + (angDeg(f) - 90) + ')">' + fmt(ys[k + 1] - ys[k], 2) + '</text>');
+          }
+        }
+      }
+
+      /* ---- un local : fond, cloisons, ouvertures, mobilier, étiquette ---- */
+      function local1(f, frame, x0, r, u0, v0, W, H, cls, cellule){
+        var trav = r.kind === "trav";
+        out.rooms.push('<polygon class="' + cls + ' fam-' + (r.f || "tec") + '" data-k="' + INFO.length + '"' + (trav ? ' style="stroke:none"' : "") + ' points="' + pts(f, rectF(f, frame, x0, u0, v0, W, H)) + '"/>');
+        INFO.push({ lab:r.lab || r.n, n:r.n, a:r.a, W:W, H:H, f:r.f });
+        if(trav){
+          [r.x0, r.x0 + r.W].forEach(function(x){
+            if(Math.abs(Math.abs(x) - f.L / 2) < 0.01) return;
+            [[-f.D / 2, f.yc0], [f.yc1, f.D / 2]].forEach(function(s){
+              if(!f.deux && s[0] === -f.D / 2) return;
+              var p1 = P(f, x, s[0]), p2 = P(f, x, s[1]);
+              out.part.push('<line class="part" x1="' + p1[0] + '" y1="' + p1[1] + '" x2="' + p2[0] + '" y2="' + p2[1] + '"/>');
+            });
+          });
+          /* entrées sur les deux façades */
+          [-1, 1].forEach(function(sg){
+            var xc = r.x0 + r.W / 2, yw = sg * f.D / 2;
+            if(dansAutre(f, xc, sg * (f.D / 2 + 1.2))) return;
+            ouvertureMur(f, xc, sg, 2.2, true);
+            if((sg < 0) === (Math.cos(f.a) > 0)){
+              var t = [P(f, xc, yw + sg * 1.4), P(f, xc - 0.9, yw + sg * 2.6), P(f, xc + 0.9, yw + sg * 2.6)];
+              out.ouv.push('<polygon class="entree" points="' + t.map(function(q){ return q.join(","); }).join(" ") + '"/>');
+            }
+          });
+        }
+        /* portes */
+        if(r.kind === "band" || (cellule)){
+          if(W >= 1.1) porte(f, frame, x0, u0 + W - 0.25, v0, Math.min(r.f === "cla" ? 1.0 : 0.9, W - 0.4));
+        } else if(r.kind === "full" && r.x0 > -f.L / 2 + 0.01){
+          var ym = f.deux ? (f.yc0 + f.yc1) / 2 : (f.yc0 + f.yc1) / 2;
+          porteX(f, r.x0, ym, Math.min(1.6, PG.COULOIR - 0.5), 1);
+        } else if(r.kind === "full" && r.x0 + r.W < f.L / 2 - 0.01){
+          porteX(f, r.x0 + r.W, (f.yc0 + f.yc1) / 2, Math.min(1.6, PG.COULOIR - 0.5), -1);
+        } else if(r.kind === "fixe"){
+          [-1, 1].forEach(function(sg){ if(!dansAutre(f, 0, sg * (f.D / 2 + 1.2))) ouvertureMur(f, sg < 0 ? -f.L / 4 : f.L / 4, sg, 2.0, true); });
+        }
+        /* fenêtres sur les façades libres */
+        var facs = [];
+        if(frame === "A" || frame === "B"){ if(Math.abs(v0 + H - f.bb[frame]) < 0.02) facs.push(frame === "A" ? -1 : 1); }
+        else if(!trav){ facs.push(-1, 1); }
+        facs.forEach(function(sg){
+          var n = Math.max(1, Math.floor((W - 0.6) / 2.6)), lw = Math.min(1.8, W - 0.8);
+          if(lw < 0.6 || (r.n && /Abri|chauffage|Local technique|Dépôt|rangement|Économat|nettoyage/i.test(r.n))) return;
+          for(var k = 0; k < n; k++){
+            var uc = u0 + W * (k + 0.5) / n, xc = fr(f, frame === "A" || frame === "B" ? frame : "full", x0, uc, 0)[0];
+            if(dansAutre(f, xc, sg * (f.D / 2 + 1.0))) continue;
+            ouvertureMur(f, xc, sg, lw, false);
+          }
+        });
+        meubles(f, frame, x0, r, u0, v0, W, H);
+        etiquette(f, frame, x0, u0, v0, W, H, r.lab || r.n, r.a, false);
+      }
+    });
+
+    /* passages entre corps accolés : le couloir traverse les deux murs de pignon */
+    res.F.forEach(function(f){
+      if(f.fixe) return;
+      var ym = (f.yc0 + f.yc1) / 2;
+      [-1, 1].forEach(function(sg){
+        if(sg < 0 ? f.zl > -f.L / 2 + 0.01 : f.zr < f.L / 2 - 0.01) return;
+        var wpt = PG.versMonde(f, sg * (f.L / 2 + 1.0), ym);
+        var ok = res.F.some(function(g){
+          if(g === f || g.fixe) return false;
+          var c = Math.cos(-g.a), s2 = Math.sin(-g.a), dx = wpt[0] - g.cx, dy = wpt[1] - g.cy;
+          var lx = dx * c - dy * s2, ly = dx * s2 + dy * c;
+          return Math.abs(lx) <= g.L / 2 + 0.05 && ly > g.yc0 + 0.3 && ly < g.yc1 - 0.3;
+        });
+        if(!ok) return;
+        var x0 = sg < 0 ? -f.L / 2 - 1.05 : f.L / 2 - 0.02, x1 = sg < 0 ? -f.L / 2 + 0.02 : f.L / 2 + 1.05;
+        out.ouv.push('<polygon class="circ" points="' + pts(f, rectL(f, x0, ym - 0.9, x1, ym + 0.9)) + '"/>');
+      });
+    });
+    function porte(f, frame, x0, uh, v, dw){
+      if(dw < 0.5) return;
+      var g = rectF(f, frame, x0, uh - dw, v - 0.09, dw, 0.18);
+      out.ouv.push('<polygon class="gap" points="' + pts(f, g) + '"/>');
+      var h = P.apply(null, [f].concat(fr(f, frame, x0, uh, v))), e = P.apply(null, [f].concat(fr(f, frame, x0, uh, v + dw)));
+      out.ouv.push('<line class="porte" x1="' + h[0] + '" y1="' + h[1] + '" x2="' + e[0] + '" y2="' + e[1] + '"/>');
+      var arc = [];
+      for(var k = 0; k <= 10; k++){ var t = k / 10 * Math.PI / 2; arc.push(fr(f, frame, x0, uh - dw * Math.cos(t), v + dw * Math.sin(t))); }
+      out.ouv.push('<polyline class="arc" points="' + pts(f, arc) + '"/>');
+    }
+    function porteX(f, x, ym, dw, sens){
+      out.ouv.push('<polygon class="gap" points="' + pts(f, rectL(f, x - 0.09, ym - dw / 2, x + 0.09, ym + dw / 2)) + '"/>');
+      var h = P(f, x, ym + dw / 2), e = P(f, x + sens * dw, ym + dw / 2);
+      out.ouv.push('<line class="porte" x1="' + h[0] + '" y1="' + h[1] + '" x2="' + e[0] + '" y2="' + e[1] + '"/>');
+      var arc = [];
+      for(var k = 0; k <= 10; k++){ var t = k / 10 * Math.PI / 2; arc.push([x + sens * dw * Math.sin(t), ym + dw / 2 - dw * Math.cos(t)]); }
+      out.ouv.push('<polyline class="arc" points="' + pts(f, arc) + '"/>');
+    }
+    function ouvertureMur(f, xc, sg, lw, porteM){
+      var y0 = sg * f.D / 2, y1 = sg * (f.D / 2 + PG.MUR);
+      out.ouv.push('<polygon class="gapw" points="' + pts(f, rectL(f, xc - lw / 2, Math.min(y0, y1), xc + lw / 2, Math.max(y0, y1))) + '"/>');
+      if(porteM){
+        [-1, 1].forEach(function(s){
+          var h = P(f, xc + s * lw / 2, y0), e = P(f, xc + s * lw / 2, y0 - sg * lw / 2);
+          out.ouv.push('<line class="porte" x1="' + h[0] + '" y1="' + h[1] + '" x2="' + e[0] + '" y2="' + e[1] + '"/>');
+        });
+        return;
+      }
+      [0.17, 0.33].forEach(function(t){
+        var y = sg * (f.D / 2 + PG.MUR * t), a = P(f, xc - lw / 2, y), b = P(f, xc + lw / 2, y);
+        out.ouv.push('<line class="vitre" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>');
+      });
+      [xc - lw / 2, xc + lw / 2].forEach(function(x){
+        var a = P(f, x, y0), b = P(f, x, y1);
+        out.ouv.push('<line class="vitre" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>');
+      });
+    }
+    function meubles(f, frame, x0, r, u0, v0, W, H){
+      var lst = MEUBLES.pour(r, W, H);
+      lst.forEach(function(p){
+        var k = "mb " + (p.k || "");
+        if(p.t === "r"){
+          if(p.w <= 0 || p.h <= 0) return;
+          out.mb.push('<polygon class="' + k + '" points="' + pts(f, rectF(f, frame, x0, u0 + p.u, v0 + p.v, p.w, p.h)) + '"/>');
+        } else if(p.t === "c" || p.t === "e"){
+          var c = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u, v0 + p.v)));
+          if(p.t === "c") out.mb.push('<circle class="' + k + '" cx="' + c[0].toFixed(3) + '" cy="' + c[1].toFixed(3) + '" r="' + p.r + '"/>');
+          else out.mb.push('<ellipse class="' + k + '" cx="0" cy="0" rx="' + p.rx + '" ry="' + p.ry + '" transform="translate(' + c[0].toFixed(3) + ',' + c[1].toFixed(3) + ') rotate(' + angDeg(f) + ')"/>');
+        } else if(p.t === "l"){
+          var a = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u1, v0 + p.v1))), b = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u2, v0 + p.v2)));
+          out.mb.push('<line class="' + k + '" x1="' + a[0].toFixed(3) + '" y1="' + a[1].toFixed(3) + '" x2="' + b[0].toFixed(3) + '" y2="' + b[1].toFixed(3) + '"/>');
+        }
+      });
+    }
+    function etiquette(f, frame, x0, u0, v0, W, H, txt, a, petit){
+      var nom = String(txt || "").replace(/ \/ .*$/, "");
+      var vert = W < 2.2 && H > W * 1.4;
+      var len = vert ? H : W;
+      var fs = Math.min(petit ? 0.45 : Math.max(0.62, Math.min(1.5, Math.sqrt(a) * 0.055)), (len * 0.88) / Math.max(4, nom.length * 0.56));
+      var c = P.apply(null, [f].concat(fr(f, frame, x0, u0 + W / 2, v0 + H / 2)));
+      var ang = angDeg(f) + (vert ? -90 : 0);
+      var aire = fmt(a) + " m²";
+      if(fs < 0.24){
+        var fa = Math.min(0.42, (len * 0.85) / (aire.length * 0.6));
+        if(fa < 0.18) return;
+        out.lab.push('<text class="lab" text-anchor="middle" transform="translate(' + c[0].toFixed(2) + ',' + c[1].toFixed(2) + ') rotate(' + ang + ')"><tspan class="m2" font-size="' + fa.toFixed(2) + '" y="' + (fa * 0.35).toFixed(2) + '">' + aire + '</tspan></text>');
+        return;
+      }
+      out.lab.push('<text class="lab" text-anchor="middle" transform="translate(' + c[0].toFixed(2) + ',' + c[1].toFixed(2) + ') rotate(' + ang + ')">' +
+        '<tspan x="0" y="' + (-fs * 0.15).toFixed(2) + '" font-size="' + fs.toFixed(2) + '">' + esc(nom) + '</tspan>' +
+        '<tspan class="m2" x="0" y="' + (fs * 1.05).toFixed(2) + '" font-size="' + (fs * 0.82).toFixed(2) + '">' + aire + '</tspan></text>');
+    }
+
+    /* nord et échelle graphique */
+    if(isFinite(bounds[0])){
+      var bx = bounds[0], by = bounds[3] + 8;
+      var sc = '<g class="dimg">';
+      [0, 5, 10, 20].forEach(function(d, k, arr){
+        if(k < arr.length - 1) sc += '<rect x="' + (bx + d) + '" y="' + by + '" width="' + (arr[k + 1] - d) + '" height="0.6" fill="' + (k % 2 ? "var(--paper)" : "var(--ink)") + '" stroke="var(--ink)" stroke-width="0.08"/>';
+        sc += '<text class="dimt" font-size="1.1" x="' + (bx + d) + '" y="' + (by + 2.1) + '" text-anchor="middle">' + d + '</text>';
+      });
+      sc += '<text class="dimt" font-size="1.1" x="' + (bx + 21.5) + '" y="' + (by + 0.7) + '">m</text></g>';
+      var nx = bounds[2] + 4, ny = bounds[1] + 2;
+      sc += '<g><polygon class="nord" points="' + nx + ',' + ny + ' ' + (nx - 1.3) + ',' + (ny + 4) + ' ' + nx + ',' + (ny + 3) + ' ' + (nx + 1.3) + ',' + (ny + 4) + '"/>' +
+            '<text class="lab" font-size="1.4" x="' + nx + '" y="' + (ny - 0.6) + '" text-anchor="middle">N</text></g>';
+      out.dim.push(sc);
+    }
+
+    vue.innerHTML =
+      '<g class="siteg">' + out.site.join("") + '</g>' + out.ombre.join("") +
+      out.fond.join("") + out.rooms.join("") + out.part.join("") + out.ouv.join("") +
+      '<g class="mbg">' + out.mb.join("") + '</g>' + out.lab.join("") + '<g class="dimg">' + out.dim.join("") + '</g>';
+    classes();
+
+    /* commandes, bilan, tableau */
+    Array.prototype.forEach.call(seg.children, function(b, i){ b.setAttribute("aria-pressed", i === st.niv ? "true" : "false"); });
+    var P0 = DATA.partis[st.parti];
+    $("titre").innerHTML = esc(fl.name) + '<small>' + esc(P0.n) + ' · ' + res.F.length + ' corps</small>';
+    $("cartouche").innerHTML = '<div>Projet</div><div>Centre scolaire de Saxon</div><div>Étape</div><div>05 Typologies</div>' +
+      '<div>Parti</div><div>' + esc(P0.n) + '</div><div>Niveau</div><div>' + esc(fl.name) + ' · h ' + fmt(fl.h, 2) + ' m</div>';
+
+    var demande = 0, posé = 0, rows = [], nonA = 0;
+    res.non.forEach(function(u){ nonA += u.a; });
+    fl.rooms.forEach(function(r){
+      var d = r.q * r.u, p = pose[r.key] || 0, horsVol = r.hors && !p;
+      if(!horsVol){ demande += d; posé += Math.min(p, d); }
+      var etat = horsVol ? '<span style="color:var(--ink-soft)">hors volume</span>' :
+        Math.abs(d - p) < 0.5 ? '<span class="st-ok">posé</span>' : '<span class="st-warn">manque ' + fmt(d - p) + ' m²</span>';
+      rows.push('<tr><td><span class="dot" style="background:var(--f-' + r.f + ')"></span>' + esc(r.n) + '</td><td class="n">' + r.q + '</td><td class="n">' + fmt(d) + '</td><td class="n">' + (horsVol ? "—" : fmt(p)) + '</td><td>' + etat + '</td></tr>');
+    });
+    $("tab").querySelector("tbody").innerHTML = rows.join("");
+    var mix = fl.circ ? fl.circ.couloir + fl.circ.cages : 0;
+    var taux = demande ? posé / demande : 1;
+    $("bilan").innerHTML =
+      '<span>Programme demandé</span><span class="v">' + fmt(demande, 0) + ' m²</span>' +
+      '<span>Posé dans le plan</span><span class="v">' + fmt(posé, 0) + ' m²</span>' +
+      '<span>Part posée</span><span class="v"><span class="pill ' + (taux > 0.995 ? "ok" : "warn") + '">' + fmt(100 * taux, 0) + ' %</span></span>' +
+      '<span class="sep"></span>' +
+      '<span>Couloirs dessinés</span><span class="v">' + fmt(circDessinee, 0) + ' m²</span>' +
+      '<span>Cages</span><span class="v">' + fmt(cagesA, 0) + ' m²</span>' +
+      '<span>Circulation estimée au mixer</span><span class="v">' + fmt(mix, 0) + ' m²</span>' +
+      '<span>Réserve non affectée</span><span class="v">' + fmt(libreA, 0) + ' m²</span>';
+    $("non-g").hidden = !res.non.length;
+    $("non").innerHTML = res.non.map(function(u){ return '<li><span>' + esc(u.lab) + '</span><span>' + fmt(u.a) + ' m²</span></li>'; }).join("");
+    if(recadrer || !vb) cadrer();
+  }
+
+  /* ---------- vue : cadrage, zoom, déplacement ---------- */
+  var vb = null;
+  function applique(){ svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); }
+  function cadrer(){
+    var m = 10, w = bounds[2] - bounds[0] + 2 * m, h = bounds[3] - bounds[1] + 2 * m + 8;
+    var r = stage.clientWidth / Math.max(1, stage.clientHeight);
+    if(w / h < r) w = h * r; else h = w / r;
+    vb = { x:(bounds[0] + bounds[2]) / 2 - w / 2, y:(bounds[1] + bounds[3] + 8) / 2 - h / 2, w:w, h:h };
+    applique();
+  }
+  function zoom(k, cx, cy){
+    if(cx == null){ cx = vb.x + vb.w / 2; cy = vb.y + vb.h / 2; }
+    var w = Math.max(6, Math.min(800, vb.w * k)), kk = w / vb.w;
+    vb = { x:cx - (cx - vb.x) * kk, y:cy - (cy - vb.y) * kk, w:w, h:vb.h * kk };
+    applique();
+  }
+  function versSvg(e){
+    var r = svg.getBoundingClientRect(), s = Math.max(vb.w / r.width, vb.h / r.height);
+    var ox = (r.width * s - vb.w) / 2, oy = (r.height * s - vb.h) / 2;
+    return [vb.x - ox + (e.clientX - r.left) * s, vb.y - oy + (e.clientY - r.top) * s, s];
+  }
+  stage.addEventListener("wheel", function(e){ e.preventDefault(); var p = versSvg(e); zoom(Math.exp(e.deltaY * 0.0015), p[0], p[1]); }, { passive:false });
+  var ptrs = {}, last = null, pinch = null;
+  stage.addEventListener("pointerdown", function(e){
+    ptrs[e.pointerId] = { x:e.clientX, y:e.clientY }; stage.setPointerCapture(e.pointerId);
+    stage.classList.add("drag"); last = { x:e.clientX, y:e.clientY };
+    var ids = Object.keys(ptrs);
+    if(ids.length === 2){ var a = ptrs[ids[0]], b = ptrs[ids[1]]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+  });
+  stage.addEventListener("pointermove", function(e){
+    if(ptrs[e.pointerId]){
+      ptrs[e.pointerId] = { x:e.clientX, y:e.clientY };
+      var ids = Object.keys(ptrs);
+      if(ids.length === 2 && pinch){
+        var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+        zoom(pinch / d); pinch = d; return;
+      }
+      var r = svg.getBoundingClientRect(), s = Math.max(vb.w / r.width, vb.h / r.height);
+      vb.x -= (e.clientX - last.x) * s; vb.y -= (e.clientY - last.y) * s; last = { x:e.clientX, y:e.clientY };
+      applique(); tip.hidden = true; return;
+    }
+    var k = e.target.getAttribute && e.target.getAttribute("data-k");
+    if(k == null){ tip.hidden = true; return; }
+    var I = INFO[+k], sr = stage.getBoundingClientRect();
+    tip.innerHTML = '<b>' + esc(I.lab) + '</b><span>' + fmt(I.a) + ' m² · ' + fmt(I.W, 2) + ' × ' + fmt(I.H, 2) + ' m</span>';
+    tip.hidden = false;
+    var x = e.clientX - sr.left + 14, y = e.clientY - sr.top + 14;
+    if(x + 240 > sr.width) x = e.clientX - sr.left - 250;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  });
+  function fin(e){ delete ptrs[e.pointerId]; if(!Object.keys(ptrs).length){ stage.classList.remove("drag"); pinch = null; } else { var id = Object.keys(ptrs)[0]; last = { x:ptrs[id].x, y:ptrs[id].y }; pinch = null; } }
+  stage.addEventListener("pointerup", fin); stage.addEventListener("pointercancel", fin);
+  stage.addEventListener("pointerleave", function(){ tip.hidden = true; });
+  $("z-in").addEventListener("click", function(){ zoom(0.7); });
+  $("z-out").addEventListener("click", function(){ zoom(1 / 0.7); });
+  $("z-fit").addEventListener("click", cadrer);
+  window.addEventListener("resize", function(){ cadrer(); });
+
+  /* ---------- copier le SVG, couleurs résolues ---------- */
+  $("copy").addEventListener("click", function(){
+    var btn = this, clone = svg.cloneNode(true), src = svg.querySelectorAll("*"), dst = clone.querySelectorAll("*");
+    ["fill","stroke","stroke-width","stroke-dasharray","font-family","font-size","font-weight","display","opacity"].forEach(function(){});
+    for(var i = 0; i < src.length; i++){
+      var cs = getComputedStyle(src[i]), s = "";
+      ["fill","stroke","stroke-width","stroke-dasharray","font-family","font-weight","display"].forEach(function(p){ s += p + ":" + cs.getPropertyValue(p) + ";"; });
+      if(src[i].classList && (src[i].classList.contains("porte") || src[i].classList.contains("mb") || src[i].classList.contains("arc") || src[i].classList.contains("vitre") || src[i].classList.contains("dim") || src[i].classList.contains("site") || src[i].classList.contains("exist") || src[i].classList.contains("ombre"))) s += "vector-effect:non-scaling-stroke;";
+      dst[i].setAttribute("style", s);
+      dst[i].removeAttribute("class");
+    }
+    clone.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h);
+    var txt = new XMLSerializer().serializeToString(clone);
+    var ok = function(){ btn.textContent = "SVG copié"; setTimeout(function(){ btn.textContent = "Copier le SVG"; }, 1600); };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function(){ btn.textContent = "Copie refusée"; });
+  });
+
+  dessiner(true);
+})();
+
+</script>
+
+</body></html>

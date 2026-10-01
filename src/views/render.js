@@ -11,7 +11,6 @@ import { renduVue } from "./rendu.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
-  typologie:   "Plans et coupes, dessinés dans les volumes que le massing a posés.",
   tectonique:  "La construction : structure, portées, trames, assemblages.",
   materialite: "Les matériaux, leurs teintes, leurs textures et leur vieillissement.",
 };
@@ -206,6 +205,19 @@ export function render(){
     return;
   }
 
+  /* Les typologies : le générateur de plans par niveau, page à part
+     (`src/typo/plans.html`), montré dans l'onglet. Il porte le mode du site. */
+  if(view.tab === "typologie"){
+    var fr = el("iframe", "typo-cadre");
+    fr.src = "src/typo/plans.html";
+    fr.title = "Typologies — plans par niveau";
+    fr.addEventListener("load", function(){
+      var m = document.documentElement.getAttribute("data-mode");
+      try { if(m) fr.contentDocument.documentElement.setAttribute("data-theme", m); } catch(e){}
+    });
+    panelsEl.appendChild(fr);
+    return;
+  }
   if(view.tab === "rendu"){ subHost().appendChild(renduVue(curSub())); return; }
   if(view.tab === "parametres"){ panelsEl.appendChild(parametresVue(render)); return; }
   if(view.tab === "forensics"){ forensicsVue(panelsEl, render); return; }

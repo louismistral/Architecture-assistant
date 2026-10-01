@@ -162,3 +162,6 @@ g.blk{cursor:default}
   border:1px dashed var(--border-strong);border-radius:var(--radius-lg)}
 .tab-vide h2{margin:0 0 var(--s-2);font-size:var(--t-lg);font-weight:600;font-variation-settings:"wdth" 106}
 .tab-vide p{margin:0;font-size:var(--t-sm);color:var(--soft-foreground)}
+
+/* Typologies : le générateur de plans, plein onglet */
+.typo-cadre{display:block;width:100%;height:calc(100vh - 120px);min-height:640px;border:0;border-radius:var(--radius-md, 8px);background:var(--background)}
