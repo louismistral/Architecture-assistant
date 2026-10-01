@@ -33,7 +33,7 @@ import { dePile } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { dansPerimetre, genMass, rectSol } from "../mass/gen.js";
+import { conceptCourant, dansPerimetre, genMass, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { objMassing } from "../mass/export.js";
 import { evaluationCourante } from "../mass/mesures.js";
@@ -123,6 +123,7 @@ export function massPanel(){
 export function drawMass(){
   if(!planEl) return;
   if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
+  conceptCourant();
   planMount(planEl);
   if(!monte){ vue3dMount(troisEl); monte = true; }
   else vue3dDraw();
