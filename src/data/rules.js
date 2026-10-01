@@ -63,7 +63,7 @@ export var RULES = {
      extérieur s'ajoute AUTOUR de la surface utile : ni l'un ni l'autre ne
      retranche un mètre carré au programme. */
   haut: {
-    dalle: 0.40, mur: 0.50, acrotere: 0.60,
+    dalle: 0.40, mur: 0.50, cloison: 0.10, acrotere: 0.60,
     libre: {
       cla: 2.80,    /* vide d'étage des salles de classe — 2.10 */
       spo: 7.00,    /* salle de sport double, libre sous structure — 2.10 */
@@ -107,6 +107,10 @@ export var RULES = {
     /* une cage d'escalier compartimentée, palier et ascenseur compris, en m²
        par niveau */
     cage: 24,
+    /* le NOYAU qui loge ces 24 m² : escalier et ascenseur côte à côte, aux
+       mêmes cotes à chaque niveau — il s'empile. Deux volées de 1,20 m ; une
+       gaine de 2,10 × 2,40 m pour une cabine accessible 1,10 × 1,40 m (SIA 500). */
+    noyau: { prof: 5.0, volee: 1.20, asc: [2.10, 2.40] },
     /* la pile que le cahier des charges suppose AVANT le mixer, pour compter ses
        cages : un rez et deux étages, ce que le règlement admet pour les classes.
        Le mixer, lui, compte les cages de la pile qu'il porte. */
