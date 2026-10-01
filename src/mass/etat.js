@@ -26,7 +26,6 @@ export function massOf(){
     pile: MASS.pile || empreintePile(),
     etages: MASS.etages,
     pont: (MASS.pont || []).map(function(p){ return { a:p.a, b:p.b, i:p.i }; }),
-    concept: MASS.vol.concept || null,
     vol: MASS.vol.map(function(v){
       return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
                ph:v.ph || 0, nom:v.nom || null, joint:v.joint || null, bat:v.bat || null,
@@ -70,7 +69,6 @@ export function setMass(o){
       v.lv.forEach(function(e){ if(e.i < bas.i) bas = e; });
       bas.keys = [v.key];
     });
-    MASS.vol.concept = o.concept || null;
     MASS.sel = null;
   }
 }

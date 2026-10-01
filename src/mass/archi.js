@@ -19,11 +19,11 @@ var R = RULES.archi;
 /* Les choix, une fois : la vue en fait ses listes. Un côté est celui des
    poignées d'étirement : 0 = +w, 1 = +d, 2 = −w, 3 = −d. */
 export var TOITS = [
-  { id:"plat", n:"Plat" }, { id:"terrasse", n:"Terrasse accessible" }, { id:"vert", n:"Végétalisé" }, { id:"pan", n:"Un pan" },
+  { id:"plat", n:"Plat" }, { id:"vert", n:"Végétalisé" }, { id:"pan", n:"Un pan" },
   { id:"deux", n:"Deux pans" }, { id:"shed", n:"Sheds" }
 ];
 export function arDe(v){
-  return Object.assign({ toit:"plat", puits:0, atrium:0, entree:-1, rampe:-1, galerie:-1, sous:0 }, v.ar || {});
+  return Object.assign({ toit:"plat", puits:0, entree:-1, rampe:-1, sous:0 }, v.ar || {});
 }
 /* La façade d'un côté, à la boussole : x à l'est, y au nord. */
 var CAPS = ["est", "nord-est", "nord", "nord-ouest", "ouest", "sud-ouest", "sud", "sud-est"];
@@ -92,17 +92,8 @@ export function archiDe(v){
     F = court(rc); r = R.pente * F.hw;
     out.push(coin("toit", null, F, -F.hw, 0, -F.hd, F.hd, z, z, z + r, haut.e.i));
     out.push(coin("toit", null, F, 0, F.hw, -F.hd, F.hd, z, z + r, z, haut.e.i));
-  } else if(ar.toit === "terrasse"){
-    /* le garde-corps sur les quatre rives : le toit se pratique */
-    F = long(rc); var g = .2;
-    out.push(coin("toit", null, F, -F.hw, F.hw, -F.hd, -F.hd + g, z, z + R.garde, z + R.garde, haut.e.i));
-    out.push(coin("toit", null, F, -F.hw, F.hw, F.hd - g, F.hd, z, z + R.garde, z + R.garde, haut.e.i));
-    out.push(coin("toit", null, F, -F.hw, -F.hw + g, -F.hd + g, F.hd - g, z, z + R.garde, z + R.garde, haut.e.i));
-    out.push(coin("toit", null, F, F.hw - g, F.hw, -F.hd + g, F.hd - g, z, z + R.garde, z + R.garde, haut.e.i));
   } else if(ar.toit === "shed"){
-    /* les vitrages des dents regardent le NORD : une lumière égale, sans
-       éblouissement ni surchauffe — le repère est retourné s'il le faut */
-    F = long(rc); if(Math.sin(F.a) < 0) F.a += Math.PI; n = Math.max(1, Math.round(2 * F.hw / R.shed.pas));
+    F = long(rc); n = Math.max(1, Math.round(2 * F.hw / R.shed.pas));
     for(k = 0; k < n; k++){
       var a0 = -F.hw + k * 2 * F.hw / n;
       out.push(coin("toit", null, F, a0, a0 + 2 * F.hw / n, -F.hd, F.hd, z, z, z + R.shed.h, haut.e.i));
@@ -119,18 +110,6 @@ export function archiDe(v){
       out.push(coin("puits", "--f-eau", F, u - c2, u + c2, -c2, c2, z, zp + R.puits.h, zp + R.puits.h, haut.e.i));
     }
   }
-  if(ar.atrium){
-    /* la verrière au cœur du plan profond : un vide sur toute la hauteur */
-    F = long(rc);
-    var ad = F.hd * R.atrium.part, au = Math.min(F.hw * .6, ad * 2);
-    out.push(coin("puits", "--f-eau", F, -au, au, -ad, ad, z, z + R.atrium.h, z + R.atrium.h, haut.e.i));
-  }
-  if(ar.galerie >= 0) E.forEach(function(s, k){
-    if(k === 0) return;
-    var G = cote(s.rc, ar.galerie);
-    out.push(coin("galerie", null, G, -G.hw, G.hw, G.hd, G.hd + R.galerie.prof,
-      s.z0, s.z0 + R.galerie.ep, s.z0 + R.galerie.ep, s.e.i));
-  });
   if(ar.entree >= 0){
     F = cote(rez.rc, ar.entree);
     var L = Math.min(R.auvent.larg, F.hw * 1.2) / 2, za = rez.z0 + R.auvent.h;
@@ -160,4 +139,3 @@ export function jeuDe(v){
   var E = etagesDe(v).filter(function(s){ return s.n.lvl >= 0; });
   return E.length > 1 ? (E[1].e.dx || 0) : 0;
 }
-

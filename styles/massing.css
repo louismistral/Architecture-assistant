@@ -283,5 +283,3 @@ input.mass-lev__s{ inline-size:5.5em; text-align:right; }
 .plan-ar--sous{ stroke-dasharray:1.2 .8; }
 .mass-archi{ display:grid; gap:var(--s-1); padding-top:var(--s-2); border-top:1px solid var(--border-soft); }
 .mass-archi__t{ margin:0; font-size:var(--t-3xs); text-transform:uppercase; letter-spacing:.06em; color:var(--muted-foreground); }
-.mass-concept{ margin:0; padding:0; list-style:none; display:grid; gap:var(--s-2); font-size:var(--t-2xs); color:var(--soft-foreground); }
-.mass-concept b{ color:var(--foreground); font-weight:600; }
