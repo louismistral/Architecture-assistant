@@ -111,6 +111,10 @@ export var RULES = {
        mêmes cotes à chaque niveau — il s'empile. Deux volées de 1,20 m ; une
        gaine de 2,10 × 2,40 m pour une cabine accessible 1,10 × 1,40 m (SIA 500). */
     noyau: { prof: 5.0, volee: 1.20, asc: [2.10, 2.40] },
+    /* deux postes EN LIEN au schéma se tiennent, au plan, à moins de cette
+       distance (en équerre, de centre à centre, au même niveau et dans le
+       même bâtiment) — hypothèse de projet */
+    proche: 15,
     /* la pile que le cahier des charges suppose AVANT le mixer, pour compter ses
        cages : un rez et deux étages, ce que le règlement admet pour les classes.
        Le mixer, lui, compte les cages de la pile qu'il porte. */
