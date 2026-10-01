@@ -21,8 +21,9 @@ import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { MASS, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
   volRect, vu } from "../mass/model.js";
-import { admissible } from "../mass/gen.js";
+import { dansPerimetre } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
+import { archiDe, emprise } from "../mass/archi.js";
 
 var host = null, root = null, gVol = null, wired = false;
 var VUE = { cx: 88, cy: 61, w: 260 };      /* centre et largeur du champ, en mètres */
@@ -200,6 +201,11 @@ function dessineVol(g, v, k){
       if(!v.fix) DESSUS.appendChild(tirettes(rc));
     }
   }
+  /* L'architecture en trait fin : pans et dents du toit, lanterneaux, auvent,
+     rampe ; le sous-passage en pointillé. */
+  archiDe(v).forEach(function(c){
+    if(vu(c.i)) gv.appendChild(svg("path", { d: chemin(emprise(c), true), "class":"plan-ar plan-ar--" + c.k }));
+  });
   g.appendChild(gv);
 }
 function montresDe(v){ return v.lv.filter(function(e){ return vu(e.i); }); }
@@ -347,7 +353,7 @@ function wirePlan(){
       var v0 = volDe(MASS.sel);
       drag = { mode:"tourne", v:v0, a0:v0.a,
                th0:Math.atan2(w.y - v0.y, w.x - v0.x),
-               libre: admissible(v0, MASS.vol) ? 0 : 1 };
+               libre: dansPerimetre(v0) ? 0 : 1 };
       e.preventDefault();
       return;
     }
@@ -355,7 +361,7 @@ function wirePlan(){
     if(v){
       MASS.sel = v.id;
       drag = { mode:"bouge", v:v, dx:v.x - w.x, dy:v.y - w.y, live:false,
-               libre: admissible(v, MASS.vol) ? 0 : 1 };
+               libre: dansPerimetre(v) ? 0 : 1 };
       planDraw(); change("sel");
       e.preventDefault();
       return;
@@ -384,8 +390,8 @@ function wirePlan(){
     } else if(drag.mode === "bouge"){
       var nx = Math.round((w.x + drag.dx) * 10) / 10;
       var ny = Math.round((w.y + drag.dy) * 10) / 10;
-      /* Un bâtiment ne sort pas du périmètre du concours, et la souris n'y
-         change rien : la position visée est essayée, et si elle ne tient pas on
+      /* Un bâtiment ne sort pas du périmètre du concours — les distances aux
+         autres bâtiments, elles, ne bloquent pas : le contrôle les signale : la position visée est essayée, et si elle ne tient pas on
          essaie chaque axe SÉPARÉMENT. Le corps glisse alors le long de la
          limite au lieu de s'y arrêter net — c'est le geste qu'on attend d'un
          plan, et il n'y a rien à corriger après coup. */
@@ -396,11 +402,11 @@ function wirePlan(){
            rendu impossible de le ramener à la main. Dès qu'il tient, la règle
            reprend. */
         drag.v.x = nx; drag.v.y = ny;
-        if(admissible(drag.v, MASS.vol)) drag.libre = 0;
+        if(dansPerimetre(drag.v)) drag.libre = 0;
       }
-      else if(admissible(drag.v, MASS.vol, nx, ny, drag.v.a)){ drag.v.x = nx; drag.v.y = ny; }
-      else if(admissible(drag.v, MASS.vol, nx, drag.v.y, drag.v.a)) drag.v.x = nx;
-      else if(admissible(drag.v, MASS.vol, drag.v.x, ny, drag.v.a)) drag.v.y = ny;
+      else if(dansPerimetre(drag.v, nx, ny, drag.v.a)){ drag.v.x = nx; drag.v.y = ny; }
+      else if(dansPerimetre(drag.v, nx, drag.v.y, drag.v.a)) drag.v.x = nx;
+      else if(dansPerimetre(drag.v, drag.v.x, ny, drag.v.a)) drag.v.y = ny;
     } else {
       var th = Math.atan2(w.y - drag.v.y, w.x - drag.v.x);
       var a = drag.a0 + (th - drag.th0);
@@ -409,7 +415,7 @@ function wirePlan(){
       if(!e.shiftKey) a = Math.round(a / (Math.PI / 36)) * (Math.PI / 36);
       /* Tourner peut faire sortir autant que déplacer : l'angle qui ne tient
          pas n'est simplement pas pris. */
-      if(drag.libre || admissible(drag.v, MASS.vol, drag.v.x, drag.v.y, a)) drag.v.a = a;
+      if(drag.libre || dansPerimetre(drag.v, drag.v.x, drag.v.y, a)) drag.v.a = a;
     }
     drag.live = true;
     planDraw(); change("geo");

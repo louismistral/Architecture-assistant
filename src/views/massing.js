@@ -33,7 +33,8 @@ import { dePile } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { admissible, genMass, rectSol } from "../mass/gen.js";
+import { dansPerimetre, genMass, rectSol } from "../mass/gen.js";
+import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { objMassing } from "../mass/export.js";
 import { evaluationCourante } from "../mass/mesures.js";
 import { V, reculVise } from "../data/cadre.js";
@@ -600,7 +601,7 @@ function blocSel(){
       e0.dy = Math.round(x * 10) / 10;
       /* Un porte-à-faux ne fait pas sortir de la parcelle : s'il franchit la
          limite, il n'est pas pris. Le débord est permis, pas le hors-parcelle. */
-      if(!admissible(v, MASS.vol)){ e0.dy = av; pfi.value = String(av); }
+      if(!dansPerimetre(v)){ e0.dy = av; pfi.value = String(av); }
       redessine();
     });
     pfl.appendChild(pfi);
@@ -622,11 +623,64 @@ function blocSel(){
   e.appendChild(plus);
   b.appendChild(e);
 
+  b.appendChild(blocArchi(v));
+
   var c = el("button", "btn btn--quiet", "Centrer la vue dessus");
   c.type = "button";
   c.addEventListener("click", function(){ camVers(v); vue3dDraw(); });
   b.appendChild(c);
   return b;
+}
+/* L'ARCHITECTURE du volume : ce que le cube a de plus qu'une boîte. Les choix
+   vivent dans `v.ar`, la géométrie dans `mass/archi.js`. Porte-à-faux,
+   passerelles et étages se règlent plus haut et dans les leviers. */
+function blocArchi(v){
+  var d = el("div", "mass-archi"), ar = arDe(v);
+  d.appendChild(el("h4", "mass-archi__t", "Architecture"));
+  function poser(k, x){ var a = arDe(v); a[k] = x; v.ar = a; redessine(); }
+  function liste(lb, k, o){
+    var l = el("label", "mass-par"), sel = el("select", "mass-lev__s");
+    l.appendChild(el("span", "mass-par__n", lb));
+    o.forEach(function(x){
+      var op = el("option", null, x.n); op.value = String(x.id); op.selected = String(x.id) === String(ar[k]);
+      sel.appendChild(op);
+    });
+    sel.addEventListener("change", function(){ poser(k, k === "toit" ? sel.value : +sel.value); });
+    l.appendChild(sel);
+    d.appendChild(l);
+  }
+  function nombre(lb, val, u, min, max, pas, ok){
+    var l = el("label", "mass-par"), i = document.createElement("input");
+    l.appendChild(el("span", "mass-par__n", lb));
+    i.type = "number"; i.className = "mono"; i.min = min; i.max = max; i.step = pas; i.value = String(val);
+    i.addEventListener("change", function(){
+      var x = parseFloat(String(i.value).replace(",", "."));
+      if(!isFinite(x) || !ok(Math.max(+min, Math.min(+max, x)))) i.value = String(val);
+    });
+    l.appendChild(i);
+    l.appendChild(el("span", "mass-par__u", u));
+    d.appendChild(l);
+  }
+  var cotes = [{ id:-1, n:"Aucune" }].concat([0, 1, 2, 3].map(function(s){
+    return { id:s, n:"Façade " + capCote(v, s) };
+  }));
+  liste("Toiture", "toit", TOITS);
+  nombre("Puits de lumière", ar.puits, "", "0", "12", "1", function(x){ poser("puits", Math.round(x)); return true; });
+  liste("Entrée (auvent)", "entree", cotes);
+  liste("Rampe", "rampe", cotes);
+  liste("Sous-passage", "sous", [{ id:0, n:"Aucun" }, { id:1, n:"Au rez, de part en part" }]);
+  if(volNiv(v) > 1 && !v.fix){
+    nombre("Jeu de niveaux", jeuDe(v), "m", "-10", "10", "0.5", function(x){
+      var av = v.lv.map(function(e){ return e.dx || 0; });
+      jeuNiveaux(v, Math.round(x * 2) / 2);
+      /* comme le porte-à-faux : permis tant qu'il reste dans la parcelle */
+      if(!dansPerimetre(v)){ v.lv.forEach(function(e, k){ e.dx = av[k]; }); return false; }
+      redessine(); return true;
+    });
+  }
+  if(ar.sous) d.appendChild(el("p", "mass-note", "Le sous-passage traverse le rez : les "
+    + "locaux qu’il coupe restent comptés au programme, ils sont à reloger."));
+  return d;
 }
 function cote(host, lb, v, k){
   var l = el("label", "mass-par");

@@ -40,9 +40,11 @@
    ========================================================================= */
 import { dec } from "../core/format.js";
 import { reculVise } from "../data/cadre.js";
+import { RULES } from "../data/rules.js";
 import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain } from "./geom.js";
 import { MASS, etagesDe, niveaux, partiOf, pontEtage, volNom } from "./model.js";
+import { archiDe, faces } from "./archi.js";
 
 /* Un nom sans accent ni espace : Rhino en fait un nom de calque ou d'objet.
    « 1ᵉʳ étage » devient « 1er_etage » — la décomposition de compatibilité
@@ -146,6 +148,20 @@ export function objMassing(o){
     etagesDe(v).forEach(function(s){
       corps.push(function(){ boite(nomObj(volNom(v, k)), "Second_temps", s.rc, s.z0, s.z1); });
       nEt++;
+    });
+  });
+
+  /* --- l'architecture : toits, lanterneaux, auvents, rampes, sous-passages --- */
+  MASS.vol.forEach(function(v, k){
+    archiDe(v).forEach(function(c, j){
+      corps.push(function(){
+        out.push("o " + nomObj(volNom(v, k)) + "_" + c.k + "_" + (j + 1), "g Architecture");
+        faces(c).forEach(function(f){
+          var b = nv + 1;
+          f.forEach(function(p){ sommet(p[0], p[1], p[2]); });
+          out.push("f " + b + " " + (b + 1) + " " + (b + 2) + " " + (b + 3));
+        });
+      });
     });
   });
 

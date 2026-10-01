@@ -308,11 +308,18 @@ export function ecartVols(v, o, P, seuil){
   });
   return m;
 }
+/* Le corps tient dans le périmètre, recul compris — la seule règle que le geste
+   à la main respecte ; les distances, le contrôle les signale. */
+export function dansPerimetre(v, x, y, a){
+  var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a };
+  for(var i = 0; i < v.lv.length; i++)
+    if(!tientA(PER, volRect(P, v.lv[i]), recul() - .01)) return false;
+  return true;
+}
 export function admissible(v, vols, x, y, a){
   var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a };
   var i, j;
-  for(i = 0; i < v.lv.length; i++)
-    if(!tientA(PER, volRect(P, v.lv[i]), recul() - .01)) return false;
+  if(!dansPerimetre(v, P.x, P.y, P.a)) return false;
   for(i = 0; i < vols.length; i++){
     var o = vols[i];
     if(o === v) continue;

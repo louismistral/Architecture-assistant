@@ -27,6 +27,7 @@ import { STRIDE, cssRGB, themeKey, glDraw, glDrawStatic, glInit, glLibere, glSta
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { assise, coins, grille, terrain } from "../mass/geom.js";
+import { archiDe, faces } from "../mass/archi.js";
 import { MASS, cellules, etagesDe, famTok, filtreDe, mursDe, niveaux, pontEtage,
   volInt, volRect, vu } from "../mass/model.js";
 
@@ -250,6 +251,20 @@ function volMesh(){
         });
         aretes(M, q, z0, z0 + h - .12, edge);
       }
+    });
+  });
+  /* L'architecture de chaque volume — toit, lanterneaux, auvent, rampe,
+     sous-passage : `archiDe()` dit la géométrie, la 3D la pose. */
+  MASS.vol.forEach(function(v){
+    var edge = MASS.sel === v.id ? cSel : cEdge, n0 = [0, 0, 0];
+    archiDe(v).forEach(function(c){
+      if(!vu(c.i)) return;
+      var col = c.t ? teinte(c.t, .8) : v.ph ? teinte("--site-mono", .40) : cMono;
+      faces(c).forEach(function(f){
+        var g = f.map(function(p){ return [p[0], p[1], p[2] - ZBAS]; });
+        quad(M, g[0], g[1], g[2], g[3], col, 1);
+        for(var i = 0; i < 4; i++){ push(M.l, g[i], n0, edge, 1); push(M.l, g[(i + 1) % 4], n0, edge, 1); }
+      });
     });
   });
   /* Les passerelles : au niveau qu'elles desservent, posées sur la hauteur du

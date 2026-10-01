@@ -276,3 +276,10 @@ input.mass-lev__s{ inline-size:5.5em; text-align:right; }
 /* les tirettes : étirer un côté du volume choisi, à surface constante */
 .plan-tir__c{ fill:var(--card); stroke:var(--ring); stroke-width:.45; cursor:ew-resize; }
 .plan-tir__c:hover{ fill:var(--ring); }
+
+/* L'architecture d'un volume au plan : un trait fin, le sous-passage en tireté. */
+.plan-ar{ fill:none; stroke:var(--foreground); stroke-width:.25; pointer-events:none; }
+.plan-ar--puits{ fill:var(--f-eau); fill-opacity:.35; }
+.plan-ar--sous{ stroke-dasharray:1.2 .8; }
+.mass-archi{ display:grid; gap:var(--s-1); padding-top:var(--s-2); border-top:1px solid var(--border-soft); }
+.mass-archi__t{ margin:0; font-size:var(--t-3xs); text-transform:uppercase; letter-spacing:.06em; color:var(--muted-foreground); }
