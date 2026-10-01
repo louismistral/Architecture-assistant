@@ -8,7 +8,7 @@ import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../cor
 import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
 import { renduVue } from "./rendu.js";
-import { donneesTypo } from "../typo/donnees.js";
+import { donneesTypo, typoEcrire, typoRegle } from "../typo/donnees.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
@@ -211,7 +211,7 @@ export function render(){
      le massing à l'écran (`typo/donnees.js`), et porte le mode du site. */
   if(view.tab === "typologie"){
     massPrepare();
-    window.typoDonnees = donneesTypo;
+    window.typoDonnees = donneesTypo; window.typoEcrire = typoEcrire; window.typoRegle = typoRegle;
     var fr = el("iframe", "typo-cadre");
     fr.src = "src/typo/plans.html";
     fr.title = "Typologies — plans par niveau";
