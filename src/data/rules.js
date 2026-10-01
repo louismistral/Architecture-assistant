@@ -42,6 +42,20 @@ export var RULES = {
      sous-sol excavé garde au-dessus de la nappe — hypothèse de projet. */
   dist: { entre: 5, couverture: 3.0 },
 
+  /* --- l'architecture des volumes ---------------------------------------- */
+  /* Toitures, puits de lumière, entrées, rampes, sous-passages : des
+     hypothèses de dessin, pas du règlement — sauf la pente de rampe, 6 %
+     (SIA 500). Aucune ne touche une surface du programme. */
+  archi: {
+    pente: 0.35,                      /* toit à un ou deux pans, m par m */
+    shed: { pas: 6, h: 1.8 },         /* dents de scie */
+    vert: 0.40,                       /* épaisseur du toit végétalisé */
+    puits: { cote: 3, h: 1.0 },       /* lanterneau */
+    auvent: { larg: 10, prof: 4, h: 3.2, ep: 0.30 },
+    rampe: { larg: 2, pente: 0.06 },
+    sous: { larg: 6, h: 4 }
+  },
+
   /* --- hauteurs ---------------------------------------------------------- */
   /* `libre` : hauteurs libres EXIGÉES par le règlement, par famille ou par
      local. `dalle`, `mur` et `acrotere` sont des hypothèses de projet,
