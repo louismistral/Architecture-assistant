@@ -22,6 +22,7 @@
 
    L'orientation choisit, le jugement classe ; aucun ne sait rien de l'autre.
    ========================================================================= */
+import { concevoir } from "./concepts.js";
 import { ITEMBYKEY } from "../core/model.js";
 import { PER, SITE } from "../data/site.js";
 import { V, courExigee, recul, reculVise } from "../data/cadre.js";
@@ -653,6 +654,11 @@ export function genMass(graine){
     poserSecond(c.vols, r);
     if(ecarts(c.vols, false).length) retirerSecond(c.vols);
     if(ecarts(c.vols, false).length) return;
+    /* LE CONCEPT : la volumétrie valide devient un projet — une idée, et les
+       opérations qui la servent (`mass/concepts.js`). Un tirage à part : il ne
+       déplace pas celui de l'implantation. */
+    c.vols.concept = concevoir(c.vols, alea(g + 7919 * (props.length + 1)),
+      function(){ return !ecarts(c.vols, false).length; });
     var ev = evaluer(c.vols);
     c.vols.score = ev.jugement.total;
     c.vols.pref = c.pref;

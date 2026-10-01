@@ -188,6 +188,7 @@ function dessineRail(){
   railEl.appendChild(blocParti());
   railEl.appendChild(blocParams());
   railEl.appendChild(blocAffichage());
+  railEl.appendChild(blocConcept());
   railEl.appendChild(blocSel());
   railEl.appendChild(blocBilan());
   railEl.appendChild(blocAlertes());
@@ -546,6 +547,23 @@ function court(l){
 /* --- le volume choisi : ce qu'on peut lui faire à la main ---
    Déplacer et tourner se font dans le plan ; les cotes et le nombre d'étages
    se saisissent, parce qu'un demi-mètre ne se tire pas à la souris. */
+/* LE CONCEPT de la volumétrie : son idée, et chaque opération avec sa raison.
+   Le volume choisi les reprend une à une dans son bloc Architecture. */
+function blocConcept(){
+  var k = MASS.vol.concept;
+  if(!k) return document.createDocumentFragment();
+  var b = bloc("Concept", el("i", "chip chip--soft", k.n));
+  b.appendChild(el("p", "mass-note", k.idee));
+  var ul = el("ul", "mass-concept");
+  k.ops.forEach(function(o){
+    var li = el("li");
+    li.appendChild(el("b", null, o.n));
+    li.appendChild(el("span", null, " — " + o.txt));
+    ul.appendChild(li);
+  });
+  b.appendChild(ul);
+  return b;
+}
 function blocSel(){
   var v = MASS.sel ? volDe(MASS.sel) : null;
   var b = bloc("Volume", v ? el("i", "chip chip--soft",
@@ -668,6 +686,8 @@ function blocArchi(v){
   nombre("Puits de lumière", ar.puits, "", "0", "12", "1", function(x){ poser("puits", Math.round(x)); return true; });
   liste("Entrée (auvent)", "entree", cotes);
   liste("Rampe", "rampe", cotes);
+  if(volNiv(v) > 1) liste("Coursives aux étages", "galerie", cotes);
+  liste("Verrière (atrium)", "atrium", [{ id:0, n:"Aucune" }, { id:1, n:"Au cœur du plan" }]);
   liste("Sous-passage", "sous", [{ id:0, n:"Aucun" }, { id:1, n:"Au rez, de part en part" }]);
   if(volNiv(v) > 1 && !v.fix){
     nombre("Jeu de niveaux", jeuDe(v), "m", "-10", "10", "0.5", function(x){
