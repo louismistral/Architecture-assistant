@@ -8,6 +8,7 @@ import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../cor
 import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
 import { renduVue } from "./rendu.js";
+import { donneesTypo } from "../typo/donnees.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
@@ -206,8 +207,11 @@ export function render(){
   }
 
   /* Les typologies : le générateur de plans par niveau, page à part
-     (`src/typo/plans.html`), montré dans l'onglet. Il porte le mode du site. */
+     (`src/typo/plans.html`), montré dans l'onglet. Il lit la pile du mixer et
+     le massing à l'écran (`typo/donnees.js`), et porte le mode du site. */
   if(view.tab === "typologie"){
+    massPrepare();
+    window.typoDonnees = donneesTypo;
     var fr = el("iframe", "typo-cadre");
     fr.src = "src/typo/plans.html";
     fr.title = "Typologies — plans par niveau";
