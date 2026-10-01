@@ -60,6 +60,9 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .non{margin:0;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
 .non li{display:flex;justify-content:space-between;gap:8px}
 .non li span:last-child{font-family:var(--font-mono);color:var(--warn)}
+.ctl{margin:0;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:5px}
+.ctl li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}
+.ctl li small{grid-column:2;color:var(--ink-soft);font-size:11.5px}
 .legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:12px}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid var(--ink-soft)}
 .note{font-size:12px;color:var(--ink-soft);margin:0}
@@ -94,8 +97,8 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right
 /* ---- le dessin ---- */
 .mur{fill:var(--ink)}
 .circ{fill:var(--paper-2)}
-.room{stroke:var(--ink);stroke-width:.12}
-.cell{stroke:var(--ink);stroke-width:.08}
+.room{stroke:var(--ink);stroke-width:.10}
+.cell{stroke:var(--ink);stroke-width:.10}
 .fam-cla{fill:color-mix(in oklab,var(--f-cla) var(--wash),var(--paper))}
 .fam-adm{fill:color-mix(in oklab,var(--f-adm) var(--wash),var(--paper))}
 .fam-eau{fill:color-mix(in oklab,var(--f-eau) var(--wash),var(--paper))}
@@ -106,9 +109,10 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right
 .fam-ext{fill:color-mix(in oklab,var(--f-ext) var(--wash),var(--paper))}
 .mono .room,.mono .cell{fill:var(--paper)}
 .room:hover,.cell:hover{fill:color-mix(in oklab,var(--accent) 22%,var(--paper))}
-.libre{fill:url(#hach);stroke:var(--ink);stroke-width:.08}
-.cagef{fill:var(--paper);stroke:var(--ink);stroke-width:.12}
-.part{stroke:var(--ink);stroke-width:.12;fill:none}
+.libre{fill:url(#hach);stroke:var(--ink);stroke-width:.10}
+.cagef{fill:var(--paper);stroke:var(--ink);stroke-width:.10}
+.part{stroke:var(--ink);stroke-width:.10;fill:none}
+/* on coupe dans les murs : ils sont pochés, plein noir — 50 cm dehors, 10 cm dedans */
 .gap{fill:var(--paper-2)}
 .gapw{fill:var(--paper)}
 .porte{stroke:var(--ink);fill:none;stroke-width:.7;vector-effect:non-scaling-stroke}
@@ -170,6 +174,10 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right
     <div class="grp">
       <span class="lbl">Bilan du niveau</span>
       <div class="bilan" id="bilan"></div>
+    </div>
+    <div class="grp">
+      <span class="lbl">Contrôle — toute la pile</span>
+      <ul class="ctl" id="ctl"></ul>
     </div>
     <div class="grp" id="non-g">
       <span class="lbl">Non posé à ce niveau</span>
@@ -233,7 +241,14 @@ try { DATA = parent !== window && parent.typoDonnees ? parent.typoDonnees() : nu
    - halls traversants ; locaux dont le front dépasserait 12,5 m en pleine profondeur ;
    - les petits locaux d'un chapitre se groupent en blocs qui comblent les restes. */
 var PG = (function(){
-  var COULOIR = 2.40, MUR = 0.50, CAGE_A = 24, FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6;
+  /* les règles du projet, données par l'onglet (`typo/donnees.js`) */
+  var R0 = (typeof DATA !== "undefined" && DATA && DATA.regles) || {};
+  var COULOIR = R0.couloir || 2.40, MUR = R0.mur || 0.50, CLOISON = R0.cloison || 0.10,
+      CAGE_A = R0.cage || 24, NOY = R0.noyau || { prof:5, volee:1.2, asc:[2.1, 2.4] },
+      FEU = R0.feu || { cageSeuil:900, fuiteSimple:35, fuiteDouble:50 },
+      FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6;
+  /* l'ordre des familles : les pièces d'une famille se posent ensemble */
+  var FAMS_O = ["cla", "uap", "adm", "eau", "spo", "tec", "pis", "ext"];
 
   function chapOf(key){ return key.split("|")[0]; }
   function local(cx, cy, a, x, y){
@@ -261,25 +276,124 @@ var PG = (function(){
   /* la bande A (y local < 0) regarde (sin a, −cos a) ; le sud est (0, −1) */
   function bandeSud(f){ return Math.cos(f.a) > 0 ? "A" : "B"; }
 
-  /* la position du couloir : la profondeur de bande qui loge le plus de locaux courants */
-  function regler(f, uStar, cageIn){
-    var c = COULOIR, Z = f.zr - f.zl;
-    if(!f.deux){
-      f.bb = { B:f.D - c }; f.yc0 = -f.D / 2; f.yc1 = -f.D / 2 + c; return;
-    }
-    var tot = f.D - c, best = null;
-    for(var bA = BMIN; bA <= tot - BMIN + 1e-9; bA += 0.05){
-      var bB = tot - bA, s = 0;
-      [["A", bA], ["B", bB]].forEach(function(p){
-        var len = Z - (cageIn === p[0] ? CAGE_A / p[1] : 0), w = uStar / p[1];
-        if(w / p[1] > 1.6 || p[1] / w > 1.6) return;      /* proportions de salle */
-        s += Math.floor(len / w + 1e-6) * 1000 + (len - Math.floor(len / w + 1e-6) * w < 1.4 ? 50 : 0);
+  /* L'OSSATURE D'UN CORPS, une fois pour toute sa pile : la position du couloir
+     et les noyaux (escalier + ascenseur), dans le repère du VOLUME. Chaque
+     niveau la relit : le couloir et les noyaux s'empilent, l'escalier garde
+     ses cotes d'un étage à l'autre. Le couloir se place là où la salle
+     courante de 72 m² tombe le plus juste ; un second noyau s'ajoute quand
+     l'étage dépasse le seuil AEAI ou la longueur d'évacuation. */
+  var OSS = {}, HOTES = null;
+  /* LES NOYAUX D'UN BÂTIMENT. Les corps d'un même bâtiment (`bat`) s'accolent
+     et leurs couloirs se prolongent : un noyau dessert tout le bâtiment au
+     niveau où il est. On en pose dans le corps le plus haut, puis dans tout
+     corps qui porte un niveau que les noyaux posés ne desservent pas, puis un
+     second quand l'étage du bâtiment dépasse le seuil AEAI ou que le
+     bâtiment est plus long que la voie d'évacuation simple. Un noyau se pose
+     au bout du corps le plus éloigné du centre du bâtiment. */
+  function hotes(vols){
+    if(HOTES) return HOTES;
+    HOTES = {};
+    var G = {};
+    vols.forEach(function(v){ if(!v.lv.some(function(e){ return e.keys; })) (G[v.bat || v.id] = G[v.bat || v.id] || []).push(v); });
+    Object.keys(G).forEach(function(k){
+      var g = G[k], M = g.filter(function(v){ return v.lv.length > 1; });
+      if(!M.length) return;
+      M.sort(function(p, q){ return (q.lv.length - p.lv.length) || (q.lv[0].w * q.lv[0].d - p.lv[0].w * p.lv[0].d); });
+      var cx = 0, cy = 0; g.forEach(function(v){ cx += v.x / g.length; cy += v.y / g.length; });
+      var pris = [M[0]], niv = {};
+      M[0].lv.forEach(function(e){ niv[e.i] = 1; });
+      M.forEach(function(v){
+        if(pris.indexOf(v) < 0 && v.lv.some(function(e){ return !niv[e.i]; })){ pris.push(v); v.lv.forEach(function(e){ niv[e.i] = 1; }); }
       });
-      s -= Math.abs(bA - bB) * 2;
-      if(!best || s > best.s) best = { s:s, bA:bA, bB:bB };
+      /* hors du rez — d'où l'on sort par la façade —, chaque point d'un niveau
+         doit tenir la voie d'évacuation jusqu'à un noyau ; chaque niveau de plus
+         de 900 m² en veut deux. On ajoute le corps le plus mal desservi tant
+         que ce n'est pas tenu. */
+      var LV = (typeof DATA !== "undefined" && DATA) ? DATA.floors : [];
+      function horsRez(i){ return !LV[i] || LV[i].lvl !== 0; }
+      function coins4(v, e){ var w = e.w / 2, d = e.d / 2, dx = e.dx || 0, dy = e.dy || 0;
+        return [[-w, -d], [w, -d], [w, d], [-w, d]].map(function(q){ return local(v.x, v.y, v.a, q[0] + dx, q[1] + dy); }); }
+      /* le corps à ajouter : celui qui, parmi les corps à étages pas encore
+         équipés, est le plus près du point le plus mal desservi */
+      function manque(){
+        var aire = {}, pire = null, pd = 0;
+        g.forEach(function(v){ v.lv.forEach(function(e){ aire[e.i] = (aire[e.i] || 0) + e.w * e.d; }); });
+        g.forEach(function(v){
+          v.lv.forEach(function(e){
+            if(!horsRez(e.i)) return;
+            var H = pris.filter(function(h){ return h.lv.some(function(x){ return x.i === e.i; }); });
+            var lim = H.length > 1 ? FEU.fuiteDouble : FEU.fuiteSimple;
+            coins4(v, e).forEach(function(c){
+              var d = Infinity;
+              H.forEach(function(h){ d = Math.min(d, Math.abs(c[0] - h.x) + Math.abs(c[1] - h.y)); });
+              var ex = Math.max(d - lim, aire[e.i] > FEU.cageSeuil && H.length < 2 ? 1 : 0);
+              if(ex <= pd) return;
+              var cand = M.filter(function(u){ return pris.indexOf(u) < 0 && u.lv.some(function(x){ return x.i === e.i; }); })
+                .sort(function(p, q){ return Math.hypot(p.x - c[0], p.y - c[1]) - Math.hypot(q.x - c[0], q.y - c[1]); })[0];
+              if(cand){ pd = ex; pire = cand; }
+            });
+          });
+        });
+        return pire;
+      }
+      for(var t = 0, add; t < M.length && (add = manque()); t++) pris.push(add);
+      var aire1 = 0; M[0].lv.forEach(function(e){ aire1 = Math.max(aire1, e.w * e.d); });
+      var deux = pris.length < 2 && (aire1 > FEU.cageSeuil || M[0].lv[0].w > FEU.fuiteSimple) && g.length === 1;
+      pris.forEach(function(v){ HOTES[v.id] = { n:deux ? 2 : 1, cx:cx, cy:cy, seul:pris.length < 2 }; });
+    });
+    return HOTES;
+  }
+  function ossature(v, vols){
+    if(OSS[v.id]) return OSS[v.id];
+    var c = COULOIR, cnt = {};
+    v.lv.forEach(function(e){ cnt[e.d] = (cnt[e.d] || 0) + 1; });
+    var ref = v.lv.slice().sort(function(p, q){ return (cnt[q.d] - cnt[p.d]) || (q.w - p.w); })[0];
+    var D = ref.d, deux = D >= 14, sud = deux ? bandeSud({ a:v.a }) : "B", nord = deux ? (sud === "A" ? "B" : "A") : "B";
+    var lo = -Infinity, hi = Infinity, aire = 0;
+    v.lv.forEach(function(e){
+      lo = Math.max(lo, (e.dx || 0) - e.w / 2); hi = Math.min(hi, (e.dx || 0) + e.w / 2);
+      aire = Math.max(aire, e.w * e.d);
+    });
+    var h = hotes(vols)[v.id], n = h ? h.n : 0;
+    /* le noyau a une largeur fixe — deux volées, la gaine, une cloison — et
+       prend toute la profondeur de sa bande : la même à tous les niveaux */
+    var W = 2 * NOY.volee + 0.10 + NOY.asc[0] + CLOISON;
+    var bA = 0;
+    if(deux){
+      var tot = D - c, best = null;
+      for(var b = BMIN; b <= tot - BMIN + 1e-9; b += 0.05){
+        var s = 0;
+        /* chaque niveau compte : la salle courante doit tomber juste partout */
+        v.lv.forEach(function(e){
+          [[b, sud === "A" ? 0 : n], [tot - b, sud === "A" ? n : 0]].forEach(function(p){
+            var w = 72 / p[0], Z = e.w - p[1] * W;
+            if(w / p[0] > 1.6 || p[0] / w > 1.6) return;
+            s += Math.floor(Z / w + 1e-6) * 1000 + (Z - Math.floor(Z / w + 1e-6) * w < 1.4 ? 50 : 0);
+          });
+        });
+        s -= Math.abs(2 * b - tot) * 2;
+        if(!best || s > best.s) best = { s:s, b:b };
+      }
+      bA = best.b;
     }
-    f.bb = { A:best.bA, B:best.bB };
-    f.yc0 = -f.D / 2 + best.bA; f.yc1 = f.yc0 + c;
+    var yc0 = (ref.dy || 0) - D / 2 + bA, bmin = Infinity;
+    v.lv.forEach(function(e){
+      var y0 = (e.dy || 0) - e.d / 2, y1 = (e.dy || 0) + e.d / 2;
+      bmin = Math.min(bmin, nord === "A" ? yc0 - y0 : y1 - (yc0 + c));
+    });
+    var H = bmin, noyaux = [];
+    /* le bout du corps le plus loin du centre du bâtiment */
+    var gauche = true;
+    if(h){
+      var pg = local(v.x, v.y, v.a, lo, 0), pd = local(v.x, v.y, v.a, hi, 0);
+      /* seul noyau du bâtiment : au bout le plus près du centre ; sinon au plus loin */
+      var loin = Math.hypot(pg[0] - h.cx, pg[1] - h.cy) >= Math.hypot(pd[0] - h.cx, pd[1] - h.cy);
+      gauche = h.seul ? !loin : loin;
+    }
+    if(n >= 1 && H >= NOY.prof) noyaux.push({ x0:gauche ? lo : hi - W, W:W, H:H });
+    if(n === 2 && H >= NOY.prof && hi - lo > 2 * W + 6) noyaux.push({ x0:gauche ? hi - W : lo, W:W, H:H });
+    noyaux.sort(function(p, q){ return p.x0 - q.x0; });
+    return (OSS[v.id] = { deux:deux, sud:sud, nord:nord, yc0:yc0, noyaux:noyaux, n:n });
   }
 
   function genNiveau(D0, parti, i){
@@ -313,7 +427,7 @@ var PG = (function(){
       else if(chap === "uape" && ancre) L.sort(function(p, q){ return dist(q, ancre) - dist(p, ancre); });
       return L;
     }
-    function reste(f){ var u = f.cageRes || 0; f.trav.concat(f.full).forEach(function(r){ u += r.W; }); return f.L - u; }
+    function reste(f){ var u = 0; f.trav.concat(f.full).forEach(function(r){ u += r.W; }); return f.zr - f.zl - u; }
 
     var bTyp = (F[0].D - COULOIR) / 2;
     var trav = [], full = [], band = [];
@@ -323,15 +437,24 @@ var PG = (function(){
       else band.push(u);
     });
 
-    /* les cages : autant que le mixer en compte, dans les plus grands volumes à étages */
-    var nCages = Math.max(1, Math.round(((fl.circ && fl.circ.cages) || 24) / CAGE_A));
-    var tot = function(v){ var a = 0; v.lv.forEach(function(e){ a += e.w * e.d; }); return a; };
-    var ici = F.map(function(f){ return f.v.id; });
-    var avecCage = vols.filter(function(v){ return v.lv.length > 1 && ici.indexOf(v.id) >= 0; })
-      .sort(function(p, q){ return tot(q) - tot(p); }).slice(0, nCages).map(function(v){ return v.id; });
-    if(D0.floors.length > 1 && !avecCage.length) avecCage = [F.slice().sort(function(p, q){ return q.L * q.D - p.L * p.D; })[0].v.id];
-
-    F.forEach(function(f){ f.cageRes = avecCage.indexOf(f.v.id) >= 0 ? 4.5 : 0; });
+    /* l'ossature de chaque corps : couloir, bandes, noyaux — la même à tous ses niveaux */
+    F.forEach(function(f){
+      var o = ossature(f.v, vols), e = f.e, c = COULOIR;
+      f.deux = o.deux; f.sud = o.sud; f.nord = o.nord;
+      if(f.deux){ f.yc0 = o.yc0 - (e.dy || 0); f.yc1 = f.yc0 + c; f.bb = { A:f.yc0 + f.D / 2, B:f.D / 2 - f.yc1 }; }
+      else { f.yc0 = -f.D / 2; f.yc1 = f.yc0 + c; f.bb = { B:f.D - c }; }
+      /* un niveau trop différent du reste de la pile ne tient pas l'ossature :
+         il est posé seul, sans noyau, et le contrôle le dit */
+      f.horsAxe = Object.keys(f.bb).some(function(k){ return f.bb[k] < 2.5; });
+      if(f.horsAxe){ f.deux = false; f.sud = f.nord = "B"; f.yc0 = -f.D / 2; f.yc1 = f.yc0 + c; f.bb = { B:f.D - c }; }
+      f.cages = f.horsAxe ? [] : o.noyaux.map(function(n){
+        return { bande:f.nord, x0:n.x0 - (e.dx || 0), W:n.W, H:Math.min(n.H, f.bb[f.nord]) };
+      });
+      var mil = 0;
+      f.zl = -f.L / 2; f.zr = f.L / 2;
+      f.cages.forEach(function(k){ if(k.x0 + k.W / 2 < mil) f.zl = Math.max(f.zl, k.x0 + k.W); else f.zr = Math.min(f.zr, k.x0); });
+      f.cageRes = 0; f.cages.forEach(function(k){ f.cageRes += k.W; });
+    });
 
     /* les grands locaux, en pleine profondeur, au bout des volumes */
     full.sort(function(p, q){ return p.a - q.a; });
@@ -366,34 +489,34 @@ var PG = (function(){
       if(!ok) band.push(u);
     });
 
-    /* la surface courante de ce niveau, pour régler le couloir */
-    var freq = {};
-    band.forEach(function(u){ if(u.a >= PETIT) freq[u.a] = (freq[u.a] || 0) + u.a; });
-    var uStar = 72, fm = 0;
-    Object.keys(freq).forEach(function(k){ if(freq[k] > fm){ fm = freq[k]; uStar = +k; } });
-
     F.forEach(function(f){
-      var x = -f.L / 2;
+      var x = f.zl;
       f.trav.forEach(function(r){ r.x0 = x; r.H = f.D; r.frame = "full"; x += r.W; f.rooms.push(r); });
-      var xr = f.L / 2;
+      var xr = f.zr;
       f.full.forEach(function(r){ xr -= r.W; r.x0 = xr; r.H = f.D; r.frame = "full"; f.rooms.push(r); });
-      f.zl = x; f.zr = xr;
-      f.sud = f.deux ? bandeSud(f) : "B"; f.nord = f.deux ? (f.sud === "A" ? "B" : "A") : "B";
-      var cage = avecCage.indexOf(f.v.id) >= 0 && f.zr - f.zl > 3.4;
-      regler(f, uStar, cage ? f.nord : null);
+      /* les bandes : entre halls et grands locaux, et de part et d'autre des noyaux */
+      var g = f.cages.filter(function(k){ return k.x0 + k.W / 2 < 0; })[0];
+      var d = f.cages.filter(function(k){ return k.x0 + k.W / 2 >= 0; })[0], L2 = f.L / 2, N = f.nord;
       f.bandes = {};
-      Object.keys(f.bb).forEach(function(k){ f.bandes[k] = [[f.zl, f.zr]]; });
-      if(cage){
-        var W = CAGE_A / f.bb[f.nord];
-        var cx = Math.max(f.zl + W / 2, Math.min(f.zr - W / 2, -(f.e.dx || 0)));
-        f.cages.push({ bande:f.nord, x0:cx - W / 2, W:W, H:f.bb[f.nord] });
-        prendre(f, f.nord, cx - W / 2, W);
-      }
+      Object.keys(f.bb).forEach(function(k){
+        var iv = k === N
+          ? [[-L2, g ? g.x0 : -L2], [g ? g.x0 + g.W : -L2, f.zl], [x, xr], [f.zr, d ? d.x0 : L2], [d ? d.x0 + d.W : L2, L2]]
+          : [[-L2, f.zl], [x, xr], [f.zr, L2]];
+        f.bandes[k] = iv.filter(function(t){ return t[1] - t[0] > 0.05; }).reduce(function(m, t){
+          var d0 = m[m.length - 1];
+          if(d0 && t[0] <= d0[1] + 1e-6) d0[1] = Math.max(d0[1], t[1]); else m.push(t.slice());
+          return m;
+        }, []);
+      });
+      /* entre le noyau et la façade, ce qui reste de la bande */
+      f.cages.forEach(function(k){
+        var r = f.bb[N] - k.H;
+        if(r > 0.05) f.libre.push({ frame:N, x0:k.x0, v0:k.H, W:k.W, H:r, a:k.W * r });
+      });
     });
 
-    /* les bandes au plus juste, chapitre par chapitre */
-    var ordre = { cla:0, uap:1, adm:2, eau:3, spo:4, tec:5, pis:6, ext:7 };
-    var enseigne = function(u){ return u.f === "cla" || u.f === "uap"; };
+    /* les bandes au plus juste, FAMILLE par famille : les pièces d'une famille
+       se suivent, la suivante reprend où elle s'arrête */
     var grands = band.filter(function(u){ return u.a >= PETIT; });
     var petits = band.filter(function(u){ return u.a < PETIT; });
     function poser(f, bk, it, x){
@@ -402,37 +525,40 @@ var PG = (function(){
                      key:it.key, n:it.n, f:it.f, lab:it.lab, cab:it.cab });
       return W;
     }
-    ["sport", "uape", "ecole", "tech", "infra"].forEach(function(chap){
-      ordreVol(chap).forEach(function(f){
+    var chapDe = { spo:"sport", uap:"uape" };
+    FAMS_O.forEach(function(fam){
+      ordreVol(chapDe[fam] || "ecole").forEach(function(f){
         (f.deux ? [f.sud, f.nord] : ["B"]).forEach(function(bk){
           f.bandes[bk].forEach(function(iv){
-            var cand = grands.filter(function(u){ return u.chap === chap; });
-            var sud = bk === f.sud && f.deux;
-            cand.sort(function(p, q){ return sud ? (enseigne(q) - enseigne(p)) : (enseigne(p) - enseigne(q)); });
+            var cand = grands.filter(function(u){ return u.f === fam; });
+            if(!cand.length) return;
             var pick = sac(cand, iv[1] - iv[0], f.bb[bk]);
-            pick.sort(function(p, q){ return (ordre[p.f] - ordre[q.f]) || (q.a - p.a); });
+            pick.sort(function(p, q){ return q.a - p.a; });
             pick.forEach(function(it){ iv[0] += poser(f, bk, it, iv[0]); grands.splice(grands.indexOf(it), 1); });
           });
         });
       });
     });
     grands.forEach(function(u){ petits.push(u); });
-    var chapO = { ecole:0, uape:1, sport:2, tech:3, infra:4 };
-    petits.sort(function(p, q){ return (chapO[p.chap] - chapO[q.chap]) || (q.a - p.a); });
+    petits.sort(function(p, q){ return (FAMS_O.indexOf(p.f) - FAMS_O.indexOf(q.f)) || (q.a - p.a); });
     F.forEach(function(f){
       Object.keys(f.bandes).forEach(function(bk){
         var b = f.bb[bk];
         f.bandes[bk].forEach(function(iv){
-          if(iv[1] - iv[0] < 1.4) return;
-          var cap = (iv[1] - iv[0]) * b, pris = [], a = 0;
-          petits.slice().forEach(function(u){
-            if(a + u.a <= cap + 1e-6 && pris.length < 8){ pris.push(u); a += u.a; petits.splice(petits.indexOf(u), 1); }
-          });
-          if(!pris.length) return;
-          if(pris.length === 1 && pris[0].a >= PETIT){ iv[0] += poser(f, bk, pris[0], iv[0]); return; }
-          var W = a / b;
-          f.rooms.push({ a:a, W:W, H:b, x0:iv[0], frame:bk, kind:"bloc", cel:treemap(pris, W, b), f:pris[0].f });
-          iv[0] += W;
+          /* tant qu'il reste de la place : un bloc d'UNE famille, la première
+             dont une pièce tient encore */
+          while(iv[1] - iv[0] >= 1.4){
+            var cap = (iv[1] - iv[0]) * b, pris = [], a = 0;
+            var tient = petits.filter(function(u){ return u.a <= cap + 1e-6; })[0];
+            if(!tient) break;
+            petits.slice().forEach(function(u){
+              if(u.f === tient.f && a + u.a <= cap + 1e-6 && pris.length < 8){ pris.push(u); a += u.a; petits.splice(petits.indexOf(u), 1); }
+            });
+            if(pris.length === 1 && pris[0].a >= PETIT){ iv[0] += poser(f, bk, pris[0], iv[0]); continue; }
+            var W = a / b;
+            f.rooms.push({ a:a, W:W, H:b, x0:iv[0], frame:bk, kind:"bloc", cel:treemap(pris, W, b), f:pris[0].f });
+            iv[0] += W;
+          }
         });
       });
     });
@@ -501,7 +627,7 @@ var PG = (function(){
   function versMonde(f, x, y){ return local(f.cx, f.cy, f.a, x, y); }
 
   return { genNiveau:genNiveau, local:local, versEtage:versEtage, versMonde:versMonde,
-           COULOIR:COULOIR, MUR:MUR };
+           ossature:ossature, hotes:hotes, COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU };
 })();
 if(typeof module !== "undefined") module.exports = PG;
 
@@ -746,14 +872,22 @@ var MEUBLES = (function(){
     o.push(R(W / 2, 0.06, 0.6, 0.5, "eq"));
     return o;
   }
+  /* le NOYAU : l'escalier à deux volées et, à côté, la gaine d'ascenseur côté
+     façade, le palier commun côté couloir. Ses cotes sont celles du projet
+     (`RULES.circ.noyau`) : elles ne changent pas d'un étage à l'autre. */
   function cage(W, H){
-    /* deux volées de 1,20 m, palier côté couloir et côté façade, ascenseur 1,6 × 1,8 */
-    var o = [], fw = Math.min(1.2, (W - 0.15) / 2), pal = 1.5;
-    var v0 = pal, v1 = H - pal - (H > 7 ? 0.4 : 0);
-    o.push(L(fw + 0.075, v0, fw + 0.075, v1, "pat"));
-    for(var v = v0; v <= v1 + 1e-6; v += 0.28){ o.push(L(0, v, fw, v, "marche")); o.push(L(W - fw, v, W, v, "marche")); }
+    var o = [], A = PG.NOY.asc, c = PG.CLOISON;
+    var wa = Math.min(A[0], W * 0.45), ws = W - wa - c;
+    var fw = Math.min(PG.NOY.volee, (ws - 0.1) / 2), pal = Math.min(1.5, H * 0.3);
+    var v0 = pal, v1 = H - 0.15;
+    o.push(L(fw + 0.05, v0, fw + 0.05, v1, "pat"));
+    for(var v = v0; v <= v1 + 1e-6; v += 0.28){ o.push(L(0, v, fw, v, "marche")); o.push(L(ws - fw, v, ws, v, "marche")); }
     o.push(L(fw / 2, v0 + 0.2, fw / 2, v1 - 0.2, "fleche"));
-    if(H - v1 > 1.8) o.push(R((W - 1.6) / 2, v1 + 0.15, Math.min(1.6, W - 0.2), Math.min(1.8, H - v1 - 0.2), "asc"));
+    o.push(R(ws, Math.max(0, H - Math.min(A[1], H - 1.4) - c), c, Math.min(A[1], H - 1.4) + c, "tab"));
+    var ha = Math.min(A[1], H - 1.4);
+    o.push(R(ws + c, H - ha, wa, ha, "asc"));
+    o.push(L(ws + c, H - ha, W, H, "ch")); o.push(L(W, H - ha, ws + c, H, "ch"));
+    o.push(R(ws + c, H - ha - c, wa, c, "tab"));
     return o;
   }
 
@@ -903,16 +1037,16 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       f.cages.forEach(function(c){
         cagesA += c.W * c.H;
         out.rooms.push('<polygon class="cagef" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, c.bande, c.x0, 0, 0, c.W, c.H)) + '"/>');
-        INFO.push({ lab:"Escalier et ascenseur", n:"Cage d'escalier", a:c.W * c.H, W:c.W, H:c.H, f:"" });
+        INFO.push({ lab:"Noyau · escalier et ascenseur", n:"Noyau de circulation", a:c.W * c.H, W:c.W, H:c.H, f:"" });
         meubles(f, c.bande, c.x0, { kind:"cage" }, 0, 0, c.W, c.H);
         porte(f, c.bande, c.x0, c.W - 0.15, 0, 1.2);
-        etiquette(f, c.bande, c.x0, 0, 0, c.W, c.H, "Cage", c.W * c.H, true);
+        etiquette(f, c.bande, c.x0, 0, 0, c.W, c.H, "Noyau", c.W * c.H, true);
       });
       f.libre.forEach(function(l){
         libreA += l.a;
-        out.rooms.push('<polygon class="libre" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, l.frame, l.x0, 0, 0, l.W, l.H)) + '"/>');
+        out.rooms.push('<polygon class="libre" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, l.frame, l.x0, 0, l.v0 || 0, l.W, l.H)) + '"/>');
         INFO.push({ lab:"Réserve", n:"Surface que le programme ne remplit pas", a:l.a, W:l.W, H:l.H, f:"" });
-        if(l.W > 1.2) etiquette(f, l.frame, l.x0, 0, 0, l.W, l.H, "Réserve", l.a, false);
+        if(l.W > 1.2 && l.H > 1.2) etiquette(f, l.frame, l.x0, 0, l.v0 || 0, l.W, l.H, "Réserve", l.a, false);
       });
 
       /* cotes hors tout, murs compris */
@@ -1132,12 +1266,82 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       '<span>Part posée</span><span class="v"><span class="pill ' + (taux > 0.995 ? "ok" : "warn") + '">' + fmt(100 * taux, 0) + ' %</span></span>' +
       '<span class="sep"></span>' +
       '<span>Couloirs dessinés</span><span class="v">' + fmt(circDessinee, 0) + ' m²</span>' +
-      '<span>Cages</span><span class="v">' + fmt(cagesA, 0) + ' m²</span>' +
+      '<span>Noyaux (escalier + ascenseur)</span><span class="v">' + fmt(cagesA, 0) + ' m²</span>' +
       '<span>Circulation estimée au mixer</span><span class="v">' + fmt(mix, 0) + ' m²</span>' +
       '<span>Réserve non affectée</span><span class="v">' + fmt(libreA, 0) + ' m²</span>';
     $("non-g").hidden = !res.non.length;
     $("non").innerHTML = res.non.map(function(u){ return '<li><span>' + esc(u.lab) + '</span><span>' + fmt(u.a) + ' m²</span></li>'; }).join("");
+    $("ctl").innerHTML = controle();
     if(recadrer || !vb) cadrer();
+  }
+
+  /* ---------- le contrôle : toute la pile, pas seulement le niveau montré ---------- */
+  var CTL = null;
+  function controle(){
+    if(CTL) return CTL;
+    var tous = DATA.floors.map(function(_, i){ return PG.genNiveau(DATA, st.parti, i); }), L = [];
+    var vols = DATA.partis[st.parti].vols, F0 = PG.FEU;
+    function nom(v){ return v.nom || String(v.id).toUpperCase(); }
+    function niv(i){ return DATA.floors[i].name; }
+    function dit(ok, t, d){ L.push('<li><span class="pill ' + (ok ? "ok" : "warn") + '">' + (ok ? "ok" : "à revoir") + '</span><span>' + t + '</span>' + (d ? '<small>' + d + '</small>' : "") + '</li>'); }
+    /* le programme */
+    var nm = 0, am = 0, ou = [];
+    tous.forEach(function(r, i){
+      var a = 0; r.non.forEach(function(u){ nm++; am += u.a; a += u.a; });
+      if(a) ou.push(niv(i).toLowerCase() + " " + fmt(a, 0) + " m²");
+    });
+    dit(!nm, nm ? nm + " pièce" + (nm > 1 ? "s" : "") + " non posée" + (nm > 1 ? "s" : "") + " — " + fmt(am, 0) + " m²"
+                : "Tout le programme est posé, à surface exacte",
+        nm ? "Il manque du plateau : " + ou.join(", ") + ". Le couloir et les noyaux prennent leur place ; agrandir le volume au Massing ou alléger le niveau au Programme mixer."
+           : "Une pièce change de proportions, jamais de surface.");
+    /* les noyaux : présents, empilés, aux mêmes cotes */
+    var sig = {}, acces = [], empile = [], feu = [], fuite = 0, fuiteMax = F0.fuiteSimple;
+    function monde(f, frame, x0, u, v){ var q = PG.versEtage(f, frame, x0, u, v); return PG.versMonde(f, q[0], q[1]); }
+    function grp(v){ return v.bat || v.id; }
+    tous.forEach(function(r, i){
+      /* les noyaux de ce niveau, par bâtiment, en coordonnées du site */
+      var N = {}, aire = {};
+      r.F.forEach(function(f){
+        if(f.fixe) return;
+        aire[grp(f.v)] = (aire[grp(f.v)] || 0) + f.L * f.D;
+        f.cages.forEach(function(c){ (N[grp(f.v)] = N[grp(f.v)] || []).push(monde(f, c.bande, c.x0, c.W / 2, c.H / 2)); });
+        var s2 = f.cages.map(function(c){
+          var p = monde(f, c.bande, c.x0, 0, 0);
+          return p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + c.W.toFixed(2) + "×" + c.H.toFixed(2);
+        }).join(" ");
+        /* un corps qui porte un noyau le porte à TOUS ses niveaux, au même endroit */
+        if(PG.hotes(vols)[f.v.id]) (sig[f.v.id] = sig[f.v.id] || { v:f.v, s:{} }).s[s2] = 1;
+      });
+      Object.keys(aire).forEach(function(g){
+        if(aire[g] > F0.cageSeuil && (N[g] || []).length < 2) feu.push("bâtiment " + g + " au " + niv(i).toLowerCase());
+      });
+      r.F.forEach(function(f){
+        if(f.fixe) return;
+        var C = N[grp(f.v)] || [], rez = DATA.floors[i].lvl === 0;
+        if(!C.length){ if(!rez) acces.push(nom(f.v) + " au " + niv(i).toLowerCase()); return; }
+        if(rez) return;     /* au rez, on sort par la façade : halls et portes */
+        var lim = C.length > 1 ? F0.fuiteDouble : F0.fuiteSimple;
+        f.rooms.forEach(function(rm){
+          var p = monde(f, rm.frame === "full" ? "full" : rm.frame, rm.x0, rm.W / 2, (rm.H || 0) / 2), d = Infinity;
+          C.forEach(function(c){ d = Math.min(d, Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1])); });
+          if(d - lim > fuite - fuiteMax){ fuite = d; fuiteMax = lim; }
+        });
+      });
+    });
+    Object.keys(sig).forEach(function(k){ if(Object.keys(sig[k].s).length > 1) empile.push(nom(sig[k].v)); });
+    dit(!acces.length, acces.length ? "Niveaux sans noyau : " + acces.join(", ")
+        : "Chaque niveau est desservi par un noyau escalier + ascenseur",
+        acces.length ? "Ces niveaux ne sont ni accessibles ni évacuables." : "Un noyau par bâtiment et par niveau : les corps accolés se desservent par leurs couloirs ; accessible à tous (SIA 500).");
+    dit(!empile.length, empile.length ? "Noyaux décalés d'un niveau à l'autre : " + empile.join(", ")
+        : "Les noyaux s'empilent : mêmes cotes et même place à chaque niveau",
+        "Escalier " + fmt(PG.NOY.volee, 2) + " m par volée, gaine d'ascenseur " + fmt(PG.NOY.asc[0], 2) + " × " + fmt(PG.NOY.asc[1], 2) + " m.");
+    dit(!feu.length, feu.length ? "Étage de plus de " + fmt(F0.cageSeuil, 0) + " m² à un seul noyau : " + feu.join(", ")
+        : "Deux noyaux là où l'étage dépasse " + fmt(F0.cageSeuil, 0) + " m²", "AEAI 16-15.");
+    dit(fuite <= fuiteMax + 0.01, "Évacuation : " + fmt(fuite, 1) + " m au plus jusqu'à un escalier",
+        "Mesurée en équerre, du centre de la pièce au noyau. Au plus " + fmt(F0.fuiteSimple, 0) + " m vers un seul escalier, " + fmt(F0.fuiteDouble, 0) + " m vers deux (AEAI 16-15).");
+    dit(true, "Couloir de " + fmt(PG.COULOIR, 2) + " m, réglé au cahier des charges", "Le même à tous les niveaux d'un corps : il s'empile avec les noyaux.");
+    dit(true, "Murs extérieurs et porteurs " + fmt(PG.MUR * 100, 0) + " cm, cloisons " + fmt(PG.CLOISON * 100, 0) + " cm", "Pochés en plein : on coupe dans les murs.");
+    return (CTL = L.join(""));
   }
 
   /* ---------- vue : cadrage, zoom, déplacement ---------- */

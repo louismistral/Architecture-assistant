@@ -9,6 +9,7 @@ import { SITE } from "../data/site.js";
 import { BLOCKS, FLOORS, flCircDe, flHeight, flName, flNet, flShort, lvlOf } from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { MASS, partiOf } from "../mass/model.js";
+import { COULOIR } from "../core/model.js";
 import { massOf } from "../mass/etat.js";
 
 export function donneesTypo(){
@@ -30,5 +31,9 @@ export function donneesTypo(){
   return { floors:floors,
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
                        vols:massOf().vol, ponts:MASS.pont || [] } },
-    site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur } };
+    site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
+    /* les règles que le dessin tient : la largeur du couloir réglée au cahier
+       des charges, le noyau, l'évacuation, les murs */
+    regles:{ couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
+             mur:RULES.haut.mur, cloison:RULES.haut.cloison } };
 }
