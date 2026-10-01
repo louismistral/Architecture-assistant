@@ -12,6 +12,7 @@ src/mass/partis.js    les douze partis : figure exacte, programme, cohérence du
 src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remèdes
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
+src/mass/archi.js     l'architecture d'un volume : toit, lanterneaux, entrée, rampe, sous-passage
 src/mass/export.js    le fichier .obj pour Rhino — une fonction pure, qui rend du texte
 src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
 src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation, étirement
@@ -253,7 +254,8 @@ avance, l'opposé reste, l'autre dimension s'ajuste pour que chaque étage garde
 cotes tombent sur le module de 0,50 m (on choisit, autour de la cote visée, celle qui garde la
 surface la plus juste — quelques m² d'écart au plus, que le bilan montre) ; aucun côté sous 6 m ;
 un étage en gradin reste en gradin. Les tirettes et la poignée se dessinent par-dessus tout. Le geste n'est pas bloqué par les règles dures : le contrôle les
-signale en rouge. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
+signale en rouge. Déplacer et tourner ne tiennent que le PÉRIMÈTRE (`gen.js — dansPerimetre`) : la
+distance aux autres bâtiments et à l'existant ne bloque pas la main, le contrôle la signale. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.
 
@@ -273,6 +275,18 @@ en plage.
 L'altitude de chaque étage se lit à un seul endroit, `etagesDe()` (et `pontEtage()` pour une
 passerelle) : le rez sur l'assise, les étages au-dessus, les sous-sols dessous, un ouvrage du
 second temps à sa propre hauteur. La 3D et l'export la lisent tous deux.
+
+## L'architecture d'un volume
+
+Le rail du volume choisi a un bloc **Architecture** : toiture (plat, végétalisé, un pan, deux pans,
+sheds), puits de lumière (lanterneaux au faîte), entrée (un auvent sur une façade), rampe (le long
+d'une façade, à 6 %), sous-passage (au rez, de part en part), jeu de niveaux (les étages au-dessus
+du rez glissent tour à tour de ±j, dans la parcelle). Porte-à-faux, étages et passerelles se règlent
+déjà ailleurs. Les choix vivent dans `v.ar` (enregistré par `etat.js`), la géométrie dans
+`mass/archi.js — archiDe()`, une fois pour le plan, la 3D et l'export (groupe `Architecture`). Les
+cotes de dessin sont des hypothèses : `RULES.archi`. Aucun élément ne touche une surface ; le
+sous-passage coupe le rez sans que le bilan le décompte — le rail le dit. Une nouvelle volumétrie
+repart de cubes nus.
 
 ## L'export vers Rhino
 
