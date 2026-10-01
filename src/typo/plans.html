@@ -1519,8 +1519,9 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   stage.addEventListener("pointerdown", function(e){ p0 = { x:e.clientX, y:e.clientY, t:e.target }; });
   stage.addEventListener("click", function(e){
     if(!p0 || Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > 4) return;
-    var k = p0.t.getAttribute && p0.t.getAttribute("data-k");
-    choisir(k == null ? null : INFO[+k]);
+    /* la pièce sous le pointeur, sous le mobilier et les étiquettes */
+    var el = document.elementsFromPoint(e.clientX, e.clientY).filter(function(x){ return x.hasAttribute && x.hasAttribute("data-k"); })[0];
+    choisir(el ? INFO[+el.getAttribute("data-k")] : null);
   });
   function choisir(I){
     var g = $("ed-g"), ed = $("ed");
