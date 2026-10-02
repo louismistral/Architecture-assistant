@@ -139,3 +139,44 @@ export function jeuDe(v){
   var E = etagesDe(v).filter(function(s){ return s.n.lvl >= 0; });
   return E.length > 1 ? (E[1].e.dx || 0) : 0;
 }
+
+/* LES LEVIERS D'ARCHITECTURE. Après un tirage, chaque corps d'école reçoit ce
+   que les leviers disent (`MASS.lev` : toit, pf, jeu, puits, entree, rampe,
+   sous) ; un levier libre est tiré UNE fois pour toute la composition, à la
+   graine du massing. Un débord (porte-à-faux, jeu de niveaux) n'est pris que
+   s'il reste dans la parcelle et ne recouvre personne. */
+var OPT_TOIT = ["plat", "vert", "pan", "deux", "shed"];
+export function architecturer(vols, lev, graine, tient){
+  var s = ((graine || 1) * 2654435761) >>> 0;
+  function r(){ s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }
+  function oui(k){ return lev[k] != null ? lev[k] === "oui" : r() < .5; }
+  var toit = lev.toit != null ? lev.toit : OPT_TOIT[Math.floor(r() * OPT_TOIT.length)];
+  var pf = oui("pf"), jeu = oui("jeu"), puits = oui("puits"), entree = oui("entree"), rampe = oui("rampe"), sous = oui("sous");
+  var ecole = vols.filter(function(v){ return !v.fix && !v.ph; });
+  if(!ecole.length) return;
+  var cx = 0, cy = 0;
+  ecole.forEach(function(v){ cx += v.x / ecole.length; cy += v.y / ecole.length; });
+  var grand = ecole.slice().sort(function(p, q){ return q.lv.length * q.lv[0].w * q.lv[0].d - p.lv.length * p.lv[0].w * p.lv[0].d; })[0];
+  function face(v){
+    var best = 0, m = -Infinity;
+    for(var k = 0; k < 4; k++){ var a = v.a + k * Math.PI / 2, d = Math.cos(a) * (cx - v.x) + Math.sin(a) * (cy - v.y); if(d > m){ m = d; best = k; } }
+    return best;
+  }
+  vols.forEach(function(v){
+    if(v.fix){ v.ar = { toit:"shed" }; return; }
+    if(v.ph){ v.ar = { toit:"plat" }; return; }
+    var E = etagesDe(v).filter(function(e){ return e.n.lvl >= 0; });
+    if(!E.length) return;
+    var rc = E[0].rc, lg = Math.max(rc.w, rc.d), pr = Math.min(rc.w, rc.d), f = face(v);
+    v.ar = { toit:toit, puits:puits && pr >= 14 ? Math.max(1, Math.round(lg / 12)) : 0,
+             entree:entree ? f : -1, rampe:rampe && v === grand ? (f + 1) % 4 : -1, sous:sous && lg >= 24 ? 1 : 0 };
+    if(E.length < 2) return;
+    function essai(fn){
+      var av = v.lv.map(function(e){ return [e.dx || 0, e.dy || 0]; });
+      fn();
+      if(!tient(v)) v.lv.forEach(function(e, k){ e.dx = av[k][0]; e.dy = av[k][1]; });
+    }
+    if(pf) essai(function(){ var t = E[E.length - 1].e; t.dy = (t.dy || 0) + (f === 1 ? 3 : f === 3 ? -3 : 0); if(f % 2 === 0) t.dx = (t.dx || 0) + (f === 0 ? 3 : -3); });
+    if(jeu && E.length > 2) essai(function(){ jeuNiveaux(v, 1.5); });
+  });
+}

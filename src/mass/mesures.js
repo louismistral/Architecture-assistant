@@ -460,6 +460,23 @@ export function qualites(vols, L){
   q("elan", "Des corps pas trop élancés", L.el <= V.elanceMax ? 2 : 0,
     L.el <= V.elanceMax ? 1 : -borne((L.el - V.elanceMax) / V.elanceMax),
     "jusqu'à " + dec(Math.round(L.el * 10) / 10) + " fois plus long que large");
+  /* un niveau ne porte pas plus que lui : sa surface rapportée à celle du
+     niveau du dessus, corps par corps, hors sous-sol */
+  var socle = Infinity, socleV = null;
+  E.forEach(function(v){
+    var hs = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; }).sort(function(p, q2){ return p.i - q2.i; });
+    for(var k = 0; k + 1 < hs.length; k++){
+      var r = (hs[k].w * hs[k].d) / Math.max(1e-6, hs[k + 1].w * hs[k + 1].d);
+      if(r < socle){ socle = r; socleV = v; }
+    }
+  });
+  var smin = V.socleMin / 100;
+  q("socle", "Un étage n'est pas plus petit que le suivant",
+    !isFinite(socle) || socle >= smin ? 2 : socle >= smin * .9 ? 1 : 0,
+    !isFinite(socle) || socle >= smin ? 1 : borne((socle - smin) / Math.max(.01, smin)),
+    !isFinite(socle) ? "aucun corps à étages"
+      : "le plus petit niveau porte " + Math.round(socle * 100) + " % de celui du dessus"
+        + (socle < smin && socleV ? " (" + nomV(socleV, vols.indexOf(socleV)).toLowerCase() + ")" : ""));
   q("connex", "Une école d'un seul tenant", L.ensembles <= 1 ? 2 : 1, L.ensembles <= 1 ? 1 : 0,
     L.ensembles <= 1 ? "l'école tient d'un seul tenant" : L.ensembles + " ensembles séparés"
       + ((vols.ponts || []).length ? ", " + vols.ponts.length + " passerelle"

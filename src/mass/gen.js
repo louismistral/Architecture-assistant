@@ -35,12 +35,13 @@ import {
   assise, attracteurs, axePer, bbox, bordDist, dedans, airePosable,
   ecart, ecartAngle, ecartPoly, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
-import { CONTACT, MASS, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
+import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
   sousSol, volEtage, volRect } from "./model.js";
 export { lies };
 import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
   from "./mesures.js";
 import { PARTIS_FIGURES, composer } from "./partis.js";
+import { architecturer } from "./archi.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
    Une graine propre : celle du mixer rejoue une RÉPARTITION, celle-ci rejoue
@@ -884,4 +885,15 @@ export function degager(vols){
     if(!fait) break;
   }
   return bouges;
+}
+
+/* POSER UNE VOLUMÉTRIE, par où qu'elle vienne — un tirage, la proposition
+   suivante, un remède : rien ne se recouvre, ce qui se touche ne fait qu'un,
+   puis les leviers d'architecture habillent les corps. Un seul chemin, pour
+   que toutes les volumétries à l'écran obéissent aux mêmes règles. */
+export function poser(list){
+  massVols(list || []);
+  if(!MASS.vol.length) return;
+  degager(MASS.vol); fusionner(MASS.vol, MASS.pont);
+  architecturer(MASS.vol, MASS.lev, MASS.graine, function(v){ return dansPerimetre(v) && !chevauche(v, MASS.vol); });
 }

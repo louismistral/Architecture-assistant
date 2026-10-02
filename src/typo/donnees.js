@@ -18,7 +18,7 @@ import { PMAP, PROX, uOf } from "../mix/prog.js";
 import { adjActive } from "../mix/opts.js";
 import { saveSoon } from "../mix/store.js";
 import { MASS, empreintePile, massLev, massVols, partiOf } from "../mass/model.js";
-import { degager, ecarter, fusionner, genMass } from "../mass/gen.js";
+import { degager, ecarter, fusionner, genMass, poser } from "../mass/gen.js";
 import { massOf } from "../mass/etat.js";
 
 export function donneesTypo(){
@@ -148,6 +148,6 @@ export function typoSalleAccolee(){
   massLev("sport", "accolee");
   var neuf = genMass();
   if(!neuf.length || neuf.impossible){ massLev("sport", null); MASS.vol = avant; MASS.pont = pont; return null; }
-  massVols(neuf); fusionner(MASS.vol, MASS.pont); MASS.pile = empreintePile(); saveSoon();
+  poser(neuf); MASS.pile = empreintePile(); saveSoon();
   return "salle de sport accolée à l'école (levier du Massing)";
 }

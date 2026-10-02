@@ -26,7 +26,7 @@ import { dec } from "../core/format.js";
 import { acte } from "../mix/fix.js";
 import { repartir } from "../mix/shuffle.js";
 import {
-  admissible, ecarter, genMass, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
+  admissible, ecarter, genMass, poser, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
 import { MASS, auModule, massSet, massVols, niveaux, profBornes, profFacade, volEtage }
   from "./model.js";
 
@@ -166,7 +166,7 @@ export function fixRelancer(){
     "même programme, mêmes surfaces, mêmes niveaux — une autre solution",
     function(){
       massSet("graine", (MASS.graine * 1103515245 + 12345) >>> 8 || 1);
-      massVols(genMass());
+      poser(genMass());
       return true;
     });
 }
@@ -175,7 +175,7 @@ export function fixAuto(){
   if(MASS.parti === "auto") return null;
   return acte("Laisser le générateur choisir le parti",
     "« Auto » essaie les douze partis et ne garde que ce qui tient dans le cadre",
-    function(){ massSet("parti", "auto"); massVols(genMass()); return true; });
+    function(){ massSet("parti", "auto"); poser(genMass()); return true; });
 }
 /* Le seul remède qui ne soit PAS ici : quand aucune implantation ne tient, la
    réponse est au mixer, en ajoutant un étage. On l'appelle donc de là-bas. */
@@ -184,7 +184,7 @@ export function fixPile(){
     "le mixer rebat la répartition et déduit le nombre d'étages de l'aire posable",
     function(){
       repartir({ alea:true, etages:true });
-      massVols(genMass());
+      poser(genMass());
       return true;
     });
 }

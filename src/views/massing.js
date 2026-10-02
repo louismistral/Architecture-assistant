@@ -33,7 +33,7 @@ import { dePile } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { dansPerimetre, degager, fusionner, genMass, rectSol } from "../mass/gen.js";
+import { dansPerimetre, genMass, poser, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { objMassing } from "../mass/export.js";
 import { evaluationCourante } from "../mass/mesures.js";
@@ -143,9 +143,7 @@ function aPoser(){
   return a;
 }
 function regenere(){
-  massVols(aPoser() > 0 ? genMass() : []);
-  /* rien ne se recouvre, ce qui se touche ne fait qu'un */
-  degager(MASS.vol); fusionner(MASS.vol, MASS.pont);
+  poser(aPoser() > 0 ? genMass() : []);
   MASS.pile = empreintePile();
   MASS.sel = null;
   camFit();
@@ -269,7 +267,7 @@ function blocTirage(){
   bm.addEventListener("click", function(){
     var P = MASS.vol.props, k = MASS.vol.rang;
     if(P && k != null && k + 1 < P.length){
-      massVols(P[k + 1]);
+      poser(P[k + 1]);
       planFit();
       redessine();
     } else rejouerMassing(graineSuivante());
@@ -397,6 +395,7 @@ function blocParams(){
   opts("cap", "lev-cap");
   opts("sport", "lev-sport");
   opts("ponts", "lev-ponts");
+  ["toit", "pf", "jeu", "puits", "entree", "rampe", "sous"].forEach(function(k){ opts(k, "lev-" + k); });
   var pf = null;
   if(MASS.lev.prof != null){
     pf = el("input", "mono mass-lev__s");

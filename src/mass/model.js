@@ -71,7 +71,9 @@ export var MASS = {
     cap: null,      /* orientation de la figure : "axe" · "soleil" · "libre" */
     sport: null,    /* salle de sport : "accolee" · "part" */
     ponts: null,    /* passerelles : "oui" · "non" */
-    prof: null      /* profondeur des corps, en m murs compris */
+    prof: null,     /* profondeur des corps, en m murs compris */
+    /* l'architecture des corps (`data/leviers.js` — Architecture) */
+    toit: null, pf: null, jeu: null, puits: null, entree: null, rampe: null, sous: null
   },
   /* second temps : "auto" libre · "sep" deux volumes · "un" groupés · "non" */
   second: "auto",
