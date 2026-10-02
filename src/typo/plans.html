@@ -407,7 +407,9 @@ var PG = (function(){
     f.sud = S; f.nord = N;
     var trav = [], full = [], gr = [], pe = [];
     f.U.forEach(function(u){
-      if(/^Hall|foyer/i.test(u.n)) trav.push(u);
+      /* un hall traverse le corps s'il en a la largeur (4 m au moins) ; plus
+         petit, c'est une pièce de la bande, avec sa porte sur la façade */
+      if(/^Hall|foyer/i.test(u.n) && u.a / D >= 4) trav.push(u);
       else if(u.a / (deux ? T / 2 : T) > FRONT_MAX && !u.salle && o.noyaux < 2) full.push(u);
       else if(u.a >= PETIT) gr.push(u);
       else pe.push(u);
@@ -600,6 +602,73 @@ var PG = (function(){
     var U = unites(fl.rooms.filter(function(r){
       return !fixes.some(function(f){ return f.e.keys.indexOf(r.key) >= 0; });
     }));
+    /* L'ANNEXE DE LA SALLE DE SPORT. Ses locaux — vestiaires, rangement, scène,
+       nettoyage, foyer — lui sont liés : ils sont à elle, pas à l'école. Ils se
+       posent dans une bande le long de son grand côté, derrière un couloir qui
+       dessert la salle, du côté qui ne touche pas l'école. La salle garde ses
+       cotes ; c'est son volume qui s'épaissit, et le Massing le suit. */
+    var lie0 = {}, D0s = D0;
+    (D0.liens || []).forEach(function(l){ (lie0[l.a] = lie0[l.a] || []).push(l.b); (lie0[l.b] = lie0[l.b] || []).push(l.a); });
+    fixes.forEach(function(g){
+      if(g.v.ph || !g.e.keys.some(function(k){ return /^sport\|/.test(k); })) return;
+      /* ce qui est lié à la salle, puis ce qui n'est lié qu'à cela (les
+         vestiaires des maîtres, liés aux vestiaires des élèves) */
+      var A = U.filter(function(u){ return (lie0[u.key] || []).some(function(k){ return g.e.keys.indexOf(k) >= 0; }); });
+      for(var t2 = 0; t2 < 3; t2++){
+        var cles2 = g.e.keys.concat(A.map(function(u){ return u.key; }));
+        U.forEach(function(u){
+          if(A.indexOf(u) >= 0 || !lie0[u.key]) return;
+          if(lie0[u.key].every(function(k){ return cles2.indexOf(k) >= 0; })) A.push(u);
+        });
+      }
+      if(!A.length) return;
+      U = U.filter(function(u){ return A.indexOf(u) < 0; });
+      /* ce qui est lié directement à la salle au milieu, le long d'elle ; le
+         reste de part et d'autre */
+      var dir = A.filter(function(u){ return (lie0[u.key] || []).some(function(k){ return g.e.keys.indexOf(k) >= 0; }); });
+      var sec = A.filter(function(u){ return dir.indexOf(u) < 0; });
+      dir.sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); });
+      A = sec.slice(0, Math.ceil(sec.length / 2)).concat(dir, sec.slice(Math.ceil(sec.length / 2)));
+      /* les cotes de la salle elle-même, celles d'avant toute annexe */
+      var c = COULOIR, L0 = g.e.w0 || g.e.w, D0 = g.e.d0 || g.e.d, dy0 = g.e.dy0 != null ? g.e.dy0 : (g.e.dy || 0), tot = 0;
+      A.forEach(function(u){ tot += u.a; });
+      /* une bande de 5 à 12 m ; plus longue que la salle s'il le faut */
+      var b = Math.max(5, Math.min(12, tot / L0)), L = Math.max(L0, tot / b);
+      var J = vols.filter(function(v){ return v.id === g.v.joint || v.joint === g.v.id; })[0];
+      /* le côté : celui qui reste dans le périmètre, et de préférence celui qui
+         ne touche pas l'école */
+      function dedansPer(x, y){
+        var P = D0s.site.per, ok = false;
+        for(var i2 = 0, j2 = P.length - 1; i2 < P.length; j2 = i2++)
+          if((P[i2][1] > y) !== (P[j2][1] > y) && x < (P[j2][0] - P[i2][0]) * (y - P[i2][1]) / (P[j2][1] - P[i2][1]) + P[i2][0]) ok = !ok;
+        return ok;
+      }
+      function hors(sg2){
+        var dy2 = dy0 + sg2 * (c + b) / 2, n = 0, dx2 = g.e.dx0 != null ? g.e.dx0 : (g.e.dx || 0);
+        [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function(q){
+          var p2 = local(g.v.x, g.v.y, g.v.a, dx2 + q[0] * (L / 2 + MUR), dy2 + q[1] * ((D0 + c + b) / 2 + MUR));
+          if(!dedansPer(p2[0], p2[1])) n++;
+        });
+        return n;
+      }
+      var pref = 1;
+      if(J){ var py = -(J.x - g.cx) * Math.sin(g.a) + (J.y - g.cy) * Math.cos(g.a); pref = py > 0 ? -1 : 1; }
+      var sg = hors(pref) <= hors(-pref) ? pref : -pref;
+      g.D = D0 + c + b; g.L = L; g.dyNew = dy0 + sg * (c + b) / 2;
+      g.dxNew = g.e.dx0 != null ? g.e.dx0 : (g.e.dx || 0);
+      var p = local(g.v.x, g.v.y, g.v.a, g.dxNew, g.dyNew); g.cx = p[0]; g.cy = p[1];
+      var vHall = sg > 0 ? 0 : c + b, vAnn = sg > 0 ? D0 + c : 0;
+      g.rooms[0].v0 = vHall; g.rooms[0].H = D0; g.rooms[0].x0 = -L0 / 2; g.rooms[0].W = L0;
+      g.yc0 = -g.D / 2 + (sg > 0 ? D0 : b); g.yc1 = g.yc0 + c; g.zl = -L / 2; g.zr = L / 2;
+      var x = -L / 2;
+      A.forEach(function(u){
+        var W = u.a / b;
+        g.rooms.push(Object.assign({}, u, { kind:"band", frame:"full", x0:x, W:W, H:b, v0:vAnn,
+          porteV:sg > 0 ? vAnn : vAnn + b, fac:sg }));
+        x += W;
+      });
+      g.annexe = true;
+    });
     if(!F.length){ U.forEach(function(u){ non.push(u); }); return { F:fixes, non:non, fl:fl }; }
 
     /* LA RÉPARTITION entre les corps du niveau : le sport près de la salle,
@@ -638,7 +707,9 @@ var PG = (function(){
        vestiaires) se répartit le long de ses mères ; une pièce unique liée
        entre dans le groupe de ses partenaires */
     var nb = {}; U.forEach(function(u){ nb[u.key] = (nb[u.key] || 0) + 1; });
-    var petitsLies = U.filter(function(u){ return u.a < PETIT && nb[u.key] > 1 && lie[u.key] && U.some(function(g){ return plusGrand(u, g); }); });
+    var petitsLies = U.filter(function(u){
+      return u.a < PETIT && nb[u.key] > 1 && lie[u.key] && U.filter(function(g){ return plusGrand(u, g); }).length > 1;
+    });
     petitsLies.forEach(function(u){ u.sat1 = 1; u.tard = 1; });
     /* les grandes pièces liées entre elles voyagent ensemble : composantes du
        graphe des liens, la plus grande pièce en tête (au plus 600 m²) */
@@ -703,9 +774,12 @@ var PG = (function(){
       part.forEach(function(x){ libre -= x; });
       if(libre < 0){ part = meres.map(function(){ return 0; }); libre = L.length;
         meres.map(function(m, j){ return j; }).sort(function(p, q){ return meres[q].length - meres[p].length; }).slice(0, L.length).forEach(function(j){ part[j] = 1; libre--; }); }
-      meres.forEach(function(m, j){ var add = Math.floor(libre * m.length / tot2); part[j] += add; });
+      /* au plus fort reste : chaque corps à proportion de ses pièces mères */
+      var frac = [];
+      meres.forEach(function(m, j){ var x = libre * m.length / tot2; part[j] += Math.floor(x); frac.push({ j:j, r:x - Math.floor(x) }); });
       var dist = 0; part.forEach(function(x){ dist += x; });
-      for(var j3 = 0; dist < L.length; j3 = (j3 + 1) % F.length){ if(meres[j3].length){ part[j3]++; dist++; } }
+      frac.sort(function(p, q){ return q.r - p.r; });
+      for(var j3 = 0; dist < L.length; j3 = (j3 + 1) % frac.length){ if(meres[frac[j3].j].length){ part[frac[j3].j]++; dist++; } }
       var c0 = 0;
       F.forEach(function(f, j){
         var m = meres[j], mine = L.slice(c0, c0 + part[j]); c0 += part[j];
@@ -768,7 +842,11 @@ var PG = (function(){
     if(relance) res = D0.floors.map(function(_, i){ return genNiveau(D0, parti, i); });
     var maj = [];
     res.forEach(function(r){ r.F.forEach(function(f){
-      if(f.fixe) return;
+      if(f.fixe){
+        if(f.annexe && (Math.abs(f.D - f.e.d) > 0.01 || Math.abs(f.L - f.e.w) > 0.01 || Math.abs(f.dyNew - (f.e.dy || 0)) > 0.01))
+          maj.push({ id:f.v.id, i:f.e.i, w:f.L, dx:f.dxNew, d:f.D, dy:f.dyNew });
+        return;
+      }
       if(Math.abs(f.L - f.e.w) > 0.01 || Math.abs(f.dxNew - (f.e.dx || 0)) > 0.01 || Math.abs(f.D - f.e.d) > 0.01 || Math.abs(f.dyNew - (f.e.dy || 0)) > 0.01)
         maj.push({ id:f.v.id, i:f.e.i, w:f.L, dx:f.dxNew, d:f.D, dy:f.dyNew });
     }); });
@@ -1301,7 +1379,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           /* la porte là où le couloir passe */
           var dw = Math.min(r.f === "cla" ? 1.0 : 0.9, W - 0.4);
           var uh = Math.max(f.zl - x0 + dw + 0.15, Math.min(u0 + W - 0.25, f.zr - x0 - 0.15));
-          if(W >= 1.1 && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, Math.max(0, v0), dw);
+          if(W >= 1.1 && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, r.porteV != null ? r.porteV : Math.max(0, v0), dw);
         } else if(r.kind === "full" && r.x0 > -f.L / 2 + 0.01){
           var ym = f.deux ? (f.yc0 + f.yc1) / 2 : (f.yc0 + f.yc1) / 2;
           porteX(f, r.x0, ym, Math.min(1.6, PG.COULOIR - 0.5), 1);
@@ -1310,9 +1388,15 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         } else if(r.kind === "fixe"){
           [-1, 1].forEach(function(sg){ if(!dansAutre(f, 0, sg * (f.D / 2 + 1.2))) ouvertureMur(f, sg < 0 ? -f.L / 4 : f.L / 4, sg, 2.0, true); });
         }
+        /* un petit hall de bande a sa porte d'entrée sur la façade */
+        if(r.kind === "band" && /^Hall/i.test(r.n || "") && (frame === "A" || frame === "B")){
+          var sgH = frame === "A" ? -1 : 1, xH = fr(f, frame, x0, u0 + W / 2, 0)[0];
+          if(!dansAutre(f, xH, sgH * (f.D / 2 + 1.2))) ouvertureMur(f, xH, sgH, Math.min(2.0, W - 0.6), true);
+        }
         /* fenêtres sur les façades libres */
         var facs = [];
         if(frame === "A" || frame === "B"){ if(Math.abs(v0 + H - f.bb[frame]) < 0.02) facs.push(frame === "A" ? -1 : 1); }
+        else if(r.fac){ facs.push(r.fac); }
         else if(!trav){ facs.push(-1, 1); }
         facs.forEach(function(sg){
           var n = Math.max(1, Math.floor((W - 0.6) / 2.6)), lw = Math.min(1.8, W - 0.8);
@@ -1575,6 +1659,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     dit(!rompus.length, rompus.length ? rompus.length + " lien" + (rompus.length > 1 ? "s" : "") + " du schéma non tenu" + (rompus.length > 1 ? "s" : "") + " : " + rompus.slice(0, 6).join(" ; ") + (rompus.length > 6 ? "…" : "")
         : "Toutes les adjacences du schéma sont tenues", "Chaque pièce à moins de " + fmt(PG.LIEN, 0) + " m de bord à bord de celle qui lui est liée, au même niveau. Les liens éteints au mixer ne comptent pas."
           + (parent.typoAccordes && parent.typoAccordes.length ? " Pour cela, au mixer : " + parent.typoAccordes.join(" ; ") + "." : "")
+          + (parent.typoSalle ? " Au Massing : " + parent.typoSalle + "." : "")
           + (rompus.some(function(t){ return /Salle de sport double/.test(t); }) ? " Les liens à la salle de sport ne se tiennent que si elle touche l’école : levier « Salle de sport accolée » au Massing." : ""));
     dit(true, allonges.length ? "Corps mis à la mesure de leurs pièces : " + allonges.length + " niveau" + (allonges.length > 1 ? "x" : "") + " recoté" + (allonges.length > 1 ? "s" : "") + " au Massing"
         : "Les corps ont la longueur de leurs pièces", "Rien ne manque, rien ne reste : le Massing suit, et signale ce que les nouvelles cotes y changent.");

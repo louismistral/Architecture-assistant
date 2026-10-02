@@ -17,7 +17,8 @@ import { lvRange } from "../mix/niv.js";
 import { PMAP, PROX, uOf } from "../mix/prog.js";
 import { adjActive } from "../mix/opts.js";
 import { saveSoon } from "../mix/store.js";
-import { MASS, partiOf } from "../mass/model.js";
+import { MASS, empreintePile, massLev, massVols, partiOf } from "../mass/model.js";
+import { ecarter, genMass } from "../mass/gen.js";
 import { massOf } from "../mass/etat.js";
 
 export function donneesTypo(){
@@ -58,12 +59,14 @@ export function typoEcrire(maj){
   maj.forEach(function(m){
     var x = etage(m.id, m.i);
     if(!x.e) return;
-    if(x.e.w0 == null) x.e.w0 = x.e.w;
+    if(x.e.w0 == null){ x.e.w0 = x.e.w; x.e.d0 = x.e.d; x.e.dx0 = x.e.dx || 0; x.e.dy0 = x.e.dy || 0; }
     x.e.w = m.w; x.e.dx = m.dx;
     if(m.d) x.e.d = m.d;
     if(m.dy != null) x.e.dy = m.dy;
   });
-  if(maj.length) saveSoon();
+  /* un corps allongé peut toucher son voisin ou passer le recul : la
+     composition se desserre (le remède « Écarter » du Massing) */
+  if(maj.length){ ecarter(MASS.vol); saveSoon(); }
 }
 /* La largeur d'une pièce, au module ; null la rend au calcul. */
 export function typoRegle(id, i, lab, w){
@@ -130,4 +133,21 @@ export function typoAccorder(){
   }
   if(faits.length) saveSoon();
   return faits;
+}
+
+/* LA SALLE DE SPORT TOUCHE L'ÉCOLE. Ses locaux — scène, rangement,
+   nettoyage, vestiaires, foyer — lui sont liés au schéma : séparée de
+   l'école, aucun plan ne les tient. Si le levier est laissé au dé, l'onglet le
+   fixe sur « accolée » et refait la volumétrie à la même graine ; s'il a été
+   réglé à la main, on le respecte. Si aucune variante accolée ne tient le
+   cadre, on revient en arrière. */
+export function typoSalleAccolee(){
+  var hall = MASS.vol.filter(function(v){ return v.fix; })[0];
+  if(MASS.lev.sport || !hall || hall.joint) return null;
+  var avant = MASS.vol, pont = MASS.pont;
+  massLev("sport", "accolee");
+  var neuf = genMass();
+  if(!neuf.length || neuf.impossible){ massLev("sport", null); MASS.vol = avant; MASS.pont = pont; return null; }
+  massVols(neuf); MASS.pile = empreintePile(); saveSoon();
+  return "salle de sport accolée à l'école (levier du Massing)";
 }

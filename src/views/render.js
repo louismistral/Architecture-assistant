@@ -8,7 +8,7 @@ import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../cor
 import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
 import { renduVue } from "./rendu.js";
-import { donneesTypo, typoAccorder, typoEcrire, typoRegle } from "../typo/donnees.js";
+import { donneesTypo, typoAccorder, typoEcrire, typoRegle, typoSalleAccolee } from "../typo/donnees.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
@@ -213,6 +213,7 @@ export function render(){
     /* les liens d'abord (ils peuvent changer la pile), puis le massing qui la suit */
     window.typoAccordes = typoAccorder();
     massPrepare();
+    window.typoSalle = typoSalleAccolee();
     window.typoDonnees = donneesTypo; window.typoEcrire = typoEcrire; window.typoRegle = typoRegle;
     var fr = el("iframe", "typo-cadre");
     fr.src = "src/typo/plans.html";

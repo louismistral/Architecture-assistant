@@ -35,7 +35,8 @@ export function massOf(){
                   sport peut en porter un au-dessus d'elle, et celui-là loge du
                   programme ordinaire. C'est lui qui dit ce qu'on y pave. */
                lv: v.lv.map(function(e){
-                 return { i:e.i, w:e.w, d:e.d, dx:e.dx || 0, dy:e.dy || 0, w0:e.w0 == null ? null : e.w0,
+                 return { i:e.i, w:e.w, d:e.d, dx:e.dx || 0, dy:e.dy || 0, w0:e.w0 == null ? null : e.w0, d0:e.d0 == null ? null : e.d0,
+                          dx0:e.dx0 == null ? null : e.dx0, dy0:e.dy0 == null ? null : e.dy0,
                           h:e.h || 0, keys:e.keys || null };
                }) };
     })
