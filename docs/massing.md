@@ -289,8 +289,18 @@ du rez glissent tour à tour de ±j, dans la parcelle). Porte-à-faux, étages e
 déjà ailleurs. Les choix vivent dans `v.ar` (enregistré par `etat.js`), la géométrie dans
 `mass/archi.js — archiDe()`, une fois pour le plan, la 3D et l'export (groupe `Architecture`). Les
 cotes de dessin sont des hypothèses : `RULES.archi`. Aucun élément ne touche une surface ; le
-sous-passage coupe le rez sans que le bilan le décompte — le rail le dit. Une nouvelle volumétrie
-repart de cubes nus.
+sous-passage coupe le rez sans que le bilan le décompte — le rail le dit.
+
+Ces choix sont aussi des **leviers** de la composition (`lev-toit`, `lev-pf`, `lev-jeu`,
+`lev-puits`, `lev-entree`, `lev-rampe`, `lev-sous`, dans `leviers.js`, état dans `MASS.lev`). Libre,
+le dé tire UNE valeur pour toute la composition, à la graine du massing ; `architecturer()` la pose
+sur chaque corps d'école — la salle garde ses sheds, le second temps reste plat. Porte-à-faux (3 m,
+dernier étage, vers l'entrée) et jeu de niveaux (1,5 m) ne sont pris que si le corps reste dans la
+parcelle et ne recouvre personne. Toute volumétrie — tirage, proposition suivante, remède,
+Typologies — passe par `gen.js — poser()` : poser, dégager, fusionner, architecturer.
+
+L'orientation **socle** (`orientation.js`, valeur `socleMin`, 80 % par défaut) veut qu'un étage ne
+soit pas plus petit que celui du dessus : `mesures.js — qualites()` compare chaque niveau au suivant.
 
 ## L'export vers Rhino
 
