@@ -792,17 +792,25 @@ function dansRepere(a, r){
 }
 function alignes(a, b){
   if(Math.abs(Math.sin(a.a - b.a)) > 1e-3) return null;
-  var ia = a.lv.map(function(e){ return e.i; }).sort().join(), ib = b.lv.map(function(e){ return e.i; }).sort().join();
-  if(ia !== ib) return null;
-  var plan = [];
-  for(var k = 0; k < a.lv.length; k++){
-    var ea = a.lv[k], eb = b.lv.filter(function(e){ return e.i === ea.i; })[0];
-    var ra = volRect(a, ea), rb = volRect(b, eb), pa = dansRepere(a, ra), pb = dansRepere(a, rb);
-    if(Math.abs(ra.d - rb.d) > .05 || Math.abs(pa.v - pb.v) > .05) return null;
-    if(Math.abs(Math.abs(pa.u - pb.u) - (ra.w + rb.w) / 2) > CONTACT) return null;
-    plan.push({ ea:ea, eb:eb, g: Math.min(pa.u - ra.w / 2, pb.u - rb.w / 2), d: Math.max(pa.u + ra.w / 2, pb.u + rb.w / 2) });
+  /* les niveaux des deux corps : là où les deux en ont un, même profondeur,
+     même alignement, et bout à bout ; là où un seul en a, le sien */
+  var tous = {}, plan = [], bout = false;
+  a.lv.concat(b.lv).forEach(function(e){ tous[e.i] = 1; });
+  for(var i in tous){
+    i = +i;
+    var ea = a.lv.filter(function(e){ return e.i === i; })[0], eb = b.lv.filter(function(e){ return e.i === i; })[0];
+    var ra = ea && volRect(a, ea), rb = eb && volRect(b, eb), pa = ra && dansRepere(a, ra), pb = rb && dansRepere(a, rb);
+    if(ra && rb){
+      if(Math.abs(ra.d - rb.d) > .05 || Math.abs(pa.v - pb.v) > .05) return null;
+      if(Math.abs(Math.abs(pa.u - pb.u) - (ra.w + rb.w) / 2) > CONTACT) return null;
+      bout = true;
+      plan.push({ i:i, ea:ea, eb:eb, d0:ra.d, v:pa.v, g:Math.min(pa.u - ra.w / 2, pb.u - rb.w / 2), d:Math.max(pa.u + ra.w / 2, pb.u + rb.w / 2) });
+    } else {
+      var r = ra || rb, p = pa || pb;
+      plan.push({ i:i, ea:ea, eb:eb, d0:r.d, v:p.v, g:p.u - r.w / 2, d:p.u + r.w / 2 });
+    }
   }
-  return plan;
+  return bout ? plan : null;
 }
 export function fusionner(vols, ponts){
   var m = 2 * RULES.haut.mur, faits = 0, encore = true;
@@ -814,10 +822,13 @@ export function fusionner(vols, ponts){
       var pl = alignes(a, b);
       if(!pl) continue;
       pl.forEach(function(p){
-        p.ea.w = auModule(p.d - p.g - m); p.ea.dx = (p.g + p.d) / 2;
-        if(p.eb.keys) p.ea.keys = (p.ea.keys || []).concat(p.eb.keys);
-        delete p.ea.w0; delete p.ea.d0; delete p.ea.dx0; delete p.ea.dy0;
+        var e = p.ea;
+        if(!e){ e = Object.assign({}, p.eb); a.lv.push(e); }
+        else if(p.eb && p.eb.keys) e.keys = (e.keys || []).concat(p.eb.keys);
+        e.w = Math.max(.5, p.d - p.g - m); e.d = p.d0 - m; e.dx = (p.g + p.d) / 2; e.dy = p.v;
+        delete e.w0; delete e.d0; delete e.dx0; delete e.dy0;
       });
+      a.lv.sort(function(p, q){ return p.i - q.i; });
       vols.forEach(function(o){ if(o.joint === b.id) o.joint = a.id; });
       if(!a.joint && b.joint) a.joint = b.joint;
       if(!a.bat && b.bat) a.bat = b.bat;
@@ -842,4 +853,35 @@ export function fusionner(vols, ponts){
     else v.bat = C.bat;
   });
   return faits;
+}
+
+/* PLUS RIEN NE SE RECOUVRE : un corps qui en recouvre un autre (un corps que
+   les Typologies ont allongé, une composition relue) va à la position libre
+   la plus proche, dans le périmètre — on cherche en couronnes de 0,5 m. La
+   salle de sport, aux cotes imposées, ne bouge qu'en dernier recours. */
+export function degager(vols){
+  var bouges = 0;
+  for(var t = 0; t < 3; t++){
+    var fait = false;
+    function libere(v){
+      for(var r = .5; r <= 40; r += .5){
+        var n = Math.max(8, Math.round(2 * Math.PI * r / .5));
+        for(var k = 0; k < n; k++){
+          var x = v.x + r * Math.cos(2 * Math.PI * k / n), y = v.y + r * Math.sin(2 * Math.PI * k / n);
+          if(dansPerimetre(v, x, y, v.a) && !chevauche(v, vols, x, y, v.a)){
+            v.x = Math.round(x * 10) / 10; v.y = Math.round(y * 10) / 10; return true;
+          }
+        }
+      }
+      return false;
+    }
+    vols.forEach(function(v){
+      if(!chevauche(v, vols)) return;
+      var o = vols.filter(function(x){ return x !== v && ecartVols(v, x, null, 1) < -CONTACT; })[0];
+      if(v.fix && o && !o.fix && !o.ph) return;           /* c'est l'autre qui bouge d'abord */
+      if(libere(v) || (o && libere(o))){ bouges++; fait = true; }
+    });
+    if(!fait) break;
+  }
+  return bouges;
 }
