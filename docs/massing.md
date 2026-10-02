@@ -254,8 +254,12 @@ avance, l'opposé reste, l'autre dimension s'ajuste pour que chaque étage garde
 cotes tombent sur le module de 0,50 m (on choisit, autour de la cote visée, celle qui garde la
 surface la plus juste — quelques m² d'écart au plus, que le bilan montre) ; aucun côté sous 6 m ;
 un étage en gradin reste en gradin. Les tirettes et la poignée se dessinent par-dessus tout. Le geste n'est pas bloqué par les règles dures : le contrôle les
-signale en rouge. Déplacer et tourner ne tiennent que le PÉRIMÈTRE (`gen.js — dansPerimetre`) : la
-distance aux autres bâtiments et à l'existant ne bloque pas la main, le contrôle la signale. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
+signale en rouge. Déplacer et tourner ne tiennent que le PÉRIMÈTRE (`gen.js — dansPerimetre`) et une règle :
+RIEN NE SE SUPERPOSE (`chevauche`) — la main avance jusqu'au voisin, pas au-delà ; la distance
+aux autres bâtiments et à l'existant ne la bloque pas, le contrôle la signale. CE QUI SE TOUCHE NE
+FAIT QU'UN (`fusionner`) : bout à bout, même angle, mêmes niveaux, même profondeur, deux corps
+deviennent un volume ; autrement, un même bâtiment (`bat`, `joint`). La règle joue en fin de geste,
+après un tirage et après les cotes des Typologies. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.
 
