@@ -43,7 +43,7 @@ export function donneesTypo(){
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
        des charges, le noyau, le feu, les murs, le module, la distance d'un lien */
     regles:{ couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
-             mur:RULES.haut.mur, cloison:RULES.haut.cloison, module:V.module, lien:RULES.circ.proche } };
+             mur:RULES.haut.mur, cloison:RULES.haut.cloison, module:V.module, lien:RULES.circ.proche, cluster:RULES.circ.cluster } };
 }
 
 function etage(id, i){
