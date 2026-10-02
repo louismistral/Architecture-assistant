@@ -412,40 +412,15 @@ var PG = (function(){
       else pe.push(u);
     });
     /* les petites pièces d'une famille font un bloc : une porte, des cloisons */
-    function blocsDe(L){
-      var out = [];
-      L.slice().sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); }).forEach(function(u){
-        var b = out[out.length - 1];
-        if(b && b.f === u.f && b.cel.length < 8 && b.a + u.a <= 48){ b.cel.push(u); b.a += u.a; }
-        else out.push({ kind:"bloc", f:u.f, a:u.a, cel:[u], lab:u.lab });
-      });
-      return out;
-    }
-    function piece(u){ return Object.assign({ kind:"band" }, u); }
-    /* LES CLUSTERS, comme chez les lauréats (Martigny, Seuzach, Schlieren,
-       Sursee) : les classes par groupes de quatre, avec leur salle de groupe et
-       leurs vestiaires, autour d'une LERNZONE — le couloir qui s'élargit jusqu'à
-       la façade, meublé, éclairé. Les WC se posent face au noyau : escalier,
-       ascenseur et sanitaires font une seule bande transversale. */
-    var CL = R0.cluster || { classes:4, aire:40 };
-    function classe(u){ return u.f === "cla" && u.a >= 50; }
-    var classes = gr.filter(classe), groupes = gr.filter(function(u){ return u.f === "cla" && !classe(u); });
-    var autres = gr.filter(function(u){ return u.f !== "cla"; });
-    var nCl = classes.length >= 3 ? Math.ceil(classes.length / CL.classes) : 0;
-    var wc = pe.filter(function(u){ return /WC|Toilette/i.test(u.n); });
-    var vest = nCl ? pe.filter(function(u){ return /Vestiaire/i.test(u.n) && u.f === "eau"; }) : [];
-    var autresP = pe.filter(function(u){ return wc.indexOf(u) < 0 && vest.indexOf(u) < 0; });
-    var items = blocsDe(wc);
-    for(var kc = 0, pris = 0; kc < nCl; kc++){
-      var n = Math.round((classes.length - pris) / (nCl - kc)), cs = classes.slice(pris, pris + n), g = groupes.shift();
-      pris += n;
-      cs.forEach(function(c, j){ items.push(piece(c)); if(g && j === Math.max(0, Math.floor(cs.length / 2) - 1)){ items.push(piece(g)); g = null; } });
-      blocsDe(vest.filter(function(_, j){ return j % nCl === kc; })).forEach(function(b){ items.push(b); });
-      items.push({ kind:"lern", a:CL.aire, f:"cla", lab:"Lernzone" });
-    }
-    if(!nCl) classes.forEach(function(c){ items.push(piece(c)); });
-    groupes.concat(autres).sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); }).forEach(function(u){ items.push(piece(u)); });
-    blocsDe(autresP).forEach(function(b){ items.push(b); });
+    pe.sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); });
+    var blocs = [];
+    pe.forEach(function(u){
+      var b = blocs[blocs.length - 1];
+      if(b && b.f === u.f && b.cel.length < 8 && b.a + u.a <= 48){ b.cel.push(u); b.a += u.a; }
+      else blocs.push({ kind:"bloc", f:u.f, a:u.a, cel:[u], lab:u.lab });
+    });
+    var items = gr.map(function(u){ return Object.assign({ kind:"band" }, u); }).concat(blocs);
+    items.sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); });
     var fix = 0; trav.concat(full).forEach(function(u){ fix += u.a / D; });
     var nc = o.noyaux, cH = NOY.prof;
     var extG = !nc && !o.passG, extD = !o.passD && !full.length && !trav.length;
@@ -500,7 +475,7 @@ var PG = (function(){
     var lb = Math.max(best.lb, o.L0 ? o.L0 - fix : 0), L = lb + fix;
     f.L = L;
     /* les pièces, dans le repère de l'ancre */
-    var R = [], Z = [];
+    var R = [];
     /* `gap` : ce qui reste quand les deux bandes ne finissent pas ensemble — un
        palier, posé avant la pièce `at` (au noyau s'il y en a un, au milieu sinon) */
     function bande(list, frame, b, x, eg, ed, gap, at){
@@ -508,7 +483,6 @@ var PG = (function(){
         if(k === at) x += gap;
         var e = (k === 0 && eg) || (k === list.length - 1 && ed), H = b + (e ? c : 0), W = it.a / H;
         var r = Object.assign({}, it, { frame:frame, x0:x, W:W, H:H, v0:e ? -c : 0, ext:e ? (k === 0 ? -1 : 1) : 0 });
-        if(it.kind === "lern"){ Z.push(r); x += W; return; }
         if(it.kind === "bloc") r.cel = treemap(it.cel, W, H);
         R.push(r); x += W;
       });
@@ -540,8 +514,7 @@ var PG = (function(){
     function plie(x0, W){ return s > 0 ? x0 - L / 2 : L / 2 - x0 - W; }
     R.forEach(function(r){ r.x0 = plie(r.x0, r.W); if(s < 0 && r.ext) r.ext = -r.ext; });
     cages.forEach(function(k){ k.x0 = plie(k.x0, k.W); });
-    Z.forEach(function(z){ z.x0 = plie(z.x0, z.W); });
-    f.rooms = R; f.cages = cages; f.zones = Z;
+    f.rooms = R; f.cages = cages;
     f.zl = s > 0 ? zg - L / 2 : L / 2 - zd; f.zr = s > 0 ? zd - L / 2 : L / 2 - zg;
     return f;
   }
@@ -970,13 +943,6 @@ var MEUBLES = (function(){
   /* le NOYAU : l'escalier à deux volées et, à côté, la gaine d'ascenseur côté
      façade, le palier commun côté couloir. Ses cotes sont celles du projet
      (`RULES.circ.noyau`) : elles ne changent pas d'un étage à l'autre. */
-  /* la Lernzone : deux tables de travail en groupe et un banc contre la façade */
-  function lern(W, H){
-    var o = [];
-    for(var k = 0; k < 2 && W > 2.6; k++) o.push(C(W * (k + 0.5) / 2, H * 0.45, Math.min(0.6, W / 6), "eq"));
-    if(H > 2) o.push(R(0.3, H - 0.55, Math.max(0.6, W - 0.6), 0.45));
-    return o;
-  }
   function cage(W, H){
     var o = [], A = PG.NOY.asc, c = PG.CLOISON;
     var wa = Math.min(A[0], W * 0.45), ws = W - wa - c;
@@ -996,7 +962,6 @@ var MEUBLES = (function(){
   function pour(r, W, H){
     var n = r.n || "";
     if(r.kind === "cage") return cage(W, H);
-    if(r.kind === "lern") return lern(W, H);
     if(/sport double/i.test(n)) return sport(W, H);
     if(/^Piscine/i.test(n)) return piscine(W, H);
     if(/chauffage/i.test(n)) return chauffage(W, H);
@@ -1156,12 +1121,6 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         }
         local1(f, r.frame, r.x0, r, 0, r.v0 || 0, r.W, r.H, "room", false);
         pose[r.key] = (pose[r.key] || 0) + r.a;
-      });
-      /* les Lernzones : du couloir à la façade, meublées, avec leur fenêtre */
-      (f.zones || []).forEach(function(z){
-        meubles(f, z.frame, z.x0, { kind:"lern" }, 0, z.v0 || 0, z.W, z.H);
-        etiquette(f, z.frame, z.x0, 0, z.v0 || 0, z.W, z.H, "Lernzone", z.a, false);
-        if(z.W > 1.6) ouvertureMur(f, PG.versEtage(f, z.frame, z.x0, z.W / 2, 0)[0], z.frame === "A" ? -1 : 1, Math.min(2.6, z.W - 0.8), false);
       });
       f.cages.forEach(function(c){
         cagesA += c.W * c.H;
