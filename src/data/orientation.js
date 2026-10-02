@@ -119,6 +119,12 @@ export var ORIENT_MASS = [
   { id:"elan", sujet:"Élancement", tag:"souhaite",
     n:"Des corps pas trop élancés", k:"elanceMax", def:9, min:2, max:30, pas:1, unite:"× plus long que large",
     d:"Garde-fou secondaire." },
+  { id:"socle", sujet:"Gradins", tag:"souhaite",
+    n:"Un étage n'est pas plus petit que le suivant", k:"socleMin", def:80, min:0, max:100, pas:5,
+    unite:"% de l'étage du dessus au moins",
+    d:"Dans chaque corps, la surface d'un niveau rapportée à celle du niveau qu'il porte : un "
+      + "porte-à-faux reste un débord, pas un champignon. Favorable quand tous les niveaux tiennent "
+      + "le pourcentage." },
   { id:"connex", sujet:"Connexions", tag:"souhaite",
     n:"Une école d'un seul tenant", val:"corps accolés ou reliés par passerelle",
     d:"Préférée à égalité du reste. Les passerelles sont un LEVIER : elles relient sans fusionner." },
