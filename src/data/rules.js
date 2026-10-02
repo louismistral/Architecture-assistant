@@ -115,11 +115,6 @@ export var RULES = {
        distance (en équerre, de centre à centre, au même niveau et dans le
        même bâtiment) — hypothèse de projet */
     proche: 15,
-    /* LE CLUSTER, d'après les lauréats publiés sur espazium (Martigny 2025,
-       Seuzach 2024, Schlieren 2023, Sursee 2022) : quatre classes, leur salle
-       de groupe et leurs vestiaires autour d'une Lernzone — un élargissement du
-       couloir jusqu'à la façade, meublé et éclairé. `aire` en m² par cluster. */
-    cluster: { classes: 4, aire: 40 },
     /* la pile que le cahier des charges suppose AVANT le mixer, pour compter ses
        cages : un rez et deux étages, ce que le règlement admet pour les classes.
        Le mixer, lui, compte les cages de la pile qu'il porte. */
