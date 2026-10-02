@@ -18,7 +18,7 @@ import { PMAP, PROX, uOf } from "../mix/prog.js";
 import { adjActive } from "../mix/opts.js";
 import { saveSoon } from "../mix/store.js";
 import { MASS, empreintePile, massLev, massVols, partiOf } from "../mass/model.js";
-import { ecarter, genMass } from "../mass/gen.js";
+import { ecarter, fusionner, genMass } from "../mass/gen.js";
 import { massOf } from "../mass/etat.js";
 
 export function donneesTypo(){
@@ -66,7 +66,7 @@ export function typoEcrire(maj){
   });
   /* un corps allongé peut toucher son voisin ou passer le recul : la
      composition se desserre (le remède « Écarter » du Massing) */
-  if(maj.length){ ecarter(MASS.vol); saveSoon(); }
+  if(maj.length){ ecarter(MASS.vol); fusionner(MASS.vol, MASS.pont); saveSoon(); }
 }
 /* La largeur d'une pièce, au module ; null la rend au calcul. */
 export function typoRegle(id, i, lab, w){
@@ -148,6 +148,6 @@ export function typoSalleAccolee(){
   massLev("sport", "accolee");
   var neuf = genMass();
   if(!neuf.length || neuf.impossible){ massLev("sport", null); MASS.vol = avant; MASS.pont = pont; return null; }
-  massVols(neuf); MASS.pile = empreintePile(); saveSoon();
+  massVols(neuf); fusionner(MASS.vol, MASS.pont); MASS.pile = empreintePile(); saveSoon();
   return "salle de sport accolée à l'école (levier du Massing)";
 }

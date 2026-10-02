@@ -21,7 +21,7 @@ import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { MASS, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
   volRect, vu } from "../mass/model.js";
-import { dansPerimetre } from "../mass/gen.js";
+import { chevauche, dansPerimetre, fusionner } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 import { archiDe, emprise } from "../mass/archi.js";
 
@@ -208,6 +208,8 @@ function dessineVol(g, v, k){
   });
   g.appendChild(gv);
 }
+/* une position tient : dans le périmètre, et sur personne */
+function tient(v, x, y, a){ return dansPerimetre(v, x, y, a) && !chevauche(v, MASS.vol, x, y, a); }
 function montresDe(v){ return v.lv.filter(function(e){ return vu(e.i); }); }
 /* Le plus bas des étages donnés, hors sous-sol s'il y en a un autre : c'est
    celui qu'on pave. */
@@ -353,7 +355,7 @@ function wirePlan(){
       var v0 = volDe(MASS.sel);
       drag = { mode:"tourne", v:v0, a0:v0.a,
                th0:Math.atan2(w.y - v0.y, w.x - v0.x),
-               libre: dansPerimetre(v0) ? 0 : 1 };
+               libre: tient(v0) ? 0 : 1 };
       e.preventDefault();
       return;
     }
@@ -361,7 +363,7 @@ function wirePlan(){
     if(v){
       MASS.sel = v.id;
       drag = { mode:"bouge", v:v, dx:v.x - w.x, dy:v.y - w.y, live:false,
-               libre: dansPerimetre(v) ? 0 : 1 };
+               libre: tient(v) ? 0 : 1 };
       planDraw(); change("sel");
       e.preventDefault();
       return;
@@ -386,7 +388,11 @@ function wirePlan(){
       /* ce que la souris a parcouru le long de la normale du côté tiré ; les
          règles dures ne bloquent pas le geste — le contrôle les signale */
       var dl = (w.x - drag.w0.x) * drag.ax[0] + (w.y - drag.w0.y) * drag.ax[1];
+      /* un côté tiré ne passe pas dans le voisin : le pas qui recouvrirait
+         n'est pas pris */
+      var av = { x:drag.v.x, y:drag.v.y, lv:drag.v.lv.map(function(e){ return Object.assign({}, e); }) };
       etirer(drag.v, drag.base, drag.cote, dl);
+      if(chevauche(drag.v, MASS.vol) && !drag.libre){ drag.v.x = av.x; drag.v.y = av.y; drag.v.lv = av.lv; }
     } else if(drag.mode === "bouge"){
       var nx = Math.round((w.x + drag.dx) * 10) / 10;
       var ny = Math.round((w.y + drag.dy) * 10) / 10;
@@ -402,11 +408,20 @@ function wirePlan(){
            rendu impossible de le ramener à la main. Dès qu'il tient, la règle
            reprend. */
         drag.v.x = nx; drag.v.y = ny;
-        if(dansPerimetre(drag.v)) drag.libre = 0;
+        if(tient(drag.v)) drag.libre = 0;
       }
-      else if(dansPerimetre(drag.v, nx, ny, drag.v.a)){ drag.v.x = nx; drag.v.y = ny; }
-      else if(dansPerimetre(drag.v, nx, drag.v.y, drag.v.a)) drag.v.x = nx;
-      else if(dansPerimetre(drag.v, drag.v.x, ny, drag.v.a)) drag.v.y = ny;
+      else if(tient(drag.v, nx, ny, drag.v.a)){ drag.v.x = nx; drag.v.y = ny; }
+      else if(dansPerimetre(drag.v, nx, ny, drag.v.a)){
+        /* vers un voisin : on avance jusqu'à le toucher, pas au-delà */
+        var lo = 0, hi = 1, x0 = drag.v.x, y0 = drag.v.y;
+        for(var t = 0; t < 12; t++){
+          var mid = (lo + hi) / 2;
+          if(tient(drag.v, x0 + (nx - x0) * mid, y0 + (ny - y0) * mid, drag.v.a)) lo = mid; else hi = mid;
+        }
+        drag.v.x = Math.round((x0 + (nx - x0) * lo) * 100) / 100; drag.v.y = Math.round((y0 + (ny - y0) * lo) * 100) / 100;
+      }
+      else if(tient(drag.v, nx, drag.v.y, drag.v.a)) drag.v.x = nx;
+      else if(tient(drag.v, drag.v.x, ny, drag.v.a)) drag.v.y = ny;
     } else {
       var th = Math.atan2(w.y - drag.v.y, w.x - drag.v.x);
       var a = drag.a0 + (th - drag.th0);
@@ -415,16 +430,20 @@ function wirePlan(){
       if(!e.shiftKey) a = Math.round(a / (Math.PI / 36)) * (Math.PI / 36);
       /* Tourner peut faire sortir autant que déplacer : l'angle qui ne tient
          pas n'est simplement pas pris. */
-      if(drag.libre || dansPerimetre(drag.v, drag.v.x, drag.v.y, a)) drag.v.a = a;
+      if(drag.libre || tient(drag.v, drag.v.x, drag.v.y, a)) drag.v.a = a;
     }
     drag.live = true;
     planDraw(); change("geo");
   });
   document.addEventListener("pointerup", function(){
     if(!drag) return;
-    var mode = drag.mode, live = drag.live;
+    var mode = drag.mode, live = drag.live, v = drag.v;
     drag = null;
-    if(mode !== "pan" && live) change("fin");
+    if(mode !== "pan" && live){
+      /* ce qui se touche ne fait qu'un */
+      if(fusionner(MASS.vol, MASS.pont) && v && !MASS.vol.some(function(o){ return o.id === v.id; })) MASS.sel = null;
+      change("fin");
+    }
   });
   document.addEventListener("wheel", function(e){
     if(!root || !host || !host.contains(e.target)) return;

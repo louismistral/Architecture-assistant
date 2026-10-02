@@ -770,3 +770,76 @@ export function relierCourant(){
 }
 
 export { rectSol };
+
+/* ---------- deux règles du geste à la main ---------------------------------
+   RIEN NE SE SUPERPOSE : deux volumes peuvent se toucher, jamais se recouvrir,
+   à aucun étage. */
+export function chevauche(v, vols, x, y, a){
+  var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a, lv: v.lv };
+  return vols.some(function(o){ return o !== v && ecartVols(v, o, P, 1) < -CONTACT; });
+}
+/* CE QUI SE TOUCHE NE FAIT QU'UN. Deux corps bout à bout, de même angle, aux
+   mêmes niveaux et de même profondeur à chacun, deviennent UN volume : les deux
+   pignons qui se touchaient disparaissent, leur épaisseur entre dans le corps.
+   Deux corps qui se touchent autrement (en équerre, ou l'un plus haut que
+   l'autre, ou la salle de sport aux cotes imposées) deviennent un même
+   BÂTIMENT : ils partagent leurs couloirs, aucune distance ne leur est due.
+   Rend le nombre de fusions. */
+function touchent(a, b){ var e = ecartVols(a, b, null, 1); return e >= -CONTACT && e <= CONTACT; }
+function dansRepere(a, r){
+  var c = Math.cos(a.a), s = Math.sin(a.a), dx = r.x - a.x, dy = r.y - a.y;
+  return { u: dx * c + dy * s, v: -dx * s + dy * c };
+}
+function alignes(a, b){
+  if(Math.abs(Math.sin(a.a - b.a)) > 1e-3) return null;
+  var ia = a.lv.map(function(e){ return e.i; }).sort().join(), ib = b.lv.map(function(e){ return e.i; }).sort().join();
+  if(ia !== ib) return null;
+  var plan = [];
+  for(var k = 0; k < a.lv.length; k++){
+    var ea = a.lv[k], eb = b.lv.filter(function(e){ return e.i === ea.i; })[0];
+    var ra = volRect(a, ea), rb = volRect(b, eb), pa = dansRepere(a, ra), pb = dansRepere(a, rb);
+    if(Math.abs(ra.d - rb.d) > .05 || Math.abs(pa.v - pb.v) > .05) return null;
+    if(Math.abs(Math.abs(pa.u - pb.u) - (ra.w + rb.w) / 2) > CONTACT) return null;
+    plan.push({ ea:ea, eb:eb, g: Math.min(pa.u - ra.w / 2, pb.u - rb.w / 2), d: Math.max(pa.u + ra.w / 2, pb.u + rb.w / 2) });
+  }
+  return plan;
+}
+export function fusionner(vols, ponts){
+  var m = 2 * RULES.haut.mur, faits = 0, encore = true;
+  while(encore){
+    encore = false;
+    for(var i = 0; i < vols.length && !encore; i++) for(var j = i + 1; j < vols.length && !encore; j++){
+      var a = vols[i], b = vols[j];
+      if(a.ph || b.ph || a.fix || b.fix || !touchent(a, b)) continue;
+      var pl = alignes(a, b);
+      if(!pl) continue;
+      pl.forEach(function(p){
+        p.ea.w = auModule(p.d - p.g - m); p.ea.dx = (p.g + p.d) / 2;
+        if(p.eb.keys) p.ea.keys = (p.ea.keys || []).concat(p.eb.keys);
+        delete p.ea.w0; delete p.ea.d0; delete p.ea.dx0; delete p.ea.dy0;
+      });
+      vols.forEach(function(o){ if(o.joint === b.id) o.joint = a.id; });
+      if(!a.joint && b.joint) a.joint = b.joint;
+      if(!a.bat && b.bat) a.bat = b.bat;
+      (ponts || []).forEach(function(p){ if(p.a === b.id) p.a = a.id; if(p.b === b.id) p.b = a.id; });
+      if(ponts) for(var q = ponts.length - 1; q >= 0; q--) if(ponts[q].a === ponts[q].b) ponts.splice(q, 1);
+      vols.splice(j, 1); faits++; encore = true;
+    }
+  }
+  /* un même bâtiment pour tout ce qui se touche encore */
+  var grp = vols.map(function(v, k){ return k; });
+  function chef(k){ while(grp[k] !== k) k = grp[k]; return k; }
+  for(var x = 0; x < vols.length; x++) for(var y = x + 1; y < vols.length; y++){
+    if(vols[x].ph || vols[y].ph || !touchent(vols[x], vols[y])) continue;
+    grp[chef(y)] = chef(x);
+  }
+  vols.forEach(function(v, k){
+    var c = chef(k);
+    if(c === k) return;
+    var C = vols[c];
+    if(!C.bat) C.bat = "b" + C.id;
+    if(v.fix){ if(!v.joint) v.joint = C.id; }
+    else v.bat = C.bat;
+  });
+  return faits;
+}

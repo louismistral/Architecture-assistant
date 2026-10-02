@@ -33,7 +33,7 @@ import { dePile } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { dansPerimetre, genMass, rectSol } from "../mass/gen.js";
+import { dansPerimetre, fusionner, genMass, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { objMassing } from "../mass/export.js";
 import { evaluationCourante } from "../mass/mesures.js";
@@ -144,6 +144,8 @@ function aPoser(){
 }
 function regenere(){
   massVols(aPoser() > 0 ? genMass() : []);
+  /* ce qui se touche ne fait qu'un */
+  fusionner(MASS.vol, MASS.pont);
   MASS.pile = empreintePile();
   MASS.sel = null;
   camFit();
