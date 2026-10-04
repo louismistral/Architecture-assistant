@@ -49,7 +49,14 @@ export function planEtage(n, cad){
   /* le bâtiment, et lui seul, sur fond noir : le poché extérieur de chaque corps */
   n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:NUIT.fond }); });
   /* l'échelle graphique de l'écran n'a rien à faire sur une planche cotée au 1:200 */
-  n.prims.forEach(function(p){ if(p.g !== "echelle") trait(t, p, P, K, p.ctx ? cl : 0); });
+  n.prims.forEach(function(p){
+    if(p.g === "echelle") return;
+    if(p.ctx === "exist" && p.ferme){
+      t.poly(p.pts.map(P), { fill:ETAGES.existant.map(function(v){ return v + (1 - v) * cl; }) });
+      return;
+    }
+    trait(t, p, P, K, p.ctx ? cl : 0);
+  });
   t.fin();
   t.ligne([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]], [z[0], z[1]]], { stroke:NUIT.encre, lw:.5 });
   var y = m + ETAGES.cartouche - 30;
