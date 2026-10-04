@@ -82,6 +82,8 @@ mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est rede
   chaque élément du plan par son trait ; ce qui n'avait qu'un aplat ne garde que son contour s'il
   compte (poché, circulation, noyaux). Épaisseurs dans `NUIT.lw` : chaque trait doublé, jamais sous `min` ;
   la **structure** — poché des murs, noyaux — la plus épaisse (`structure`). L'éclatée les réduit. L'axonométrie éclatée prend le même trait.
+- **L'existant** en aplat gris très clair sans trait (`ETAGES.existant`), comme dans l'axonométrie
+  du volume.
 - **Le contexte s'efface en montant** : du plus bas au plus haut niveau, il se fond dans le papier de
   `ETAGES.clair[0]` à `ETAGES.clair[1]`.
 - Un texte reste lisible : jamais tête en bas. Les traits d'écran (« non-scaling ») gardent une
