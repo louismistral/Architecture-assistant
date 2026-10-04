@@ -11,10 +11,10 @@ import { PER } from "./site.js";
 /* Les volets, dans l'ordre des onglets. `pret` : ses planches existent. */
 export var ETAPES = [
   { id:"massing",     n:"Massing",     pret:true },
-  { id:"midterm",     n:"Midterm rendu", pret:true },
   { id:"typologies",  n:"Typologies",  pret:true },
   { id:"tectonics",   n:"Tectonics" },
   { id:"materiality", n:"Materiality" },
+  { id:"midterm",     n:"Midterm rendu", pret:true },
   { id:"final",       n:"Rendu final" }
 ];
 
