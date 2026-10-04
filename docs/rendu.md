@@ -86,8 +86,12 @@ mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est rede
 Deux cartes en tête du volet Typologies, A1 paysage, dans la vue et le style des diagrammes du
 massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
 
-- **Axonométrie** : le volume tel que le massing le pose, étage par étage, sur la parcelle ;
-  l'existant à sa hauteur (`SITE.bath`), le second temps en pointillé.
+- **Axonométrie** : chaque corps de chaque niveau (`typoPlanches()`) en bloc **noir** à la
+  hauteur de l'étage, ses pièces en traits blancs sur le dessus, ses **familles nommées en blanc**
+  (`FAM.court`) à plat sur ses faces : sur le dessus au droit de la plus grande pièce de chaque
+  famille, sur les façades vues le long des pièces qui les touchent. Un texte est écrit dans le
+  plan de sa face (`m` de `trace.texte`), jamais en miroir ; un volume peint plus tard couvre la
+  face et son texte (`apres` dans `peindre`). L'existant en blanc, la parcelle en tirets.
 - **Axonométrie éclatée** (A1 portrait) : chaque niveau porte son plan des Typologies
   (`typoPlanches()`, sans cotes ni mobilier), sur une dalle tirée du poché extérieur, avec ses
   **murs coupés** à `AXO.murs` m — l'enveloppe entre le poché et la circulation, les cloisons sur
