@@ -223,7 +223,9 @@ Les cotes d'une pièce viennent de **`coteDe(key)`** (`mix/opts.js`) — la LARG
 poste, enregistrée avec le projet ; la profondeur s'en déduit, à **surface exacte**, au module de
 0,5 m (`validDims`, `core/geometry.js`). Sans cote, la pièce prend la profondeur que le massing
 donne à ses bandes (`bandeMassing()`), sinon la plus carrée. Un bloc choisi offre la liste des
-proportions admissibles, et « auto ».
+proportions admissibles, et « auto » ; il se **tire** aussi par ses poignées — le bord droit
+élargit les pièces, le bord bas les approfondit — et la cote visée est ramenée, au lâcher, à la
+proportion admissible la plus proche.
 
 Une source pour trois onglets :
 - **le massing** — une cote fixée dicte la profondeur des corps (`profPieces()` : la pièce la plus
