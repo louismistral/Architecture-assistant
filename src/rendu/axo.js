@@ -73,7 +73,7 @@ function ecrire(t, A, s, o, U, V, ht){
 function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.6 * s.length))); }
 
 export function axoVolume(niveaux){
-  var t = feuille("AXONOMÉTRIE", "Le volume, nommé par programme · l'existant en blanc");
+  var t = feuille("AXONOMÉTRIE", "Le volume, nommé par programme · l'existant en volumes clairs");
   var N = niveaux.filter(function(n){ return n.lvl >= 0; }).sort(function(a, b){ return a.lvl - b.lvl; });
   var z = 0, C = [], pts = PER.slice(), H = 1;
   N.forEach(function(n){
@@ -90,7 +90,7 @@ export function axoVolume(niveaux){
                apres:function(t){ habiller(t, A, p.pts, dans.pts, R, n.z, n.h); } });
     });
   });
-  existants().forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:[E.blanc, E.blanc, E.blanc], o:{ lw:.4 } }); });
+  existants().forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:AXO.existant, o:{ stroke:false } }); });
   var c = t.cadre;
   t.decoupe([[c[0], c[1]], [c[0] + c[2], c[1]], [c[0] + c[2], c[1] + c[3]], [c[0], c[1] + c[3]]]);
   var A = axo(c, pts, H * 1.1);
@@ -175,17 +175,24 @@ export function axoEclatee(niveaux){
   N.forEach(function(n){ n.z = z; z += pas; });
   z -= pas;
   var c = t.cadre, A = axo(c, pts, z);
-  N.forEach(function(n){
+  N.forEach(function(n, k){
     /* la dalle : le poché extérieur de chaque corps, épaissi */
     n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, BLANC); });
     n.prims.forEach(function(p){
       if(p.ctx || p.g || p.k !== "p") return;
       var q = p.pts.map(function(r){ return A(r[0], r[1], n.z); });
-      var o = { fill:p.fill, stroke:p.stroke };
+      var o = { fill:p.cl === "circ" ? AXO.circulation : p.cl === "cagef" ? AXO.noyau : p.fill, stroke:p.stroke };
       if(o.stroke) o.lw = p.lwPt != null ? p.lwPt * 0.35 : Math.max(0.15, p.lw * 1.2);
       t[p.ferme ? "poly" : "ligne"](q, o);
     });
     peindre(t, A, murs(n.prims, n.z));
+    /* les noyaux qui montent au niveau suivant : leurs arêtes, en tirets,
+       tracées avant que la dalle du dessus ne vienne les couvrir */
+    var sup = N[k + 1];
+    if(sup) noyaux(n).forEach(function(c){
+      var d = noyaux(sup).filter(function(e){ return Math.hypot(e.c[0] - c.c[0], e.c[1] - c.c[1]) < 1.5; })[0];
+      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:AXO.noyau, lw:.6, dash:[3, 2] }); });
+    });
     /* le nom du niveau, à gauche de sa dalle */
     var bas = pts.reduce(function(m, r){ var a = A(r[0], r[1], n.z); return a[0] < m[0] ? a : m; }, [Infinity, 0]);
     t.texte(bas[0] - 14, bas[1], n.name, { size:12, gras:true, ancre:"end" });
@@ -223,4 +230,9 @@ function murs(prims, z){
     });
   });
   return C;
+}
+
+/* les noyaux d'un niveau : leur emprise et leur centre */
+function noyaux(n){
+  return n.prims.filter(function(p){ return p.cl === "cagef" && !p.ctx; }).map(function(p){ return { q:p.pts, c:centre(p.pts) }; });
 }
