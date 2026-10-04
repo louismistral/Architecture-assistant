@@ -13,20 +13,21 @@
    ========================================================================= */
 import { trace } from "../core/pdf.js";
 import { PER, SITE } from "../data/site.js";
-import { AXO, ENCRE, FORMATS } from "../data/planches.js";
-import { BLANC, VUE, axo, peindre, prisme, sol } from "./diagramme.js";
+import { AXO, ENCRE, FORMATS, NUIT } from "../data/planches.js";
+import { trait } from "./etages.js";
+import { VUE, axo, peindre, prisme } from "./diagramme.js";
 
 var E = ENCRE, GRIS = [0.4, 0.4, 0.4], EXIST = [[0.9, 0.9, 0.89], [0.82, 0.82, 0.81], [0.74, 0.74, 0.73]];
 var M = 50;
 
-function feuille(titre, sous, portrait){
+function feuille(titre, sous, portrait, noir){
   var F = FORMATS[AXO.format];
   if(portrait) F = { w:F.h, h:F.w };
-  var t = trace(F.w, F.h);
-  t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
-  t.texte(M, F.h - M - 26, titre, { size:30, gras:true });
-  t.texte(M, F.h - M - 46, sous, { size:10, fill:GRIS });
-  t.texte(F.w - M, M - 24, "Centre scolaire de Saxon · 05 Typologies · " + AXO.format, { size:7, fill:GRIS, ancre:"end" });
+  var t = trace(F.w, F.h), encre = noir ? NUIT.trait : E.noir, gris = noir ? NUIT.gris : GRIS;
+  t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:noir ? NUIT.fond : E.blanc });
+  t.texte(M, F.h - M - 26, titre, { size:30, gras:true, fill:encre });
+  t.texte(M, F.h - M - 46, sous, { size:10, fill:gris });
+  t.texte(F.w - M, M - 24, "Centre scolaire de Saxon · 05 Typologies · " + AXO.format, { size:7, fill:gris, ancre:"end" });
   t.cadre = [M, M, F.w - 2 * M, F.h - 2 * M - 76];
   return t;
 }
@@ -163,7 +164,7 @@ function sensDirect(q){ var s = 0; for(var i = 0; i < q.length; i++){ var b = q[
 /* ---------- éclatée ---------- */
 export function axoEclatee(niveaux){
   var N = niveaux.slice().sort(function(a, b){ return a.lvl - b.lvl; });
-  var t = feuille("AXONOMÉTRIE ÉCLATÉE", "Les plans des Typologies, niveau par niveau, chacun sur sa dalle, murs coupés", AXO.eclateePortrait);
+  var t = feuille("AXONOMÉTRIE ÉCLATÉE", "Les plans des Typologies, niveau par niveau, chacun sur sa dalle, murs coupés", AXO.eclateePortrait, true);
   var pts = [];
   N.forEach(function(n){ n.prims.forEach(function(p){ if(!p.ctx && !p.g && p.k === "p") pts = pts.concat(p.pts); }); });
   if(!pts.length) return t;
@@ -177,13 +178,10 @@ export function axoEclatee(niveaux){
   var c = t.cadre, A = axo(c, pts, z);
   N.forEach(function(n, k){
     /* la dalle : le poché extérieur de chaque corps, épaissi */
-    n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, BLANC); });
+    n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:.4 }); });
     n.prims.forEach(function(p){
       if(p.ctx || p.g || p.k !== "p") return;
-      var q = p.pts.map(function(r){ return A(r[0], r[1], n.z); });
-      var o = { fill:p.cl === "circ" ? AXO.circulation : p.cl === "cagef" ? AXO.noyau : p.fill, stroke:p.stroke };
-      if(o.stroke) o.lw = p.lwPt != null ? p.lwPt * 0.35 : Math.max(0.15, p.lw * 1.2);
-      t[p.ferme ? "poly" : "ligne"](q, o);
+      trait(t, p, function(r){ return A(r[0], r[1], n.z); }, 1.2, 0);
     });
     peindre(t, A, murs(n.prims, n.z));
     /* les noyaux qui montent au niveau suivant : leurs arêtes, en tirets,
@@ -191,11 +189,11 @@ export function axoEclatee(niveaux){
     var sup = N[k + 1];
     if(sup) noyaux(n).forEach(function(c){
       var d = noyaux(sup).filter(function(e){ return Math.hypot(e.c[0] - c.c[0], e.c[1] - c.c[1]) < 1.5; })[0];
-      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:AXO.noyau, lw:.6, dash:[3, 2] }); });
+      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.trait, lw:.5, dash:[3, 2] }); });
     });
     /* le nom du niveau, à gauche de sa dalle */
     var bas = pts.reduce(function(m, r){ var a = A(r[0], r[1], n.z); return a[0] < m[0] ? a : m; }, [Infinity, 0]);
-    t.texte(bas[0] - 14, bas[1], n.name, { size:12, gras:true, ancre:"end" });
+    t.texte(bas[0] - 14, bas[1], n.name, { size:12, gras:true, ancre:"end", fill:NUIT.trait });
   });
   return t;
 }
@@ -204,12 +202,12 @@ export function axoEclatee(niveaux){
    le poché extérieur et la circulation qu'il entoure (les deux rectangles
    d'un corps, sommet pour sommet), les cloisons sur les côtés des pièces,
    chacun une fois. */
-var MUR = [[0.13, 0.13, 0.13], [0.86, 0.86, 0.85], [0.76, 0.76, 0.75]];
+
 function murs(prims, z){
   var C = [], vu = {}, e = AXO.cloison / 2;
   function pose(q){
     var x = 0, y = 0; q.forEach(function(r){ x += r[0] / q.length; y += r[1] / q.length; });
-    C.push({ x:x, y:y, q:q, z0:z, z1:z + AXO.murs, c:MUR, o:{ lw:.25 } });
+    C.push({ x:x, y:y, q:q, z0:z, z1:z + AXO.murs, c:NOIR, o:{ stroke:NUIT.trait, lw:.25 } });
   }
   prims.forEach(function(p, i){
     if(p.cl !== "mur") return;
