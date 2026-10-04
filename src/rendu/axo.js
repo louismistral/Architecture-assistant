@@ -20,11 +20,11 @@ import { VUE, axo, peindre, prisme } from "./diagramme.js";
 var E = ENCRE, GRIS = [0.4, 0.4, 0.4], EXIST = [[0.9, 0.9, 0.89], [0.82, 0.82, 0.81], [0.74, 0.74, 0.73]];
 var M = 50;
 
-function feuille(titre, sous, portrait, noir){
+function feuille(titre, sous, portrait){
   var F = FORMATS[AXO.format];
   if(portrait) F = { w:F.h, h:F.w };
-  var t = trace(F.w, F.h), encre = noir ? NUIT.trait : E.noir, gris = noir ? NUIT.gris : GRIS;
-  t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:noir ? NUIT.fond : E.blanc });
+  var t = trace(F.w, F.h), encre = E.noir, gris = GRIS;
+  t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
   t.texte(M, F.h - M - 26, titre, { size:30, gras:true, fill:encre });
   t.texte(M, F.h - M - 46, sous, { size:10, fill:gris });
   t.texte(F.w - M, M - 24, "Centre scolaire de Saxon · 05 Typologies · " + AXO.format, { size:7, fill:gris, ancre:"end" });
@@ -166,7 +166,7 @@ function sensDirect(q){ var s = 0; for(var i = 0; i < q.length; i++){ var b = q[
 /* ---------- éclatée ---------- */
 export function axoEclatee(niveaux){
   var N = niveaux.slice().sort(function(a, b){ return a.lvl - b.lvl; });
-  var t = feuille("AXONOMÉTRIE ÉCLATÉE", "Les plans des Typologies, niveau par niveau, chacun sur sa dalle, murs coupés", AXO.eclateePortrait, true);
+  var t = feuille("AXONOMÉTRIE ÉCLATÉE", "Les plans des Typologies, niveau par niveau, chacun sur sa dalle, murs coupés", AXO.eclateePortrait);
   var pts = [];
   N.forEach(function(n){ n.prims.forEach(function(p){ if(!p.ctx && !p.g && p.k === "p") pts = pts.concat(p.pts); }); });
   if(!pts.length) return t;
@@ -191,11 +191,11 @@ export function axoEclatee(niveaux){
     var sup = N[k + 1];
     if(sup) noyaux(n).forEach(function(c){
       var d = noyaux(sup).filter(function(e){ return Math.hypot(e.c[0] - c.c[0], e.c[1] - c.c[1]) < 1.5; })[0];
-      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.trait, lw:NUIT.lw.min * 2 * ECH, dash:[3, 2] }); });
+      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.encre, lw:NUIT.lw.min * 2 * ECH, dash:[3, 2] }); });
     });
     /* le nom du niveau, à gauche de sa dalle */
     var bas = pts.reduce(function(m, r){ var a = A(r[0], r[1], n.z); return a[0] < m[0] ? a : m; }, [Infinity, 0]);
-    t.texte(bas[0] - 14, bas[1], n.name, { size:12, gras:true, ancre:"end", fill:NUIT.trait });
+    t.texte(bas[0] - 14, bas[1], n.name, { size:12, gras:true, ancre:"end", fill:NUIT.encre });
   });
   return t;
 }
