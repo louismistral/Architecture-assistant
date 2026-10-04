@@ -88,7 +88,9 @@ massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
 
 - **Axonométrie** : le volume tel que le massing le pose, étage par étage, sur la parcelle ;
   l'existant à sa hauteur (`SITE.bath`), le second temps en pointillé.
-- **Axonométrie éclatée** : chaque niveau porte son plan des Typologies (`typoPlanches()`, sans
-  cotes ni mobilier), sur une dalle tirée du poché extérieur. L'écart entre deux niveaux est
-  `AXO.pas` fois la profondeur du plan dans la vue (1 : ils ne se couvrent plus), `AXO.ecart` m
-  au moins.
+- **Axonométrie éclatée** (A1 portrait) : chaque niveau porte son plan des Typologies
+  (`typoPlanches()`, sans cotes ni mobilier), sur une dalle tirée du poché extérieur, avec ses
+  **murs coupés** à `AXO.murs` m — l'enveloppe entre le poché et la circulation, les cloisons sur
+  les côtés des pièces (`AXO.cloison`), dessus poché. L'écart entre deux niveaux est `AXO.pas`
+  fois la profondeur du plan dans la vue (au-delà de 1, un blanc les sépare), `AXO.ecart` m au
+  moins.
