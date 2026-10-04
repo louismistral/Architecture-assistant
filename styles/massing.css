@@ -39,6 +39,7 @@
   margin:var(--s-2) 0 0; font-size:var(--t-2xs); line-height:var(--lh-base);
   color:var(--muted-foreground);
 }
+.mass-note.is-bas{ color:var(--destructive); }
 .mass-deux{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
 .mass-deux .btn{ width:100%; }
 /* La seed, dans la colonne du « Shuffle massing » qu'elle rejoue : le champ du

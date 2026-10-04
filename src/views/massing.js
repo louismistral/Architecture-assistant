@@ -143,7 +143,9 @@ function aPoser(){
   return a;
 }
 function regenere(){
-  poser(aPoser() > 0 ? genMass() : []);
+  /* un tirage qui casse ne laisse pas un écran muet : l'erreur se dit au rail */
+  try { poser(aPoser() > 0 ? genMass() : []); }
+  catch(e){ console.error(e); massVols([]); MASS.vol.erreur = e.message || String(e); }
   MASS.pile = empreintePile();
   MASS.sel = null;
   camFit();
@@ -291,6 +293,14 @@ function blocTirage(){
         + MASS.vol.props.length + (MASS.parti === "auto" ? ", la mieux orientée de chaque parti" : "")
         : "")));
     b.appendChild(sc);
+  }
+
+  /* RIEN À L'ÉCRAN : on dit pourquoi, ici, là où l'on vient de cliquer — le
+     volet Contraintes le détaille avec ses remèdes */
+  if(!MASS.vol.length && (MASS.vol.impossible || MASS.vol.erreur) && aPoser() > 0){
+    var pq = MASS.vol.erreur ? "Le générateur s'est arrêté sur une erreur : " + MASS.vol.erreur
+      : (massCheck()[0] || {}).msg;
+    if(pq) b.appendChild(el("p", "mass-note is-bas", pq));
   }
 
   var n = el("p", "mass-note");
