@@ -8,12 +8,13 @@
    ========================================================================= */
 import { el } from "../core/format.js";
 import { pdfNeuf, pdfSur, telecharger } from "../core/pdf.js";
-import { BASE, ETAGES, ETAPES, FORMATS, MIDTERM } from "../data/planches.js";
+import { AXO, BASE, ETAGES, ETAPES, FORMATS, MIDTERM } from "../data/planches.js";
 import { MASS } from "../mass/model.js";
 import { planSituation } from "../rendu/siteplan.js";
 import { planDiagrammes } from "../rendu/diagramme.js";
 import { planMidterm } from "../rendu/midterm.js";
 import { cadrage, planEtage } from "../rendu/etages.js";
+import { axoEclatee, axoVolume } from "../rendu/axo.js";
 import { typoHote } from "./render.js";
 
 var OCTETS = {};
@@ -133,6 +134,12 @@ function etages(g){
     if(!N) return;
     var cad = cadrage(N);
     att.remove();
+    g.appendChild(carte({ id:"axo", n:"Axonométrie", format:AXO.format, nom:"saxon-typologie-axonometrie",
+      spec:AXO.format + " paysage · le volume sur la parcelle · PDF vectoriel",
+      dessin:function(){ return axoVolume(vols()); }, fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
+    g.appendChild(carte({ id:"eclatee", n:"Axonométrie éclatée", format:AXO.format, nom:"saxon-typologie-axonometrie-eclatee",
+      spec:AXO.format + " paysage · un plan par niveau · PDF vectoriel",
+      dessin:function(){ return axoEclatee(N); }, fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     N.slice().sort(function(a, b){ return a.lvl - b.lvl; }).forEach(function(n){
       g.appendChild(carte({ id:"etage-" + n.i, n:n.name, format:cad.format, nom:"saxon-typologie-" + n.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         spec:cad.format + " paysage · 1:" + ETAGES.echelle + " · PDF vectoriel",

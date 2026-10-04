@@ -1799,6 +1799,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       /* le contexte, par sa sorte : "site" (la parcelle), "exist", "ombre" */
       var ctx = el.closest(".siteg") || el.classList.contains("ombre") ? el.getAttribute("class") || "exist" : null;
       var op = +cs.opacity;
+      /* les cotes et le mobilier, que l'axonométrie éclatée laisse de côté */
+      var g = el.closest(".dimg") ? "dim" : el.closest(".mbg") ? "mb" : null;
       if(el.tagName === "text"){
         var parts = el.querySelectorAll("tspan").length ? el.querySelectorAll("tspan") : [el];
         parts.forEach(function(t){
@@ -1807,7 +1809,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           var ct = getComputedStyle(t), a = t.getStartPositionOfChar(0), b = t.getEndPositionOfChar(n - 1);
           var mid = W(m, (a.x + b.x) / 2, (a.y + b.y) / 2);
           R.push({ k:"t", x:mid[0], y:mid[1], s:t.textContent, size:parseFloat(ct.fontSize) * k,
-                   rot:-Math.atan2(m.b, m.a), gras:+ct.fontWeight >= 600, fill:couleur(ct.fill, op), ctx:ctx });
+                   rot:-Math.atan2(m.b, m.a), gras:+ct.fontWeight >= 600, fill:couleur(ct.fill, op), ctx:ctx, g:g });
         });
         return;
       }
@@ -1826,7 +1828,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var da = cs.strokeDasharray && cs.strokeDasharray !== "none" ? cs.strokeDasharray.split(/[ ,]+/).map(parseFloat) : null;
       var o = { k:"p", pts:P.map(function(p){ return W(m, p[0], p[1]); }), ferme:/polygon|rect|circle|ellipse/.test(el.tagName),
                 fill:el.tagName === "line" ? null : couleur(cs.fill, op * +cs.fillOpacity),
-                stroke:lw ? couleur(cs.stroke, op * +cs.strokeOpacity) : null, ctx:ctx };
+                stroke:lw ? couleur(cs.stroke, op * +cs.strokeOpacity) : null, ctx:ctx, g:g,
+                mur:el.classList.contains("mur") };
       if(fixe){ o.lwPt = lw; o.dashPt = da; } else { o.lw = lw * k; o.dash = da && da.map(function(d){ return d * k; }); }
       if(o.fill || o.stroke) R.push(o);
     });

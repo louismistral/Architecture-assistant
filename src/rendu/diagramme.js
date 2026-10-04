@@ -26,12 +26,13 @@ import { bbox, coins } from "../mass/geom.js";
 import { MASS, etagesDe, familleDom, famTok, partiOf } from "../mass/model.js";
 
 var E = ENCRE;
-var BLANC = [E.blanc, E.cote, E.cote2], ACC = [E.accent, [0.82, 0.29, 0.08], [0.7, 0.24, 0.06]];
+export var BLANC = [E.blanc, E.cote, E.cote2];
+var ACC = [E.accent, [0.82, 0.29, 0.08], [0.7, 0.24, 0.06]];
 var GRIS = [0.55, 0.55, 0.55], TXT = [0.3, 0.3, 0.3], TIRETS = { dash:[2.5, 1.8] };
 var CAP = { axe:"sur le plus long côté de la parcelle", soleil:"vers le meilleur compromis soleil-vue",
             libre:"librement autour de l'axe de la parcelle", pente:"pour que ses rangs suivent la pente" };
 
-function couleur(f){
+export function couleur(f){
   var c = typeof document !== "undefined" ? cssRGB(famTok(f)) : [0.7, 0.7, 0.7];
   return [c, c.map(function(v){ return v * .82; }), c.map(function(v){ return v * .68; })];
 }
@@ -50,9 +51,11 @@ function nb(x){ return String(Math.round(x * 10) / 10).replace(".", ","); }
 function deg(a){ var d = ((a * 180 / Math.PI) % 180 + 180) % 180; return Math.round(d > 90 ? d - 180 : d); }
 
 /* ---------- la vue : la même pour les quatre cases ---------- */
-function axo(cadre, pts, hmax){
-  var r = -0.62, el = 0.5, c = Math.cos(r), s = Math.sin(r);
-  function brut(x, y, z){ return [x * c - y * s, (x * s + y * c) * el + z * 0.9]; }
+/* la vue : l'angle du plan, l'écrasement de sa profondeur, celui des hauteurs */
+export var VUE = { r:-0.62, el:0.5, z:0.9 };
+export function axo(cadre, pts, hmax){
+  var r = VUE.r, el = VUE.el, c = Math.cos(r), s = Math.sin(r);
+  function brut(x, y, z){ return [x * c - y * s, (x * s + y * c) * el + z * VUE.z]; }
   var B = bbox(pts.map(function(p){ return brut(p[0], p[1], 0); }).concat(pts.map(function(p){ return brut(p[0], p[1], hmax); })));
   var k = Math.min(cadre[2] / B.w, cadre[3] / B.h) * 0.92;
   var ox = cadre[0] + (cadre[2] - B.w * k) / 2 - B.x0 * k, oy = cadre[1] + (cadre[3] - B.h * k) / 2 - B.y0 * k;
@@ -61,7 +64,7 @@ function axo(cadre, pts, hmax){
   A.g = [s, c];
   return A;
 }
-function prisme(t, A, poly, z0, z1, c, o){
+export function prisme(t, A, poly, z0, z1, c, o){
   o = o || {};
   var p = ccw(poly), F = [];
   for(var i = 0; i < p.length; i++){
@@ -75,7 +78,7 @@ function prisme(t, A, poly, z0, z1, c, o){
   });
   t.poly(p.map(function(q){ return A(q[0], q[1], z1); }), st(c && c[0]));
 }
-function peindre(t, A, C){
+export function peindre(t, A, C){
   C.sort(function(a, b){
     var da = A.prof(a.x, a.y), db = A.prof(b.x, b.y);
     return Math.abs(da - db) > 3 ? db - da : a.z0 - b.z0;
@@ -92,7 +95,7 @@ function cote(t, a, b, txt){
   [a, b].forEach(function(p){ t.cercle(p[0], p[1], 1.3, { fill:E.accent }); });
   t.texte((a[0] + b[0]) / 2 + 6, (a[1] + b[1]) / 2, txt, { size:8, gras:true, fill:E.accent });
 }
-function sol(t, A){ t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.5 }); }
+export function sol(t, A){ t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.5 }); }
 
 /* ---------- lire le volume final ---------- */
 function lire(vols){
