@@ -38,9 +38,8 @@ function existants(){
 }
 
 /* ---------- le volume, famille par famille ----------
-   Chaque corps de chaque niveau est un bloc NOIR, à la hauteur de l'étage ;
-   ses pièces se lisent en traits blancs sur le dessus, et ce qu'il porte se
-   NOMME en blanc — son chapitre, sous le nom de `AXO.noms` —, à plat sur les faces : sur le dessus, au droit de sa plus
+   Chaque corps de chaque niveau est un bloc NOIR, à la hauteur de l'étage, et
+   ce qu'il porte se NOMME en blanc, en lettres qui prennent toute la place — son chapitre, sous le nom de `AXO.noms` —, à plat sur les faces : sur le dessus, au droit de sa plus
    grande pièce ; sur les façades vues, le long des pièces qui les touchent.
    Une face cachée par un volume peint plus tard l'est avec son texte. */
 var NOIR = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], BLANC_T = [1, 1, 1];
@@ -70,7 +69,8 @@ function ecrire(t, A, s, o, U, V, ht){
   var sz = ht * n, m = [u[0] / n, u[1] / n, v[0] / n, v[1] / n];
   t.texte(p[0] - .35 * sz * m[2], p[1] - .35 * sz * m[3], s, { size:sz, gras:true, fill:BLANC_T, ancre:"middle", m:m });
 }
-function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.78 * s.length), 3.2)); }
+/* la hauteur des lettres qui remplit une place `long` × `haut` (Helvetica grasse) */
+function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.6 * s.length))); }
 
 export function axoVolume(niveaux){
   var t = feuille("AXONOMÉTRIE", "Le volume, nommé par programme · l'existant en blanc");
@@ -103,24 +103,30 @@ export function axoVolume(niveaux){
 /* les pièces et les noms d'un bloc : dessus, puis façades vues */
 function habiller(t, A, ext, int, R, z0, h){
   var z1 = z0 + h;
-  R.forEach(function(r){ t.poly(r.pts.map(function(q){ return A(q[0], q[1], z1); }), { stroke:BLANC_T, lw:.25 }); });
-  /* le dessus : une étiquette par famille, sur sa plus grande pièce */
-  var G = {};
+  /* le dessus : chaque nom occupe l'emprise de ses pièces dans le corps —
+     tout le dessus s'il est seul — en lettres aussi grandes qu'elle le permet */
+  var o = ext[0], a0 = [ext[1][0] - o[0], ext[1][1] - o[1]], a1 = [ext[3][0] - o[0], ext[3][1] - o[1]];
+  var la0 = Math.hypot(a0[0], a0[1]), la1 = Math.hypot(a1[0], a1[1]);
+  var u0 = [a0[0] / la0, a0[1] / la0], u1 = [a1[0] / la1, a1[1] / la1];
+  var B = {}, noms = {};
+  R.forEach(function(r){ noms[famDe(r)] = 1; });
+  var seul = Object.keys(noms).length === 1;
   R.forEach(function(r){
-    var f = famDe(r), a = aire(r.pts);
-    if(!G[f] || a > G[f].a) G[f] = { r:r, a:a };
+    var f = famDe(r), b = B[f] || (B[f] = seul ? [0, la0, 0, la1] : [Infinity, -Infinity, Infinity, -Infinity]);
+    if(seul) return;
+    r.pts.forEach(function(q){
+      var x = (q[0] - o[0]) * u0[0] + (q[1] - o[1]) * u0[1], y = (q[0] - o[0]) * u1[0] + (q[1] - o[1]) * u1[1];
+      b[0] = Math.min(b[0], x); b[1] = Math.max(b[1], x); b[2] = Math.min(b[2], y); b[3] = Math.max(b[3], y);
+    });
   });
-  Object.keys(G).forEach(function(f){
-    var q = G[f].r.pts, s = NOM[f];
-    var e0 = [q[1][0] - q[0][0], q[1][1] - q[0][1]], e1 = [q[2][0] - q[1][0], q[2][1] - q[1][1]];
-    var l0 = Math.hypot(e0[0], e0[1]), l1 = Math.hypot(e1[0], e1[1]);
-    var L = l0 >= l1 ? e0 : e1, l = Math.max(l0, l1), w = Math.min(l0, l1);
-    var U = [L[0] / l, L[1] / l, 0];
+  Object.keys(B).forEach(function(f){
+    var b = B[f], s = NOM[f], w0 = b[1] - b[0], w1 = b[3] - b[2];
+    var cx = (b[0] + b[1]) / 2, cy = (b[2] + b[3]) / 2, c = [o[0] + u0[0] * cx + u1[0] * cy, o[1] + u0[1] * cx + u1[1] * cy];
+    var U = w0 >= w1 ? [u0[0], u0[1], 0] : [u1[0], u1[1], 0], l = Math.max(w0, w1), w = Math.min(w0, w1);
     /* lu de gauche à droite à l'écran, et V = z × U : jamais en miroir */
     if(A(U[0], U[1], 0)[0] < A(0, 0, 0)[0]) U = [-U[0], -U[1], 0];
-    var V = [-U[1], U[0], 0], ht = taille(s, l * .85, w * .5);
+    var V = [-U[1], U[0], 0], ht = taille(s, l * .94, w * .8);
     if(ht < .5) return;
-    var c = centre(q);
     ecrire(t, A, s, [c[0], c[1], z1], U, V, ht);
   });
   /* les façades vues : les pièces qui les touchent, regroupées par famille */
@@ -144,7 +150,7 @@ function habiller(t, A, ext, int, R, z0, h){
     var M2 = [];
     runs.forEach(function(x){ var y = M2[M2.length - 1]; if(y && y.f === x.f && x.s0 - y.s1 < 1.5) y.s1 = Math.max(y.s1, x.s1); else M2.push(Object.assign({}, x)); });
     M2.forEach(function(x){
-      var s = NOM[x.f], ht = taille(s, (x.s1 - x.s0) * .9, h * .42);
+      var s = NOM[x.f], ht = taille(s, (x.s1 - x.s0) * .94, h * .72);
       if(ht < .6) return;
       var m = (x.s0 + x.s1) / 2;
       ecrire(t, A, s, [a[0] + u[0] * m + off[0], a[1] + u[1] * m + off[1], z0 + h / 2], Uf, [0, 0, 1], ht);
