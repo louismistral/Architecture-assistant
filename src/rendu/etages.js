@@ -32,7 +32,7 @@ export function cadrage(niveaux){
     return w <= F.w - 2 * ETAGES.marge && h <= F.h - 2 * ETAGES.marge - ETAGES.cartouche;
   })[0] || ETAGES.formats[ETAGES.formats.length - 1];
   var lvls = niveaux.map(function(n){ return n.lvl; }).filter(function(l, i, A){ return A.indexOf(l) === i; }).sort(function(p, q){ return p - q; });
-  return { format:id, cx:(b[0] + b[2]) / 2, cy:(b[1] + b[3]) / 2, lvls:lvls };
+  return { format:id, cx:(b[0] + b[2]) / 2, cy:(b[1] + b[3]) / 2, lvls:lvls, niveaux:niveaux };
 }
 
 export function planEtage(n, cad){
@@ -49,13 +49,21 @@ export function planEtage(n, cad){
   /* le bâtiment, et lui seul, sur fond noir : le poché extérieur de chaque corps */
   n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:NUIT.fond }); });
   /* l'échelle graphique de l'écran n'a rien à faire sur une planche cotée au 1:200 */
+  /* ni cotes ni échelle graphique : la planche est au 1:200 ; le nord reste */
   n.prims.forEach(function(p){
-    if(p.g === "echelle") return;
+    if(p.g === "echelle" || p.g === "dim") return;
     if(p.ctx === "exist" && p.ferme){
       t.poly(p.pts.map(P), { fill:ETAGES.existant.map(function(v){ return v + (1 - v) * cl; }) });
       return;
     }
     trait(t, p, P, K, p.ctx ? cl : 0);
+  });
+  /* les étages inférieurs, en trait : le contour extérieur de chacun de leurs
+     corps, par-dessus — on voit ce qui déborde dessous et ce qui porte */
+  var D = ETAGES.dessous;
+  cad.niveaux.forEach(function(m){
+    if(m.lvl >= n.lvl) return;
+    m.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { stroke:D.trait, lw:D.lw, dash:D.dash }); });
   });
   t.fin();
   t.ligne([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]], [z[0], z[1]]], { stroke:NUIT.encre, lw:.5 });
@@ -77,7 +85,7 @@ export function planEtage(n, cad){
 export function trait(t, p, map, k, efface, ech){
   /* dedans, le blanc sur le noir du bâtiment ; dehors (contexte, cotes,
      échelle, nord), l'encre sur le papier, qui s'efface vers lui */
-  var dehors = p.ctx || p.g === "dim" || p.g === "echelle";
+  var dehors = p.ctx || p.g === "dim" || p.g === "echelle" || p.g === "nord";
   var c = (dehors ? NUIT.encre : NUIT.trait).map(function(v, i){ return v + (NUIT.papier[i] - v) * (dehors ? efface || 0 : 0); });
   if(p.k === "t"){
     /* un texte se lit toujours de bas en haut ou de gauche à droite */

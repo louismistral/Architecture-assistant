@@ -1513,7 +1513,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       });
       sc += '<text class="dimt" font-size="1.1" x="' + (bx + 21.5) + '" y="' + (by + 0.7) + '">m</text></g>';
       var nx = bounds[2] + 4, ny = bounds[1] + 2;
-      sc += '<g><polygon class="nord" points="' + nx + ',' + ny + ' ' + (nx - 1.3) + ',' + (ny + 4) + ' ' + nx + ',' + (ny + 3) + ' ' + (nx + 1.3) + ',' + (ny + 4) + '"/>' +
+      sc += '<g class="nordg"><polygon class="nord" points="' + nx + ',' + ny + ' ' + (nx - 1.3) + ',' + (ny + 4) + ' ' + nx + ',' + (ny + 3) + ' ' + (nx + 1.3) + ',' + (ny + 4) + '"/>' +
             '<text class="lab" font-size="1.4" x="' + nx + '" y="' + (ny - 0.6) + '" text-anchor="middle">N</text></g>';
       out.dim.push(sc);
     }
@@ -1800,7 +1800,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var ctx = el.closest(".siteg") || el.classList.contains("ombre") ? el.getAttribute("class") || "exist" : null;
       var op = +cs.opacity;
       /* les cotes et le mobilier, que l'axonométrie éclatée laisse de côté */
-      var g = el.closest(".echelle") ? "echelle" : el.closest(".dimg") ? "dim" : el.closest(".mbg") ? "mb" : null;
+      var g = el.closest(".nordg") ? "nord" : el.closest(".echelle") ? "echelle" : el.closest(".dimg") ? "dim" : el.closest(".mbg") ? "mb" : null;
       if(el.tagName === "text"){
         var parts = el.querySelectorAll("tspan").length ? el.querySelectorAll("tspan") : [el];
         parts.forEach(function(t){
