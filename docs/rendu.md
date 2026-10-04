@@ -59,8 +59,11 @@ compris) : on ne fait que remplir deux cadres de la première page (`src/rendu/m
   PDF (405 × 256 m, sa texture d'herbe un peu plus) remplit le cadre, dans le style d'origine.
 - **Schemes** : les quatre temps des diagrammes, en ligne (`diagrammes()`, partagé avec la
   planche A2).
-- **Page 2** (Axonometry, Representative Floor plan 1:200, Free to Use) : celle du gabarit, telle
-  quelle, dans le même PDF ; la carte l'affiche sous la première (`apercu2`).
+- **Page 2** — sur les plans des Typologies (`typoPlanches()`, chargés une fois par `plansTypo()`) :
+  **Axonometry** porte l'axonométrie du volume à gauche et l'éclatée à droite (`dessinVolume`,
+  `dessinEclatee`) ; **Representative Floor plan 1:200** empile les plans, un niveau par bande du
+  plus haut au plus bas, chacun au 1:200 et recadré sur son plus grand corps, coupé où la bande
+  s'arrête (`dessinPlan`). « Free to Use » reste libre. `pdfSur(base, t, t2)` pose les deux pages.
 
 `pdfSur` trouve la première page par l'arbre des pages : dans ce fichier, la page 2 est écrite
 avant la page 1.
