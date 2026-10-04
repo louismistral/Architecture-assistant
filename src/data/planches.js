@@ -74,7 +74,9 @@ export var ETAGES = {
   clair: [0.15, 0.85],
   /* l'existant, en aplat gris très clair sans trait — comme dans
      l'axonométrie du volume — et qui pâlit lui aussi en montant */
-  existant: [0.84, 0.84, 0.83]
+  existant: [0.84, 0.84, 0.83],
+  /* les étages inférieurs, en trait : le contour de chacun sous le plan */
+  dessous: { trait:[0.55, 0.55, 0.55], lw:0.7, dash:[5, 3] }
 };
 
 /* LES AXONOMÉTRIES DES TYPOLOGIES — le volume entier, et le même éclaté
