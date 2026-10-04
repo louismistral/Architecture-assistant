@@ -59,6 +59,8 @@ compris) : on ne fait que remplir deux cadres de la première page (`src/rendu/m
   PDF (405 × 256 m, sa texture d'herbe un peu plus) remplit le cadre, dans le style d'origine.
 - **Schemes** : les quatre temps des diagrammes, en ligne (`diagrammes()`, partagé avec la
   planche A2).
+- **Page 2** (Axonometry, Representative Floor plan 1:200, Free to Use) : celle du gabarit, telle
+  quelle, dans le même PDF ; la carte l'affiche sous la première (`apercu2`).
 
 `pdfSur` trouve la première page par l'arbre des pages : dans ce fichier, la page 2 est écrite
 avant la page 1.
