@@ -41,7 +41,8 @@ export function trace(w, h){
     poly: function(pts, o){ if(pts.length > 1) L.push({ k:"p", pts:pts, o:o || {}, ferme:true }); return t; },
     ligne: function(pts, o){ if(pts.length > 1) L.push({ k:"p", pts:pts, o:o || {}, ferme:false }); return t; },
     cercle: function(x, y, r, o){ L.push({ k:"c", x:x, y:y, r:r, o:o || {} }); return t; },
-    /* o : { size, gras, fill, ancre:"start"|"middle"|"end", rot (radians, sens direct) } */
+    /* o : { size, gras, fill, ancre:"start"|"middle"|"end", rot (radians, sens direct),
+             m:[ux, uy, vx, vy] (le repère du texte, pour l'écrire sur une face) } */
     texte: function(x, y, s, o){ L.push({ k:"t", x:x, y:y, s:String(s), o:o || {} }); return t; },
     /* tout ce qui suit, jusqu'à `fin()`, est découpé par `pts` */
     decoupe: function(pts){ L.push({ k:"clip", pts:pts }); return t; },
@@ -78,9 +79,9 @@ export function trace(w, h){
         var a = e.o, sz = a.size || 8;
         /* largeur approchée d'Helvetica pour centrer ou caler à droite */
         var dx = a.ancre === "middle" ? -.26 * sz * e.s.length : a.ancre === "end" ? -.52 * sz * e.s.length : 0;
-        var co = Math.cos(a.rot || 0), si = Math.sin(a.rot || 0);
+        var co = Math.cos(a.rot || 0), si = Math.sin(a.rot || 0), m = a.m || [co, si, -si, co];
         o.push("BT /" + (a.gras ? "FHb" : "FH") + " " + f(sz) + " Tf " + rgb(a.fill || [0, 0, 0]) + " rg "
-          + (a.rot ? [co, si, -si, co, e.x + dx * co, e.y + dx * si].map(function(v){ return (Math.round(v * 1e4) / 1e4).toString(); }).join(" ") + " Tm "
+          + (a.rot || a.m ? m.concat([e.x + dx * m[0], e.y + dx * m[1]]).map(function(v){ return (Math.round(v * 1e4) / 1e4).toString(); }).join(" ") + " Tm "
                    : f(e.x + dx) + " " + f(e.y) + " Td ") + chaine(e.s) + " Tj ET");
       } else if(e.k === "clip") o.push("q " + chemin(e.pts, true) + " W n");
       else if(e.k === "fin") o.push("Q");
@@ -105,10 +106,11 @@ export function trace(w, h){
       } else if(e.k === "c") o.push('<circle cx="' + f(e.x) + '" cy="' + Y(e.y) + '" r="' + f(e.r) + '"' + style(e.o) + "/>");
       else if(e.k === "t"){
         var a = e.o;
-        o.push('<text x="' + f(e.x) + '" y="' + Y(e.y) + '" font-family="Helvetica, Arial, sans-serif" font-size="'
+        o.push('<text x="' + (a.m ? 0 : f(e.x)) + '" y="' + (a.m ? 0 : Y(e.y)) + '" font-family="Helvetica, Arial, sans-serif" font-size="'
           + f(a.size || 8) + '"' + (a.gras ? ' font-weight="700"' : "") + ' fill="' + hex(a.fill || [0, 0, 0]) + '"'
           + (a.ancre ? ' text-anchor="' + a.ancre + '"' : "")
-          + (a.rot ? ' transform="rotate(' + f(-a.rot * 180 / Math.PI) + " " + f(e.x) + " " + Y(e.y) + ')"' : "") + ">" + esc(e.s) + "</text>");
+          + (a.m ? ' transform="matrix(' + [a.m[0], -a.m[1], -a.m[2], a.m[3], e.x, h - e.y].map(function(v){ return (Math.round(v * 1e4) / 1e4).toString(); }).join(" ") + ')"'
+             : a.rot ? ' transform="rotate(' + f(-a.rot * 180 / Math.PI) + " " + f(e.x) + " " + Y(e.y) + ')"' : "") + ">" + esc(e.s) + "</text>");
       } else if(e.k === "clip"){
         n++; ouverts++;
         o.push('<clipPath id="cp' + n + '"><polygon points="'

@@ -1,8 +1,8 @@
 /* ============================================================================
    RENDU · TYPOLOGIES — deux axonométries
 
-     axoVolume(vols)      le volume tel que le massing le pose, étage par
-                          étage, sur la parcelle, l'existant à sa hauteur
+     axoVolume(niveaux)   le volume, chaque corps de chaque niveau en bloc
+                          noir, ses familles nommées en blanc sur ses faces
      axoEclatee(niveaux)  le même, éclaté : chaque niveau porte son plan des
                           Typologies (`typoPlanches()`) et ses murs coupés,
                           sur sa dalle, écarté
@@ -14,9 +14,7 @@
 import { trace } from "../core/pdf.js";
 import { PER, SITE } from "../data/site.js";
 import { AXO, ENCRE, FORMATS } from "../data/planches.js";
-import { lvlOf } from "../mix/floors.js";
-import { coins } from "../mass/geom.js";
-import { etagesDe } from "../mass/model.js";
+import { FAM } from "../data/families.js";
 import { BLANC, VUE, axo, peindre, prisme, sol } from "./diagramme.js";
 
 var E = ENCRE, GRIS = [0.4, 0.4, 0.4], EXIST = [[0.9, 0.9, 0.89], [0.82, 0.82, 0.81], [0.74, 0.74, 0.73]];
@@ -40,31 +38,118 @@ function existants(){
   }).filter(Boolean);
 }
 
-/* ---------- le volume ---------- */
-export function axoVolume(vols){
-  var t = feuille("AXONOMÉTRIE", "Le volume, étage par étage, sur la parcelle · l'existant à sa hauteur");
-  var z00 = Infinity, C = [], pts = PER.slice();
-  vols.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) >= 0) z00 = Math.min(z00, e.z0); }); });
-  if(!isFinite(z00)) z00 = 0;
-  var H = 1;
-  vols.forEach(function(v){
-    etagesDe(v).forEach(function(e){
-      if(lvlOf(e.e.i) < 0) return;
-      var q = coins(e.rc), z0 = Math.max(0, e.z0 - z00), z1 = e.z1 - z00;
-      H = Math.max(H, z1); pts = pts.concat(q);
-      C.push({ x:e.rc.x, y:e.rc.y, q:q, z0:z0, z1:z1, c:v.ph ? null : BLANC, o:v.ph ? { dash:[2.5, 1.8] } : null });
+/* ---------- le volume, famille par famille ----------
+   Chaque corps de chaque niveau est un bloc NOIR, à la hauteur de l'étage ;
+   ses pièces se lisent en traits blancs sur le dessus, et chaque famille se
+   NOMME en blanc, à plat sur les faces : sur le dessus, au droit de sa plus
+   grande pièce ; sur les façades vues, le long des pièces qui les touchent.
+   Une face cachée par un volume peint plus tard l'est avec son texte. */
+var NOIR = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], BLANC_T = [1, 1, 1];
+var NOM = {};
+FAM.forEach(function(f){ NOM[f.id] = f.court; });
+function famDe(p){ var m = /\bfam-(\w+)/.exec(p.cl || ""); return m ? m[1] : null; }
+function centre(q){ var x = 0, y = 0; q.forEach(function(r){ x += r[0] / q.length; y += r[1] / q.length; }); return [x, y]; }
+function dedans(q, p){
+  var s = 0;
+  for(var i = 0; i < q.length; i++){
+    var a = q[i], b = q[(i + 1) % q.length], c = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    if(c !== 0){ if(s && Math.sign(c) !== s) return false; s = Math.sign(c); }
+  }
+  return true;
+}
+/* un texte posé à plat sur une face : `o` un point, `U` et `V` ses axes (m)
+   — (U, V, normale sortante) en sens direct, sans quoi il se lirait en miroir
+   — `ht` la hauteur des lettres en m ; centré sur `o` */
+function ecrire(t, A, s, o, U, V, ht){
+  var p = A(o[0], o[1], o[2]), pu = A(o[0] + U[0], o[1] + U[1], o[2] + U[2]), pv = A(o[0] + V[0], o[1] + V[1], o[2] + V[2]);
+  var u = [pu[0] - p[0], pu[1] - p[1]], v = [pv[0] - p[0], pv[1] - p[1]], n = Math.hypot(u[0], u[1]);
+  if(n < 1e-6) return;
+  var sz = ht * n, m = [u[0] / n, u[1] / n, v[0] / n, v[1] / n];
+  t.texte(p[0] - .35 * sz * m[2], p[1] - .35 * sz * m[3], s, { size:sz, gras:true, fill:BLANC_T, ancre:"middle", m:m });
+}
+function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.78 * s.length), 3.2)); }
+
+export function axoVolume(niveaux){
+  var t = feuille("AXONOMÉTRIE", "Le volume, famille par famille · l'existant en blanc");
+  var N = niveaux.filter(function(n){ return n.lvl >= 0; }).sort(function(a, b){ return a.lvl - b.lvl; });
+  var z = 0, C = [], pts = PER.slice(), H = 1;
+  N.forEach(function(n){
+    n.z = z; z += n.h; H = Math.max(H, z);
+    var P = n.prims, pieces = P.filter(function(p){ return p.k === "p" && p.ferme && !p.ctx && famDe(p); });
+    P.forEach(function(p, i){
+      if(p.cl !== "mur") return;
+      var dans = P.slice(i + 1).filter(function(q){ return q.cl === "circ"; })[0];
+      if(!dans) return;
+      var R = pieces.filter(function(r){ return dedans(dans.pts, centre(r.pts)); });
+      pts = pts.concat(p.pts);
+      var c = centre(p.pts);
+      C.push({ x:c[0], y:c[1], q:p.pts, z0:n.z, z1:n.z + n.h, c:NOIR, o:{ stroke:BLANC_T, lw:.6 },
+               apres:function(t){ habiller(t, A, p.pts, dans.pts, R, n.z, n.h); } });
     });
   });
-  var X = existants();
-  X.forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:EXIST }); });
+  existants().forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:[E.blanc, E.blanc, E.blanc], o:{ lw:.4 } }); });
   var c = t.cadre;
   t.decoupe([[c[0], c[1]], [c[0] + c[2], c[1]], [c[0] + c[2], c[1] + c[3]], [c[0], c[1] + c[3]]]);
   var A = axo(c, pts, H * 1.1);
-  sol(t, A);
+  t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { stroke:GRIS, lw:.5, dash:[4, 3] });
   peindre(t, A, C);
   t.fin();
   return t;
 }
+
+/* les pièces et les noms d'un bloc : dessus, puis façades vues */
+function habiller(t, A, ext, int, R, z0, h){
+  var z1 = z0 + h;
+  R.forEach(function(r){ t.poly(r.pts.map(function(q){ return A(q[0], q[1], z1); }), { stroke:BLANC_T, lw:.25 }); });
+  /* le dessus : une étiquette par famille, sur sa plus grande pièce */
+  var G = {};
+  R.forEach(function(r){
+    var f = famDe(r), a = aire(r.pts);
+    if(!G[f] || a > G[f].a) G[f] = { r:r, a:a };
+  });
+  Object.keys(G).forEach(function(f){
+    var q = G[f].r.pts, s = NOM[f] || f.toUpperCase();
+    var e0 = [q[1][0] - q[0][0], q[1][1] - q[0][1]], e1 = [q[2][0] - q[1][0], q[2][1] - q[1][1]];
+    var l0 = Math.hypot(e0[0], e0[1]), l1 = Math.hypot(e1[0], e1[1]);
+    var L = l0 >= l1 ? e0 : e1, l = Math.max(l0, l1), w = Math.min(l0, l1);
+    var U = [L[0] / l, L[1] / l, 0];
+    /* lu de gauche à droite à l'écran, et V = z × U : jamais en miroir */
+    if(A(U[0], U[1], 0)[0] < A(0, 0, 0)[0]) U = [-U[0], -U[1], 0];
+    var V = [-U[1], U[0], 0], ht = taille(s, l * .85, w * .5);
+    if(ht < .5) return;
+    var c = centre(q);
+    ecrire(t, A, s, [c[0], c[1], z1], U, V, ht);
+  });
+  /* les façades vues : les pièces qui les touchent, regroupées par famille */
+  var g = A.g;
+  for(var k = 0; k < 4; k++){
+    var a = int[k], b = int[(k + 1) % 4], d = [b[0] - a[0], b[1] - a[1]], l = Math.hypot(d[0], d[1]);
+    var ea = ext[k], eb = ext[(k + 1) % 4], sd = sensDirect(ext);
+    var n = [sd * (eb[1] - ea[1]), -sd * (eb[0] - ea[0])], ln = Math.hypot(n[0], n[1]);   /* sortante */
+    if(n[0] * g[0] + n[1] * g[1] >= 0) continue;
+    var Uf = [-n[1] / ln, n[0] / ln, 0];   /* z × n : lu depuis dehors */
+    var u = [d[0] / l, d[1] / l], off = [ea[0] - a[0], ea[1] - a[1]];
+    var runs = [];
+    R.forEach(function(r){
+      var pr = r.pts.map(function(q){ return [(q[0] - a[0]) * u[0] + (q[1] - a[1]) * u[1], Math.abs((q[0] - a[0]) * u[1] - (q[1] - a[1]) * u[0])]; });
+      var touche = pr.filter(function(x){ return x[1] < .35; });
+      if(touche.length < 2) return;
+      var s0 = Math.min.apply(null, touche.map(function(x){ return x[0]; })), s1 = Math.max.apply(null, touche.map(function(x){ return x[0]; }));
+      runs.push({ f:famDe(r), s0:s0, s1:s1 });
+    });
+    runs.sort(function(p, q){ return p.s0 - q.s0; });
+    var M2 = [];
+    runs.forEach(function(x){ var y = M2[M2.length - 1]; if(y && y.f === x.f && x.s0 - y.s1 < 1.5) y.s1 = Math.max(y.s1, x.s1); else M2.push(Object.assign({}, x)); });
+    M2.forEach(function(x){
+      var s = NOM[x.f] || x.f.toUpperCase(), ht = taille(s, (x.s1 - x.s0) * .9, h * .42);
+      if(ht < .6) return;
+      var m = (x.s0 + x.s1) / 2;
+      ecrire(t, A, s, [a[0] + u[0] * m + off[0], a[1] + u[1] * m + off[1], z0 + h / 2], Uf, [0, 0, 1], ht);
+    });
+  }
+}
+function aire(q){ var s = 0; for(var i = 0; i < q.length; i++){ var b = q[(i + 1) % q.length]; s += q[i][0] * b[1] - b[0] * q[i][1]; } return Math.abs(s) / 2; }
+function sensDirect(q){ var s = 0; for(var i = 0; i < q.length; i++){ var b = q[(i + 1) % q.length]; s += q[i][0] * b[1] - b[0] * q[i][1]; } return s < 0 ? -1 : 1; }
 
 /* ---------- éclatée ---------- */
 export function axoEclatee(niveaux){

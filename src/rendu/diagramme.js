@@ -72,8 +72,8 @@ export function prisme(t, A, poly, z0, z1, c, o){
     if(n[0] * A.g[0] + n[1] * A.g[1] >= 0) continue;
     F.push({ a:a, b:b, d:A.prof((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), l:Math.abs(n[0]) > Math.abs(n[1]) });
   }
-  var lw = o.lw || .5;
-  function st(fill){ return o.dash ? { stroke:E.noir, lw:lw, dash:o.dash } : { fill:fill, stroke:E.noir, lw:lw }; }
+  var lw = o.lw || .5, tr = o.stroke || E.noir;
+  function st(fill){ return o.dash ? { stroke:tr, lw:lw, dash:o.dash } : { fill:fill, stroke:tr, lw:lw }; }
   F.sort(function(u, v){ return v.d - u.d; }).forEach(function(f){
     t.poly([A(f.a[0], f.a[1], z0), A(f.b[0], f.b[1], z0), A(f.b[0], f.b[1], z1), A(f.a[0], f.a[1], z1)], st(c && (f.l ? c[1] : c[2])));
   });
@@ -83,7 +83,7 @@ export function peindre(t, A, C){
   C.sort(function(a, b){
     var da = A.prof(a.x, a.y), db = A.prof(b.x, b.y);
     return Math.abs(da - db) > 3 ? db - da : a.z0 - b.z0;
-  }).forEach(function(k){ prisme(t, A, k.q, k.z0, k.z1, k.c, k.o); });
+  }).forEach(function(k){ prisme(t, A, k.q, k.z0, k.z1, k.c, k.o); if(k.apres) k.apres(t); });
 }
 function fleche(t, a, b, lw){
   lw = lw || 1.5;
