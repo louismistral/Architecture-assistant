@@ -35,8 +35,10 @@ export function planMidterm2(niveaux, cad){
   var F = FORMATS[MIDTERM.format], t = trace(F.w, F.h), m = 16;
   /* Axonometry : le volume à gauche, l'éclatée à droite */
   var a = MIDTERM.axonometrie, w = a[2] - a[0] - 2 * m, h = a[3] - a[1] - m - MIDTERM.axonometrieTitre;
-  dessinVolume(t, [a[0] + m, a[1] + m, w * .55, h], niveaux);
-  dessinEclatee(t, [a[0] + m + w * .57, a[1] + m, w * .43, h], niveaux);
+  /* l'éclatée prend toute la hauteur du cadre — le titre est à gauche, elle
+     monte à côté de lui ; le volume, plus petit, se pose sous le titre */
+  dessinVolume(t, [a[0] + m, a[1] + m, w * .4, h], niveaux);
+  dessinEclatee(t, [a[0] + m + w * .4, a[1] + m, w * .6, a[3] - a[1] - 2 * m], niveaux);
   /* Representative Floor plan 1:200 : le plan du REZ seul, au 1:200, centré
      sur ses bâtiments et coupé là où le cadre s'arrête */
   var c = MIDTERM.plans, z = [c[0] + m, c[1] + m, c[2] - m, c[3] - MIDTERM.plansTitre];

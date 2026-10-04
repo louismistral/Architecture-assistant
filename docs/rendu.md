@@ -60,7 +60,7 @@ compris) : on ne fait que remplir deux cadres de la première page (`src/rendu/m
 - **Schemes** : les quatre temps des diagrammes, en ligne (`diagrammes()`, partagé avec la
   planche A2).
 - **Page 2** — sur les plans des Typologies (`typoPlanches()`, chargés une fois par `plansTypo()`) :
-  **Axonometry** porte l'axonométrie du volume à gauche et l'éclatée à droite (`dessinVolume`,
+  **Axonometry** porte l'axonométrie du volume à gauche, plus petite, et l'éclatée à droite, sur toute la hauteur du cadre (`dessinVolume`,
   `dessinEclatee`) ; **Representative Floor plan 1:200** porte le plan du **rez** seul, au 1:200,
   centré sur ses bâtiments et coupé où le cadre s'arrête (`dessinPlan`). « Free to Use » reste libre. `pdfSur(base, t, t2)` pose les deux pages.
 
