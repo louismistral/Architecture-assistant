@@ -423,3 +423,11 @@
 .mix-sw[aria-checked="true"]{background:var(--primary);border-color:var(--primary)}
 .mix-sw[aria-checked="true"] .mix-sw__k{transform:translateX(var(--s-4))}
 @media (prefers-reduced-motion:reduce){.mix-sw,.mix-sw__k{transition:none}}
+/* À l'échelle : la trame des pièces couvre tout le bloc, à ses cotes ; le
+   nom se pose dessus. */
+.mixblk.has-pcs .mixblk__pcs{position:absolute;inset:0;margin:0}
+.mixblk__lb{position:relative;z-index:1}
+.mixblk__dims{display:block;margin-top:2px;max-width:100%;font-size:var(--t-3xs);
+  padding:1px 2px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--background);color:var(--foreground);cursor:pointer}
+.mixblk__a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

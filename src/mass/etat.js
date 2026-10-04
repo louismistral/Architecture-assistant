@@ -30,7 +30,6 @@ export function massOf(){
       return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
                ph:v.ph || 0, nom:v.nom || null, joint:v.joint || null, bat:v.bat || null,
                ar:v.ar || null,
-               typo:v.typo || null,
                /* `key` sur l'ÉTAGE et non sur le seul volume : la salle de
                   sport peut en porter un au-dessus d'elle, et celui-là loge du
                   programme ordinaire. C'est lui qui dit ce qu'on y pave. */

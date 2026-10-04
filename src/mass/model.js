@@ -29,9 +29,10 @@ import { V } from "../data/leviers.js";
 import "../data/cadre.js";
 import "../data/donnees.js";
 import { RULES } from "../data/rules.js";
-import { FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
+import { BLOCKS, FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
   from "../mix/floors.js";
-import { PMAP } from "../mix/prog.js";
+import { PMAP, uOf } from "../mix/prog.js";
+import { coteDe, toutesCotes } from "../mix/opts.js";
 import { aire, assise, coins, ecartAngle, local } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
@@ -170,7 +171,36 @@ export function niveaux(){
    déjà, niveau par niveau. Défaire une implantation composée à la main pour un
    poste déplacé serait pire que le mal. */
 export function empreintePile(){
-  return FLOORS.map(function(F){ return F.lvl; }).join(",");
+  /* les cotes des pièces en font partie : une pièce redimensionnée au mixer
+     change la profondeur des corps, la volumétrie se recompose */
+  return FLOORS.map(function(F){ return F.lvl; }).join(",") + "|" + JSON.stringify(toutesCotes());
+}
+
+/* LES PIÈCES DONNENT LEUR PROFONDEUR AUX CORPS — et les corps aux pièces.
+   `profPieces()` : la profondeur intérieure qu'un corps à deux bandes doit
+   avoir pour ses pièces redimensionnées (la plus profonde, deux fois, et le
+   couloir) ; null si aucune cote n'est fixée. `bandeMassing()` : à l'inverse,
+   la profondeur d'une bande dans les corps posés, que prennent les pièces
+   sans cote ; null sans volumétrie. */
+export function profPieces(){
+  var h = 0, vu = {};
+  BLOCKS.forEach(function(b){
+    var w = coteDe(b.key), p = PMAP[b.key];
+    if(!w || vu[b.key] || !p || p.hors || p.solid || b.fl < 0 || b.fl >= FLOORS.length || lvlOf(b.fl) < 0) return;
+    vu[b.key] = 1;
+    h = Math.max(h, uOf(b.key) / w);
+  });
+  return h ? 2 * h + COULOIR : null;
+}
+export function bandeMassing(){
+  var P = [];
+  MASS.vol.forEach(function(v){
+    if(v.fix || v.ph) return;
+    v.lv.forEach(function(e){ P.push(Math.min(e.w, e.d) - 2 * RULES.haut.mur); });
+  });
+  if(!P.length) return null;
+  P.sort(function(a, b){ return a - b; });
+  return Math.max(2, (P[P.length >> 1] - COULOIR) / 2);
 }
 
 /* Les niveaux hors sol et ceux qui s'enterrent : ils ne se composent pas de la

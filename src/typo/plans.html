@@ -813,8 +813,10 @@ var PG = (function(){
         var p = local(v.x, v.y, v.a, x + dir * 1.0, (e.dy || 0));
         return F.some(function(g){ return g !== f && g.v.bat && g.v.bat === v.bat && dansCorps({ x:g.v.x, y:g.v.y, a:g.v.a, lv:[g.e] }, p); });
       }
-      var reg = {};
-      Object.keys(v.typo || {}).forEach(function(kk){ var p = kk.split("|"); if(+p[0] === i) reg[p.slice(1).join("|")] = v.typo[kk]; });
+      /* les cotes des pièces, réglées au mixer ou ici : une par poste */
+      var reg = {}, cote = {};
+      (DATA.floors[i] ? DATA.floors[i].rooms : []).forEach(function(r){ if(r.w) cote[r.key] = r.w; });
+      f.U.forEach(function(u){ if(cote[u.key]) reg[u.lab] = cote[u.key]; });
       var sal = f.U.filter(function(u){ return u.salle; })[0], debut = false;
       if(sal){
         var pr = (sal.salle.cx - f.cx) * Math.cos(f.a) + (sal.salle.cy - f.cy) * Math.sin(f.a);
@@ -1350,7 +1352,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         var trav = r.kind === "trav";
         out.rooms.push('<polygon class="' + cls + ' fam-' + (r.f || "tec") + '" data-chap="' + (r.chap || String(r.key || "").split("|")[0]) + '" data-k="' + INFO.length + '"' + (trav ? ' style="stroke:none"' : "") + ' points="' + pts(f, rectF(f, frame, x0, u0, v0, W, H)) + '"/>');
         INFO.push({ lab:r.lab || r.n, n:r.n, a:r.a, W:W, H:H, f:r.f,
-                    regle:r.kind === "band" ? { id:f.v.id, i:f.e.i, lab:r.lab, a:r.a, ext:!!r.ext } : null });
+                    regle:r.kind === "band" ? { id:f.v.id, i:f.e.i, lab:r.lab, a:r.a, ext:!!r.ext, key:r.key } : null });
         if(trav){
           [r.x0, r.x0 + r.W].forEach(function(x){
             if(Math.abs(Math.abs(x) - f.L / 2) < 0.01) return;
@@ -1735,12 +1737,12 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     var R = I.regle, m = PG.MODULE;
     g.hidden = false;
     ed.innerHTML = '<p style="margin:0 0 6px;font-weight:600">' + esc(I.lab) + '</p>' +
-      '<p class="note" style="margin:0 0 8px">' + fmt(I.a) + ' m² — la surface ne change pas : la largeur se règle au module de ' + fmt(m, 2) + ' m, la profondeur suit, et avec elle le couloir et les pièces de la bande.</p>' +
+      '<p class="note" style="margin:0 0 8px">' + fmt(I.a) + ' m² — la surface ne change pas : la largeur se règle au module de ' + fmt(m, 2) + ' m, la profondeur suit, et avec elle le couloir et les pièces de la bande. La cote vaut pour toutes les pièces du poste, ici et au mixer.</p>' +
       '<label class="tg" style="justify-content:space-between">Largeur <input id="ed-w" type="number" step="' + m + '" min="' + (2 * m) + '" value="' + (Math.round(I.W / m) * m) + '" style="width:6em;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)"> m</label>' +
       '<p class="note" style="margin:6px 0">Aujourd\u2019hui ' + fmt(I.W, 2) + ' × ' + fmt(I.H, 2) + ' m</p>' +
       '<button class="btn" id="ed-0" type="button">Rendre au calcul</button>';
     function appliquer(w){
-      parent.typoRegle(R.id, R.i, R.lab, w);
+      parent.typoRegle(R.key, w);
       DATA = parent.typoDonnees(); mesurer(); CTL = null; dessiner(false);
       choisir(null);
     }

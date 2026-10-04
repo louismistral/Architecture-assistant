@@ -37,3 +37,10 @@ export function squarest(A){
   return best;
 }
 
+/* La proportion admissible dont la PROFONDEUR approche `h` : une pièce prend
+   la profondeur de la bande qui la reçoit, la surface ne change pas. */
+export function dimsAProf(A, h){
+  var v = validDims(A), best = v[0], bd = Infinity;
+  v.forEach(function(d){ var q = Math.abs(d.h - h); if(q < bd){ bd = q; best = d; } });
+  return best;
+}

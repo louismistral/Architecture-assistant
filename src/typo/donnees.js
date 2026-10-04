@@ -15,7 +15,8 @@ import { V } from "../data/cadre.js";
 import { BLOCKS, FLOORS, flCircDe, flHeight, flName, flNet, flShort, lvlOf, place } from "../mix/floors.js";
 import { lvRange } from "../mix/niv.js";
 import { PMAP, PROX, uOf } from "../mix/prog.js";
-import { adjActive } from "../mix/opts.js";
+import { adjActive, coteDe, setCote } from "../mix/opts.js";
+import { nearestDims } from "../core/geometry.js";
 import { saveSoon } from "../mix/store.js";
 import { MASS, empreintePile, massLev, massVols, partiOf } from "../mass/model.js";
 import { degager, ecarter, fusionner, genMass, poser } from "../mass/gen.js";
@@ -33,7 +34,7 @@ export function donneesTypo(){
       circ:flCircDe(i), net:Math.round(flNet(i)),
       rooms:ordre.map(function(k){
         var p = PMAP[k];
-        return { key:k, n:p.n, f:p.f, q:q[k], u:uOf(k), hors:p.hors, solid:p.solid };
+        return { key:k, n:p.n, f:p.f, q:q[k], u:uOf(k), hors:p.hors, solid:p.solid, w:coteDe(k) };
       }) };
   });
   var pid = MASS.vol.parti || MASS.parti;
@@ -68,12 +69,11 @@ export function typoEcrire(maj){
      composition se desserre (le remède « Écarter » du Massing) */
   if(maj.length){ ecarter(MASS.vol); degager(MASS.vol); fusionner(MASS.vol, MASS.pont); saveSoon(); }
 }
-/* La largeur d'une pièce, au module ; null la rend au calcul. */
-export function typoRegle(id, i, lab, w){
-  var v = MASS.vol.filter(function(x){ return x.id === id; })[0];
-  if(!v) return;
-  v.typo = v.typo || {};
-  if(w == null) delete v.typo[i + "|" + lab]; else v.typo[i + "|" + lab] = w;
+/* La largeur d'une pièce d'un poste, au module — la cote que le mixer règle
+   aussi (`mix/opts.js — setCote`), ramenée à une proportion qui garde la
+   surface exacte ; null la rend au calcul. */
+export function typoRegle(key, w){
+  setCote(key, w == null ? null : nearestDims(uOf(key), w).w);
   saveSoon();
 }
 

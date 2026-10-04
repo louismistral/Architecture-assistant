@@ -70,6 +70,17 @@ export function deAdj(id){ return !!deA[id]; }
 export function setDeAdj(id, on){ if(!LK[id]) return; if(on) deA[id] = true; else delete deA[id]; }
 export function liens(){ return SLINK; }
 
+/* ---------- les cotes des pièces ---------------------------------------------
+   La LARGEUR d'une pièce d'un poste — le côté sur le couloir —, au module ; la
+   profondeur s'en déduit et la surface ne change jamais (`validDims`). Absente,
+   la pièce prend la profondeur que le massing donne à ses bandes. Une source
+   pour trois onglets : le mixer la montre et la règle, les Typologies la
+   lisent et la règlent, le massing en tire la profondeur de ses corps. */
+var cotes = {};
+export function coteDe(key){ return cotes[key]; }
+export function setCote(key, w){ if(w == null || !(w > 0)) delete cotes[key]; else cotes[key] = w; }
+export function toutesCotes(){ return cotes; }
+
 /* ---------- les dés maîtres ---------------------------------------------------
    `true`, `false`, ou "mixed" quand la famille est partagée. `ids` est la liste
    des éléments qu'elle compte à cet instant — les cotes de la pile, les postes
@@ -100,7 +111,7 @@ export function setDes(cat, ids, on){
    était le dé de la pile ; grouper et voir les pièces n'ont plus d'équivalent
    exact et reviennent à leur défaut. */
 export function optsOf(){
-  return { v:2, pile: dePile ? 1 : 0, plat: dePlat, lie: lies, dl: deL, adj: adjOn, da: deA };
+  return { v:2, pile: dePile ? 1 : 0, plat: dePlat, lie: lies, dl: deL, adj: adjOn, da: deA, cotes: cotes };
 }
 function copie(o, garde){
   var r = {};
@@ -119,10 +130,11 @@ export function setOpts(o){
   deL = copie(o.dl, function(k, v){ return v === true; });
   adjOn = copie(o.adj, function(k, v){ return !!LK[k] && typeof v === "boolean"; });
   deA = copie(o.da, function(k, v){ return !!LK[k] && v === true; });
+  cotes = copie(o.cotes, function(k, v){ return typeof v === "number" && v > 0; });
   version++;
 }
 /* Un projet vide : tout au défaut. */
 export function resetOpts(){
-  dePile = true; dePlat = {}; lies = {}; deL = {}; adjOn = {}; deA = {};
+  dePile = true; dePlat = {}; lies = {}; deL = {}; adjOn = {}; deA = {}; cotes = {};
   version++;
 }

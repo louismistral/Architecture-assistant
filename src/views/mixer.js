@@ -33,7 +33,6 @@ import { dec, el, fmt } from "../core/format.js";
 import { CIRC, CIRCA, COULOIR, FMAP } from "../core/model.js";
 import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
 import { s as svg } from "../core/svg.js";
-import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
 import { RULES } from "../data/rules.js";
 import { accept, unaccept } from "../mix/accept.js";
@@ -46,9 +45,11 @@ import {
   trayArea, trayBlocks, usable
 } from "../mix/floors.js";
 import {
-  adjActive, adjDefaut, deAdj, deLien, dePile, dePlateau, estLie, etatDes, lienId, liens,
-  setAdj, setDeAdj, setDeLien, setDePile, setDePlateau, setDes, setLie
+  adjActive, adjDefaut, coteDe, deAdj, deLien, dePile, dePlateau, estLie, etatDes, lienId, liens,
+  setAdj, setCote, setDeAdj, setDeLien, setDePile, setDePlateau, setDes, setLie
 } from "../mix/opts.js";
+import { dimsAProf, nearestDims, squarest, validDims } from "../core/geometry.js";
+import { bandeMassing } from "../mass/model.js";
 import { PMAP, aOf, lienLibre, posables, posesDedans, qOf, uOf } from "../mix/prog.js";
 import { SMAP } from "./schema.js";
 import { pilesAdmissibles, repartir } from "../mix/shuffle.js";
@@ -657,33 +658,38 @@ function paintFloor(host, i){
   var net = flNet(i), hors = horsAt(i), circ = flBuilt(i) - net;
   var plate = FLOORS[i] && FLOORS[i].plate > 0 ? FLOORS[i].plate : Infinity;
   var capH = isFinite(plate) ? plate * AIRE / W : 0;
-  var netH = net * AIRE / W, circH = circ * AIRE / W, horsH = hors * AIRE / W;
-  var contentH = netH + circH + horsH;
-  var H = Math.max(capH, contentH, 34);
-  host.style.height = Math.round(H) + "px";
+  var circH = circ * AIRE / W;
 
   if(!bl.length){
+    host.style.height = Math.round(Math.max(capH, 34)) + "px";
     host.appendChild(el("p","mix-empty","niveau vide — glisse une pièce ici"));
     return;
   }
 
-  function bande(list, rect){
-    if(!list.length || rect.h <= 0) return;
-    var fl = famList(list);
-    squarify(fl.order.map(function(f){
-      var s = 0;
-      fl.by[f].forEach(function(b){ s += areaOf(b); });
-      return { key:f, v:s };
-    }), rect).forEach(function(c){
-      squarify(fl.by[c.key].map(function(b){
-        return { key:b.u, v:areaOf(b) };
-      }), c).forEach(function(r){
-        var b = blockOf(r.key);
-        if(b) host.appendChild(blockNode(b, r));
+  /* À L'ÉCHELLE, ET NON AU PRORATA : chaque pièce est dessinée à ses cotes,
+     largeur × profondeur (`dimsDe`), au même mètre pour tous les niveaux
+     (√AIRE pixels par mètre). Les pièces d'un poste se rangent en grille, les
+     postes en rangées, famille par famille. Le pavage d'avant donnait à chaque
+     bloc la bonne surface mais une forme quelconque. */
+  var M = Math.sqrt(AIRE), PAS = 3;
+  function bande(list, y0){
+    if(!list.length) return 0;
+    var fl = famList(list), x = 0, y = y0, hr = 0;
+    fl.order.forEach(function(f){
+      fl.by[f].forEach(function(b){
+        var d = dimsDe(b.key), pw = d.w * M, ph = d.h * M;
+        /* la grille la plus carrée qui tienne dans la largeur du niveau */
+        var cols = Math.max(1, Math.min(b.q, Math.round(Math.sqrt(b.q * ph / pw)), Math.floor(W / pw) || 1));
+        var rows = Math.ceil(b.q / cols), bw = cols * pw, bh = rows * ph;
+        if(x > 0 && x + bw > W){ x = 0; y += hr + PAS; hr = 0; }
+        host.appendChild(blockNode(b, { x:x, y:y, w:bw, h:bh, cols:cols, d:d }));
+        x += bw + PAS; hr = Math.max(hr, bh);
       });
     });
+    return y + hr - y0;
   }
-  bande(bl.filter(function(b){ return !PMAP[b.key].hors; }), { x:0, y:0, w:W, h:netH });
+  var netH = bande(bl.filter(function(b){ return !PMAP[b.key].hors; }), 0);
+  var horsL = bl.filter(function(b){ return PMAP[b.key].hors; });
   /* Hachurée, sans couleur de famille — comme sa ligne de légende au volet
      Surfaces, et comme le bloc qu'elle y occupe déjà. */
   if(circH > 0.5){
@@ -699,9 +705,9 @@ function paintFloor(host, i){
       + fmt(Math.round(circ)) + " m² · " + Math.round(circ / (net + circ) * 100) + " %"));
     host.appendChild(cb);
   }
+  var horsH = horsL.length ? bande(horsL, netH + circH + PAS) + PAS : 0;
+  host.style.height = Math.round(Math.max(capH, netH + circH + horsH, 34)) + "px";
   if(horsH > 0){
-    bande(bl.filter(function(b){ return PMAP[b.key].hors; }),
-          { x:0, y:netH + circH, w:W, h:horsH });
     var sep = el("div","mix-hors");
     sep.style.top = (netH + circH).toFixed(1) + "px";
     sep.appendChild(el("span", null, "hors enveloppe scolaire · "
@@ -713,7 +719,7 @@ function paintFloor(host, i){
      donc tout repère posé avant lui disparaît sous les blocs. */
   /* Le dépassement se mesure sur la seule bande de l'enveloppe : la bande hors
      enveloppe n'occupe aucun plateau, elle ne peut pas le dépasser. */
-  if(isFinite(plate) && netH + circH > capH + 0.5){
+  if(isFinite(plate) && net + circ > plate + 0.5 && netH + circH > capH + 0.5){
     var oz = el("div","mix-over");
     oz.style.top = capH.toFixed(1) + "px";
     oz.style.height = (netH + circH - capH).toFixed(1) + "px";
@@ -738,26 +744,50 @@ function paintFloor(host, i){
    Rien n'est divisé si une pièce devient trop petite pour être visée, ni pour
    un poste dont le règlement impose les dimensions : il ne se coupe pas. */
 var PC_W = 9, PC_H = 7;
+
+/* LES COTES D'UNE PIÈCE DU POSTE : celles qu'on a fixées (`coteDe`, au mixer
+   ou aux Typologies), sinon la profondeur que le massing donne à ses bandes,
+   sinon la plus carrée. Toujours une proportion qui garde la surface exacte,
+   au module (`validDims`). */
+function dimsDe(key){
+  var u = uOf(key), w = coteDe(key);
+  if(w) return Object.assign({ fixe:true }, nearestDims(u, w));
+  var hb = bandeMassing();
+  return hb ? dimsAProf(u, hb) : squarest(u);
+}
+/* Les régler : la liste des proportions admissibles, à surface exacte. Le
+   choix vaut pour toutes les pièces du poste, et pour les Typologies et le
+   massing, qui le lisent. */
+function choixDims(key){
+  var p = PMAP[key], cur = coteDe(key), s = el("select", "mixblk__dims mono");
+  s.setAttribute("aria-label", "Cotes d'une pièce — " + p.n);
+  var o0 = el("option", null, "auto · suit le massing"); o0.value = ""; s.appendChild(o0);
+  validDims(uOf(key)).forEach(function(d){
+    var o = el("option", null, dec(d.w) + " × " + dec(d.h) + " m");
+    o.value = String(d.w); o.selected = cur != null && Math.abs(cur - d.w) < 1e-6;
+    s.appendChild(o);
+  });
+  s.addEventListener("change", function(){
+    setCote(key, s.value ? parseFloat(s.value) : null);
+    drawMix(); saveSoon();
+  });
+  return s;
+}
+
 function pieceGrid(b, r){
   var p = PMAP[b.key];
   if(p.solid || b.q < 2) return null;
-  var w = r.w - 2, h = r.h - 16;
+  var w = r.w, h = r.h;
   if(w < 3 * PC_W || h < 2 * PC_H) return null;
   /* Le nombre de colonnes se déduit de la forme du rectangle : il n'est pas un
      réglage. On cherche à la fois des pièces carrées ET une trame PLEINE —
      dix-huit salles sur huit colonnes laissaient six cases vides, et la
      dernière rangée semblait inachevée. Un partage exact vaut donc un peu
      d'allongement : d'où le poids donné au reste. */
-  var cols = 1, best = Infinity, c, rw, cw, ch, sc;
-  for(c = 1; c <= b.q; c++){
-    rw = Math.ceil(b.q / c);
-    cw = w / c; ch = h / rw;
-    if(cw < PC_W || ch < PC_H) continue;
-    sc = Math.abs(Math.log(cw / ch)) + 1.2 * (c * rw - b.q) / b.q;
-    if(sc < best){ best = sc; cols = c; }
-  }
-  if(best === Infinity) return null;
-  var rows = Math.ceil(b.q / cols);
+  /* les colonnes sont celles de la grille à l'échelle (`r.cols`) : chaque
+     cellule est une pièce, à ses cotes */
+  var cols = r.cols || 1;
+  if(w / cols < PC_W || h / Math.ceil(b.q / cols) < PC_H) return null;
   var g = el("div","mixblk__pcs");
   g.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
   for(var i = 0; i < b.q; i++){
@@ -807,7 +837,11 @@ function blockNode(b, r){
      prises distinctes valent mieux qu'un modificateur à retenir. */
   var lb = el("div","mixblk__lb");
   lb.appendChild(el("b", null, p.n + (b.q > 1 ? " ×" + b.q : "")));
-  lb.appendChild(el("span","mixblk__a mono", fmt(Math.round(a)) + " m²"));
+  lb.appendChild(el("span","mixblk__a mono", fmt(Math.round(a)) + " m²"
+    + (r.d ? " · " + dec(r.d.w) + " × " + dec(r.d.h) + " m" + (r.d.fixe ? " ●" : "") : "")));
+  /* choisi, le bloc offre ses cotes ; un poste dont le règlement fixe les
+     dimensions n'en a pas d'autres */
+  if(b.u === selU && r.d && !p.solid) lb.appendChild(choixDims(b.key));
   d.appendChild(lb);
   var g = delie ? pieceGrid(b, r) : null;
   if(g){ d.appendChild(g); d.classList.add("has-pcs"); }
@@ -828,7 +862,8 @@ function blockNode(b, r){
   }
   d.setAttribute("data-tip", p.n + (b.q > 1 ? " ×" + b.q : "")
     + (p.est ? "  (à préciser)" : "") + "|"
-    + b.q + " × " + fmt(uOf(b.key)) + " m² = " + fmt(Math.round(a)) + " m²|"
+    + b.q + " × " + fmt(uOf(b.key)) + " m² = " + fmt(Math.round(a)) + " m²"
+    + (r.d ? " · une pièce " + dec(r.d.w) + " × " + dec(r.d.h) + " m" + (r.d.fixe ? ", cote fixée" : ", suit le massing") : "") + "|"
     + FMAP[p.f].name + (p.note ? " · " + p.note : ""));
   d.setAttribute("aria-label", p.n + ", " + b.q + " pièce" + (b.q > 1 ? "s" : "")
     + ", " + fmt(Math.round(a)) + " mètres carrés, "
@@ -1086,7 +1121,7 @@ function wireMix(){
     var node = e.target.closest ? e.target.closest(".mixblk,.mixchip") : null;
     if(!node || e.button !== 0) return;
     /* Le lien et le dé posés sur un bloc sont des boutons, pas des prises. */
-    if(e.target.closest("button:not(.mixchip)")) return;
+    if(e.target.closest("button:not(.mixchip),select")) return;
     /* Une cellule tirée n'emmène qu'elle : c'est là que se fait la scission. */
     var pc = e.target.closest ? e.target.closest(".mixpc") : null;
     drag = { u: parseInt(node.dataset.u, 10), pc: !!pc,

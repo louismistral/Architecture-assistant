@@ -36,7 +36,7 @@ import {
   ecart, ecartAngle, ecartPoly, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
 import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
-  sousSol, volEtage, volRect } from "./model.js";
+  profPieces, sousSol, volEtage, volRect } from "./model.js";
 export { lies };
 import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
   from "./mesures.js";
@@ -595,9 +595,12 @@ export function genMass(graine){
     var p0 = B.lo, p1 = hiE;
     if(pid === "barre" || pid === "compact") p0 = Math.max(B.lo, hiE - 3);
     if(pid === "pavillons" || pid === "hameau") p1 = Math.max(B.lo, Math.min(hiE, B.lo + 5));
-    var fixe = MASS.lev.prof;
+    /* fixée au rail, elle est la nôtre ; sinon, des pièces redimensionnées au
+       mixer la dictent (`profPieces`) ; sinon, elle est tirée */
+    var fixe = MASS.lev.prof, pp = profPieces();
     var prof = fixe != null ? auModule(Math.max(B.lo, Math.min(hiE, fixe - 2 * RULES.haut.mur)))
-                            : auModule(entre(r, p0, p1)), vols;
+             : pp != null ? auModule(Math.max(B.lo, Math.min(B.hi, pp)))
+                          : auModule(entre(r, p0, p1)), vols;
     {
       var S = composer(pid, Aecole, prof, r);
       if(!S){ rates.push({ pid:pid, k:"parti" }); return false; }
