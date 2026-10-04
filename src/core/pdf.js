@@ -41,7 +41,7 @@ export function trace(w, h){
     poly: function(pts, o){ if(pts.length > 1) L.push({ k:"p", pts:pts, o:o || {}, ferme:true }); return t; },
     ligne: function(pts, o){ if(pts.length > 1) L.push({ k:"p", pts:pts, o:o || {}, ferme:false }); return t; },
     cercle: function(x, y, r, o){ L.push({ k:"c", x:x, y:y, r:r, o:o || {} }); return t; },
-    /* o : { size, gras, fill, ancre:"start"|"middle"|"end" } */
+    /* o : { size, gras, fill, ancre:"start"|"middle"|"end", rot (radians, sens direct) } */
     texte: function(x, y, s, o){ L.push({ k:"t", x:x, y:y, s:String(s), o:o || {} }); return t; },
     /* tout ce qui suit, jusqu'à `fin()`, est découpé par `pts` */
     decoupe: function(pts){ L.push({ k:"clip", pts:pts }); return t; },
@@ -78,8 +78,10 @@ export function trace(w, h){
         var a = e.o, sz = a.size || 8;
         /* largeur approchée d'Helvetica pour centrer ou caler à droite */
         var dx = a.ancre === "middle" ? -.26 * sz * e.s.length : a.ancre === "end" ? -.52 * sz * e.s.length : 0;
+        var co = Math.cos(a.rot || 0), si = Math.sin(a.rot || 0);
         o.push("BT /" + (a.gras ? "FHb" : "FH") + " " + f(sz) + " Tf " + rgb(a.fill || [0, 0, 0]) + " rg "
-          + f(e.x + dx) + " " + f(e.y) + " Td " + chaine(e.s) + " Tj ET");
+          + (a.rot ? [co, si, -si, co, e.x + dx * co, e.y + dx * si].map(function(v){ return (Math.round(v * 1e4) / 1e4).toString(); }).join(" ") + " Tm "
+                   : f(e.x + dx) + " " + f(e.y) + " Td ") + chaine(e.s) + " Tj ET");
       } else if(e.k === "clip") o.push("q " + chemin(e.pts, true) + " W n");
       else if(e.k === "fin") o.push("Q");
     });
@@ -105,7 +107,8 @@ export function trace(w, h){
         var a = e.o;
         o.push('<text x="' + f(e.x) + '" y="' + Y(e.y) + '" font-family="Helvetica, Arial, sans-serif" font-size="'
           + f(a.size || 8) + '"' + (a.gras ? ' font-weight="700"' : "") + ' fill="' + hex(a.fill || [0, 0, 0]) + '"'
-          + (a.ancre ? ' text-anchor="' + a.ancre + '"' : "") + ">" + esc(e.s) + "</text>");
+          + (a.ancre ? ' text-anchor="' + a.ancre + '"' : "")
+          + (a.rot ? ' transform="rotate(' + f(-a.rot * 180 / Math.PI) + " " + f(e.x) + " " + Y(e.y) + ')"' : "") + ">" + esc(e.s) + "</text>");
       } else if(e.k === "clip"){
         n++; ouverts++;
         o.push('<clipPath id="cp' + n + '"><polygon points="'

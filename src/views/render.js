@@ -171,6 +171,16 @@ function sectHead(n, titre, sous){
   return h;
 }
 
+/* Ce que la page des plans (`src/typo/plans.html`) lit chez son hôte : les
+   liens accordés, le massing préparé, et les fonctions qui le lisent et
+   l'écrivent. L'onglet Typologies et le Rendu l'appellent avant de la charger. */
+export function typoHote(){
+  window.typoAccordes = typoAccorder();
+  massPrepare();
+  window.typoSalle = typoSalleAccolee();
+  window.typoDonnees = donneesTypo; window.typoEcrire = typoEcrire; window.typoRegle = typoRegle;
+}
+
 export function render(){
   while(panelsEl.firstChild) panelsEl.removeChild(panelsEl.firstChild);
   tip.style.opacity = "0";
@@ -211,10 +221,7 @@ export function render(){
      le massing à l'écran (`typo/donnees.js`), et porte le mode du site. */
   if(view.tab === "typologie"){
     /* les liens d'abord (ils peuvent changer la pile), puis le massing qui la suit */
-    window.typoAccordes = typoAccorder();
-    massPrepare();
-    window.typoSalle = typoSalleAccolee();
-    window.typoDonnees = donneesTypo; window.typoEcrire = typoEcrire; window.typoRegle = typoRegle;
+    typoHote();
     var fr = el("iframe", "typo-cadre");
     fr.src = "src/typo/plans.html";
     fr.title = "Typologies — plans par niveau";

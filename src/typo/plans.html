@@ -1773,6 +1773,79 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function(){ btn.textContent = "Copie refusée"; });
   });
 
+  /* ---------- les planches du Rendu : chaque niveau, en primitives ----------
+     `typoPlanches()` dessine tour à tour chaque niveau, tout affiché, en thème
+     clair, et en rend la géométrie en MÈTRES du site (y vers le nord) avec les
+     couleurs résolues — le même dessin que l'écran, rien de redessiné. Ce qui
+     est contexte (parcelle, existant, volumes absents du niveau) porte `ctx`, sa sorte.
+     Un trait « non-scaling » garde son épaisseur d'écran : `lwPt`. */
+  var CV = document.createElement("canvas").getContext("2d", { willReadFrequently:true });
+  function couleur(c, a){
+    if(!c || c === "none" || /^url/.test(c)) return /^url/.test(c || "") ? [0.86, 0.85, 0.82] : null;
+    CV.globalAlpha = 1; CV.fillStyle = "#fff"; CV.fillRect(0, 0, 1, 1);
+    CV.globalAlpha = a == null ? 1 : a; CV.fillStyle = "#fff"; CV.fillStyle = c; CV.fillRect(0, 0, 1, 1);
+    var d = CV.getImageData(0, 0, 1, 1).data;
+    if(/rgba?\(0, 0, 0, 0\)|transparent/.test(c)) return null;
+    return [d[0] / 255, d[1] / 255, d[2] / 255];
+  }
+  function recolter(){
+    var R = [], inv = svg.getScreenCTM().inverse();
+    function M(el){ return inv.multiply(el.getScreenCTM()); }
+    function W(m, x, y){ return [m.a * x + m.c * y + m.e, -(m.b * x + m.d * y + m.f)]; }
+    function vu(el){ return el.checkVisibility ? el.checkVisibility() : getComputedStyle(el).display !== "none"; }
+    vue.querySelectorAll("polygon,polyline,line,rect,circle,ellipse,text").forEach(function(el){
+      if(!vu(el)) return;
+      var cs = getComputedStyle(el), m = M(el), k = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) || 1;
+      /* le contexte, par sa sorte : "site" (la parcelle), "exist", "ombre" */
+      var ctx = el.closest(".siteg") || el.classList.contains("ombre") ? el.getAttribute("class") || "exist" : null;
+      var op = +cs.opacity;
+      if(el.tagName === "text"){
+        var parts = el.querySelectorAll("tspan").length ? el.querySelectorAll("tspan") : [el];
+        parts.forEach(function(t){
+          var n = t.getNumberOfChars();
+          if(!n) return;
+          var ct = getComputedStyle(t), a = t.getStartPositionOfChar(0), b = t.getEndPositionOfChar(n - 1);
+          var mid = W(m, (a.x + b.x) / 2, (a.y + b.y) / 2);
+          R.push({ k:"t", x:mid[0], y:mid[1], s:t.textContent, size:parseFloat(ct.fontSize) * k,
+                   rot:-Math.atan2(m.b, m.a), gras:+ct.fontWeight >= 600, fill:couleur(ct.fill, op), ctx:ctx });
+        });
+        return;
+      }
+      var P = [];
+      if(el.tagName === "line") P = [[+el.getAttribute("x1"), +el.getAttribute("y1")], [+el.getAttribute("x2"), +el.getAttribute("y2")]];
+      else if(el.tagName === "rect"){
+        var x = el.x.baseVal.value, y = el.y.baseVal.value, w = el.width.baseVal.value, h = el.height.baseVal.value;
+        P = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+      } else if(el.tagName === "circle" || el.tagName === "ellipse"){
+        var cx = el.cx.baseVal.value, cy = el.cy.baseVal.value;
+        var rx = el.tagName === "circle" ? el.r.baseVal.value : el.rx.baseVal.value, ry = el.tagName === "circle" ? rx : el.ry.baseVal.value;
+        for(var i = 0; i < 24; i++) P.push([cx + rx * Math.cos(i * Math.PI / 12), cy + ry * Math.sin(i * Math.PI / 12)]);
+      } else for(var j = 0; j < el.points.numberOfItems; j++){ var q = el.points.getItem(j); P.push([q.x, q.y]); }
+      if(P.length < 2) return;
+      var fixe = cs.vectorEffect === "non-scaling-stroke", lw = parseFloat(cs.strokeWidth) || 0;
+      var da = cs.strokeDasharray && cs.strokeDasharray !== "none" ? cs.strokeDasharray.split(/[ ,]+/).map(parseFloat) : null;
+      var o = { k:"p", pts:P.map(function(p){ return W(m, p[0], p[1]); }), ferme:/polygon|rect|circle|ellipse/.test(el.tagName),
+                fill:el.tagName === "line" ? null : couleur(cs.fill, op * +cs.fillOpacity),
+                stroke:lw ? couleur(cs.stroke, op * +cs.strokeOpacity) : null, ctx:ctx };
+      if(fixe){ o.lwPt = lw; o.dashPt = da; } else { o.lw = lw * k; o.dash = da && da.map(function(d){ return d * k; }); }
+      if(o.fill || o.stroke) R.push(o);
+    });
+    return R;
+  }
+  window.typoPlanches = function(){
+    var st0 = Object.assign({}, st), th = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    Object.assign(st, { meubles:true, cotes:true, site:true, couleurs:true }); classes();
+    var out = DATA.floors.map(function(fl, i){
+      st.niv = i; dessiner(false);
+      return { i:i, name:fl.name, lvl:fl.lvl, h:fl.h, prims:recolter() };
+    });
+    Object.assign(st, st0);
+    if(th) document.documentElement.setAttribute("data-theme", th); else document.documentElement.removeAttribute("data-theme");
+    classes(); dessiner(false);
+    return out;
+  };
+
   dessiner(true);
 })();
 

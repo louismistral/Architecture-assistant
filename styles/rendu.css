@@ -18,3 +18,5 @@
 .rd-note:empty{display:none}
 /* la planche de diagrammes, dans le rail du massing */
 .mass-diag .rd-apercu{cursor:zoom-in}
+/* la page des Typologies, chargée hors de la vue pour en lire les plans */
+.rd-hors{position:fixed;left:-20000px;top:0;inline-size:1400px;block-size:1000px;border:0;visibility:hidden}
