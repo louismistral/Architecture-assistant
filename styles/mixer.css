@@ -431,3 +431,9 @@
   padding:1px 2px;border:1px solid var(--border);border-radius:var(--radius-sm);
   background:var(--background);color:var(--foreground);cursor:pointer}
 .mixblk__a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Les poignées d'un bloc choisi : tirer le bord droit élargit les pièces, le
+   bord bas les approfondit. */
+.mixblk__poignee{position:absolute;z-index:2;touch-action:none;background:var(--ring);opacity:.55}
+.mixblk__poignee:hover{opacity:1}
+.mixblk__poignee.is-e{top:0;right:0;width:6px;height:100%;cursor:ew-resize}
+.mixblk__poignee.is-s{left:0;bottom:0;height:6px;width:100%;cursor:ns-resize}

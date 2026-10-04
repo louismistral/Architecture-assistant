@@ -843,6 +843,17 @@ function blockNode(b, r){
      dimensions n'en a pas d'autres */
   if(b.u === selU && r.d && !p.solid) lb.appendChild(choixDims(b.key));
   d.appendChild(lb);
+  /* choisi, le bloc se TIRE aussi : le bord droit élargit les pièces, le bord
+     bas les approfondit — toujours à surface exacte, au module (`etirer`) */
+  if(b.u === selU && r.d && !p.solid){
+    d.dataset.cols = String(r.cols || 1);
+    ["e", "s"].forEach(function(dir){
+      var h = el("span", "mixblk__poignee is-" + dir);
+      h.dataset.dir = dir;
+      h.setAttribute("aria-hidden", "true");
+      d.appendChild(h);
+    });
+  }
   var g = delie ? pieceGrid(b, r) : null;
   if(g){ d.appendChild(g); d.classList.add("has-pcs"); }
   if(delie){
@@ -1114,6 +1125,36 @@ function wireMix(){
     /* Taper un plateau, c'est le choisir : son dé s'éteint, et le prochain
        Shuffle le respecte. */
     setDePlateau(FLOORS[i].lvl, false);
+    drawMix(); saveSoon();
+  });
+
+  /* TIRER UN BORD : la pièce change de proportion, jamais de surface. Pendant
+     le geste le bloc suit la main ; au lâcher, la largeur (ou la profondeur)
+     visée est ramenée à la proportion admissible la plus proche. */
+  var etire = null;
+  document.addEventListener("pointerdown", function(e){
+    var h = e.target.closest ? e.target.closest(".mixblk__poignee") : null;
+    if(!h || e.button !== 0) return;
+    var node = h.closest(".mixblk"), b = blockOf(parseInt(node.dataset.u, 10));
+    if(!b) return;
+    e.stopPropagation(); e.preventDefault();
+    var q = b.q, cols = parseInt(node.dataset.cols, 10) || 1;
+    etire = { key:b.key, dir:h.dataset.dir, el:node, x0:e.clientX, y0:e.clientY,
+              w0:node.offsetWidth, h0:node.offsetHeight, cols:cols, rows:Math.ceil(q / cols) };
+    try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  }, true);
+  document.addEventListener("pointermove", function(e){
+    if(!etire) return;
+    if(etire.dir === "e") etire.el.style.width = Math.max(8, etire.w0 + e.clientX - etire.x0) + "px";
+    else etire.el.style.height = Math.max(8, etire.h0 + e.clientY - etire.y0) + "px";
+  });
+  document.addEventListener("pointerup", function(){
+    if(!etire) return;
+    var M = Math.sqrt(AIRE), u = uOf(etire.key), x = etire;
+    etire = null;
+    var d = x.dir === "e" ? nearestDims(u, x.el.offsetWidth / x.cols / M)
+                          : dimsAProf(u, x.el.offsetHeight / x.rows / M);
+    setCote(x.key, d.w);
     drawMix(); saveSoon();
   });
 
