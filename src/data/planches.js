@@ -12,7 +12,7 @@ import { PER } from "./site.js";
 export var ETAPES = [
   { id:"massing",     n:"Massing",     pret:true },
   { id:"midterm",     n:"Midterm rendu", pret:true },
-  { id:"typologies",  n:"Typologies" },
+  { id:"typologies",  n:"Typologies",  pret:true },
   { id:"tectonics",   n:"Tectonics" },
   { id:"materiality", n:"Materiality" },
   { id:"final",       n:"Rendu final" }
@@ -20,7 +20,8 @@ export var ETAPES = [
 
 /* Formats ISO paysage, en points (1 pt = 1/72 po). */
 var MM = 72 / 25.4;
-export var FORMATS = { A1: { n:"A1", w:840 * MM, h:594 * MM }, A2: { n:"A2", w:594 * MM, h:420 * MM } };
+export var FORMATS = { A0: { n:"A0", w:1189 * MM, h:841 * MM }, A1: { n:"A1", w:840 * MM, h:594 * MM },
+                       A2: { n:"A2", w:594 * MM, h:420 * MM }, A3: { n:"A3", w:420 * MM, h:297 * MM } };
 
 /* LA BASE DU PLAN DE SITUATION — `DOC/site-plan_base.pdf`, A2 au 1:500.
    Le calage a été mesuré sur la parcelle rouge du PDF contre `PER` : même
@@ -58,6 +59,20 @@ MIDTERM.calage = (function(){
     ox: (c[0] + c[2]) / 2 - BASE.k * (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2,
     oy: (c[1] + c[3]) / 2 - BASE.k * (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 };
 })();
+
+/* LES PLANS D'ÉTAGE — un PDF par niveau, au 1:200, le plan des Typologies tel
+   quel, sur son contexte. Le format est le plus petit qui tient TOUS les
+   niveaux, le même pour tous : les planches se superposent. Le contexte
+   s'éclaircit en montant : `clair` va du niveau le plus bas au plus haut
+   (0 = tel qu'à l'écran, 1 = blanc). */
+export var ETAGES = {
+  echelle: 200,
+  formats: ["A3", "A2", "A1", "A0"],
+  marge: 15 * MM,          /* le bord de la feuille */
+  cartouche: 22 * MM,      /* la bande du titre, en bas */
+  autour: 6,               /* m de contexte autour du bâti, au moins */
+  clair: [0.15, 0.85]
+};
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */
