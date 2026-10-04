@@ -84,10 +84,15 @@ export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
   eclateePortrait:true,
   /* les murs, coupés à `murs` m au-dessus de la dalle : 50 cm dehors, 10 cm
      dedans — l'épaisseur des cloisons ; dessus poché, flancs gris */
-  murs:1.8, cloison:0.10,
+  murs:1.0, cloison:0.10,
   /* les noms écrits sur l'axonométrie du volume, et rien d'autre : un par
      chapitre du programme ; dans les infrastructures, la piscine se nomme,
      le local CAD rejoint les locaux techniques */
+  /* l'éclatée montre la circulation : couloirs et paliers en clair, noyaux
+     (escalier + ascenseur) en plein, reliés d'un niveau à l'autre en tirets */
+  circulation:[1, 0.86, 0.74], noyau:[0.95, 0.38, 0.12],
+  /* l'existant, en volumes pleins sans trait : dessus, flancs */
+  existant:[[0.97, 0.97, 0.96], [0.91, 0.91, 0.9], [0.86, 0.86, 0.85]],
   noms:{ ecole:"École primaire", sport:"Salle de sport", uape:"UAPE",
          tech:"Locaux techniques", piscine:"Piscine" } };
 
