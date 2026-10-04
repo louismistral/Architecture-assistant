@@ -75,8 +75,11 @@ mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est rede
 - **Échelle 1:200**, toujours (`ETAGES.echelle`). Le format est le plus petit de `ETAGES.formats`
   qui tient le bâti de TOUS les niveaux et la parcelle : le même pour chaque niveau, au même
   cadrage — les planches se superposent.
-- **Le contexte s'éclaircit en montant** : du plus bas au plus haut niveau, ses couleurs vont vers
-  le blanc de `ETAGES.clair[0]` à `ETAGES.clair[1]`.
+- **Trait blanc sur fond noir** (`NUIT`), aucun aplat ni hachure : `trait()` (`etages.js`) dessine
+  chaque élément du plan par son trait ; ce qui n'avait qu'un aplat ne garde que son contour s'il
+  compte (poché, circulation, noyaux). L'axonométrie éclatée prend le même trait.
+- **Le contexte s'efface en montant** : du plus bas au plus haut niveau, il se fond dans le noir de
+  `ETAGES.clair[0]` à `ETAGES.clair[1]`.
 - Un texte reste lisible : jamais tête en bas. Les traits d'écran (« non-scaling ») gardent une
   épaisseur fixe en points.
 - Comme l'onglet Typologies, ouvrir le volet met le massing aux cotes des pièces.
@@ -97,8 +100,8 @@ massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
 - **Axonométrie éclatée** (A1 portrait) : chaque niveau porte son plan des Typologies
   (`typoPlanches()`, sans cotes ni mobilier), sur une dalle tirée du poché extérieur, avec ses
   **murs coupés** à `AXO.murs` m — l'enveloppe entre le poché et la circulation, les cloisons sur
-  les côtés des pièces (`AXO.cloison`), dessus poché. La **circulation** se lit : couloirs et
-  paliers teintés (`AXO.circulation`), noyaux escalier + ascenseur en plein (`AXO.noyau`), chacun
-  relié en tirets au noyau qu'il porte au niveau du dessus. L'écart entre deux niveaux est `AXO.pas`
+  les côtés des pièces (`AXO.cloison`), dessus poché. Fond noir, trait blanc, sans aplat (`NUIT`) :
+  dalles et murs noirs aux arêtes blanches ; chaque noyau relié en tirets à celui qu'il porte au
+  niveau du dessus. L'écart entre deux niveaux est `AXO.pas`
   fois la profondeur du plan dans la vue (au-delà de 1, un blanc les sépare), `AXO.ecart` m au
   moins.
