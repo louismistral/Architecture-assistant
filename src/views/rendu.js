@@ -12,7 +12,7 @@ import { AXO, BASE, ETAGES, ETAPES, FORMATS, MIDTERM } from "../data/planches.js
 import { MASS } from "../mass/model.js";
 import { planSituation } from "../rendu/siteplan.js";
 import { planDiagrammes } from "../rendu/diagramme.js";
-import { planMidterm } from "../rendu/midterm.js";
+import { planMidterm, planMidterm2 } from "../rendu/midterm.js";
 import { cadrage, planEtage } from "../rendu/etages.js";
 import { axoEclatee, axoVolume } from "../rendu/axo.js";
 import { typoHote } from "./render.js";
@@ -41,9 +41,12 @@ var PLANCHES = {
   midterm: [
     { id:"midterm", n:"Midterm", format:MIDTERM.format,
       spec:"2 pages A1 paysage · gabarit MID_TERM · site plan 1:" + BASE.echelle + ", nord en haut · PDF vectoriel",
-      dessin:function(){ return planMidterm(vols()); }, fond:MIDTERM.apercu, suite:[MIDTERM.apercu2],
+      dessin:function(){ return planMidterm(vols()); }, fond:MIDTERM.apercu,
+      /* la seconde page, sur les plans des Typologies */
+      suite:function(){ return plansTypo().then(function(N){ return planMidterm2(N, cadrage(N)); }); },
+      fond2:MIDTERM.apercu2,
       nom:"saxon-midterm",
-      fichier:function(t){ return base(MIDTERM.pdf).then(function(b){ return pdfSur(b, t); }); } }
+      fichier:function(t, t2){ return base(MIDTERM.pdf).then(function(b){ return pdfSur(b, t, t2); }); } }
   ]
 };
 
@@ -76,16 +79,18 @@ function carte(p){
     try { t = p.dessin(); }
     catch(e){ zone.textContent = "La planche n'a pas pu être dessinée : " + e.message; return; }
     zone.replaceChildren(apercu(t, p.fond));
-    /* les pages suivantes du fichier, telles quelles */
-    (p.suite || []).forEach(function(src){
-      var d = el("div", "rd-apercu"), im = el("img");
-      im.src = src; im.alt = p.n + " — page suivante";
-      d.appendChild(im); zone.appendChild(d);
-    });
-    b.disabled = false;
+    /* la page suivante, si la planche en a une : dessinée à son tour */
+    var t2 = null, prete = Promise.resolve();
+    if(p.suite){
+      var at2 = el("p", "rd-attente", "Calcul de la page suivante…");
+      zone.appendChild(at2);
+      prete = p.suite().then(function(x){ t2 = x; at2.replaceWith(apercu(x, p.fond2)); })
+        .catch(function(e){ at2.textContent = "La page suivante n'a pas pu être dessinée : " + e.message; });
+    }
+    prete.then(function(){ b.disabled = false; });
     b.addEventListener("click", function(){
       b.disabled = true;
-      p.fichier(t).then(function(o){ telecharger(o, (p.nom || "saxon-massing-" + p.id) + "-" + graine() + ".pdf"); })
+      p.fichier(t, t2).then(function(o){ telecharger(o, (p.nom || "saxon-massing-" + p.id) + "-" + graine() + ".pdf"); })
         .catch(function(e){ note.textContent = e.message; })
         .then(function(){ b.disabled = false; });
     });
@@ -119,19 +124,33 @@ export function renduVue(sub){
 
 /* Les plans d'étage : la page des Typologies, chargée hors de la vue, rend la
    géométrie de chaque niveau ; une carte, un PDF par niveau. */
+/* Les plans des Typologies, niveau par niveau : la page des plans, chargée
+   hors de la vue, les dessine et en rend la géométrie (`typoPlanches`). Une
+   seule fois par passage dans le Rendu. */
+var PLANS = null;
+function plansTypo(){
+  if(PLANS) return PLANS;
+  PLANS = new Promise(function(ok, ko){
+    typoHote();
+    var fr = el("iframe", "rd-hors");
+    fr.src = "src/typo/plans.html";
+    fr.setAttribute("aria-hidden", "true"); fr.tabIndex = -1;
+    fr.addEventListener("load", function(){
+      var N = null, err = null;
+      try { N = fr.contentWindow.typoPlanches ? fr.contentWindow.typoPlanches() : null; } catch(e){ err = e; }
+      fr.remove();
+      if(N) ok(N); else ko(err || new Error("aucun plan"));
+    });
+    document.body.appendChild(fr);
+  });
+  PLANS.catch(function(){ PLANS = null; });
+  return PLANS;
+}
+
 function etages(g){
   var att = el("p", "rd-attente", "Calcul des plans des Typologies…");
   g.appendChild(att);
-  typoHote();
-  var fr = el("iframe", "rd-hors");
-  fr.src = "src/typo/plans.html";
-  fr.setAttribute("aria-hidden", "true"); fr.tabIndex = -1;
-  fr.addEventListener("load", function(){
-    var N;
-    try { N = fr.contentWindow.typoPlanches ? fr.contentWindow.typoPlanches() : null; }
-    catch(e){ att.textContent = "Les plans n'ont pas pu être lus : " + e.message; }
-    fr.remove();
-    if(!N) return;
+  plansTypo().then(function(N){
     var cad = cadrage(N);
     att.remove();
     g.appendChild(carte({ id:"axo", n:"Axonométrie", format:AXO.format, nom:"saxon-typologie-axonometrie",
@@ -146,6 +165,5 @@ function etages(g){
         dessin:function(){ return planEtage(n, cad); },
         fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     });
-  });
-  document.body.appendChild(fr);
+  }).catch(function(e){ att.textContent = "Les plans n'ont pas pu être lus : " + e.message; });
 }

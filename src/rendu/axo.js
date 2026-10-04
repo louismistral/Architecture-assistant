@@ -77,6 +77,12 @@ function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.6 * 
 
 export function axoVolume(niveaux){
   var t = feuille("AXONOMÉTRIE", "Le volume, nommé par programme · l'existant en volumes clairs");
+  dessinVolume(t, t.cadre, niveaux);
+  return t;
+}
+/* Le dessin seul, dans le cadre `c` [x, y, l, h] : la planche ci-dessus, et le
+   cadre « Axonometry » du midterm. */
+export function dessinVolume(t, c, niveaux){
   var N = niveaux.filter(function(n){ return n.lvl >= 0; }).sort(function(a, b){ return a.lvl - b.lvl; });
   var z = 0, C = [], pts = PER.slice(), H = 1;
   N.forEach(function(n){
@@ -94,13 +100,11 @@ export function axoVolume(niveaux){
     });
   });
   existants().forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:AXO.existant, o:{ stroke:false } }); });
-  var c = t.cadre;
   t.decoupe([[c[0], c[1]], [c[0] + c[2], c[1]], [c[0] + c[2], c[1] + c[3]], [c[0], c[1] + c[3]]]);
   var A = axo(c, pts, H * 1.1);
   t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { stroke:GRIS, lw:.5, dash:[4, 3] });
   peindre(t, A, C);
   t.fin();
-  return t;
 }
 
 /* les pièces et les noms d'un bloc : dessus, puis façades vues */
@@ -165,11 +169,15 @@ function sensDirect(q){ var s = 0; for(var i = 0; i < q.length; i++){ var b = q[
 
 /* ---------- éclatée ---------- */
 export function axoEclatee(niveaux){
-  var N = niveaux.slice().sort(function(a, b){ return a.lvl - b.lvl; });
   var t = feuille("AXONOMÉTRIE ÉCLATÉE", "Les plans des Typologies, niveau par niveau, chacun sur sa dalle, murs coupés", AXO.eclateePortrait);
+  dessinEclatee(t, t.cadre, niveaux);
+  return t;
+}
+export function dessinEclatee(t, c, niveaux){
+  var N = niveaux.slice().sort(function(a, b){ return a.lvl - b.lvl; });
   var pts = [];
   N.forEach(function(n){ n.prims.forEach(function(p){ if(!p.ctx && !p.g && p.k === "p") pts = pts.concat(p.pts); }); });
-  if(!pts.length) return t;
+  if(!pts.length) return;
   /* l'écart entre deux niveaux : `AXO.pas` fois la profondeur du plan dans la
      vue, rendue en hauteur, au moins `AXO.ecart` */
   var pr = pts.map(function(r){ return r[0] * Math.sin(VUE.r) + r[1] * Math.cos(VUE.r); });
@@ -177,7 +185,8 @@ export function axoEclatee(niveaux){
   var z = 0;
   N.forEach(function(n){ n.z = z; z += pas; });
   z -= pas;
-  var c = t.cadre, A = axo(c, pts, z);
+  /* la place des noms de niveau, à gauche : le dessin ne la prend pas */
+  var A = axo([c[0] + 70, c[1], c[2] - 70, c[3]], pts, z);
   N.forEach(function(n, k){
     /* la dalle : le poché extérieur de chaque corps, épaissi */
     n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:NUIT.lw.structure * ECH }); });
@@ -197,7 +206,6 @@ export function axoEclatee(niveaux){
     var bas = pts.reduce(function(m, r){ var a = A(r[0], r[1], n.z); return a[0] < m[0] ? a : m; }, [Infinity, 0]);
     t.texte(bas[0] - 14, bas[1], n.name, { size:12, gras:true, ancre:"end", fill:NUIT.encre });
   });
-  return t;
 }
 
 /* Les murs d'un niveau, en prismes coupés à `AXO.murs` : l'enveloppe entre

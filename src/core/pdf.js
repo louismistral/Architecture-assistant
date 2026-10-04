@@ -8,8 +8,8 @@
 
    Deux façons d'en faire un fichier, sans aucune dépendance :
      pdfNeuf(t)            un PDF d'une page, avec Helvetica ;
-     pdfSur(base, t)       le PDF `base` (octets) auquel on AJOUTE `t` par-dessus
-                           sa première page — une mise à jour incrémentale : le
+     pdfSur(base, t, t2)   le PDF `base` (octets) auquel on AJOUTE `t` par-dessus
+                           sa première page (et `t2` sur la deuxième) — une mise à jour incrémentale : le
                            fichier d'origine reste intact, octet pour octet, et
                            la surcouche s'écrit à la suite.
    ========================================================================= */
@@ -170,41 +170,49 @@ export function pdfNeuf(t){
   return octets(s);
 }
 
-export function pdfSur(base, t){
+export function pdfSur(base, t, t2){
   var s = latin(base);
   var sx = s.lastIndexOf("startxref"), prev = parseInt(s.slice(sx + 9).trim(), 10);
   var taille = 0, racine = null, id = null;
   s.replace(/\/Size (\d+)/g, function(_, n){ taille = Math.max(taille, +n); });
   var mr = s.match(/\/Root (\d+ \d+ R)/), mi = s.match(/\/ID\s*\[[^\]]*\]/);
   racine = mr[1]; id = mi ? mi[0] : "";
-  /* la première page : la racine, ses /Pages, le premier de ses /Kids — pas le
-     premier objet /Type/Page du fichier, que l'ordre d'écriture place où il veut */
   function objet(n){
     var re = new RegExp("(?:^|[\\r\\n])" + n + " 0 obj", "g"), m, d0 = -1;
     while((m = re.exec(s))) d0 = m.index + m[0].length;
     return { d0:d0, d1:s.indexOf("endobj", d0) };
   }
   function dictDe(n){ var o = objet(n); return s.slice(o.d0, o.d1); }
-  var num = +racine.split(" ")[0];
-  while(!/\/Type\s*\/Page(?![s\w])/.test(dictDe(num))){
-    var d = dictDe(num), m = d.match(/\/Kids\s*\[\s*(\d+) 0 R/) || d.match(/\/Pages\s+(\d+) 0 R/);
-    num = +m[1];
+  /* les pages, dans l'ordre : la racine, ses /Pages, leurs /Kids — et non
+     l'ordre des objets dans le fichier, que l'écriture place où elle veut */
+  function pages(n){
+    var d = dictDe(n);
+    if(/\/Type\s*\/Page(?![s\w])/.test(d)) return [n];
+    var k = d.match(/\/Kids\s*\[([^\]]*)\]/);
+    if(!k){ var pp = d.match(/\/Pages\s+(\d+) 0 R/); return pp ? pages(+pp[1]) : []; }
+    var out = [];
+    k[1].replace(/(\d+) 0 R/g, function(_, x){ out = out.concat(pages(+x)); });
+    return out;
   }
-  var dict = dictDe(num).trim();
-  var q = taille, Q = taille + 1, ov = taille + 2, fh = taille + 3, fb = taille + 4;
-  /* le contenu d'origine entre q … Q : ce qu'il laisse à l'état graphique ne
-     déplace pas la surcouche */
-  dict = dict.replace(/\/Contents\s*(\[[^\]]*\]|\d+ \d+ R)/, function(_, c){
-    return "/Contents[" + q + " 0 R " + c.replace(/^\[|\]$/g, "") + " " + Q + " 0 R " + ov + " 0 R]";
+  var P = pages(+racine.split(" ")[0]);
+  var fh = taille, fb = taille + 1, n = taille + 2, add = [[fh, POLICES], [fb, POLICES_B]];
+  /* sur chaque page, son dessin : le contenu d'origine entre q … Q, pour que
+     ce qu'il laisse à l'état graphique ne déplace pas la surcouche */
+  [t, t2].forEach(function(tr, k){
+    if(!tr || P[k] == null) return;
+    var q = n++, Q = n++, ov = n++, dict = dictDe(P[k]).trim();
+    dict = dict.replace(/\/Contents\s*(\[[^\]]*\]|\d+ \d+ R)/, function(_, c){
+      return "/Contents[" + q + " 0 R " + c.replace(/^\[|\]$/g, "") + " " + Q + " 0 R " + ov + " 0 R]";
+    });
+    dict = /\/Font\s*<</.test(dict)
+      ? dict.replace(/\/Font\s*<</, "/Font<</FH " + fh + " 0 R/FHb " + fb + " 0 R")
+      : dict.replace(/\/Resources\s*<</, "/Resources<</Font<</FH " + fh + " 0 R/FHb " + fb + " 0 R>>");
+    add.push([P[k], dict], [q, flux("q")], [Q, flux("Q")], [ov, flux(tr.pdf())]);
   });
-  dict = /\/Font\s*<</.test(dict)
-    ? dict.replace(/\/Font\s*<</, "/Font<</FH " + fh + " 0 R/FHb " + fb + " 0 R")
-    : dict.replace(/\/Resources\s*<</, "/Resources<</Font<</FH " + fh + " 0 R/FHb " + fb + " 0 R>>");
-  var add = [[num, dict], [q, flux("q")], [Q, flux("Q")], [ov, flux(t.pdf())], [fh, POLICES], [fb, POLICES_B]];
   var u = "\n", off = [];
   add.forEach(function(o){ off.push([o[0], u.length]); u += o[0] + " 0 obj\n" + o[1] + "\nendobj\n"; });
   var x = base.length + u.length;
-  u += xref(off, base.length) + "trailer\n<</Size " + (taille + 5) + "/Root " + racine + (id ? id : "")
+  u += xref(off, base.length) + "trailer\n<</Size " + n + "/Root " + racine + (id ? id : "")
     + "/Prev " + prev + ">>\nstartxref\n" + x + "\n%%EOF\n";
   return joindre([base, octets(u)]);
 }

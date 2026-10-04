@@ -38,13 +38,26 @@ export function cadrage(niveaux){
 export function planEtage(n, cad){
   var F = FORMATS[cad.format], t = trace(F.w, F.h), m = ETAGES.marge;
   var z = [m, m + ETAGES.cartouche, F.w - m, F.h - m];
-  var ox = (z[0] + z[2]) / 2 - K * cad.cx, oy = (z[1] + z[3]) / 2 - K * cad.cy;
+  t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:NUIT.papier });
+  dessinPlan(t, n, cad, z, cad.cx, cad.cy);
+  t.ligne([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]], [z[0], z[1]]], { stroke:NUIT.encre, lw:.5 });
+  var y = m + ETAGES.cartouche - 30;
+  t.texte(m, y, n.name, { size:24, gras:true, fill:NUIT.encre });
+  t.texte(m, y - 18, "Plan · 1:" + ETAGES.echelle + " · hauteur d'étage " + String(Math.round(n.h * 100) / 100).replace(".", ",") + " m", { size:10, fill:NUIT.gris });
+  t.texte(F.w - m, y, "Centre scolaire de Saxon · 05 Typologies", { size:10, gras:true, ancre:"end", fill:NUIT.encre });
+  t.texte(F.w - m, y - 18, cad.format + " paysage · imprimer à 100 %", { size:8, fill:NUIT.gris, ancre:"end" });
+  return t;
+}
+
+/* Le plan d'un niveau, au 1:200, découpé par la zone `z` [x0, y0, x1, y1] et
+   centré sur le point (cx, cy) du site : la planche entière, ou une bande du
+   cadre « Representative Floor plan » du midterm. */
+export function dessinPlan(t, n, cad, z, cx, cy){
+  var ox = (z[0] + z[2]) / 2 - K * cx, oy = (z[1] + z[3]) / 2 - K * cy;
   function P(q){ return [ox + K * q[0], oy + K * q[1]]; }
   /* plus on monte, plus le contexte s'efface dans le fond */
   var r = cad.lvls.length > 1 ? cad.lvls.indexOf(n.lvl) / (cad.lvls.length - 1) : 0;
   var cl = ETAGES.clair[0] + (ETAGES.clair[1] - ETAGES.clair[0]) * r;
-
-  t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:NUIT.papier });
   t.decoupe([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]]]);
   /* le bâtiment, et lui seul, sur fond noir : le poché extérieur de chaque corps */
   n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:NUIT.fond }); });
@@ -66,13 +79,6 @@ export function planEtage(n, cad){
     m.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { stroke:D.trait, lw:D.lw, dash:D.dash }); });
   });
   t.fin();
-  t.ligne([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]], [z[0], z[1]]], { stroke:NUIT.encre, lw:.5 });
-  var y = m + ETAGES.cartouche - 30;
-  t.texte(m, y, n.name, { size:24, gras:true, fill:NUIT.encre });
-  t.texte(m, y - 18, "Plan · 1:" + ETAGES.echelle + " · hauteur d'étage " + String(Math.round(n.h * 100) / 100).replace(".", ",") + " m", { size:10, fill:NUIT.gris });
-  t.texte(F.w - m, y, "Centre scolaire de Saxon · 05 Typologies", { size:10, gras:true, ancre:"end", fill:NUIT.encre });
-  t.texte(F.w - m, y - 18, cad.format + " paysage · imprimer à 100 %", { size:8, fill:NUIT.gris, ancre:"end" });
-  return t;
 }
 
 /* UN ÉLÉMENT DU PLAN, EN TRAIT : blanc dans le bâtiment (sur son fond noir),
