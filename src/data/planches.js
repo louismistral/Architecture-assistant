@@ -43,6 +43,8 @@ export var MIDTERM = {
   gabarit: "DOC/MID_TERM.pdf",
   pdf: "DOC/midterm_base.pdf",
   apercu: "DOC/midterm_base.jpg",
+  /* la seconde page, telle que le gabarit la donne : un aperçu, rien à poser */
+  apercu2: "DOC/midterm_base-2.jpg",
   format: "A1",
   situation: [36.5, 54.38, 1027.6, 1527.38],
   schemes: [1070, 649.68, 2344.6, 1073.88],
