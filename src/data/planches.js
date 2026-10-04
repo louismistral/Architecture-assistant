@@ -84,7 +84,12 @@ export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
   eclateePortrait:true,
   /* les murs, coupés à `murs` m au-dessus de la dalle : 50 cm dehors, 10 cm
      dedans — l'épaisseur des cloisons ; dessus poché, flancs gris */
-  murs:1.8, cloison:0.10 };
+  murs:1.8, cloison:0.10,
+  /* les noms écrits sur l'axonométrie du volume, et rien d'autre : un par
+     chapitre du programme ; dans les infrastructures, la piscine se nomme,
+     le local CAD rejoint les locaux techniques */
+  noms:{ ecole:"École primaire", sport:"Salle de sport double / polyvalente", uape:"UAPE",
+         tech:"Locaux techniques", piscine:"Piscine" } };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */
