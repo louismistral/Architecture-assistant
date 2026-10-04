@@ -1829,7 +1829,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var o = { k:"p", pts:P.map(function(p){ return W(m, p[0], p[1]); }), ferme:/polygon|rect|circle|ellipse/.test(el.tagName),
                 fill:el.tagName === "line" ? null : couleur(cs.fill, op * +cs.fillOpacity),
                 stroke:lw ? couleur(cs.stroke, op * +cs.strokeOpacity) : null, ctx:ctx, g:g,
-                mur:el.classList.contains("mur") };
+                cl:el.getAttribute("class") || "" };
       if(fixe){ o.lwPt = lw; o.dashPt = da; } else { o.lw = lw * k; o.dash = da && da.map(function(d){ return d * k; }); }
       if(o.fill || o.stroke) R.push(o);
     });

@@ -138,7 +138,7 @@ function etages(g){
       spec:AXO.format + " paysage · le volume sur la parcelle · PDF vectoriel",
       dessin:function(){ return axoVolume(vols()); }, fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     g.appendChild(carte({ id:"eclatee", n:"Axonométrie éclatée", format:AXO.format, nom:"saxon-typologie-axonometrie-eclatee",
-      spec:AXO.format + " paysage · un plan par niveau · PDF vectoriel",
+      spec:AXO.format + (AXO.eclateePortrait ? " portrait" : " paysage") + " · un plan par niveau, murs coupés · PDF vectoriel",
       dessin:function(){ return axoEclatee(N); }, fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     N.slice().sort(function(a, b){ return a.lvl - b.lvl; }).forEach(function(n){
       g.appendChild(carte({ id:"etage-" + n.i, n:n.name, format:cad.format, nom:"saxon-typologie-" + n.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
