@@ -1,4 +1,4 @@
-"""Engendre DOC/midterm_base.pdf (et son aperçu .jpg) : le gabarit MID_TERM.pdf,
+"""Engendre DOC/midterm_base.pdf (et l'aperçu .jpg de ses deux pages) : le gabarit MID_TERM.pdf,
 intact, avec dans le cadre « Site Plan » la base du géomètre au 1:500, nord en
 haut, la parcelle centrée, sur TOUT le cadre.
 
@@ -37,6 +37,7 @@ dst = pymupdf.Rect(x0, H - y1, x1, H - y0)
 assert abs(B["k"] - M["calage"]["k"]) < 1e-9
 page.show_pdf_page(dst, base, 0, clip=src, overlay=False)
 gab.save(M["pdf"], garbage=3, deflate=True)
-page = pymupdf.open(M["pdf"])[0]
-page.get_pixmap(dpi=40).save(M["apercu"], jpg_quality=80)
-print(M["pdf"], "et", M["apercu"])
+out = pymupdf.open(M["pdf"])
+out[0].get_pixmap(dpi=40).save(M["apercu"], jpg_quality=80)
+out[1].get_pixmap(dpi=40).save(M["apercu2"], jpg_quality=80)
+print(M["pdf"], M["apercu"], M["apercu2"])

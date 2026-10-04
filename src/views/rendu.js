@@ -38,7 +38,7 @@ var PLANCHES = {
   midterm: [
     { id:"midterm", n:"Midterm", format:MIDTERM.format,
       spec:"2 pages A1 paysage · gabarit MID_TERM · site plan 1:" + BASE.echelle + ", nord en haut · PDF vectoriel",
-      dessin:function(){ return planMidterm(vols()); }, fond:MIDTERM.apercu,
+      dessin:function(){ return planMidterm(vols()); }, fond:MIDTERM.apercu, suite:[MIDTERM.apercu2],
       fichier:function(t){ return base(MIDTERM.pdf).then(function(b){ return pdfSur(b, t); }); } }
   ]
 };
@@ -72,6 +72,12 @@ function carte(p){
     try { t = p.dessin(); }
     catch(e){ zone.textContent = "La planche n'a pas pu être dessinée : " + e.message; return; }
     zone.replaceChildren(apercu(t, p.fond));
+    /* les pages suivantes du fichier, telles quelles */
+    (p.suite || []).forEach(function(src){
+      var d = el("div", "rd-apercu"), im = el("img");
+      im.src = src; im.alt = p.n + " — page suivante";
+      d.appendChild(im); zone.appendChild(d);
+    });
     b.disabled = false;
     b.addEventListener("click", function(){
       b.disabled = true;

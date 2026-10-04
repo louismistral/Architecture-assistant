@@ -12,7 +12,8 @@
 .rd-carte__s{font-size:var(--t-xs);color:var(--muted-foreground)}
 .rd-carte .btn{align-self:flex-start}
 .rd-apercu{border:1px solid var(--border);background:var(--papier);line-height:0}
-.rd-apercu svg{display:block;inline-size:100%;block-size:auto}
+.rd-apercu svg,.rd-apercu img{display:block;inline-size:100%;block-size:auto}
+.rd-carte__z{display:flex;flex-direction:column;gap:var(--s-3)}
 .rd-attente,.rd-note{margin:0;font-size:var(--t-xs);color:var(--muted-foreground)}
 .rd-note:empty{display:none}
 /* la planche de diagrammes, dans le rail du massing */
