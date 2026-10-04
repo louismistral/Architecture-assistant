@@ -64,3 +64,19 @@ compris) : on ne fait que remplir deux cadres de la première page (`src/rendu/m
 
 `pdfSur` trouve la première page par l'arbre des pages : dans ce fichier, la page 2 est écrite
 avant la page 1.
+
+## Typologies — un plan par niveau, au 1:200
+
+Une carte et un PDF par niveau (`src/rendu/etages.js`). Le plan est celui de l'onglet Typologies,
+tel quel : le Rendu charge `src/typo/plans.html` hors de la vue (`typoHote()` lui donne ce qu'il
+lit), et `typoPlanches()` dessine chaque niveau puis en rend la géométrie — couleurs résolues, en
+mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est redessiné.
+
+- **Échelle 1:200**, toujours (`ETAGES.echelle`). Le format est le plus petit de `ETAGES.formats`
+  qui tient le bâti de TOUS les niveaux et la parcelle : le même pour chaque niveau, au même
+  cadrage — les planches se superposent.
+- **Le contexte s'éclaircit en montant** : du plus bas au plus haut niveau, ses couleurs vont vers
+  le blanc de `ETAGES.clair[0]` à `ETAGES.clair[1]`.
+- Un texte reste lisible : jamais tête en bas. Les traits d'écran (« non-scaling ») gardent une
+  épaisseur fixe en points.
+- Comme l'onglet Typologies, ouvrir le volet met le massing aux cotes des pièces.
