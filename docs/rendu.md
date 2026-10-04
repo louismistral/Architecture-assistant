@@ -88,7 +88,7 @@ massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
 
 - **Axonométrie** : chaque corps de chaque niveau (`typoPlanches()`) en bloc **noir** à la
   hauteur de l'étage — les volumes seuls, sans les pièces —, ce qu'il porte **nommé en blanc**, et
-  seulement sous ces cinq noms (`AXO.noms`) : École primaire, Salle de sport double / polyvalente,
+  seulement sous ces cinq noms (`AXO.noms`) : École primaire, Salle de sport,
   UAPE, Locaux techniques, Piscine — le chapitre de la pièce (`data-chap` du plan), le local CAD
   avec les locaux techniques. À plat sur ses faces, en lettres qui prennent toute la place : sur le
   dessus sur l'emprise des pièces de chaque nom (tout le dessus s'il est seul), sur les façades vues le long des pièces qui les touchent. Un texte est écrit dans le
