@@ -14,7 +14,6 @@
 import { trace } from "../core/pdf.js";
 import { PER, SITE } from "../data/site.js";
 import { AXO, ENCRE, FORMATS } from "../data/planches.js";
-import { FAM } from "../data/families.js";
 import { BLANC, VUE, axo, peindre, prisme, sol } from "./diagramme.js";
 
 var E = ENCRE, GRIS = [0.4, 0.4, 0.4], EXIST = [[0.9, 0.9, 0.89], [0.82, 0.82, 0.81], [0.74, 0.74, 0.73]];
@@ -40,14 +39,18 @@ function existants(){
 
 /* ---------- le volume, famille par famille ----------
    Chaque corps de chaque niveau est un bloc NOIR, à la hauteur de l'étage ;
-   ses pièces se lisent en traits blancs sur le dessus, et chaque famille se
-   NOMME en blanc, à plat sur les faces : sur le dessus, au droit de sa plus
+   ses pièces se lisent en traits blancs sur le dessus, et ce qu'il porte se
+   NOMME en blanc — son chapitre, sous le nom de `AXO.noms` —, à plat sur les faces : sur le dessus, au droit de sa plus
    grande pièce ; sur les façades vues, le long des pièces qui les touchent.
    Une face cachée par un volume peint plus tard l'est avec son texte. */
 var NOIR = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], BLANC_T = [1, 1, 1];
-var NOM = {};
-FAM.forEach(function(f){ NOM[f.id] = f.court; });
-function famDe(p){ var m = /\bfam-(\w+)/.exec(p.cl || ""); return m ? m[1] : null; }
+/* le nom d'une pièce sur l'axonométrie : son chapitre (`AXO.noms`) */
+function famDe(p){
+  var m = /\bfam-(\w+)/.exec(p.cl || ""), f = m ? m[1] : null, c = p.chap;
+  if(!c) return null;
+  return c === "infra" ? (f === "pis" ? "piscine" : "tech") : AXO.noms[c] ? c : null;
+}
+var NOM = AXO.noms;
 function centre(q){ var x = 0, y = 0; q.forEach(function(r){ x += r[0] / q.length; y += r[1] / q.length; }); return [x, y]; }
 function dedans(q, p){
   var s = 0;
@@ -70,7 +73,7 @@ function ecrire(t, A, s, o, U, V, ht){
 function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.78 * s.length), 3.2)); }
 
 export function axoVolume(niveaux){
-  var t = feuille("AXONOMÉTRIE", "Le volume, famille par famille · l'existant en blanc");
+  var t = feuille("AXONOMÉTRIE", "Le volume, nommé par programme · l'existant en blanc");
   var N = niveaux.filter(function(n){ return n.lvl >= 0; }).sort(function(a, b){ return a.lvl - b.lvl; });
   var z = 0, C = [], pts = PER.slice(), H = 1;
   N.forEach(function(n){
@@ -108,7 +111,7 @@ function habiller(t, A, ext, int, R, z0, h){
     if(!G[f] || a > G[f].a) G[f] = { r:r, a:a };
   });
   Object.keys(G).forEach(function(f){
-    var q = G[f].r.pts, s = NOM[f] || f.toUpperCase();
+    var q = G[f].r.pts, s = NOM[f];
     var e0 = [q[1][0] - q[0][0], q[1][1] - q[0][1]], e1 = [q[2][0] - q[1][0], q[2][1] - q[1][1]];
     var l0 = Math.hypot(e0[0], e0[1]), l1 = Math.hypot(e1[0], e1[1]);
     var L = l0 >= l1 ? e0 : e1, l = Math.max(l0, l1), w = Math.min(l0, l1);
@@ -141,7 +144,7 @@ function habiller(t, A, ext, int, R, z0, h){
     var M2 = [];
     runs.forEach(function(x){ var y = M2[M2.length - 1]; if(y && y.f === x.f && x.s0 - y.s1 < 1.5) y.s1 = Math.max(y.s1, x.s1); else M2.push(Object.assign({}, x)); });
     M2.forEach(function(x){
-      var s = NOM[x.f] || x.f.toUpperCase(), ht = taille(s, (x.s1 - x.s0) * .9, h * .42);
+      var s = NOM[x.f], ht = taille(s, (x.s1 - x.s0) * .9, h * .42);
       if(ht < .6) return;
       var m = (x.s0 + x.s1) / 2;
       ecrire(t, A, s, [a[0] + u[0] * m + off[0], a[1] + u[1] * m + off[1], z0 + h / 2], Uf, [0, 0, 1], ht);

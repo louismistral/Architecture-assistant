@@ -135,7 +135,7 @@ function etages(g){
     var cad = cadrage(N);
     att.remove();
     g.appendChild(carte({ id:"axo", n:"Axonométrie", format:AXO.format, nom:"saxon-typologie-axonometrie",
-      spec:AXO.format + " paysage · le volume, famille par famille · PDF vectoriel",
+      spec:AXO.format + " paysage · le volume, nommé par programme · PDF vectoriel",
       dessin:function(){ return axoVolume(N); }, fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     g.appendChild(carte({ id:"eclatee", n:"Axonométrie éclatée", format:AXO.format, nom:"saxon-typologie-axonometrie-eclatee",
       spec:AXO.format + (AXO.eclateePortrait ? " portrait" : " paysage") + " · un plan par niveau, murs coupés · PDF vectoriel",
