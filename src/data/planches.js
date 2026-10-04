@@ -77,9 +77,14 @@ export var ETAGES = {
 /* LES AXONOMÉTRIES DES TYPOLOGIES — le volume entier, et le même éclaté
    niveau par niveau : chaque plan des Typologies posé sur sa dalle. Deux
    niveaux s'écartent de `pas` fois la profondeur du plan dans la vue — à 1
-   ils ne se couvrent plus du tout, en dessous le niveau du dessus masque un
-   peu celui du dessous — et de `ecart` m au moins. */
-export var AXO = { format:"A1", ecart:10, pas:0.6, dalle:0.4 };
+   ils ne se couvrent plus du tout, au-delà un blanc les sépare — et de
+   `ecart` m au moins. */
+export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
+  /* l'éclatée empile ses niveaux : la feuille est en hauteur */
+  eclateePortrait:true,
+  /* les murs, coupés à `murs` m au-dessus de la dalle : 50 cm dehors, 10 cm
+     dedans — l'épaisseur des cloisons ; dessus poché, flancs gris */
+  murs:1.8, cloison:0.10 };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */
