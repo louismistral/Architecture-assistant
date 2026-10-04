@@ -88,13 +88,15 @@ export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
   /* les noms écrits sur l'axonométrie du volume, et rien d'autre : un par
      chapitre du programme ; dans les infrastructures, la piscine se nomme,
      le local CAD rejoint les locaux techniques */
-  /* l'éclatée montre la circulation : couloirs et paliers en clair, noyaux
-     (escalier + ascenseur) en plein, reliés d'un niveau à l'autre en tirets */
-  circulation:[1, 0.86, 0.74], noyau:[0.95, 0.38, 0.12],
   /* l'existant, en volumes pleins sans trait : dessus, flancs */
   existant:[[0.97, 0.97, 0.96], [0.91, 0.91, 0.9], [0.86, 0.86, 0.85]],
   noms:{ ecole:"École primaire", sport:"Salle de sport", uape:"UAPE",
          tech:"Locaux techniques", piscine:"Piscine" } };
+
+/* LE TRAIT BLANC SUR NOIR — les plans d'étage et l'axonométrie éclatée : fond
+   noir, tout en lignes blanches, aucun aplat ni hachure. Le contexte s'efface
+   vers le fond. */
+export var NUIT = { fond:[0, 0, 0], trait:[1, 1, 1], gris:[0.6, 0.6, 0.6] };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */
