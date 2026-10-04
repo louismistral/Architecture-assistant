@@ -298,6 +298,10 @@ export function vue3dMount(hostEl){
     + "Le plan à gauche donne le même modèle, et s'y modifie.");
   host.appendChild(cv);
   G = glInit(cv);
+  /* un canevas neuf, un contexte neuf : les tampons du site appartenaient à
+     l'ancien, et n'y dessinent plus rien — le terrain disparaissait au retour
+     sur l'onglet */
+  STATIQUE = null;
   if(!G){
     host.removeChild(cv);
     cv = null;
