@@ -88,7 +88,7 @@ export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
   /* les noms écrits sur l'axonométrie du volume, et rien d'autre : un par
      chapitre du programme ; dans les infrastructures, la piscine se nomme,
      le local CAD rejoint les locaux techniques */
-  noms:{ ecole:"École primaire", sport:"Salle de sport double / polyvalente", uape:"UAPE",
+  noms:{ ecole:"École primaire", sport:"Salle de sport", uape:"UAPE",
          tech:"Locaux techniques", piscine:"Piscine" } };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
