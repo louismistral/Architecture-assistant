@@ -72,7 +72,8 @@ tel quel : le Rendu charge `src/typo/plans.html` hors de la vue (`typoHote()` lu
 lit), et `typoPlanches()` dessine chaque niveau puis en rend la géométrie — couleurs résolues, en
 mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est redessiné.
 
-- **Échelle 1:200**, toujours (`ETAGES.echelle`). Le format est le plus petit de `ETAGES.formats`
+- **Échelle 1:200**, toujours (`ETAGES.echelle`). L'échelle graphique de l'écran (groupe `echelle` du plan) n'est pas
+  reprise sur la planche. Le format est le plus petit de `ETAGES.formats`
   qui tient le bâti de TOUS les niveaux et la parcelle : le même pour chaque niveau, au même
   cadrage — les planches se superposent.
 - **Feuille blanche, notre bâtiment seul sur fond noir** (`NUIT`) : le poché extérieur de chaque
