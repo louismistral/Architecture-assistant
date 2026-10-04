@@ -87,9 +87,11 @@ Deux cartes en tête du volet Typologies, A1 paysage, dans la vue et le style de
 massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
 
 - **Axonométrie** : chaque corps de chaque niveau (`typoPlanches()`) en bloc **noir** à la
-  hauteur de l'étage, ses pièces en traits blancs sur le dessus, ses **familles nommées en blanc**
-  (`FAM.court`) à plat sur ses faces : sur le dessus au droit de la plus grande pièce de chaque
-  famille, sur les façades vues le long des pièces qui les touchent. Un texte est écrit dans le
+  hauteur de l'étage, ses pièces en traits blancs sur le dessus, ce qu'il porte **nommé en blanc**, et
+  seulement sous ces cinq noms (`AXO.noms`) : École primaire, Salle de sport double / polyvalente,
+  UAPE, Locaux techniques, Piscine — le chapitre de la pièce (`data-chap` du plan), le local CAD
+  avec les locaux techniques. À plat sur ses faces : sur le dessus au droit de la plus grande pièce
+  de chaque nom, sur les façades vues le long des pièces qui les touchent. Un texte est écrit dans le
   plan de sa face (`m` de `trace.texte`), jamais en miroir ; un volume peint plus tard couvre la
   face et son texte (`apres` dans `peindre`). L'existant en blanc, la parcelle en tirets.
 - **Axonométrie éclatée** (A1 portrait) : chaque niveau porte son plan des Typologies
