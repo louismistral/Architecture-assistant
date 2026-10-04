@@ -212,3 +212,23 @@ La barre du haut ne garde que ce qui agit sur l'ensemble : **Shuffle**, **Tout a
 
 Les locaux engins de la salle de gym (180 m²) ne sont pas posés : le règlement les convertit
 en abri PC, dont les 750 m² les contiennent. Les poser compterait deux fois.
+
+## À l'échelle, et les cotes de chaque pièce
+
+Chaque niveau est dessiné **à l'échelle du mètre** (√`AIRE` pixels par mètre, le même pour tous) :
+une pièce occupe ses cotes réelles, largeur × profondeur, et les pièces d'un poste se rangent en
+grille. Le pavage d'avant donnait à chaque bloc la bonne surface mais une forme quelconque.
+
+Les cotes d'une pièce viennent de **`coteDe(key)`** (`mix/opts.js`) — la LARGEUR choisie pour le
+poste, enregistrée avec le projet ; la profondeur s'en déduit, à **surface exacte**, au module de
+0,5 m (`validDims`, `core/geometry.js`). Sans cote, la pièce prend la profondeur que le massing
+donne à ses bandes (`bandeMassing()`), sinon la plus carrée. Un bloc choisi offre la liste des
+proportions admissibles, et « auto ».
+
+Une source pour trois onglets :
+- **le massing** — une cote fixée dicte la profondeur des corps (`profPieces()` : la pièce la plus
+  profonde deux fois, plus le couloir), et changer une cote recompose la volumétrie (elle entre
+  dans `empreintePile()`) ; à l'inverse, sans cote, ce sont les corps qui donnent leur profondeur
+  aux pièces ;
+- **les Typologies** — elles lisent la cote de chaque poste pour la largeur de ses pièces, et leur
+  éditeur l'écrit (`typoRegle(key, w)`), si bien qu'un réglage fait d'un côté se voit de l'autre.
