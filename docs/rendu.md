@@ -93,10 +93,12 @@ massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
   avec les locaux techniques. À plat sur ses faces, en lettres qui prennent toute la place : sur le
   dessus sur l'emprise des pièces de chaque nom (tout le dessus s'il est seul), sur les façades vues le long des pièces qui les touchent. Un texte est écrit dans le
   plan de sa face (`m` de `trace.texte`), jamais en miroir ; un volume peint plus tard couvre la
-  face et son texte (`apres` dans `peindre`). L'existant en blanc, la parcelle en tirets.
+  face et son texte (`apres` dans `peindre`). L'existant en volumes pleins clairs, sans trait (`AXO.existant`), la parcelle en tirets.
 - **Axonométrie éclatée** (A1 portrait) : chaque niveau porte son plan des Typologies
   (`typoPlanches()`, sans cotes ni mobilier), sur une dalle tirée du poché extérieur, avec ses
   **murs coupés** à `AXO.murs` m — l'enveloppe entre le poché et la circulation, les cloisons sur
-  les côtés des pièces (`AXO.cloison`), dessus poché. L'écart entre deux niveaux est `AXO.pas`
+  les côtés des pièces (`AXO.cloison`), dessus poché. La **circulation** se lit : couloirs et
+  paliers teintés (`AXO.circulation`), noyaux escalier + ascenseur en plein (`AXO.noyau`), chacun
+  relié en tirets au noyau qu'il porte au niveau du dessus. L'écart entre deux niveaux est `AXO.pas`
   fois la profondeur du plan dans la vue (au-delà de 1, un blanc les sépare), `AXO.ecart` m au
   moins.
