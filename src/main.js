@@ -209,3 +209,7 @@ window.addEventListener("resize", function(){
     recadrer();
   }, 140);
 });
+
+/* Chaque fichier du site redemandé au serveur : un changement publié se voit
+   au prochain chargement (`sw.js`). */
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
