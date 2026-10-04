@@ -96,7 +96,11 @@ export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
 /* LE TRAIT BLANC SUR NOIR — les plans d'étage et l'axonométrie éclatée : fond
    noir, tout en lignes blanches, aucun aplat ni hachure. Le contexte s'efface
    vers le fond. */
-export var NUIT = { fond:[0, 0, 0], trait:[1, 1, 1], gris:[0.6, 0.6, 0.6] };
+export var NUIT = { fond:[0, 0, 0], trait:[1, 1, 1], gris:[0.6, 0.6, 0.6],
+  /* les épaisseurs, en pt sur un plan au 1:200 (l'éclatée les réduit) : chaque
+     trait du plan multiplié par `fois`, jamais sous `min` ; la STRUCTURE — le
+     poché des murs, les noyaux — à `structure` */
+  lw:{ fois:2, min:0.4, structure:2.4 } };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */
