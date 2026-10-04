@@ -52,8 +52,8 @@ export var MIDTERM = {
   /* sous le titre « Schemes » du gabarit */
   schemesTitre: 82,
   /* la seconde page : « Axonometry » (l'axonométrie du volume à gauche,
-     l'éclatée à droite) et « Representative Floor plan 1:200 » (les plans des
-     Typologies empilés, chacun recadré sur son bâtiment) ; sous leurs titres */
+     l'éclatée à droite) et « Representative Floor plan 1:200 » (le plan du
+     rez des Typologies, au 1:200) ; sous leurs titres */
   axonometrie: [36.5, 677.98, 1027.6, 1527.38], axonometrieTitre: 100,
   plans: [1070, 36.48, 2344.6, 1527.38], plansTitre: 150
 };
