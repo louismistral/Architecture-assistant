@@ -44,3 +44,20 @@ l'ajuste à la page — la planche s'imprime à 100 %. Le stationnement n'est pa
 Le volume final n'est jamais retouché : tout est lu dessus (`lire()`). Les textes s'adaptent
 (un seul corps, un angle nul, une hauteur unique). La même planche s'affiche dans le rail du
 massing (bloc « Diagramme »).
+
+## Midterm rendu
+
+Deux pages A1 paysage sur le gabarit `DOC/MID_TERM.pdf`, suivi à la lettre (textes du gabarit
+compris) : on ne fait que remplir deux cadres de la première page (`src/rendu/midterm.js`).
+
+- **Site Plan 1.500** : la base du géomètre au 1:500, nord en haut, la parcelle centrée sur son
+  emboîtement. Elle est déjà posée dans `DOC/midterm_base.pdf`, engendré par
+  `python3 tools/midterm-base.py` à partir du calage `MIDTERM` de `planches.js` — à relancer si
+  le gabarit, la base ou le calage changent. La parcelle (177 m) déborde d'un mètre de chaque côté
+  du cadre (175 m) : le cadre la coupe. La base ne couvre que 197 m de haut : bandes blanches en
+  haut et en bas du cadre (260 m).
+- **Schemes** : les quatre temps des diagrammes, en ligne (`diagrammes()`, partagé avec la
+  planche A2).
+
+`pdfSur` trouve la première page par l'arbre des pages : dans ce fichier, la page 2 est écrite
+avant la page 1.
