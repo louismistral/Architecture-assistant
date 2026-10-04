@@ -54,8 +54,9 @@ compris) : on ne fait que remplir deux cadres de la première page (`src/rendu/m
   emboîtement. Elle est déjà posée dans `DOC/midterm_base.pdf`, engendré par
   `python3 tools/midterm-base.py` à partir du calage `MIDTERM` de `planches.js` — à relancer si
   le gabarit, la base ou le calage changent. La parcelle (177 m) déborde d'un mètre de chaque côté
-  du cadre (175 m) : le cadre la coupe. La base ne couvre que 197 m de haut : bandes blanches en
-  haut et en bas du cadre (260 m).
+  du cadre (175 m) : le cadre la coupe. Le cadre (175 × 260 m) dépasse la page A2 de la base
+  (285 × 197 m) : le script lève les découpes de cette page, et le relevé ENTIER que porte le
+  PDF (405 × 256 m, sa texture d'herbe un peu plus) remplit le cadre, dans le style d'origine.
 - **Schemes** : les quatre temps des diagrammes, en ligne (`diagrammes()`, partagé avec la
   planche A2).
 
