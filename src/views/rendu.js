@@ -8,18 +8,19 @@
    ========================================================================= */
 import { el } from "../core/format.js";
 import { pdfNeuf, pdfSur, telecharger } from "../core/pdf.js";
-import { BASE, ETAPES, FORMATS } from "../data/planches.js";
+import { BASE, ETAPES, FORMATS, MIDTERM } from "../data/planches.js";
 import { MASS } from "../mass/model.js";
 import { planSituation } from "../rendu/siteplan.js";
 import { planDiagrammes } from "../rendu/diagramme.js";
+import { planMidterm } from "../rendu/midterm.js";
 
-var BASE_OCTETS = null;
-function base(){
-  if(!BASE_OCTETS) BASE_OCTETS = fetch(BASE.pdf).then(function(r){
-    if(!r.ok) throw new Error(BASE.pdf + " introuvable");
+var OCTETS = {};
+function base(pdf){
+  if(!OCTETS[pdf]) OCTETS[pdf] = fetch(pdf).then(function(r){
+    if(!r.ok) throw new Error(pdf + " introuvable");
     return r.arrayBuffer();
   }).then(function(b){ return new Uint8Array(b); });
-  return BASE_OCTETS;
+  return OCTETS[pdf];
 }
 function vols(){ var v = MASS.vol; v.ponts = MASS.pont; return v; }
 function graine(){ return ((MASS.graine || 0) >>> 0).toString(36); }
@@ -29,10 +30,16 @@ var PLANCHES = {
   massing: [
     { id:"situation", n:"Plan de situation", spec:"A2 paysage · 1:" + BASE.echelle + " · PDF vectoriel",
       dessin:function(){ return planSituation(vols()); }, fond:BASE.apercu,
-      fichier:function(t){ return base().then(function(b){ return pdfSur(b, t); }); } },
+      fichier:function(t){ return base(BASE.pdf).then(function(b){ return pdfSur(b, t); }); } },
     { id:"diagrammes", n:"Diagrammes", spec:"A2 paysage · PDF vectoriel",
       dessin:function(){ return planDiagrammes(vols()); },
       fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }
+  ],
+  midterm: [
+    { id:"midterm", n:"Midterm", format:MIDTERM.format,
+      spec:"2 pages A1 paysage · gabarit MID_TERM · site plan 1:" + BASE.echelle + ", nord en haut · PDF vectoriel",
+      dessin:function(){ return planMidterm(vols()); }, fond:MIDTERM.apercu,
+      fichier:function(t){ return base(MIDTERM.pdf).then(function(b){ return pdfSur(b, t); }); } }
   ]
 };
 
@@ -54,7 +61,7 @@ function carte(p){
   var zone = el("div", "rd-carte__z");
   zone.appendChild(el("p", "rd-attente", "Calcul de la planche…"));
   c.appendChild(zone);
-  var b = el("button", "btn btn--primary", "Télécharger le PDF (" + FORMATS.A2.n + ")");
+  var b = el("button", "btn btn--primary", "Télécharger le PDF (" + FORMATS[p.format || "A2"].n + ")");
   b.type = "button"; b.disabled = true;
   c.appendChild(b);
   var note = el("p", "rd-note");
@@ -68,7 +75,7 @@ function carte(p){
     b.disabled = false;
     b.addEventListener("click", function(){
       b.disabled = true;
-      p.fichier(t).then(function(o){ telecharger(o, "saxon-massing-" + p.id + "-" + graine() + ".pdf"); })
+      p.fichier(t).then(function(o){ telecharger(o, "saxon-" + (p.id === "midterm" ? "" : "massing-") + p.id + "-" + graine() + ".pdf"); })
         .catch(function(e){ note.textContent = e.message; })
         .then(function(){ b.disabled = false; });
     });

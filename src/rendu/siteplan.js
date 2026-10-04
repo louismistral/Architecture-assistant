@@ -15,11 +15,18 @@ import { coins, enveloppe } from "../mass/geom.js";
 import { etagesDe, pontRect } from "../mass/model.js";
 
 var E = ENCRE;
-function P(p){ return [BASE.ox + BASE.k * p[0], BASE.oy + BASE.k * p[1]]; }
-function rect(rc){ return coins(rc).map(P); }
 
 export function planSituation(vols){
   var F = FORMATS[BASE.format], t = trace(F.w, F.h);
+  situation(t, vols, BASE);
+  return t;
+}
+
+/* La volumétrie sur une base calée `cal` ({ k, ox, oy } : x = ox + k·x_site) :
+   la même pour la planche A2 et pour le cadre du midterm. */
+export function situation(t, vols, cal){
+  function P(p){ return [cal.ox + cal.k * p[0], cal.oy + cal.k * p[1]]; }
+  function rect(rc){ return coins(rc).map(P); }
   t.decoupe(PER.map(P));
   /* les volumes : les ombres de tous, puis les toitures de tous */
   var corps = [];
@@ -42,5 +49,4 @@ export function planSituation(vols){
     t.texte(c[0], c[1] - 2.5, v.nom || "second temps", { size:7, ancre:"middle" });
   });
   t.fin();
-  return t;
 }

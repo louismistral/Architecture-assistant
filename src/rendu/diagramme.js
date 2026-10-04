@@ -201,19 +201,27 @@ function temps(vols){
 
 /* ---------- la planche : quatre cases, deux par deux ---------- */
 export function planDiagrammes(vols){
-  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50, g = 40;
+  var F = FORMATS.A2, t = trace(F.w, F.h), m = 50;
   t.poly([[0, 0], [F.w, 0], [F.w, F.h], [0, F.h]], { fill:E.blanc });
-  var S = temps(vols), n = S.length, X = S.X, cols = 2, rows = Math.ceil(n / cols);
+  t.texte(m, F.h - m - 26, "LA VOLUMÉTRIE EN QUATRE TEMPS", { size:30, gras:true });
+  t.texte(m, F.h - m - 46, "Un cube, divisé, orienté, étagé · " + partiOf(vols.parti || MASS.parti).n, { size:10, fill:[0.4, 0.4, 0.4] });
+  diagrammes(t, vols, [m, m, F.w - 2 * m, F.h - 2 * m - 76], 2);
+  t.texte(F.w - m, m - 24, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.45, 0.45, 0.45], ancre:"end" });
+  return t;
+}
+
+/* Les quatre temps dans un cadre [x, y, l, h], sur `cols` colonnes : la planche
+   A2 en a deux, le cadre « Schemes » du midterm quatre. */
+export function diagrammes(t, vols, cadre, cols){
+  var g = 40, S = temps(vols), n = S.length, X = S.X, rows = Math.ceil(n / cols);
   /* le même cadrage partout : la parcelle, le cube, les corps */
   var pts = PER.slice();
   X.C.forEach(function(c){ pts = pts.concat(coins(c.sol)).concat(coins(X.arriere(c.sol))); });
   var hm = Math.max(S.cube, X.H) * 1.2;
-  t.texte(m, F.h - m - 26, "LA VOLUMÉTRIE EN QUATRE TEMPS", { size:30, gras:true });
-  t.texte(m, F.h - m - 46, "Un cube, divisé, orienté, étagé · " + partiOf(vols.parti || MASS.parti).n, { size:10, fill:[0.4, 0.4, 0.4] });
-  var top = F.h - m - 76, cw = (F.w - 2 * m - (cols - 1) * g) / cols, ch = (top - m - (rows - 1) * g) / rows;
+  var top = cadre[1] + cadre[3], cw = (cadre[2] - (cols - 1) * g) / cols, ch = (cadre[3] - (rows - 1) * g) / rows;
   S.forEach(function(s, i){
     var col = i % cols, row = Math.floor(i / cols);
-    var x = m + col * (cw + g), y = top - (row + 1) * ch - row * g;
+    var x = cadre[0] + col * (cw + g), y = top - (row + 1) * ch - row * g;
     t.decoupe([[x, y + 56], [x + cw, y + 56], [x + cw, y + ch], [x, y + ch]]);
     s.f(t, axo([x, y + 62, cw, ch - 66], pts, hm));
     t.fin();
@@ -222,6 +230,4 @@ export function planDiagrammes(vols){
     coupe(s.d, Math.round(cw / 4)).slice(0, 3).forEach(function(l, k){ t.texte(x, y + 24 - k * 10, l, { size:8.5, fill:TXT }); });
     if(col < cols - 1 && i < n - 1) fleche(t, [x + cw + 8, y + ch / 2 + 30], [x + cw + g - 8, y + ch / 2 + 30], 1.2);
   });
-  t.texte(F.w - m, m - 24, "Concours CS Saxon · planche massing · A2", { size:7, fill:[0.45, 0.45, 0.45], ancre:"end" });
-  return t;
 }

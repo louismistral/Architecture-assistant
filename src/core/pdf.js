@@ -172,10 +172,20 @@ export function pdfSur(base, t){
   s.replace(/\/Size (\d+)/g, function(_, n){ taille = Math.max(taille, +n); });
   var mr = s.match(/\/Root (\d+ \d+ R)/), mi = s.match(/\/ID\s*\[[^\]]*\]/);
   racine = mr[1]; id = mi ? mi[0] : "";
-  /* la première page : le premier objet /Type/Page qui n'est pas /Pages */
-  var mp = s.match(/[\r\n](\d+) 0 obj\s*<<(?:(?!endobj)[\s\S])*?\/Type\s*\/Page(?![s\w])/);
-  var num = +mp[1], d0 = s.indexOf("obj", mp.index) + 3, d1 = s.indexOf("endobj", d0);
-  var dict = s.slice(d0, d1).trim();
+  /* la première page : la racine, ses /Pages, le premier de ses /Kids — pas le
+     premier objet /Type/Page du fichier, que l'ordre d'écriture place où il veut */
+  function objet(n){
+    var re = new RegExp("(?:^|[\\r\\n])" + n + " 0 obj", "g"), m, d0 = -1;
+    while((m = re.exec(s))) d0 = m.index + m[0].length;
+    return { d0:d0, d1:s.indexOf("endobj", d0) };
+  }
+  function dictDe(n){ var o = objet(n); return s.slice(o.d0, o.d1); }
+  var num = +racine.split(" ")[0];
+  while(!/\/Type\s*\/Page(?![s\w])/.test(dictDe(num))){
+    var d = dictDe(num), m = d.match(/\/Kids\s*\[\s*(\d+) 0 R/) || d.match(/\/Pages\s+(\d+) 0 R/);
+    num = +m[1];
+  }
+  var dict = dictDe(num).trim();
   var q = taille, Q = taille + 1, ov = taille + 2, fh = taille + 3, fb = taille + 4;
   /* le contenu d'origine entre q … Q : ce qu'il laisse à l'état graphique ne
      déplace pas la surcouche */
