@@ -71,7 +71,10 @@ export var ETAGES = {
   marge: 15 * MM,          /* le bord de la feuille */
   cartouche: 22 * MM,      /* la bande du titre, en bas */
   autour: 6,               /* m de contexte autour du bâti, au moins */
-  clair: [0.15, 0.85]
+  clair: [0.15, 0.85],
+  /* l'existant, en aplat gris très clair sans trait — comme dans
+     l'axonométrie du volume — et qui pâlit lui aussi en montant */
+  existant: [0.84, 0.84, 0.83]
 };
 
 /* LES AXONOMÉTRIES DES TYPOLOGIES — le volume entier, et le même éclaté
