@@ -62,6 +62,25 @@ var DUR = {
   sport:    { ref:"2.10",     fix:function(){ return [fixRelancer()]; } }
 };
 
+/* CE QUI A FAIT ÉCHOUER LES ESSAIS, en mots, les trois premières causes. */
+var CAUSES = {
+  parti:"la figure du parti ne s’est pas composée", perimetre:"un corps sortait du périmètre",
+  recul:"un corps empiétait sur le recul", existant:"un corps touchait l’existant",
+  dist:"deux corps trop proches (distance incendie)", facade:"des classes trop loin de la façade (corps trop profonds)",
+  module:"les surfaces ne tombaient pas au module", surfaces:"le programme ne tenait pas dans les corps",
+  cour:"la cour n’avait pas sa surface", "cour-prog":"la cour n’avait pas sa surface",
+  abri:"l’abri PC n’était pas au sous-sol", sport:"la salle de sport ne trouvait pas de place"
+};
+function pourquoi(E){
+  var k = Object.keys(E || {}), n = 0;
+  k.forEach(function(x){ n += E[x]; });
+  if(!n) return "";
+  k.sort(function(a, b){ return E[b] - E[a]; });
+  return " Sur " + n + " essais, l’échec venait de : " + k.slice(0, 3).map(function(x){
+    return (CAUSES[x] || x) + " (" + Math.round(100 * E[x] / n) + " %)";
+  }).join(", ") + ".";
+}
+
 export function massCheck(){
   var out = [], V = MASS.vol, N = niveaux(), i, j;
   /* Le CODE est préfixé « m: » : les écarts assumés du mixer et ceux du massing
@@ -83,10 +102,17 @@ export function massCheck(){
       + "profondeur ; l’aire posable est de " + fmt(Math.round(V.posable || 0)) + " m², recul "
       + "du PACom déduit. Essayer un autre parti, rejouer, ajouter un étage au mixer, ou "
       + "assouplir une ligne du cadre choisi dans Paramètres & contraintes."
-      + (V.raison ? " En cause, et cela se règle au mixer : " + V.raison : ""), "2.3", "", -1,
+      + (V.raison ? " En cause, et cela se règle au mixer : " + V.raison : "")
+      + pourquoi(V.echecs), "2.3", "", -1,
       { fix:[fixAuto(), fixRelancer(), fixPile()] });
     return out;
   }
+  if(V.piecesIgnorees)
+    dit("w", "pieces", "Les cotes des pièces fixées au mixer demandaient des corps de "
+      + dec(V.piecesIgnorees) + " m de profondeur intérieure, plus que le cadre n’en admet "
+      + "(classes en façade, profondeur des corps) ou qu’aucune composition ne tient : la volumétrie "
+      + "a pris " + dec(V.prof || 0) + " m, et les Typologies ajusteront les pièces. "
+      + "Pour la tenir : des pièces moins profondes au mixer, ou assouplir le cadre.", "", "", -1);
   if(!V.length){
     dit("i", "vide", "Aucun volume posé. « Shuffle massing » en propose un jeu à partir "
       + "de la répartition du mixer.", "", "", -1);

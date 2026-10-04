@@ -566,6 +566,10 @@ function orientation(pid, r, centreSite){
    parti est reconnu ; ceux qui rendent au moins une variante valide reçoivent
    la suite des essais. Quand aucune variante ne tient, RIEN n'est proposé : le
    résultat est vide, marqué `impossible`, et le contrôle dit quoi faire. */
+/* Les pièces redimensionnées au mixer dictent la profondeur (`profPieces`) ;
+   si aucune composition n'y tient, on rejoue sans elles plutôt que de ne rien
+   proposer — et le contrôle dit que les cotes n'ont pas été tenues. */
+var SANS_PIECES = false;
 export function genMass(graine){
   var g = graine == null ? MASS.graine : graine;
   var r = alea(g);
@@ -597,9 +601,9 @@ export function genMass(graine){
     if(pid === "pavillons" || pid === "hameau") p1 = Math.max(B.lo, Math.min(hiE, B.lo + 5));
     /* fixée au rail, elle est la nôtre ; sinon, des pièces redimensionnées au
        mixer la dictent (`profPieces`) ; sinon, elle est tirée */
-    var fixe = MASS.lev.prof, pp = profPieces();
+    var fixe = MASS.lev.prof, pp = SANS_PIECES ? null : profPieces();
     var prof = fixe != null ? auModule(Math.max(B.lo, Math.min(hiE, fixe - 2 * RULES.haut.mur)))
-             : pp != null ? auModule(Math.max(B.lo, Math.min(B.hi, pp)))
+             : pp != null ? auModule(Math.max(B.lo, Math.min(hiE, pp)))
                           : auModule(entre(r, p0, p1)), vols;
     {
       var S = composer(pid, Aecole, prof, r);
@@ -618,6 +622,8 @@ export function genMass(graine){
       if(!intact(vols)){ rates.push({ pid:pid, k:"parti" }); return false; }
     }
     vols.parti = pid; vols.prof = prof;
+    /* des pièces plus profondes que le cadre ne laisse de corps : bornées */
+    if(fixe == null && pp != null && pp > hiE + 0.25) vols.piecesIgnorees = pp;
     /* la TRACE du raisonnement, pour la planche de diagrammes : la figure en
        coordonnées locales avant implantation, l'angle et sa source, les
        surfaces par niveau, la salle de sport, les bornes de profondeur */
@@ -668,6 +674,14 @@ export function genMass(graine){
      c'est la moitié de l'histoire d'une variante (la planche de diagrammes) */
   var echecs = {};
   rates.forEach(function(x){ echecs[x.k] = (echecs[x.k] || 0) + 1; });
+  if(!props.length && !SANS_PIECES && profPieces() != null){
+    SANS_PIECES = true;
+    var libre;
+    try { libre = genMass(graine); } finally { SANS_PIECES = false; }
+    libre.piecesIgnorees = profPieces();
+    if(libre.props) libre.props.forEach(function(v){ v.piecesIgnorees = libre.piecesIgnorees; });
+    return libre;
+  }
   if(props.length){
     props.forEach(function(v){ v.echecs = echecs; });
     props.forEach(function(v, k){ v.rang = k; v.props = props; });
