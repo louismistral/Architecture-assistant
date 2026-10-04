@@ -50,7 +50,12 @@ export var MIDTERM = {
   situation: [36.5, 54.38, 1027.6, 1527.38],
   schemes: [1070, 649.68, 2344.6, 1073.88],
   /* sous le titre « Schemes » du gabarit */
-  schemesTitre: 82
+  schemesTitre: 82,
+  /* la seconde page : « Axonometry » (l'axonométrie du volume à gauche,
+     l'éclatée à droite) et « Representative Floor plan 1:200 » (les plans des
+     Typologies empilés, chacun recadré sur son bâtiment) ; sous leurs titres */
+  axonometrie: [36.5, 677.98, 1027.6, 1527.38], axonometrieTitre: 100,
+  plans: [1070, 36.48, 2344.6, 1527.38], plansTitre: 150
 };
 /* La parcelle au centre du cadre, à l'échelle de la base : x = ox + k·x_site. */
 MIDTERM.calage = (function(){
