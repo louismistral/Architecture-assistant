@@ -61,8 +61,9 @@ export function planEtage(n, cad){
    n'avait qu'un aplat se dessine par son contour s'il compte — le poché
    (murs), la circulation qu'il entoure, les noyaux — et disparaît sinon (les
    percements, les hachures). `map` place un point du site sur la feuille, `k`
-   les points par mètre ; `efface` (0 à 1) fond le trait dans le noir. */
-export function trait(t, p, map, k, efface){
+   les points par mètre ; `efface` (0 à 1) fond le trait dans le noir ; `ech`
+   réduit les épaisseurs (`NUIT.lw`) pour un dessin plus petit. */
+export function trait(t, p, map, k, efface, ech){
   var c = NUIT.trait.map(function(v, i){ return v + (NUIT.fond[i] - v) * (efface || 0); });
   if(p.k === "t"){
     /* un texte se lit toujours de bas en haut ou de gauche à droite */
@@ -73,7 +74,9 @@ export function trait(t, p, map, k, efface){
   var aplat = !p.stroke && p.fill;
   if(aplat && !/\b(mur|circ|cagef)\b/.test(p.cl || "")) return;
   if(!p.stroke && !aplat) return;
-  var o = { stroke:c, lw:aplat ? .4 : p.lwPt != null ? p.lwPt * PX : Math.max(.15, p.lw * k) };
+  var L = NUIT.lw, e = ech || 1;
+  var lw = aplat ? L.structure : Math.max(L.min, (p.lwPt != null ? p.lwPt * PX : p.lw * k) * L.fois);
+  var o = { stroke:c, lw:lw * e };
   var d = !aplat && (p.dashPt ? p.dashPt.map(function(v){ return v * PX * 2; }) : p.dash && p.dash.map(function(v){ return v * k; }));
   if(d) o.dash = d;
   t[p.ferme ? "poly" : "ligne"](p.pts.map(map), o);

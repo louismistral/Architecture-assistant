@@ -43,6 +43,8 @@ function existants(){
    ce qu'il porte se NOMME en blanc, en lettres qui prennent toute la place — son chapitre, sous le nom de `AXO.noms` —, à plat sur les faces : sur le dessus, au droit de sa plus
    grande pièce ; sur les façades vues, le long des pièces qui les touchent.
    Une face cachée par un volume peint plus tard l'est avec son texte. */
+/* l'éclatée est dessinée plus petit que le 1:200 : ses traits s'y réduisent */
+var ECH = 0.75;
 var NOIR = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], BLANC_T = [1, 1, 1];
 /* le nom d'une pièce sur l'axonométrie : son chapitre (`AXO.noms`) */
 function famDe(p){
@@ -178,10 +180,10 @@ export function axoEclatee(niveaux){
   var c = t.cadre, A = axo(c, pts, z);
   N.forEach(function(n, k){
     /* la dalle : le poché extérieur de chaque corps, épaissi */
-    n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:.4 }); });
+    n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:NUIT.lw.structure * ECH }); });
     n.prims.forEach(function(p){
       if(p.ctx || p.g || p.k !== "p") return;
-      trait(t, p, function(r){ return A(r[0], r[1], n.z); }, 1.2, 0);
+      trait(t, p, function(r){ return A(r[0], r[1], n.z); }, 1.2, 0, ECH);
     });
     peindre(t, A, murs(n.prims, n.z));
     /* les noyaux qui montent au niveau suivant : leurs arêtes, en tirets,
@@ -189,7 +191,7 @@ export function axoEclatee(niveaux){
     var sup = N[k + 1];
     if(sup) noyaux(n).forEach(function(c){
       var d = noyaux(sup).filter(function(e){ return Math.hypot(e.c[0] - c.c[0], e.c[1] - c.c[1]) < 1.5; })[0];
-      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.trait, lw:.5, dash:[3, 2] }); });
+      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.trait, lw:NUIT.lw.min * 2 * ECH, dash:[3, 2] }); });
     });
     /* le nom du niveau, à gauche de sa dalle */
     var bas = pts.reduce(function(m, r){ var a = A(r[0], r[1], n.z); return a[0] < m[0] ? a : m; }, [Infinity, 0]);
@@ -207,7 +209,7 @@ function murs(prims, z){
   var C = [], vu = {}, e = AXO.cloison / 2;
   function pose(q){
     var x = 0, y = 0; q.forEach(function(r){ x += r[0] / q.length; y += r[1] / q.length; });
-    C.push({ x:x, y:y, q:q, z0:z, z1:z + AXO.murs, c:NOIR, o:{ stroke:NUIT.trait, lw:.25 } });
+    C.push({ x:x, y:y, q:q, z0:z, z1:z + AXO.murs, c:NOIR, o:{ stroke:NUIT.trait, lw:NUIT.lw.structure * ECH * .6 } });
   }
   prims.forEach(function(p, i){
     if(p.cl !== "mur") return;
