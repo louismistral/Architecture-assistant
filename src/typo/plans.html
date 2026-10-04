@@ -1506,7 +1506,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     /* nord et échelle graphique */
     if(isFinite(bounds[0])){
       var bx = bounds[0], by = bounds[3] + 8;
-      var sc = '<g class="dimg">';
+      var sc = '<g class="dimg echelle">';
       [0, 5, 10, 20].forEach(function(d, k, arr){
         if(k < arr.length - 1) sc += '<rect x="' + (bx + d) + '" y="' + by + '" width="' + (arr[k + 1] - d) + '" height="0.6" fill="' + (k % 2 ? "var(--paper)" : "var(--ink)") + '" stroke="var(--ink)" stroke-width="0.08"/>';
         sc += '<text class="dimt" font-size="1.1" x="' + (bx + d) + '" y="' + (by + 2.1) + '" text-anchor="middle">' + d + '</text>';
@@ -1800,7 +1800,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var ctx = el.closest(".siteg") || el.classList.contains("ombre") ? el.getAttribute("class") || "exist" : null;
       var op = +cs.opacity;
       /* les cotes et le mobilier, que l'axonométrie éclatée laisse de côté */
-      var g = el.closest(".dimg") ? "dim" : el.closest(".mbg") ? "mb" : null;
+      var g = el.closest(".echelle") ? "echelle" : el.closest(".dimg") ? "dim" : el.closest(".mbg") ? "mb" : null;
       if(el.tagName === "text"){
         var parts = el.querySelectorAll("tspan").length ? el.querySelectorAll("tspan") : [el];
         parts.forEach(function(t){

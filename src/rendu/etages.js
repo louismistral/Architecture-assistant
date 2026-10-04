@@ -48,7 +48,8 @@ export function planEtage(n, cad){
   t.decoupe([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]]]);
   /* le bâtiment, et lui seul, sur fond noir : le poché extérieur de chaque corps */
   n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:NUIT.fond }); });
-  n.prims.forEach(function(p){ trait(t, p, P, K, p.ctx ? cl : 0); });
+  /* l'échelle graphique de l'écran n'a rien à faire sur une planche cotée au 1:200 */
+  n.prims.forEach(function(p){ if(p.g !== "echelle") trait(t, p, P, K, p.ctx ? cl : 0); });
   t.fin();
   t.ligne([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]], [z[0], z[1]]], { stroke:NUIT.encre, lw:.5 });
   var y = m + ETAGES.cartouche - 30;
@@ -69,7 +70,7 @@ export function planEtage(n, cad){
 export function trait(t, p, map, k, efface, ech){
   /* dedans, le blanc sur le noir du bâtiment ; dehors (contexte, cotes,
      échelle, nord), l'encre sur le papier, qui s'efface vers lui */
-  var dehors = p.ctx || p.g === "dim";
+  var dehors = p.ctx || p.g === "dim" || p.g === "echelle";
   var c = (dehors ? NUIT.encre : NUIT.trait).map(function(v, i){ return v + (NUIT.papier[i] - v) * (dehors ? efface || 0 : 0); });
   if(p.k === "t"){
     /* un texte se lit toujours de bas en haut ou de gauche à droite */
