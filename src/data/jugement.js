@@ -36,6 +36,7 @@
    ========================================================================= */
 import { RULES } from "./rules.js";
 import { V, declarer, valeur, actif } from "./lignes.js";
+import { MESURES } from "./donnees.js";
 export { V };
 
 /* ---------- les axes et leurs sous-axes ------------------------------------------ */
@@ -118,8 +119,11 @@ export var CRITERES = [
   c("d29", "D", 7, "Plans simples, lisibles et flexibles", null, null, "Champagne, Matran"),
   c("d30", "D", 6, "Une entrée principale claire, un hall généreux", null, null, "Praroman"),
   c("d31", "D", 6, "Circulations qui servent d'espaces d'apprentissage", null, null, "Schlieren"),
-  c("d32", "D", 6, "Grappes de classes reliables, espaces de travail partagés", null, null, "Schlieren"),
-  Object.assign(c("d33", "D", 7, "Classes éclairées naturellement, bien orientées", "soleil", mx(30, 70)),
+  /* les grappes : des suites de 3 ou 4 classes contiguës, lues sur le plan des Typologies */
+  c("d32", "D", 6, "Grappes de classes reliables, espaces de travail partagés", "grappes", mn(1, 0.3), "Schlieren, Raumstandards Zurich"),
+  /* la classe elle-même, sur le plan : sa façade de jour à l'est ou au sud */
+  Object.assign(c("d33", "D", 7, "Classes éclairées naturellement, bien orientées", "classesSoleil", mn(0.9, 0.5),
+    "directives vaudoises 2002, Matran"),
     { axes:{ D:.5, H:.5 } }),
   c("d34", "D", 4, "Les plus jeunes au rez, accès direct à l'extérieur", null, null, "Broc"),
   c("d35", "D", 4, "Organisation par étage selon le cycle"),
@@ -130,12 +134,17 @@ export var CRITERES = [
   c("d39", "D", 6, "Locaux ouverts à la commune, accessibles sans traverser l'école"),
   c("d40", "D", 5, "Parascolaire et cantine autonomes et reliés à l'école"),
   c("d41", "D", 4, "Salle des maîtres avec vue sur le préau"),
-  c("d42", "D", 5, "Un ascenseur, une ou deux cages d'escalier au plus", null, null, "Broc"),
-  c("d43", "D", 4, "Locaux techniques regroupés, accessibles aux livraisons"),
-  c("prox", "D", 8, "Les proximités du schéma fonctionnel sont tenues", "adjTenues", mn(1, 0.6)),
-  c("calme", "D", 5, "Le bruyant séparé du calme", "bruitMixte", mx(0, 2)),
+  c("d42", "D", 5, "Un ascenseur, une ou deux cages d'escalier au plus", "noyaux", mx(2, 4), "Broc"),
+  c("d43", "D", 4, "Locaux techniques regroupés, accessibles aux livraisons", "techGroupes", mx(1, 4), "Broc"),
+  /* au plan : bord à bord, au même niveau — le mixer ne disait que « au même niveau » */
+  c("prox", "D", 8, "Les proximités du schéma fonctionnel sont tenues", "liensPlan", mn(1, 0.6)),
+  c("calme", "D", 5, "Le bruyant séparé du calme", "murBruyant", mx(0, 9), "VS 400.200 art. 13"),
   c("etage", "D", 4, "Les classes à l'étage, l'accueil au rez", "classesEtage", mn(1, 0.5)),
   c("degre", "D", 5, "Un degré par niveau", "classesNiveauMax", mx(11, 16)),
+  /* ce que le plan des Typologies ne loge pas dans le volume : au jury, comme au contrôle */
+  c("d-pose", "D", 9, "Tout le programme tient dans les plans", "posePlan", mn(1, 0.9)),
+  c("d-jour", "D", 5, "Couloirs éclairés naturellement à leurs bouts", "couloirsJour", mn(1, 0),
+    "Raumstandards Zurich, Cugy"),
 
   /* ---- E · architecture et expression ---- */
   c("e44", "E", 7, "Une idée forte et claire, une identité", null, null, "Cugy"),
@@ -163,7 +172,8 @@ export var CRITERES = [
   c("cout", "G", 10, "Coût dans le budget", "volume", { t:"cout", nul:0.25 }, "Vignettaz, Praroman"),
   Object.assign(c("g58", "G", 8, "Volume compact, peu de façade par m² de plancher", "compa", mx(0.95, 1.25), "Val d'Arve"),
     { axes:{ G:.5, H:.5 } }),
-  c("g59", "G", 5, "Circulations limitées, mais utiles", "circPart", mx(0.25, 0.35)),
+  /* la circulation DESSINÉE aux Typologies, et non plus son estimation */
+  c("g59", "G", 5, "Circulations limitées, mais utiles", "circPlan", mx(0.25, 0.35)),
   c("g61", "G", 4, "Économie de moyens", null, null, "Schlieren"),
   c("g63", "G", 4, "Entretien et exploitation peu coûteux"),
 
@@ -300,6 +310,22 @@ export function moyennes(liste){
   var o = {};
   for(var k in som) o[k] = som[k] / n[k];
   return o;
+}
+/* LA PART TYPOLOGIE : la moyenne, au poids de chacun, des critères qui lisent
+   le plan des Typologies (`MESURES`, `de:"typo"`). Ce n'est pas un axe : elle
+   ne change pas la note, elle la lit — pour un même volume, la bonne et la
+   mauvaise typologie. null quand aucun critère du plan n'a été lu. */
+var TYPO_M = {};
+MESURES.forEach(function(m){ if(m.de === "typo") TYPO_M[m.m] = 1; });
+export function scoreTypo(j){
+  if(!j) return null;
+  var som = 0, pois = 0;
+  CRITERES.forEach(function(x){
+    var c = j.crit[x.id];
+    if(!TYPO_M[x.mesure] || !c || c.s == null) return;
+    som += V["w:" + x.id] * c.s; pois += V["w:" + x.id];
+  });
+  return pois ? som / pois : null;
 }
 /* Le rang d'une variante sur un axe : son score, ou null. `j` est un résultat
    de `noter()`. */

@@ -66,6 +66,13 @@ export var RECHERCHE = [
   { id:"seed-mass", role:"recherche", sujet:"Seed", onglet:"massing", src:G, qui:"chacun",
     n:"Seed du massing", val:"affichée sous « Shuffle massing », retapée pour rejouer",
     lu:"src/mass/model.js — MASS.graine",
-    d:"Distincte de celle du programme : l'une rejoue une RÉPARTITION, l'autre une IMPLANTATION." }
+    d:"Distincte de celle du programme : l'une rejoue une RÉPARTITION, l'autre une IMPLANTATION." },
+
+  /* --- les typologies --- */
+  { id:"seed-typo", role:"recherche", sujet:"Seed", onglet:"typologie", src:G, qui:"chacun",
+    n:"Seed des typologies", val:"affichée à côté de « Shuffle typologie », retapée pour rejouer",
+    lu:"src/typo/etat.js — TYPO.graine",
+    d:"La troisième, indépendante des deux autres : elle ne change que l'ORDONNANCE des pièces "
+      + "dans les volumes du Massing — l'ordre des familles, le bout où se tient le noyau." }
 ];
 declarer(RECHERCHE);

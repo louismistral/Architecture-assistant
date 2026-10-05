@@ -68,9 +68,10 @@ export var HYPOTHESES = [
 HYPOTHESES.forEach(function(x){ x.role = "donnee"; x.nature = "hypothese"; });
 
 /* ---------- les mesures --------------------------------------------------------------
-   Le catalogue de ce qu'on lit sur un bâtiment. `de` : la répartition (mix)
-   ou la volumétrie (mass). Chaque variante enregistrée garde ces nombres
-   bruts : quand un poids change, on la renote sans la regénérer. */
+   Le catalogue de ce qu'on lit sur un bâtiment. `de` : la répartition (mix),
+   la volumétrie (mass) ou le plan des Typologies (typo). Chaque variante
+   enregistrée garde ces nombres bruts : quand un poids change, on la renote
+   sans la regénérer. */
 export var MESURES = [
   { id:"soleil",       de:"mass", n:"Façades longues des classes, écart au sud", unite:"°" },
   { id:"vue",          de:"mass", n:"Façades longues des classes, écart à la vue", unite:"°" },
@@ -97,12 +98,22 @@ export var MESURES = [
   { id:"bruitMixte",   de:"mix",  n:"Niveaux qui mêlent le bruyant et les classes", unite:"" },
   { id:"classesEtage", de:"mix",  n:"Part des classes au-dessus du rez", unite:"" },
   { id:"classesNiveauMax", de:"mix", n:"Salles de classe sur un même niveau, au plus", unite:"" },
-  { id:"circPart",     de:"mix",  n:"Part de la circulation dans le bâti", unite:"" }
+  { id:"circPart",     de:"mix",  n:"Part de la circulation dans le bâti", unite:"" },
+  { id:"classesSoleil", de:"typo", n:"Salles de classe bien orientées — E à SSO, SO à O pour moitié", unite:"" },
+  { id:"liensPlan",    de:"typo", n:"Part des liens du schéma tenus au plan, bord à bord, même niveau", unite:"" },
+  { id:"circPlan",     de:"typo", n:"Circulation dessinée — couloirs, paliers, noyaux — dans le bâti", unite:"" },
+  { id:"murBruyant",   de:"typo", n:"Mur partagé entre une classe et une pièce bruyante", unite:"m" },
+  { id:"noyaux",       de:"typo", n:"Noyaux escalier + ascenseur", unite:"" },
+  { id:"grappes",      de:"typo", n:"Part des classes en grappes de 3 à 4", unite:"" },
+  { id:"techGroupes",  de:"typo", n:"Groupes de locaux techniques séparés", unite:"" },
+  { id:"posePlan",     de:"typo", n:"Part du programme posée dans les plans", unite:"" },
+  { id:"couloirsJour", de:"typo", n:"Part des bouts de couloir sur une façade", unite:"" }
 ];
 MESURES.forEach(function(x){
   x.role = "donnee"; x.nature = "mesure"; x.sujet = "Mesures"; x.src = { t:"mesure" }; x.qui = "code";
-  x.onglet = x.de === "mix" ? "mixer" : "massing";
-  x.lu = x.de === "mix" ? "src/mix/mesures.js — mesuresMix()" : "src/mass/mesures.js — mesuresMass()";
+  x.onglet = x.de === "mix" ? "mixer" : x.de === "typo" ? "typologie" : "massing";
+  x.lu = x.de === "mix" ? "src/mix/mesures.js — mesuresMix()"
+       : x.de === "typo" ? "src/typo/mesures.js — evaluerTypo()" : "src/mass/mesures.js — mesuresMass()";
   x.id = "m-" + x.id; x.m = x.id.slice(2);
 });
 

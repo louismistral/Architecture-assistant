@@ -215,14 +215,34 @@ export var CADRE_TYPO = [
     d:"Un quadrillage commun sur lequel se posent les pièces, leurs cloisons et leurs portes." },
   { id:"couloir-acces", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Toutes les pièces ont accès à un couloir", val:"une porte sur la circulation, pour chaque pièce",
-    lu:"src/typo/plans.html — composer(), contrôle",
+    lu:"src/typo/gen.js — composer(), contrôle",
     d:"Aucune pièce ne se traverse pour en atteindre une autre." },
   { id:"sol-vide", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Pas de sol inutilisé dans un corps", k:"solVide", def:100, min:0, max:300, pas:5,
     unite:"m² de sol libre au plus, par corps et par niveau",
-    lu:"src/typo/plans.html — genNiveau(), contrôle",
+    lu:"src/typo/gen.js — genNiveau() · src/typo/mesures.js — contrôle",
     d:"Ce que les pièces, le couloir et les noyaux laissent libre dans un corps devient un "
-      + "dégagement ; au-delà de ce seuil, c'est un plateau vide, et le contrôle le signale." }
+      + "dégagement ; au-delà de ce seuil, c'est un plateau vide, et le contrôle le signale." },
+  /* Mesurées sur le plan (`src/typo/mesures.js`) : un écart ne jette aucun
+     volume — le générateur du massing ne voit pas les plans —, il rend la
+     variante invalide (Intangible) ou le notifie (Imposé). */
+  { id:"fuites", sujet:"Incendie", tag:"intangible", src:{ t:"aeai", a:"16-15" }, qui:"code",
+    n:"Voies d'évacuation", val: RULES.feu.fuiteSimple + " m vers un escalier, " + RULES.feu.fuiteDouble
+      + " m vers deux ; deux noyaux au-delà de " + RULES.feu.cageSeuil + " m² d'étage",
+    lu:"src/typo/mesures.js — ecartsTypo()" },
+  { id:"sia500", sujet:"Accessibilité", tag:"intangible", src:r("1.5"), qui:"code",
+    n:"Accessibilité SIA 500", val:"un noyau escalier + ascenseur à chaque niveau",
+    lu:"src/typo/mesures.js — ecartsTypo()" },
+  { id:"noyaux-empiles", sujet:"Structure", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Les noyaux s'empilent", val:"mêmes cotes et même place à chaque niveau",
+    lu:"src/typo/mesures.js — ecartsTypo()",
+    d:"Un escalier qui se décale d'un niveau à l'autre ne se construit pas : il se dessine." },
+  { id:"typo-pose", sujet:"Programme", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Tout le programme tient dans les plans", val:"aucune pièce au bac d'un niveau",
+    lu:"src/typo/mesures.js — ecartsTypo()",
+    d:"Le règlement chiffre chaque local ; une pièce que le plan ne loge pas manque au projet. "
+      + "Notifiée et non opposable : le massing dimensionne ses volumes sur la circulation estimée, "
+      + "et les plans en dessinent davantage. Le jury la note aussi (« Tout le programme tient dans les plans »)." }
 ];
 CADRE_TYPO.forEach(function(x){ x.role = "cadre"; x.onglet = "typologie"; });
 
@@ -230,10 +250,6 @@ CADRE_TYPO.forEach(function(x){ x.role = "cadre"; x.onglet = "typologie"; });
    Opposable, mais sans mesure ici : la typologie, le rendu le vérifieront. Ils
    sont au cadre pour qu'on sache qu'ils attendent. */
 export var CADRE_APRES = [
-  { id:"fuites", sujet:"Incendie", onglet:"typologie", src:{ t:"aeai", a:"16-15" },
-    n:"Voies d'évacuation", val: RULES.feu.fuiteSimple + " m vers une issue, " + RULES.feu.fuiteDouble + " m vers deux" },
-  { id:"sia500", sujet:"Accessibilité", onglet:"typologie", src:r("1.5"),
-    n:"Accessibilité SIA 500", val:"un ascenseur, rampes, accès de plain-pied" },
   { id:"seisme", sujet:"Structure", onglet:"typologie", src:r("2.5"),
     n:"Parasismique", val:"zone " + RULES.seisme.zone + " · sol " + RULES.seisme.sol + " · classe " + RULES.seisme.ouvrage },
   { id:"minergie", sujet:"Énergie", onglet:"typologie", src:r("2.9"),
