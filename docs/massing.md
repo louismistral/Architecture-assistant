@@ -81,18 +81,21 @@ Le rail suit l'ordre du générateur, et chaque chose de même nature a un seul 
 
 - **Proposer**, en tête et toujours visible : « Shuffle massing » (le geste de l'onglet), les
   flèches qui parcourent le classement dans les deux sens sans rien tirer, le rang et la seed.
-- **Les étapes**, chacune repliable, son ÉTAT écrit à droite pour qu'on le lise sans l'ouvrir :
+- **Les étapes**, chacune repliable, son ÉTAT écrit à droite pour qu'on le lise sans l'ouvrir.
+  Elles portent les noms des rubriques de Paramètres & contraintes, lus dans `ROLES`
+  (`roleNom()`) : le rail et le volet disent les mêmes mots.
   1 · **Parti** — une tuile par parti, sa figure en plein (`p-*` dans `views/icons.js`) ; en Auto,
   un point marque celui qui a été retenu. 2 · **Programme** — « Shuffle programme », qui rebat le
   programme et vit donc ici, et le bilan par niveau ; l'état est l'écart. 3 · **Leviers** — ce que
-  Shuffle massing tire, en deux groupes, Composition et Architecture. 4 · **Cadre** — le contrôle :
-  ce qui est enfreint, avec ses gestes ; les infos se replient ; une erreur ouvre l'étape d'elle-même.
-  5 · **Orientation** — chaque ligne, défavorables en tête, et ce qu'elle lit. 6 · **Jugement** — la
-  note, écrite ici seulement, et les axes. **Emporter** — l'export Rhino et le diagramme du rendu.
+  Shuffle massing tire, en deux groupes, Composition et Architecture. 4 · **Contraintes** — le
+  contrôle : ce qui est enfreint, avec ses gestes ; les infos se replient ; une erreur ouvre l'étape
+  d'elle-même. 5 · **Préférences** — chaque ligne, défavorables en tête, et ce qu'elle lit.
+  6 · **Évaluation** — la note, écrite ici seulement, et les axes. **Emporter** — l'export et
+  l'import Rhino, et le diagramme du rendu.
 - Le corps d'une étape ne se construit que si elle est OUVERTE : le rail se refait à chaque geste,
   et le diagramme prend une seconde.
 - Le volet **Contraintes** reste à côté : on y règle chaque ligne, sa valeur et son tag. Les étapes
-  Leviers, Cadre, Orientation et Jugement y renvoient.
+  Leviers, Contraintes, Préférences et Évaluation y renvoient.
 
 Ce qu'on REGARDE se règle dans une barre posée sur les deux vues — couleurs, étages montrés,
 recadrage du plan et du volume. Le volume CLIQUÉ s'édite dans une carte posée sur le plan, dans le
