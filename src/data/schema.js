@@ -99,7 +99,7 @@ export var SLINK = [
 
   { a:"foyer",     b:"sport",      q:"hall d’entrée et foyer de la salle polyvalente" },
   { a:"sport",     b:"scene",      q:"attenante à la salle de sport" },
-  { a:"sport",     b:"engins",     q:"en lien avec la salle de sport" },
+  { a:"sport",     b:"engins",     q:"en lien avec la salle de sport — à proximité immédiate" },
   { a:"sport",     b:"rangement",  q:"local de rangement pour les tables et chaises" },
   { a:"sport",     b:"nettoyage",  opt:1, q:"local de nettoyage de la salle polyvalente — sans proximité exigée" },
   { a:"vest_el",   b:"vest_pr",    q:"à proximité des vestiaires élèves" },

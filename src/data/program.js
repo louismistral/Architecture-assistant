@@ -28,7 +28,7 @@ export var CHAP = [
     items:[
       {n:"Salle de sport double", nb:2, u:448, w:32, h:28, split:true, f:"spo", note:"28 × 32 m, h. libre 7 m sous structure — 1 salle double minimum"},
       {n:"Scène", nb:1, u:120, f:"spo", note:"attenante à la salle de sport"},
-      {n:"Local engins de sports", nb:2, u:90, f:"tec", planSkip:1, note:"en lien avec la salle de sport ; convertible en abri PC"},
+      {n:"Local engins de sports", nb:2, u:90, f:"tec", note:"à proximité immédiate de la salle de sport ; peut être converti en abri PC, sans obligation"},
       {n:"Local de rangement", nb:1, u:160, f:"tec", note:"tables et chaises"},
       {n:"Local de nettoyage", nb:1, u:10, f:"tec"},
       {n:"Vestiaires élèves", nb:4, u:35, f:"eau", note:"espace collectif, douches privatives, espace séchage"},
@@ -60,7 +60,7 @@ export var CHAP = [
 
   { id:"tech", name:"Conciergerie et locaux techniques", short:"Technique", sub:"",
     items:[
-      {n:"Abri PC", nb:1, u:750, f:"tec", planInset:{w:20,h:9,label:"locaux engins 180 m²"}, note:"3 × 200 places ; les locaux engins de la salle de gym (180 m²) y sont convertis"},
+      {n:"Abri PC", nb:1, u:750, f:"tec", note:"3 × 200 places ; les locaux engins de la salle de gym (180 m²) peuvent y être convertis"},
       {n:"Local technique", nb:1, u:120, f:"tec", note:"installations CVSE"},
       {n:"Conciergerie / vestiaire personnel nett.", nb:1, u:72, f:"tec", note:"vestiaire femmes + hommes + local de nettoyage"}
     ], off:[] },
