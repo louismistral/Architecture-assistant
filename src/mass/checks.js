@@ -35,6 +35,7 @@ import { assise, ecart, visAVis } from "./geom.js";
 import { lies, rectSol } from "./gen.js";
 import { courProgramme, courUtile, ecarts, terrainLibre } from "./mesures.js";
 import { isAccepted } from "../mix/accept.js";
+import { adjRompues } from "../mix/checks.js";
 import {
   fixAire, fixAuto, fixCarrer, fixEcarter, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
@@ -114,6 +115,13 @@ export function massCheck(){
       + "a pris " + dec(V.prof || 0) + " m, et les Typologies ajusteront les pièces. "
       + "Pour la tenir : des pièces moins profondes au mixer, ou assouplir le cadre.", "", "", -1);
   if(!V.length){
+    var AR = adjRompues();
+    if(AR.length){
+      dit("e", "adj", AR.length + " adjacence" + (AR.length > 1 ? "s exigées rompues" : " exigée rompue")
+        + " au mixer — « " + AR[0].l.q + " » : aucun volume ne se propose sur une répartition "
+        + "qui n’est pas valide. Rétablir l’adjacence au mixer.", "2.10", "", -1);
+      return out;
+    }
     dit("i", "vide", "Aucun volume posé. « Shuffle massing » en propose un jeu à partir "
       + "de la répartition du mixer.", "", "", -1);
     return out;

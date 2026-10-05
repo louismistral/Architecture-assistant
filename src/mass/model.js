@@ -26,7 +26,7 @@
 import { COULOIR, FMAP, ITEMS } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
 import { V } from "../data/leviers.js";
-import "../data/cadre.js";
+import { enVigueur } from "../data/cadre.js";
 import "../data/donnees.js";
 import { RULES } from "../data/rules.js";
 import { BLOCKS, FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
@@ -69,7 +69,6 @@ export var MASS = {
   parti: "auto",
   graine: 1,
   lev: {
-    cap: null,      /* orientation de la figure : "axe" · "soleil" · "libre" */
     sport: null,    /* salle de sport : "accolee" · "part" */
     ponts: null,    /* passerelles : "oui" · "non" */
     prof: null,     /* profondeur des corps, en m murs compris */
@@ -105,29 +104,28 @@ export function massVols(list){
 
 /* ---------- la profondeur, et ses deux bornes --------------------------------
    La profondeur d'un corps est sa PETITE cote, sa largeur la grande. Les deux
-   fourchettes sont les DOMAINES de deux leviers (`V.profMin/profMax`,
-   `V.largeurMin/largeurMax`, `data/leviers.js`) : le générateur y tire ses
-   cotes ; un corps retouché qui en sort ne l'est que pour l'orientation. */
+   leviers ne règlent que le MINIMUM (`V.profMin`, `V.largeurMin`,
+   `data/leviers.js`) ; le maximum de la profondeur est celle de façade des
+   classes. Un corps retouché qui en sort ne l'est que pour l'orientation. */
 export function profBornes(){
-  /* Le domaine, hors tout (murs compris), ramené aux cotes intérieures. */
-  var m = 2 * RULES.haut.mur, lo = Math.max(1, V.profMin - m);
-  return { lo:lo, hi:Math.max(lo, V.profMax - m) };
+  /* Le minimum, hors tout (murs compris), ramené aux cotes intérieures. */
+  var lo = Math.max(1, V.profMin - 2 * RULES.haut.mur);
+  return { lo:lo, hi:Math.max(lo, profFacade()) };
 }
 /* TOUTES LES CLASSES EN FAÇADE. Un corps qui porte des salles de classe n'a pas
    plus de deux salles de profondeur, et le couloir qui les dessert entre elles,
-   sans quoi une salle se retrouve au milieu, sans fenêtre. La salle est prise au
-   carré de sa surface, comme son front sur le couloir, et le couloir à la
-   largeur réglée au cahier des charges : 2 × √72 + 2,40 ≈ 19,5 m au module. La
-   cote vient du programme, pas d'un réglage. Elle se prenait sur une PART de
-   circulation (2 × √(72 / 0,82)) quand la circulation en était une. */
+   sans quoi une salle se retrouve au milieu, sans fenêtre. La salle a la
+   profondeur de la ligne `classe-dim` (9 m), à défaut le carré de sa surface,
+   et le couloir la largeur réglée au cahier des charges : 2 × 9 + 2,40 = 20,4 m
+   au module. */
 export function profFacade(){
   var u = 0;
   ITEMS.forEach(function(it){
     if(it.f !== "cla") return;
     if(!u || it.nb > u.nb) u = it;
   });
-  if(!u) return V.profMax;
-  return auModule(2 * Math.sqrt(u.u) + COULOIR);
+  if(!u) return V.profMin;
+  return auModule(2 * (enVigueur("classe-dim") ? V.classeP : Math.sqrt(u.u)) + COULOIR);
 }
 /* LE MODULE : toute cote de corps est un multiple de `V.module` (0,50 m, une
    ligne du cadre choisi). Une seule fonction arrondit, le générateur, les

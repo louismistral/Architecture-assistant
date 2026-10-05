@@ -24,16 +24,17 @@
    ========================================================================= */
 import { ITEMBYKEY } from "../core/model.js";
 import { PER, SITE } from "../data/site.js";
-import { V, courExigee, recul, reculVise } from "../data/cadre.js";
-import { distVisee, ombreVisee, preference } from "../data/orientation.js";
+import { V, courExigee, enVigueur, recul, reculVise } from "../data/cadre.js";
+import { distVisee, feuExige, feuVise, force, ombreVisee, preference } from "../data/orientation.js";
 import "../data/leviers.js";
 import "../data/recherche.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { areaOf, lvlOf, onFloor } from "../mix/floors.js";
+import { adjRompues } from "../mix/checks.js";
 import {
   assise, attracteurs, axePer, bbox, bordDist, dedans, airePosable,
-  ecart, ecartAngle, ecartPoly, margeAu, terrain, tientA, visAVis
+  ecart, ecartAngle, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
 import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
   profPieces, sousSol, volEtage, volRect } from "./model.js";
@@ -68,9 +69,9 @@ function levier(k, options, r){
 
 
 /* ---------- les emprises déjà là --------------------------------------------
-   Les bâtiments existants qui touchent le périmètre : ce sont eux que l'on ne
-   peut pas percuter, et dont l'AEAI veut qu'on s'écarte. Ceux du coteau, à
-   cent mètres, ne gênent personne. */
+   Les bâtiments existants qui touchent le périmètre : ils ne sont plus du
+   cadre, mais la cour et les mesures les lisent encore. Ceux du coteau, à cent
+   mètres, ne comptent pas. */
 /* Les emprises existantes ne changent jamais : on les filtre une fois, et l'on
    garde pour chacune son CERCLE ENGLOBANT. Le test d'admissibilité les
    parcourait toutes à chaque position essayée — vingt-neuf polygones, quatre
@@ -280,9 +281,9 @@ function auBord(v, vols){
 
 /* ---------- la règle d'implantation, en UN seul endroit ----------------------
    Ni le générateur ni le glisser à la souris ne posent un corps qui ne tient
-   pas : tous les étages dans le périmètre, recul du PACom compris ; la distance
-   minimale entre bâtiments à TOUS les étages hors sol — ce qui interdit aussi
-   de surmonter la salle de sport ; rien sur l'existant ni trop près de lui.
+   pas : tous les étages dans le périmètre, recul du PACom compris ; rien ne se
+   recouvre, et la distance incendie entre bâtiments à TOUS les étages hors sol
+   quand elle est du cadre (`feuExige()`).
    Deux corps ACCOLÉS (`joint`) font un seul bâtiment : ils se touchent sans se
    recouvrir. */
 export function rectsHors(v, P){
@@ -319,21 +320,15 @@ export function dansPerimetre(v, x, y, a){
 }
 export function admissible(v, vols, x, y, a){
   var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a };
-  var i, j;
+  var i, D = feuExige();
   if(!dansPerimetre(v, P.x, P.y, P.a)) return false;
   for(i = 0; i < vols.length; i++){
     var o = vols[i];
     if(o === v) continue;
     /* Deux parties d'un même bâtiment ne se recouvrent pas ; deux bâtiments se
        tiennent à la distance minimale. */
-    var e = ecartVols(v, o, P, RULES.dist.entre);
-    if(e < RULES.dist.entre - .01 && !(lies(v, o) && e >= -CONTACT)) return false;
-  }
-  var H = rectsHors(v, P);
-  for(i = 0; i < H.length; i++){
-    var OB = obstaclesPres(H[i], RULES.dist.entre);
-    for(j = 0; j < OB.length; j++)
-      if(ecartPoly(H[i], OB[j]) < RULES.dist.entre - .01) return false;
+    var e = ecartVols(v, o, P, D);
+    if(e < D - .01 && !(lies(v, o) && e >= -CONTACT)) return false;
   }
   return true;
 }
@@ -350,7 +345,7 @@ function reparer(vols){
   var pas, i, j, B = bbox(PER), RV = reculVise(), OK = ombreVisee();
   /* La réparation vise la distance SOUHAITÉE, jamais moins que la distance
      incendie. */
-  var cible = Math.max(RULES.dist.entre, distVisee()) + .35;
+  var cible = Math.max(feuVise(), distVisee()) + .35;
   var N = horsSol(), HN = {};
   N.forEach(function(n){ HN[n.i] = n.h; });
   var HV = vols.map(function(v){
@@ -383,16 +378,6 @@ function reparer(vols){
           var mou = Math.max(0, vise - Math.max(e, cible));
           var push = Math.min(3, dur * .5 + mou * DOUX * .5);
           dx += ox / ol * push; dy += oy / ol * push;
-        }
-      }
-      var OB = obstaclesPres(rc, cible);
-      for(j = 0; j < OB.length; j++){
-        var eb = ecartPoly(rc, OB[j]);
-        if(eb < cible){
-          var c2 = centre(OB[j]);
-          var bx = v.x - c2[0], by = v.y - c2[1], bl = Math.hypot(bx, by) || 1;
-          var pb = Math.min(3, (cible - eb)) * .6;
-          dx += bx / bl * pb; dy += by / bl * pb;
         }
       }
       if(v.ancre){ dx *= .35; dy *= .35; }
@@ -547,15 +532,17 @@ function aval(){
   AVAL = Math.atan2(-gy, -gx);
   return AVAL;
 }
-/* L'orientation d'une figure — un LEVIER : l'axe du périmètre, l'optimum
-   soleil-vue, ou un angle libre autour de l'axe ; libre, l'une des trois à
-   parts égales. Les terrasses suivent les courbes : leurs rangs descendent la
+/* L'orientation d'une figure — une ORIENTATION (`data/orientation.js — cap`) :
+   l'axe du périmètre, l'optimum soleil-vue, ou un angle libre autour de l'axe.
+   L'optimum compte `force("cap")` fois de plus que les deux autres. Les terrasses suivent les courbes : leurs rangs descendent la
    pente (le +v de la figure va vers l'aval). */
 var CAP = null;      /* d'où vient le dernier angle : « pente », « axe », « soleil », « libre » */
 function orientation(pid, r, centreSite){
   CAP = "pente";
   if(pid === "terrasses") return aval() - Math.PI / 2;
-  var m = CAP = levier("cap", ["axe", "soleil", "libre"], r);
+  var O = ["axe", "soleil", "libre"];
+  for(var k = force("cap"); k > 0; k--) O.push("soleil");
+  var m = CAP = O[Math.floor(r() * O.length)];
   if(m === "axe") return axePer();
   if(m === "soleil") return angleSoleilVue(centreSite.cx, centreSite.cy);
   return axePer() + entre(r, -.7, .7);
@@ -574,7 +561,9 @@ export function genMass(graine){
   var g = graine == null ? MASS.graine : graine;
   var r = alea(g);
   var N = horsSol();
-  if(!N.length) return [];
+  /* une adjacence exigée rompue au mixer : la répartition n'est pas valide, et
+     aucun volume ne se propose dessus */
+  if(!N.length || adjRompues().length) return [];
   oublier();
   var imp = corpsImpose(N[0].i);
   if(imp) imp.i = N[0].i;
@@ -840,6 +829,9 @@ function alignes(a, b){
   return bout ? plan : null;
 }
 export function fusionner(vols, ponts, etage){
+  /* la ligne `fusion` du cadre choisi ; les morceaux d'un même corps importé
+     (`etage`) se recollent toujours */
+  if(!etage && !enVigueur("fusion")) return 0;
   var m = 2 * RULES.haut.mur, faits = 0, encore = true;
   while(encore){
     encore = false;

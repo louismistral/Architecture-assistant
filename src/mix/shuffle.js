@@ -29,21 +29,21 @@
    en rouge. Rien n'est empêché, rien n'est silencieux.
 
    Au-dessus des réglages, leurs DÉS : un réglage dont le dé est allumé est
-   tiré à chaque Shuffle — la pile, le plateau d'un niveau, le lien d'un poste,
-   une adjacence —, un réglage dont le dé est éteint est respecté tel quel.
+   tiré à chaque Shuffle — la pile —, un réglage dont le dé est éteint est
+   respecté tel quel.
 
    Trois espèces de lignes gouvernent ce fichier, et chacune se lit dans
    l'état (`data/lignes.js — V`) :
 
      le CADRE        ce qui ferme des niveaux ou plafonne la pile — les règles
-                     de niveau (`niv.js`), l'adjacence active, l'unité
-                     pédagogique, l'emprise d'un plateau (`data/cadre.js`) ;
+                     de niveau (`niv.js`), les adjacences exigées, l'emprise
+                     d'un plateau (`data/cadre.js`) ;
      l'ORIENTATION   les points de la note, chacun fois la force de son tag
                      (`data/orientation.js`) ;
      le GÉNÉRATEUR   la part du hasard (`data/recherche.js`).
 
-   Ce que les dés tirent — la pile, les plateaux, les liens, les adjacences —
-   sont les LEVIERS (`data/leviers.js`), et ils se tirent à parts égales.
+   Ce que le dé tire — la pile — est un LEVIER (`data/leviers.js`), tiré à parts
+   égales.
    ========================================================================= */
 import { CIRC } from "../core/model.js";
 import { rng, shuffled } from "../core/rand.js";
@@ -61,9 +61,9 @@ import {
   BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBuilt, flCount,
   flNet, fuse, grade, lvlOf, nextUid, onFloor, place, setPlate, setStack, toTray, usable
 } from "./floors.js";
-import { BRUYANT, CLSRE, UNITE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
+import { BRUYANT, CLSRE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
 import {
-  adjActive, deAdj, deLien, dePlateau, estLie, liens, lienId, setAdj, setLie
+  adjActive, estLie, setLie
 } from "./opts.js";
 import { PMAP, PROX, aOf, grappeDe, lienLibre, posables, qOf, uOf } from "./prog.js";
 
@@ -137,7 +137,7 @@ function noteNiveau(p, f, pose){
      poser six cents mètres carrés là où il en reste cinquante n'est pas une
      variante, c'est une erreur qu'il faudra défaire. */
   var l = libre(f);
-  if(l <= 0) s -= force("debord") * V.debordPts;
+  if(l <= 0) s -= force("place") * V.placePoids;
   else s += force("place") * V.placePoids * Math.min(1, l / Math.max(1, besoin));
 
   /* 2 — les adjacences ACTIVES déjà posées : le niveau où est son partenaire,
@@ -206,31 +206,6 @@ function bruit(alea){
   return -Math.log(-Math.log(u)) * V.temperature * V.bruitEchelle;
 }
 
-/* Combien d'unités d'un poste un même niveau accepte. L'unité pédagogique est
-   la seule limite de ce genre : un degré tient sur un niveau, avec ses
-   dégagements — au-delà, on fait un couloir d'hôpital. */
-function capParNiveau(p, f){
-  if(!UNITE.test(p.n) || !enVigueur("unite")) return Infinity;
-  /* Le plafond porte sur le NIVEAU, pas sur le poste : les salles standard et
-     celles de réserve sont deux postes, et chacun respectait le sien — onze plus
-     trois faisaient quatorze salles sur un plateau qui n'en admet que onze. */
-  var deja = 0;
-  BLOCKS.forEach(function(b){
-    if(b.fl === f && UNITE.test(PMAP[b.key].n)) deja += b.q;
-  });
-  return Math.max(0, Math.round(V.clsParNiveau) - deja);
-}
-/* Le contingent de salles de classe, et les niveaux qu'il demande. C'est une
-   contrainte sur la PILE, pas seulement sur le remplissage : vingt et une
-   salles à onze par niveau ne tiennent pas sur un seul étage, et proposer une
-   pile qui ne peut pas les loger revient à proposer un avertissement. */
-function etagesDeClasses(){
-  if(!enVigueur("unite")) return 0;
-  var n = 0;
-  posables().forEach(function(p){ if(UNITE.test(p.n)) n += qOf(p.key); });
-  return Math.ceil(n / Math.max(1, Math.round(V.clsParNiveau)));
-}
-
 /* ---------- poser un poste ---------------------------------------------------
    Les niveaux candidats sont notés, triés, et remplis dans cet ordre : au mieux
    d'abord, le débord ensuite. Un poste aux cotes imposées ne se coupe pas — il
@@ -258,7 +233,7 @@ function poser(p, cand, alea, pose){
     for(i = 0; i < notes.length && rest > 0; i++){
       var f = notes[i].f;
       var tient = durs[f] ? rest : (u > 0 ? Math.floor(Math.max(0, libre(f)) / u) : rest);
-      var n = Math.min(rest, capParNiveau(p, f), Math.max(0, tient));
+      var n = Math.min(rest, Math.max(0, tient));
       if(n <= 0) continue;
       want[f] = (want[f] || 0) + n;
       rest -= n;
@@ -369,11 +344,13 @@ function empriseMax(){
   return airePosable(reculVise()) * (enVigueur("plateau") ? V.plateauPart : 1);
 }
 export function pilesAdmissibles(){
-  var besoinNet = 0, enterrable = 0, rezOblige = 0;
+  var besoinNet = 0, enterrable = 0, rezOblige = 0, haut = 0;
   posables().forEach(function(p){
     if(p.hors) return;
     var a = aOf(p.key, qOf(p.key)), lr = lvRange(p);
     besoinNet += a;
+    /* une grande hauteur libre au rez : rien au-dessus (cadre `gabarit`) */
+    if(p.hlibre > RULES.haut.libre.def) haut += a;
     if(lr.min < 0 && p.f === "tec") enterrable += a;
     if(lr.max === 0) rezOblige += a;
   });
@@ -382,7 +359,7 @@ export function pilesAdmissibles(){
   var emprise = empriseMax();
   var seuil = enVigueur("soussol") ? V.sousSolMin : 0;
   var sous = enterrable > 0 && enterrable >= seuil ? 1 : 0;
-  var etMax = enVigueur("etages") ? Math.max(0, Math.round(V.etagesMax)) : 6;
+  var etMax = RULES.niv.etagesMax;
   var horsSol = Math.max(0, bati - (sous ? enterrable * k : 0));
 
   /* Les plateaux ne sont PAS uniformes, et c'est le point. Le rez porte tout ce
@@ -393,20 +370,11 @@ export function pilesAdmissibles(){
   function arrondi(a){ return Math.max(PLATE_MIN, Math.ceil(a / 10) * 10); }
   var pSous = sous ? Math.min(emprise, arrondi(enterrable * k * V.margePlateau)) : 0;
 
-  /* Les niveaux que les classes réclament. Elles vont de préférence à l'étage,
-     et le règlement ne les admet pas au-delà du 2ᵉ : la pile doit donc offrir
-     assez de niveaux ADMISSIBLES pour le contingent, sinon elle produit une
-     répartition qu'on avertit au lieu d'une pile qu'on propose. */
-  /* Le rez ne compte PAS parmi eux : il porte déjà tout ce que le règlement y
-     cloue — salle de sport, halls, administration, UAPE, chauffage —, et il n'y
-     reste pas de quoi loger un degré. Le compter donnait des piles où les vingt
-     et une salles se retrouvaient toutes au premier, et l'outil avertissait
-     d'une répartition qu'il venait lui-même de proposer. */
-  var upCla = Math.max(0, Math.min(RULES.niv.classeMax, etagesDeClasses()));
-
   var out = [], up;
-  for(up = Math.min(upCla, etMax); up <= etMax; up++){
-    var pRez = Math.max(rezMin, horsSol / (1 + up)) * V.margePlateau;
+  for(up = 0; up <= etMax; up++){
+    /* Le rez porte au moins sa part, et assez pour que les étages tiennent à
+       côté de la grande hauteur libre : R − haut ≥ (horsSol − R) / up. */
+    var pRez = Math.max(rezMin, (horsSol + up * haut) / (1 + up)) * V.margePlateau;
     if(pRez > emprise) continue;                      /* le rez ne tient pas sur la parcelle */
     pRez = arrondi(pRez);
     /* Ce que le rez laisse aux étages se mesure sur sa CAPACITÉ, marge déduite,
@@ -417,6 +385,7 @@ export function pilesAdmissibles(){
     if(up > 0 && reste <= 1) continue;                /* un étage vide n'est pas une pile */
     var pUp = up > 0 ? arrondi(reste / up * V.margePlateau) : 0;
     if(pUp > emprise) continue;
+    if(up > 0 && pUp > pRez - haut) continue;          /* un étage surmonterait la salle de sport */
     if(pRez + up * pUp < horsSol - 1) continue;       /* la pile ne loge pas le programme */
     var plates = [];
     if(sous) plates.push(pSous);
@@ -439,8 +408,6 @@ export function pilesAdmissibles(){
 }
 export function proposerPile(alea){
   var P = pilesAdmissibles(), choix = P[0];
-  var garde = {};
-  FLOORS.forEach(function(F){ garde[F.lvl] = F.plate; });
   if(alea && P.length > 1){
     /* Le LEVIER tire parmi les piles admissibles ; l'ORIENTATION « pile
        compacte » retire ses points par étage de plus, et le hasard du mixer
@@ -452,13 +419,7 @@ export function proposerPile(alea){
       if(n > best){ best = n; choix = x; }
     });
   }
-  /* Un plateau dont le dé est éteint garde la valeur qu'on lui a donnée, si sa
-     cote existe encore dans la pile tirée. */
-  var lo = -choix.sous, plates = choix.plates.map(function(pl, j){
-    var l = lo + j;
-    return (!dePlateau(l) && garde[l] > 0) ? garde[l] : pl;
-  });
-  setStack(choix.sous, choix.up, plates);
+  setStack(choix.sous, choix.up, choix.plates);
   return FLOORS.length;
 }
 /* La pile est figée, mais des plateaux sont au hasard : ils reprennent ceux de
@@ -469,21 +430,7 @@ function plateauxDeLaPile(){
   var sous = Math.max(0, -lvlOf(0)), up = Math.max(0, lvlOf(FLOORS.length - 1)), m = null;
   pilesAdmissibles().forEach(function(P){ if(!m && P.sous === sous && P.up === up) m = P; });
   if(!m) return;
-  FLOORS.forEach(function(F, i){ if(dePlateau(F.lvl) && m.plates[i] > 0) F.plate = m.plates[i]; });
-}
-
-/* Ce que les dés allumés laissent au hasard, tiré AVANT la pose et sur la même
-   seed : une proposition se rejoue à l'identique, liens et adjacences compris.
-   La valeur tirée devient la valeur du réglage — elle se lit sur le bloc et au
-   flanc du mixer, et l'on peut la figer en éteignant le dé. */
-function tirerReglages(){
-  posables().forEach(function(p){
-    if(lienLibre(p.key) && deLien(p.key)) setLie(p.key, rng() < .5);
-  });
-  liens().forEach(function(lk){
-    var id = lienId(lk);
-    if(deAdj(id)) setAdj(id, rng() < .5);
-  });
+  FLOORS.forEach(function(F, i){ if(m.plates[i] > 0) F.plate = m.plates[i]; });
 }
 
 /* ---------- la répartition ------------------------------------------------ */
@@ -587,9 +534,6 @@ function tasserSommet(){
 function ajusterPlateaux(){
   var emprise = empriseMax();
   FLOORS.forEach(function(F, i){
-    /* Un plateau figé est une décision : on ne le corrige pas. S'il déborde,
-       le contrôle le dit. */
-    if(!dePlateau(F.lvl)) return;
     var besoin = flBuilt(i);
     if(besoin <= 0) return;
     var p = Math.min(Math.max(PLATE_MIN, Math.ceil(besoin / 10) * 10),

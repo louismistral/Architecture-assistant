@@ -41,12 +41,11 @@ import {
   FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
   addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt, flCirc, flCircDe,
   flCount, flHeight, flLibre, flName, flNet, floorCost, grappeBlocs, horsAt,
-  lvlOf, move, moveGroupe, onFloor, rapprocherLien, rassembler, setPlate, split, toTray,
+  lvlOf, move, moveGroupe, onFloor, rassembler, setPlate, split, toTray,
   trayArea, trayBlocks, usable
 } from "../mix/floors.js";
 import {
-  adjActive, adjDefaut, coteDe, deAdj, deLien, dePile, dePlateau, estLie, etatDes, lienId, liens,
-  setAdj, setCote, setDeAdj, setDeLien, setDePile, setDePlateau, setDes, setLie
+  adjActive, coteDe, dePile, estLie, lienId, liens, setCote, setDePile, setLie
 } from "../mix/opts.js";
 import { dimsAProf, nearestDims, squarest, validDims } from "../core/geometry.js";
 import { bandeMassing } from "../mass/model.js";
@@ -257,7 +256,7 @@ function lienBtn(key, compact){
   b.title = lab;
   b.addEventListener("click", function(e){
     e.stopPropagation();
-    setLie(key, !lie); setDeLien(key, false);
+    setLie(key, !lie);
     if(!lie) rassembler(key);
     drawMix(); saveSoon();
   });
@@ -278,27 +277,23 @@ function drawRegl(){
   s.appendChild(el("p","mix-regl__n",
     "Dé allumé, le Shuffle décide ; éteint, la valeur est la tienne et il la respecte. "
     + "Toucher une valeur la fige."));
-  var lvls = FLOORS.map(function(F){ return F.lvl; });
   var postes = postesLibres().map(function(p){ return p.key; });
-  var ids = liens().map(lienId);
-  var nLies = postes.filter(estLie).length, nAct = ids.filter(adjActive).length;
+  var nLies = postes.filter(estLie).length;
 
   var ul = el("ul","mix-regl__l");
-  function ligne(titre, ou, cat, list, extra){
+  function ligne(titre, ou, de, extra){
     var li = el("li");
     var t = el("div","mix-regl__t");
     t.appendChild(el("b", null, titre));
     t.appendChild(el("span", null, ou));
     li.appendChild(t);
-    li.appendChild(deBtn(etatDes(cat, list), titre, function(on){
-      setDes(cat, list, on); drawMix(); saveSoon();
-    }));
+    if(de) li.appendChild(de);
     if(extra) li.appendChild(extra);
     ul.appendChild(li);
   }
-  ligne("Nombre de niveaux", "sur la pile", "pile", null);
-  ligne("Plateaux", "sur chaque niveau · " + lvls.filter(dePlateau).length + " tirés sur " + lvls.length,
-    "plateau", lvls);
+  ligne("Nombre de niveaux", "sur la pile", deBtn(dePile, "Nombre de niveaux", function(on){
+    setDePile(on); drawMix(); saveSoon();
+  }));
   var gl = el("div","btn-group mix-regl__g");
   gl.setAttribute("role","group");
   gl.setAttribute("aria-label","Lier ou délier tous les postes");
@@ -307,7 +302,7 @@ function drawRegl(){
     b.type = "button";
     b.addEventListener("click", function(){
       postes.forEach(function(k){
-        setLie(k, x[1]); setDeLien(k, false);
+        setLie(k, x[1]);
         if(x[1]) rassembler(k);
       });
       drawMix(); saveSoon();
@@ -315,9 +310,7 @@ function drawRegl(){
     gl.appendChild(b);
   });
   ligne("Lien des postes", "sur chaque bloc · " + nLies + " lié" + (nLies > 1 ? "s" : "")
-    + " sur " + postes.length, "lien", postes, gl);
-  ligne("Adjacences", "ci-dessous · " + nAct + " active" + (nAct > 1 ? "s" : "") + " sur " + ids.length,
-    "adj", ids);
+    + " sur " + postes.length, null, gl);
   s.appendChild(ul);
 
   /* Les postes un à un : sur un bloc trop petit pour porter ses commandes, et
@@ -334,9 +327,6 @@ function drawRegl(){
     li.appendChild(sw);
     li.appendChild(el("span","mix-postes__n", p.n + " ×" + qOf(p.key)));
     li.appendChild(lienBtn(p.key, false));
-    li.appendChild(deBtn(deLien(p.key), "Lien de " + p.n, function(on){
-      setDeLien(p.key, on); drawMix(); saveSoon();
-    }, true));
     pl.appendChild(li);
   });
   det.appendChild(pl);
@@ -344,10 +334,9 @@ function drawRegl(){
 }
 
 /* ---------- les adjacences, lien par lien ------------------------------------
-   Le cahier des charges dit ce que le règlement EXIGE ; ici on décide ce que
-   NOUS tenons. Active, une adjacence met ses deux postes au même niveau et les
-   déplace ensemble ; éteinte, ils sont indépendants. L'allumer agit sur ce qui
-   est posé : le plus léger rejoint le plus lourd. */
+   Ce que le règlement EXIGE, et qui est du cadre : chaque adjacence exigée met
+   ses deux postes au même niveau. Les mutualisations ne lient rien. La liste se
+   lit, elle ne se règle pas. */
 function drawAdj(){
   if(!adjEl) return;
   var s = adjEl;
@@ -355,31 +344,11 @@ function drawAdj(){
   var ids = liens().map(lienId), nAct = ids.filter(adjActive).length;
   var hd = el("div","mix-issues__hd");
   hd.appendChild(el("h3","label","Adjacences"));
-  hd.appendChild(el("span","mono mix-adj__c", nAct + " active" + (nAct > 1 ? "s" : "") + " sur " + ids.length));
+  hd.appendChild(el("span","mono mix-adj__c", nAct + " exigée" + (nAct > 1 ? "s" : "") + " sur " + ids.length));
   s.appendChild(hd);
   s.appendChild(el("p","mix-regl__n",
-    "Active, l’adjacence met ses deux postes au même niveau et les déplace ensemble. "
-    + "Éteinte, ils sont indépendants."));
-
-  var g = el("div","btn-group mix-adj__g");
-  g.setAttribute("role","group");
-  g.setAttribute("aria-label","Activer les adjacences d’un coup");
-  [["Exigées", null], ["Toutes", true], ["Aucune", false]].forEach(function(x){
-    var b = el("button","btn", x[0]);
-    b.type = "button";
-    b.title = x[1] === null ? "Les adjacences que le règlement exige, sans les mutualisations"
-            : x[1] ? "Toutes, mutualisations comprises" : "Aucune : tous les postes sont indépendants";
-    b.addEventListener("click", function(){
-      ids.forEach(function(id){
-        var on = x[1] === null ? adjDefaut(id) : x[1];
-        setAdj(id, on); setDeAdj(id, false);
-        if(on) rapprocherLien(id);
-      });
-      drawMix(); saveSoon();
-    });
-    g.appendChild(b);
-  });
-  s.appendChild(g);
+    "Chaque adjacence exigée met ses deux postes au même niveau — une seule rompue, et le "
+    + "massing ne propose aucun volume. Les mutualisations ne lient rien."));
 
   /* Une adjacence active qui ne tient pas porte la marque du contrôle. */
   var casse = {};
@@ -390,20 +359,8 @@ function drawAdj(){
   liens().forEach(function(lk){
     var id = lienId(lk), on = adjActive(id);
     var li = el("li", on ? "is-on" : null);
-    var sw = el("button","mix-sw");
-    sw.type = "button";
-    sw.setAttribute("role","switch");
-    sw.setAttribute("aria-checked", String(on));
     var A = SMAP[lk.a], B = SMAP[lk.b];
     var nom = (A ? A.n : lk.a) + (lk.sep ? " ⊣ " : " ↔ ") + (B ? B.n : lk.b);
-    sw.setAttribute("aria-label", nom + (on ? " : active" : " : éteinte"));
-    sw.appendChild(el("span","mix-sw__k"));
-    sw.addEventListener("click", function(){
-      setAdj(id, !on); setDeAdj(id, false);
-      if(!on) rapprocherLien(id);
-      drawMix(); saveSoon();
-    });
-    li.appendChild(sw);
     var t = el("div","mix-adj__t");
     t.appendChild(el("b", null, nom));
     if(lk.opt) t.appendChild(el("span","esttag", lk.sep ? "mutualisation · indépendance" : "mutualisation"));
@@ -416,7 +373,6 @@ function drawAdj(){
     });
     if(on && bris){ li.classList.add("is-bad"); t.appendChild(el("span","mix-adj__bad","ne tient pas — voir le contrôle")); }
     li.appendChild(t);
-    li.appendChild(deBtn(deAdj(id), nom, function(v){ setDeAdj(id, v); drawMix(); saveSoon(); }, true));
     ul.appendChild(li);
   });
   s.appendChild(ul);
@@ -580,12 +536,6 @@ function floorNode(i){
   pl.appendChild(inp);
   pl.appendChild(el("span","mix-fl__u","m² de plateau"));
   bar.appendChild(pl);
-  /* Le dé du plateau, à côté du plateau : allumé, le Shuffle le déduit de la
-     pile et le ramène à ce que le niveau porte ; éteint, c'est notre valeur, et
-     elle sert de capacité. Taper un plateau l'éteint. */
-  bar.appendChild(deBtn(dePlateau(F.lvl), "Plateau du " + flName(i).toLowerCase(), function(on){
-    setDePlateau(F.lvl, on); drawMix(); saveSoon();
-  }));
 
   /* Utile, circulation, bâti : l'ADDITION en toutes lettres. Le niveau
      n'écrivait que ses deux bouts — « 2'236 m² utiles · 2'727 m² bâtis » — et
@@ -862,13 +812,10 @@ function blockNode(b, r){
        couleur du poste, et son lien dit qu'il est délié. */
     if(!g){ d.classList.add("is-delie-plein"); d.style.borderColor = col; }
   }
-  /* Le lien et son dé, SUR le bloc : c'est là que le poste se voit. */
+  /* Le lien, SUR le bloc : c'est là que le poste se voit. */
   if(libre && !d.classList.contains("is-tiny") && r.w >= 64 && r.h >= 28){
     var ct = el("div","mixblk__ctl");
     ct.appendChild(lienBtn(b.key, true));
-    ct.appendChild(deBtn(deLien(b.key), "Lien de " + p.n, function(on){
-      setDeLien(b.key, on); drawMix(); saveSoon();
-    }, true));
     d.appendChild(ct);
   }
   d.setAttribute("data-tip", p.n + (b.q > 1 ? " ×" + b.q : "")
@@ -1122,9 +1069,6 @@ function wireMix(){
     var i = parseInt(t.dataset.plate, 10);
     var v = parseFloat(String(t.value).replace(",", "."));
     if(!setPlate(i, v)){ t.value = String(FLOORS[i] ? FLOORS[i].plate : ""); return; }
-    /* Taper un plateau, c'est le choisir : son dé s'éteint, et le prochain
-       Shuffle le respecte. */
-    setDePlateau(FLOORS[i].lvl, false);
     drawMix(); saveSoon();
   });
 

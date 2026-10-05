@@ -22,8 +22,8 @@
 import { dec, fmt } from "../core/format.js";
 import { ITEMBYKEY } from "../core/model.js";
 import { NAPPE, PER } from "../data/site.js";
-import { V, courExigee, courProgramme, enVigueur, lu, recul, reculVise, severite } from "../data/cadre.js";
-import { imposees } from "../data/orientation.js";
+import { V, courProgramme, enVigueur, lu, recul, reculVise, severite } from "../data/cadre.js";
+import { feuExige, imposees } from "../data/orientation.js";
 import { noter } from "../data/jugement.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
@@ -144,10 +144,10 @@ export function ecarts(vols, vite, Q){
     else if(m < R - .01) dit("recul", -1, "Une passerelle franchit le recul.");
   });
 
-  /* la distance INCENDIE — seule distance opposable entre bâtiments, à tous
-     les étages ; et à l'existant */
-  var FEU = RULES.dist.entre;
-  for(i = 0; i < vols.length && !stop(); i++){
+  /* la distance INCENDIE entre bâtiments, à tous les étages — quand elle est
+     du cadre (Imposée) ; en orientation, `qualites()` la lit */
+  var FEU = feuExige();
+  for(i = 0; FEU && i < vols.length && !stop(); i++){
     for(j = i + 1; j < vols.length && !stop(); j++){
       var e = ecartVols(vols[i], vols[j]), L = lies(vols[i], vols[j]);
       if(e < FEU - .01 && !(L && e >= -CONTACT))
@@ -155,19 +155,6 @@ export function ecarts(vols, vite, Q){
           + (e < 0 ? " s'interpénètrent." : " sont à " + dec(e) + " m : la distance "
             + "incendie est de " + dec(FEU) + " m."), 0, j);
     }
-    rectsHors(vols[i]).forEach(function(rc){
-      if(stop()) return;
-      var OB = obstaclesPres(rc, FEU);
-      for(var k = 0; k < OB.length; k++){
-        var eb = ecartPoly(rc, OB[k]);
-        if(eb < FEU - .01){
-          dit("existant", i, nomV(vols[i], i) + (eb < 0 ? " recouvre un bâtiment existant."
-            : " est à " + dec(eb) + " m d'un bâtiment existant : la distance incendie est de "
-              + dec(FEU) + " m."));
-          return;
-        }
-      }
-    });
   }
 
   /* les cotes : le module, les classes en façade — deux choix à nous */
@@ -346,8 +333,7 @@ function lire(vols){
     if(v.fix) return;
     var r = rectSol(v), Lg = Math.max(r.w, r.d), P = Math.min(r.w, r.d);
     dn++;
-    if(Lg >= V.largeurMin - .01 && Lg <= V.largeurMax + .01
-       && P >= V.profMin - .01 && P <= V.profMax + .01) dok++;
+    if(Lg >= V.largeurMin - .01 && P >= V.profMin - .01) dok++;
     pmax = Math.max(pmax, P);
     pt = Math.max(pt, assise(r).d);
     v.lv.forEach(function(e){
@@ -358,13 +344,14 @@ function lire(vols){
   });
 
   /* les distances entre bâtiments distincts, et à l'existant */
-  var pn = 0, pok = 0, dmin = Infinity, dex = Infinity;
+  var pn = 0, pok = 0, pfeu = 0, dmin = Infinity, dex = Infinity;
   E.forEach(function(v, i){
     E.forEach(function(o, j){
       if(j <= i || lies(v, o)) return;
       var e = ecartVols(v, o);
       pn++; dmin = Math.min(dmin, e);
       if(e >= V.distVoulue - .01) pok++;
+      if(e >= RULES.dist.entre - .01) pfeu++;
     });
     rectsHors(v).forEach(function(rc){
       obstaclesPres(rc, 40).forEach(function(P){ dex = Math.min(dex, ecartPoly(rc, P)); });
@@ -389,7 +376,7 @@ function lire(vols){
     E:E, CL:CL, sud:sud, vue:vue, ratio:ratio, compa: bat ? fac / bat : 0,
     cour: courUtile(vols), emprise:emp, volume:vol, sousPart: tot ? sous / tot : 0,
     dn:dn, dok:dok, pmax:pmax, el:el, pente:pt, rang:rang, niv:niv, dirs:dirs.length,
-    pn:pn, pok:pok, dmin:dmin, dex:dex, marge:marge, PF:PF, fmax:fmax,
+    pn:pn, pok:pok, pfeu:pfeu, dmin:dmin, dex:dex, marge:marge, PF:PF, fmax:fmax,
     terrain: terrainLibre(vols), terrain0: terrainLibre(vols, 0), nappe: couverture(vols),
     ensembles: ensembles(E.filter(function(v){ return !v.fix; }), vols.ponts || []),
     second: s2d ? Math.min(1, s2p / s2d) : null,
@@ -418,11 +405,11 @@ export function qualites(vols, L){
     if(!tot) return { niv:1, q:0 };
     return { niv: bon / tot >= 2 / 3 ? 2 : mal / tot > 1 / 3 ? 0 : 1, q:(bon - mal) / tot };
   }
-  var so = oriente(L.sud), vu = oriente(L.vue);
+  var vu = oriente(L.vue);
   var paires = isFinite(L.ratio), pire = paires ? 1 - L.ratio / Math.max(1e-6, V.ombreK) : 0;
   var jour = !paires || pire <= 0 ? 2 : pire <= .25 ? 1 : 0;
-  var dsh = L.dn ? L.dok / L.dn : 1, psh = L.pn ? L.pok / L.pn : 1;
-  var cu = L.cour, CM = courExigee(), tl = L.terrain, nap = L.nappe, E = L.E, R = V.recul;
+  var dsh = L.dn ? L.dok / L.dn : 1, psh = L.pn ? L.pok / L.pn : 1, fsh = L.pn ? L.pfeu / L.pn : 1;
+  var cu = L.cour, tl = L.terrain, nap = L.nappe, E = L.E, R = V.recul;
   var o = {};
   function q(id, n, niv, qq, txt){ o[id] = { id:id, n:n, niv:niv, q:qq, txt:txt }; }
 
@@ -431,8 +418,9 @@ export function qualites(vols, L){
   q("distv", "Distance souhaitée entre bâtiments", psh >= 1 ? 2 : psh >= .5 ? 1 : 0, 2 * psh - 1,
     !L.pn ? "un seul bâtiment" : L.pok + " écart" + (L.pok > 1 ? "s" : "") + " sur " + L.pn
       + " à " + dec(V.distVoulue) + " m au moins");
-  q("soleil", "Façades longues vers le sud", so.niv, so.q,
-    "façades longues à " + Math.round(moyenne(L.sud)) + "° du sud en moyenne");
+  q("dist", "Distance incendie entre bâtiments", fsh >= 1 ? 2 : 0, 2 * fsh - 1,
+    !L.pn ? "un seul bâtiment" : L.pfeu + " écart" + (L.pfeu > 1 ? "s" : "") + " sur " + L.pn
+      + " à " + dec(RULES.dist.entre) + " m au moins");
   q("vue", "Vue vers le nord-ouest", vu.niv, vu.q,
     "façades longues à " + Math.round(moyenne(L.vue)) + "° du terrain de football");
   q("jour", "Lumière entre bâtiments", jour, paires ? lin(Math.max(0, pire), 0, .25) : 1,
@@ -441,10 +429,6 @@ export function qualites(vols, L){
       : "le pire vis-à-vis manque " + Math.round(pire * 100) + " % de l'écart utile");
   q("compa", "Un volume compact", palier(L.compa, V.compaBon, V.compaMax), lin(L.compa, V.compaBon, V.compaMax),
     dec(Math.round(L.compa * 100) / 100) + " m² de façade par m² de plancher");
-  q("courq", "Une cour généreuse", cu.a >= V.courBon ? 2 : 1,
-    borne((cu.a - CM) / Math.max(1, V.courBon - CM)),
-    fmt(Math.round(cu.a)) + " m² utiles" + (cu.v >= 0 && vols[cu.v] ? " devant "
-      + nomV(vols[cu.v], cu.v).toLowerCase() : ""));
   q("align", "Des corps alignés", E.length && L.rang / E.length >= .5 ? 2 : 1,
     E.length ? L.rang / E.length : 0, L.rang + " corps sur " + E.length + " rangés sur le site ou un voisin");
   q("pente", "Peu de terrassement", palier(L.pente, V.penteMax / 2, V.penteMax),

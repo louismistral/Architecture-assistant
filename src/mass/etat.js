@@ -18,7 +18,7 @@ export function massOf(){
     parti: MASS.parti,
     graine: MASS.graine,
     /* l'état des leviers : `null`, libre ; une valeur, fixe */
-    lev: { cap: MASS.lev.cap, sport: MASS.lev.sport, ponts: MASS.lev.ponts, prof: MASS.lev.prof },
+    lev: { sport: MASS.lev.sport, ponts: MASS.lev.ponts, prof: MASS.lev.prof },
     second: MASS.second,
     mono: MASS.mono ? 1 : 0,
     /* La pile pour laquelle ces volumes ont été composés : une solution relue

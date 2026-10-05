@@ -3,16 +3,9 @@
 
    Chaque réglage a une VALEUR, et par-dessus un DÉ. Dé allumé, le Shuffle
    décide ; dé éteint, la valeur est figée — c'est nous qui l'avons choisie, et
-   le tirage la respecte. Quatre familles de réglages, et chacune se règle là où
-   elle se voit :
-
-     la pile        le nombre de niveaux            → sur la pile
-     les plateaux   l'emprise de CHAQUE niveau       → sur le niveau
-     les postes     lié ou délié, poste par poste    → sur le bloc
-     les adjacences active ou non, lien par lien     → au flanc du mixer
-
-   Un dé MAÎTRE par famille bascule toute la famille d'un coup ; il se lit
-   « mixte » quand ses éléments ne s'accordent pas.
+   le tirage la respecte. Seule la PILE a encore un dé : le plateau de chaque
+   niveau se déduit de la pile, le lien d'un poste se règle à la main, et les
+   adjacences exigées sont du CADRE (`data/cadre.js — adj`) — toujours actives.
 
    Ils vivent ici, et non dans la vue, pour que `store.js` les lise sans avoir
    à remonter dans `views/` — une couche ne dépend pas de celle qui la montre.
@@ -29,12 +22,8 @@ import { SLINK } from "../data/schema.js";
 export var dePile = true;
 export function setDePile(on){ dePile = !!on; }
 
-/* ---------- les plateaux, par COTE -------------------------------------------
-   Une cote et non un indice : ajouter un sous-sol renumérote les indices, et le
-   plateau figé du rez serait passé au premier étage. Absent : dé allumé. */
-var dePlat = {};
-export function dePlateau(lvl){ return dePlat[lvl] !== false; }
-export function setDePlateau(lvl, on){ if(on) delete dePlat[lvl]; else dePlat[lvl] = false; }
+/* Le plateau d'un niveau se déduit toujours de la pile : plus de levier. */
+export function dePlateau(){ return true; }
 
 /* ---------- les postes : lié ou délié ----------------------------------------
    LIÉ, les pièces d'un poste vont ensemble, en un bloc, à un seul niveau.
@@ -42,32 +31,21 @@ export function setDePlateau(lvl, on){ if(on) delete dePlat[lvl]; else dePlat[lv
    et le tirage peut les répartir sur plusieurs niveaux. Délié par défaut —
    c'est ce que faisait le tirage jusqu'ici. Un poste d'une seule pièce, ou dont
    le règlement impose les cotes, n'a pas le choix : `lienLibre()` le dit. */
-var lies = {}, deL = {};
+var lies = {};
 export function estLie(key){ return !!lies[key]; }
 export function setLie(key, on){ if(on) lies[key] = true; else delete lies[key]; }
-export function deLien(key){ return !!deL[key]; }
-export function setDeLien(key, on){ if(on) deL[key] = true; else delete deL[key]; }
 
 /* ---------- les adjacences ------------------------------------------------------
    Un lien du schéma fonctionnel (`data/schema.js`), désigné par ses deux nœuds.
-   ACTIF, ses deux postes vont au même niveau et se déplacent ensemble ; ÉTEINT,
-   ils sont indépendants. Par défaut, les adjacences exigées sont actives et les
-   mutualisations — offertes, pas dues — éteintes. */
+   Les adjacences exigées sont TOUJOURS actives — c'est le cadre : leurs deux
+   postes vont au même niveau. Les mutualisations — offertes, pas dues — ne
+   lient rien. */
 export function lienId(lk){ return lk.a + "|" + lk.b; }
 var LK = {};
 SLINK.forEach(function(lk){ LK[lienId(lk)] = lk; });
-var adjOn = {}, deA = {};
-var version = 0;              /* change à chaque bascule : les grappes se recalculent */
+var version = 0;              /* change à chaque rechargement : les grappes se recalculent */
 export function adjVersion(){ return version; }
-export function adjDefaut(id){ return LK[id] ? !LK[id].opt : false; }
-export function adjActive(id){ return id in adjOn ? adjOn[id] : adjDefaut(id); }
-export function setAdj(id, on){
-  if(!LK[id]) return;
-  if(!!on === adjDefaut(id)) delete adjOn[id]; else adjOn[id] = !!on;
-  version++;
-}
-export function deAdj(id){ return !!deA[id]; }
-export function setDeAdj(id, on){ if(!LK[id]) return; if(on) deA[id] = true; else delete deA[id]; }
+export function adjActive(id){ return LK[id] ? !LK[id].opt : false; }
 export function liens(){ return SLINK; }
 
 /* ---------- les cotes des pièces ---------------------------------------------
@@ -81,29 +59,6 @@ export function coteDe(key){ return cotes[key]; }
 export function setCote(key, w){ if(w == null || !(w > 0)) delete cotes[key]; else cotes[key] = w; }
 export function toutesCotes(){ return cotes; }
 
-/* ---------- les dés maîtres ---------------------------------------------------
-   `true`, `false`, ou "mixed" quand la famille est partagée. `ids` est la liste
-   des éléments qu'elle compte à cet instant — les cotes de la pile, les postes
-   qui ont le choix : elle dépend de ce qui est posé, et la vue la connaît. */
-export function etatDes(cat, ids){
-  var on = 0, n = 0;
-  (ids || []).forEach(function(id){
-    n++;
-    if(cat === "plateau" ? dePlateau(id) : cat === "lien" ? deLien(id) : deAdj(id)) on++;
-  });
-  if(cat === "pile") return dePile;
-  if(!n) return false;
-  return on === n ? true : (on === 0 ? false : "mixed");
-}
-export function setDes(cat, ids, on){
-  if(cat === "pile"){ setDePile(on); return; }
-  (ids || []).forEach(function(id){
-    if(cat === "plateau") setDePlateau(id, on);
-    else if(cat === "lien") setDeLien(id, on);
-    else setDeAdj(id, on);
-  });
-}
-
 /* ---------- persistance -------------------------------------------------------
    Retrouver ses réglages éteints à chaque ouverture reviendrait à ne jamais
    pouvoir s'en servir. On n'enregistre que ce qui s'écarte du défaut. L'ancien
@@ -111,7 +66,7 @@ export function setDes(cat, ids, on){
    était le dé de la pile ; grouper et voir les pièces n'ont plus d'équivalent
    exact et reviennent à leur défaut. */
 export function optsOf(){
-  return { v:2, pile: dePile ? 1 : 0, plat: dePlat, lie: lies, dl: deL, adj: adjOn, da: deA, cotes: cotes };
+  return { v:2, pile: dePile ? 1 : 0, lie: lies, cotes: cotes };
 }
 function copie(o, garde){
   var r = {};
@@ -125,16 +80,12 @@ export function setOpts(o){
      ancienne se rechargeait avec les réglages de la dernière qu'on a vue. */
   if(o.v !== 2){ resetOpts(); if(o.niv !== undefined) dePile = !!o.niv; return; }
   dePile = !!o.pile;
-  dePlat = copie(o.plat, function(k, v){ return v === false; });
   lies = copie(o.lie, function(k, v){ return v === true; });
-  deL = copie(o.dl, function(k, v){ return v === true; });
-  adjOn = copie(o.adj, function(k, v){ return !!LK[k] && typeof v === "boolean"; });
-  deA = copie(o.da, function(k, v){ return !!LK[k] && v === true; });
   cotes = copie(o.cotes, function(k, v){ return typeof v === "number" && v > 0; });
   version++;
 }
 /* Un projet vide : tout au défaut. */
 export function resetOpts(){
-  dePile = true; dePlat = {}; lies = {}; deL = {}; adjOn = {}; deA = {}; cotes = {};
+  dePile = true; lies = {}; cotes = {};
   version++;
 }

@@ -25,13 +25,28 @@ import {
 } from "./floors.js";
 import { isAccepted } from "./accept.js";
 import {
-  fixCombler, fixDeplacer, fixEteindre, fixPlateau, fixEtage, fixReste, fixVider, fixWC, nivCible
+  fixCombler, fixDeplacer, fixPlateau, fixEtage, fixReste, fixVider, fixWC, nivCible
 } from "./fix.js";
 import { adjActive } from "./opts.js";
-import { CLSRE, NIV, UNITE, WCRE, nivHit } from "./niv.js";
+import { CLSRE, NIV, WCRE, nivHit } from "./niv.js";
 import { PMAP, PROX, aOf } from "./prog.js";
 
 /* Niveaux occupés par un poste. */
+/* Les adjacences exigées qui ne tiennent pas : leurs deux postes posés à des
+   niveaux différents. Le contrôle les dit ; le massing, devant une seule, ne
+   propose aucun volume (`mass/gen.js — genMass()`). */
+export function adjRompues(){
+  var out = [];
+  PROX.forEach(function(l){
+    if(!adjActive(l.id) || !lu("adj")) return;
+    var A = nivDe(l.a), B = nivDe(l.b);
+    if(!A.length || !B.length) return;       /* pas encore posé : rien à dire */
+    var d = Infinity;
+    A.forEach(function(fa){ B.forEach(function(fb){ d = Math.min(d, Math.abs(fa - fb)); }); });
+    if(d > 0) out.push({ l:l, A:A, B:B, d:d });
+  });
+  return out;
+}
 function nivDe(key){
   var out = [];
   BLOCKS.forEach(function(b){
@@ -112,24 +127,17 @@ export function mixCheck(){
     { code:"nappe", fix: fixCombler() });
 
   /* --- adjacences actives -------------------------------------------------
-     Une adjacence ACTIVE demande ses deux postes au même niveau : c'est la
-     ligne `adj` du cadre choisi, et elle ne tient pas — ambre. Une adjacence
-     éteinte ne dit rien : les deux postes sont indépendants, et c'est aussi un
-     choix — celui du levier. */
-  PROX.forEach(function(l){
-    if(!adjActive(l.id) || !lu("adj")) return;
-    var A = nivDe(l.a), B = nivDe(l.b);
-    if(!A.length || !B.length) return;       /* pas encore posé : rien à dire */
-    var d = Infinity;
-    A.forEach(function(fa){ B.forEach(function(fb){ d = Math.min(d, Math.abs(fa - fb)); }); });
-    if(d === 0) return;
+     Une adjacence exigée demande ses deux postes au même niveau : c'est la
+     ligne `adj` du cadre opposable — rouge. Une mutualisation ne dit rien. */
+  adjRompues().forEach(function(x){
+    var l = x.l, A = x.A, B = x.B, d = x.d;
     add(severite("adj"),
       PMAP[l.a].n + " et " + PMAP[l.b].n + " sont séparés de "
         + d + " niveau" + (d > 1 ? "x" : "") + " — « " + l.q + " »",
       "adjacences", PMAP[l.a].n, A[0],
       { code:"adj:" + l.a + "|" + l.b, keys: [l.a, l.b],
-        fix: [fixDeplacer(l.a, B[0]), fixDeplacer(l.b, A[0]), fixEteindre(l.id)],
-        note: "L’adjacence est active au mixer : l’éteindre rend les deux postes indépendants." });
+        fix: [fixDeplacer(l.a, B[0]), fixDeplacer(l.b, A[0])],
+        note: "L’adjacence est exigée : sans elle, le massing ne propose aucun volume." });
   });
 
   /* --- gabarit : rien ne se bâtit au-dessus d'une grande hauteur libre ----- */
@@ -187,31 +195,6 @@ export function mixCheck(){
       { code:"wc:" + F.lvl, fix: fixWC(k) });
   });
 
-  /* --- l'unité pédagogique -------------------------------------------------
-     Un degré tient sur un niveau, avec ses dégagements : au-delà, on fait un
-     couloir d'hôpital. Le tirage le respecte, mais il ne refuse rien — quand
-     un niveau est plein, le reste des classes se pose quand même au mieux
-     noté, et il fallait le DIRE. Le seuil est une ligne du cadre choisi
-     (`unite`). */
-  if(lu("unite")) FLOORS.forEach(function(F, k){
-    var n = 0, keys = [];
-    BLOCKS.forEach(function(b){
-      if(b.fl !== k) return;
-      if(!UNITE.test(PMAP[b.key].n)) return;
-      n += b.q;
-      if(keys.indexOf(b.key) < 0) keys.push(b.key);
-    });
-    var max = Math.max(1, Math.round(V.clsParNiveau));
-    if(n <= max) return;
-    add(severite("unite"), n + " salles de classe au " + flName(k).toLowerCase()
-      + ", où l'unité pédagogique retenue en compte " + max
-      + " au plus : au-delà, le dégagement devient un couloir d'hôpital",
-      "projet", "", k,
-      { code:"unite:" + F.lvl, keys: keys, fix: fixEtage(),
-        note: "Aucun article ne l’écrit : c’est notre choix, et il se règle dans "
-          + "Paramètres & contraintes — ligne « Unité pédagogique »." });
-  });
-
   /* --- art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage ------ */
   FLOORS.forEach(function(F, k){
     var a = flBuilt(k);
@@ -225,16 +208,6 @@ export function mixCheck(){
           + "elles se dessinent à la typologie. Ici, seul alléger le niveau change quelque "
           + "chose — un plateau plus petit, ou une partie du programme montée d\u2019un étage." });
   });
-
-  /* --- un niveau vide sous un niveau chargé ------------------------------- */
-  for(i = 0; i < FLOORS.length - 1; i++){
-    if(flCount(i) === 0 && flCount(i + 1) > 0){
-      add(severite("vide"), "Le " + flName(i).toLowerCase() + " est vide alors que le "
-        + flName(i + 1).toLowerCase() + " porte " + flCount(i + 1)
-        + " pièces — cela ne se construit pas", "pile", "", i,
-        { code:"vide:" + lvlOf(i), fix: (i === 0 && lvlOf(0) < 0) ? fixCombler() : fixReste() });
-    }
-  }
 
   out.sort(function(a, b){ return (a.sev === "e" ? 0 : 1) - (b.sev === "e" ? 0 : 1); });
   return out;

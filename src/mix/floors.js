@@ -14,7 +14,7 @@ import { CIRC, ITEMBYKEY, cagesDe, couloirDe, frontDe } from "../core/model.js";
 import { RULES } from "../data/rules.js";
 import { lvRange } from "./niv.js";
 import { estLie } from "./opts.js";
-import { PMAP, PROX, aOf, grappeDe, posables, qOf } from "./prog.js";
+import { PMAP, aOf, grappeDe, posables, qOf } from "./prog.js";
 
 export var TRAY = -1;
 
@@ -241,40 +241,6 @@ export function rassembler(key){
   BLOCKS.forEach(function(x){ if(x.key === key && x.fl !== TRAY && x.fl !== cible){ x.fl = cible; n++; } });
   fuse(key);
   return n;
-}
-/* ACTIVER une adjacence agit aussi sur ce qui est posé : si ses deux postes ne
-   partagent aucun niveau, le plus léger rejoint le plus lourd — là où celui-ci
-   pèse le plus —, si la règle de niveau l'y admet ; sinon l'inverse. Rien ne
-   bouge s'ils se touchent déjà, ni si aucun des deux ne peut aller chez l'autre :
-   le contrôle le dira. */
-export function rapprocherLien(id){
-  var n = 0;
-  PROX.forEach(function(l){
-    if(l.id !== id) return;
-    var na = niveauxDe(l.a), nb = niveauxDe(l.b);
-    if(!na.length || !nb.length) return;
-    if(na.some(function(f){ return nb.indexOf(f) >= 0; })) return;
-    var lourd = aireDe(l.a) >= aireDe(l.b) ? l.a : l.b, leger = lourd === l.a ? l.b : l.a;
-    [[leger, lourd], [lourd, leger]].some(function(c){
-      var set = {}; set[c[1]] = 1;
-      var cible = ouPese(set);
-      if(cible < 0 || !admis(c[0], cible)) return false;
-      BLOCKS.forEach(function(x){ if(x.key === c[0] && x.fl !== TRAY && x.fl !== cible){ x.fl = cible; n++; } });
-      fuse(c[0]);
-      return true;
-    });
-  });
-  return n;
-}
-function niveauxDe(key){
-  var out = [];
-  BLOCKS.forEach(function(x){ if(x.key === key && x.fl !== TRAY && out.indexOf(x.fl) < 0) out.push(x.fl); });
-  return out;
-}
-function aireDe(key){
-  var a = 0;
-  BLOCKS.forEach(function(x){ if(x.key === key && x.fl !== TRAY) a += areaOf(x); });
-  return a;
 }
 
 /* Les parts qu'un déplacement groupé emmènerait, la part elle-même comprise. */

@@ -29,7 +29,7 @@
    nombre de volumes, hauteurs, écarts, orientation, position sur la parcelle.
    ========================================================================= */
 import { V, courExigee } from "../data/cadre.js";
-import { distVisee } from "../data/orientation.js";
+import { distVisee, feuVise } from "../data/orientation.js";
 import "../data/leviers.js";
 import { RULES } from "../data/rules.js";
 import { auModule } from "./model.js";
@@ -40,7 +40,7 @@ var M2 = function(){ return 2 * RULES.haut.mur; };
    deux bâtiments — l'orientation « distance souhaitée », jamais sous la
    distance incendie —, et la distance INCENDIE, le cadre, seule à juger
    qu'une figure tient. */
-function FEU(){ return RULES.dist.entre; }
+function FEU(){ return feuVise(); }
 function ECART(){ return Math.max(FEU(), distVisee()); }
 function entre(r, a, b){ return a + r() * (b - a); }
 function ent(r, a, b){ return Math.floor(entre(r, a, b + .999)); }
@@ -100,17 +100,21 @@ function programme(slots, A, d){
 }
 
 /* Combien de volumes il faut dans chaque classe de hauteur pour que chacun
-   reste dans la LARGEUR souhaitée : `hauts` pour ceux qui montent au dernier
-   étage, `bas` pour ceux qui restent au rez. */
+   reste sous l'ÉLANCEMENT souhaité (`V.elanceMax`, l'orientation « élan ») :
+   `hauts` pour ceux qui montent au dernier étage, `bas` pour ceux qui restent
+   au rez. */
 function besoins(A, d, r){
-  var cap = Math.max(1, V.largeurMax - M2()) * d * .96;
+  var cap = Math.max(1, V.elanceMax * d) * d * .96;
   var H = A.length;
   var hauts = H > 1 ? Math.ceil(A[1] / cap) : 0;
-  var bas = Math.ceil((A[0] - (H > 1 ? A[1] : 0)) / cap);
+  /* ce que le rez a de plus que l'étage : sous la largeur minimale d'un corps,
+     il ne fait pas un volume — les corps hauts le prennent à leur rez */
+  var resid = A[0] - (H > 1 ? A[1] : 0);
+  var bas = resid < V.largeurMin * d ? 0 : Math.ceil(resid / cap);
   /* un volume de plus par classe de hauteur, à pile ou face : le levier
      « figure » tire à parts égales */
   if(r() < .5) hauts++;
-  if(r() < .5) bas++;
+  if(r() < .5 && bas) bas++;
   return { hauts:Math.max(H > 1 ? 1 : 0, hauts), bas:Math.max(H > 1 ? 0 : 1, bas), H:H };
 }
 function slotsDe(b, r){

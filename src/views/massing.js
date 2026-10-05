@@ -45,7 +45,7 @@ import { noter } from "../data/jugement.js";
 import { actif, ligne, roleDe, roleNom } from "../data/lignes.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
-  massLev, massSet, massVols, niveaux, partiOf, plageVue,
+  massLev, massSet, massVols, niveaux, partiOf, plageVue, profFacade,
   volHaut, volNiv, volNom
 } from "../mass/model.js";
 import { moyennesMain } from "../net/variantes.js";
@@ -402,7 +402,7 @@ function etapeParti(){
    hasard le tire dans son domaine ; éteint, la valeur est la nôtre. Toucher
    une valeur la fige. Le parti a ses boutons au-dessus — Auto est son dé. Les
    domaines, eux, sont au groupe : Paramètres & contraintes. */
-var LEV_COMPO = ["cap", "sport", "ponts"], LEV_ARCHI = ["toit", "pf", "jeu", "puits", "entree", "rampe", "sous"];
+var LEV_COMPO = ["sport", "ponts"], LEV_ARCHI = ["toit", "pf", "jeu", "puits", "entree", "rampe", "sous"];
 function etapeLeviers(){
   var n = 0, t = 0;
   LEV_COMPO.concat(LEV_ARCHI, ["prof"]).forEach(function(k){ n++; if(MASS.lev[k] == null) t++; });
@@ -456,7 +456,7 @@ function leviersCorps(b){
     });
   }
   rangee("lev-prof", MASS.lev.prof == null, function(on){
-    massLev("prof", on ? null : Math.round((V.profMin + V.profMax) / 2)); relever();
+    massLev("prof", on ? null : profFacade()); relever();
   }, pf);
   var sc = null;
   if(MASS.second !== "auto"){

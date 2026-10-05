@@ -43,10 +43,9 @@ import { MESURES } from "../data/donnees.js";
 import "../data/recherche.js";
 import { FLOORS } from "../mix/floors.js";
 import { mixCheck } from "../mix/checks.js";
-import { dePile, etatDes, lienId, liens, setDePile, setDes } from "../mix/opts.js";
-import { lienLibre, posables } from "../mix/prog.js";
+import { dePile, setDePile } from "../mix/opts.js";
 import { saveSoon } from "../mix/store.js";
-import { MASS, PARTIS, massLev, massSet } from "../mass/model.js";
+import { MASS, PARTIS, massLev, massSet, profFacade } from "../mass/model.js";
 import { evaluationCourante } from "../mass/mesures.js";
 import { moyennesMain } from "../net/variantes.js";
 import { renderBar } from "./legend.js";
@@ -73,8 +72,7 @@ function lectureEcran(){
     if(L.ev) L.jug = noter(L.ev.mes, null, moyennesMain());
   }catch(_){ L.ev = null; }
   try{
-    var PREF = { "jour:":"jour-ss", bac:"bac", "gab:":"gabarit", "adj:":"adj", "wc:":"wc",
-                 "unite:":"unite", "vide:":"vide" };
+    var PREF = { "jour:":"jour-ss", bac:"bac", "gab:":"gabarit", "adj:":"adj", "wc:":"wc" };
     mixCheck().forEach(function(x){
       if(x.ok) return;
       var id = null, c = x.code || "";
@@ -378,24 +376,15 @@ function deLev(etat, quoi, fn, fige){
   return b;
 }
 function leviers(){
-  var lvls = FLOORS.map(function(F){ return F.lvl; });
-  var postes = posables().filter(function(p){ return lienLibre(p.key); }).map(function(p){ return p.key; });
-  var ids = liens().map(lienId);
-  function toggle(cat, list){ return function(on){ setDes(cat, list, on); saveSoon(); rendre(); }; }
   function opt(k){ return function(on){ massLev(k, on ? null : (MASS.lev[k] || OPTIONS[k][0].id)); saveSoon(); rendre(); }; }
   var F = {
     "lev-pile":    function(){ return deLev(dePile, "Nombre de niveaux", function(on){ setDePile(on); saveSoon(); rendre(); }); },
-    "lev-plateau": function(){ return deLev(etatDes("plateau", lvls), "Plateaux", toggle("plateau", lvls)); },
-    "lev-lien":    function(){ return deLev(etatDes("lien", postes), "Lien des postes", toggle("lien", postes)); },
-    "lev-adj":     function(){ return deLev(etatDes("adj", ids), "Adjacences", toggle("adj", ids)); },
     "lev-parti":   function(){ return deLev(MASS.parti === "auto", "Parti", function(on){
       massSet("parti", on ? "auto" : (MASS.vol && MASS.vol.parti) || "compact"); saveSoon(); rendre(); }); },
     "lev-figure":  function(){ return deLev(true, "Figure du parti", null, true); },
-    "lev-implant": function(){ return deLev(true, "Position sur la parcelle", null, true); },
     "lev-larg":    function(){ return deLev(true, "Largeur des corps", null, true); },
     "lev-prof":    function(){ return deLev(MASS.lev.prof == null, "Profondeur des corps", function(on){
-      massLev("prof", on ? null : Math.round((V.profMin + V.profMax) / 2)); saveSoon(); rendre(); }); },
-    "lev-cap":     function(){ return deLev(MASS.lev.cap == null, "Orientation de la figure", opt("cap")); },
+      massLev("prof", on ? null : profFacade()); saveSoon(); rendre(); }); },
     "lev-sport":   function(){ return deLev(MASS.lev.sport == null, "Salle de sport", opt("sport")); },
     "lev-ponts":   function(){ return deLev(MASS.lev.ponts == null, "Passerelles", opt("ponts")); },
     "lev-second":  function(){ return deLev(MASS.second === "auto", "Second temps", function(on){
