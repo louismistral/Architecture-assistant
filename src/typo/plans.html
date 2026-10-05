@@ -240,7 +240,7 @@ var PG = (function(){
   var COULOIR = R0.couloir || 2.40, MUR = R0.mur || 0.50, CLOISON = R0.cloison || 0.10,
       CAGE_A = R0.cage || 24, NOY = R0.noyau || { prof:5, volee:1.2, asc:[2.1, 2.4] },
       FEU = R0.feu || { cageSeuil:900, fuiteSimple:35, fuiteDouble:50 },
-      LIEN = R0.lien || 15, MODULE = R0.module || 0.5,
+      LIEN = R0.lien || 15, MODULE = R0.module || 0.5, VIDE = R0.vide,
       FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6, PALIER = 1.2;
   /* l'ordre des familles : les pièces d'une famille se posent ensemble */
   var FAMS_O = ["cla", "eau", "uap", "adm", "spo", "tec", "pis", "ext"];
@@ -536,15 +536,18 @@ var PG = (function(){
     var R = [];
     /* `gap` : ce qui reste quand les deux bandes ne finissent pas ensemble — un
        palier, posé avant la pièce `at` (au noyau s'il y en a un, au milieu sinon) */
+    var paliers = [];
     function bande(list, frame, b, x, eg, ed, gap, at){
+      /* le sol qui reste dans le rang : un dégagement ouvert sur le couloir */
+      function libre(){ if(gap > 0.05) paliers.push({ frame:frame, x0:x, W:gap, H:b }); x += gap; }
       list.forEach(function(it, k){
-        if(k === at) x += gap;
+        if(k === at) libre();
         var e = (k === 0 && eg) || (k === list.length - 1 && ed), H = b + (e ? c : 0), W = it.a / H;
         var r = Object.assign({}, it, { frame:frame, x0:x, W:W, H:H, v0:e ? -c : 0, ext:e ? (k === 0 ? -1 : 1) : 0 });
         if(it.kind === "bloc") r.cel = treemap(it.cel, W, H);
         R.push(r); x += W;
       });
-      if(at >= list.length) x += gap;
+      if(at >= list.length) libre();
       return x;
     }
     function milieu(list){ return Math.max(list.length ? 1 : 0, Math.floor(list.length / 2)); }
@@ -572,7 +575,10 @@ var PG = (function(){
     function plie(x0, W){ return s > 0 ? x0 - L / 2 : L / 2 - x0 - W; }
     R.forEach(function(r){ r.x0 = plie(r.x0, r.W); if(s < 0 && r.ext) r.ext = -r.ext; });
     cages.forEach(function(k){ k.x0 = plie(k.x0, k.W); });
-    f.rooms = R; f.cages = cages;
+    /* le sol que les rangs laissent libre : le contrôle le mesure */
+    f.vide = 0;
+    paliers.forEach(function(k){ k.x0 = plie(k.x0, k.W); f.vide += k.W * k.H; });
+    f.rooms = R; f.cages = cages; f.paliers = paliers;
     f.zl = s > 0 ? zg - L / 2 : L / 2 - zd; f.zr = s > 0 ? zd - L / 2 : L / 2 - zg;
     return f;
   }
@@ -619,12 +625,14 @@ var PG = (function(){
     var cap = F.map(function(f){ return f.e.w * f.e.d; }), capT = 0, tot = 0;
     cap.forEach(function(x){ capT += x; });
     U.forEach(function(u){ tot += u.a; });
-    /* un très grand local (l'abri PC) se partage entre les corps du niveau
-       plutôt que d'en allonger un seul : il se compartimente */
+    /* un très grand local (l'abri PC, 3 × 200 places) se compartimente en
+       parts de 300 m² au plus : d'un seul bloc, il allait tout entier à un
+       corps, et quand il n'y tenait pas il en sortait tout entier — laissant
+       vide la place que le Massing lui avait faite */
     U = U.reduce(function(m, u){
-      var K = F.length;
-      if(K > 1 && u.a > 300 && u.a > 1.3 * tot / K){
-        for(var j = 0; j < K; j++) m.push(Object.assign({}, u, { a:u.a / K, lab:u.lab + " (" + (j + 1) + "/" + K + ")" }));
+      var K = Math.ceil(u.a / 300);
+      if(K > 1 && !/^Hall|foyer/i.test(u.n)){
+        for(var j = 0; j < K; j++) m.push(Object.assign({}, u, { a:u.a / K, part:1, lab:u.lab + " (" + (j + 1) + "/" + K + ")" }));
       } else m.push(u);
       return m;
     }, []);
@@ -770,9 +778,29 @@ var PG = (function(){
         non.push(pris);
         comp();
       }
-      var dx = deb + an.s * f.L / 2;
+      f.comp = comp;
+    });
+    /* CE QUI EST SORTI D'UN CORPS va là où il reste de la place, le sien
+       compris : sortir une pièce pour un débord de quelques mètres laisse un
+       vide, que les plus petites d'entre elles comblent */
+    function tient(f, u){ f.U.push(u); f.comp(); if(f.L <= f.e.w + 0.05) return true; f.U.pop(); f.comp(); return false; }
+    non.slice().sort(function(p, q){ return q.a - p.a; }).forEach(function(u){
+      F.some(function(f){
+        if(tient(f, u)){ non.splice(non.indexOf(u), 1); return true; }
+        /* un compartiment de l'abri se recoupe : la part qui tient se pose,
+           le reste attend au bac — la surface totale ne change pas */
+        if(!u.part) return false;
+        var lo = 0, hi = u.a;
+        for(var t = 0; t < 12; t++){ var x = (lo + hi) / 2; if(tient(f, Object.assign({}, u, { a:x }))){ lo = x; f.U.pop(); } else hi = x; }
+        if(lo < PETIT) return false;
+        tient(f, Object.assign({}, u, { a:lo })); u.a -= lo;
+        return false;
+      });
+    });
+    F.forEach(function(f){
+      var an = ancre(f.v, vols), dx = (f.e.dx || 0) - an.s * f.e.w / 2 + an.s * f.L / 2;
       f.dxNew = dx;
-      var p = local(v.x, v.y, v.a, dx, f.dyNew); f.cx = p[0]; f.cy = p[1];
+      var p = local(f.v.x, f.v.y, f.v.a, dx, f.dyNew); f.cx = p[0]; f.cy = p[1];
     });
     return { F:F.concat(fixes), non:non, fl:fl };
   }
@@ -808,7 +836,8 @@ var PG = (function(){
 
   return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes,
            local:local, versEtage:versEtage, versMonde:versMonde,
-           COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE };
+           COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE,
+           PETIT:PETIT, VIDE:VIDE };
 })();
 if(typeof module !== "undefined") module.exports = PG;
 
@@ -1275,6 +1304,10 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         local1(f, r.frame, r.x0, r, 0, r.v0 || 0, r.W, r.H, "room", false);
         pose[r.key] = (pose[r.key] || 0) + r.a;
       });
+      /* le sol libre d'un rang n'est pas un reste muet : un dégagement, nommé */
+      (f.paliers || []).forEach(function(k){
+        if(k.W * k.H >= PG.PETIT) etiquette(f, k.frame, k.x0, 0, 0, k.W, k.H, "Dégagement", k.W * k.H, false);
+      });
       f.cages.forEach(function(c){
         cagesA += c.W * c.H;
         out.rooms.push('<polygon class="cagef" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, c.bande, c.x0, 0, c.v0 || 0, c.W, c.H)) + '"/>');
@@ -1686,6 +1719,17 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       dit(dSc <= 2 * PG.MUR + .05, dSc <= 2 * PG.MUR + .05 ? "La scène est collée à la salle de sport"
           : "La scène n\u2019est pas collée à la salle de sport" + (isFinite(dSc) ? " (" + fmt(dSc, 1) + " m)" : " (pas au même niveau)"),
         "Sur un de ses côtés, mur contre mur — une contrainte du concours.");
+    }
+    /* le sol libre : ce que les rangs laissent quand leurs pièces sont posées */
+    if(PG.VIDE != null){
+      var vides = [];
+      tous.forEach(function(r, i){ r.F.forEach(function(f){
+        if(f.fixe || !(f.vide > PG.VIDE)) return;
+        vides.push(nom(f.v) + " au " + niv(i).toLowerCase() + " (" + fmt(f.vide, 0) + " m²)");
+      }); });
+      dit(!vides.length, vides.length ? "Sol inutilisé : " + vides.slice(0, 6).join(" ; ") + (vides.length > 6 ? "…" : "")
+          : "Aucun corps ne garde plus de " + fmt(PG.VIDE, 0) + " m² de sol libre",
+        "Le sol que les pièces laissent devient un dégagement sur le couloir ; au-delà de " + fmt(PG.VIDE, 0) + " m² dans un corps, le plateau ne se remplit pas : ce qui reste du niveau n\u2019y entre pas d\u2019un tenant, ou le niveau n\u2019en a pas assez — ajuster le volume au Massing, ou la répartition au Programme mixer.");
     }
     dit(true, "Toutes les pièces ouvrent sur un couloir", "Par construction : les pièces des bandes donnent sur le couloir, celles du bout le ferment de leur porte, les halls le traversent.");
     dit(true, "Les plans tiennent dans les volumes du Massing", "Chaque corps garde ses cotes, niveau par niveau ; le Shuffle ne change que l\u2019ordonnance des pièces.");

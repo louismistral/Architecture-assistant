@@ -12,7 +12,7 @@
 import { COULOIR } from "../core/model.js";
 import { RULES } from "../data/rules.js";
 import { SITE } from "../data/site.js";
-import { V } from "../data/cadre.js";
+import { V, enVigueur } from "../data/cadre.js";
 import { BLOCKS, FLOORS, flCircDe, flHeight, flName, flNet, flShort, lvlOf } from "../mix/floors.js";
 import { PMAP, PROX, uOf } from "../mix/prog.js";
 import { adjActive, coteDe } from "../mix/opts.js";
@@ -51,7 +51,9 @@ export function donneesTypo(){
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
        des charges, le noyau, le feu, les murs, le module, la distance d'un lien */
     regles:{ fusion:V.fusionDist == null ? 1 : V.fusionDist, couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
-             mur:RULES.haut.mur, cloison:RULES.haut.cloison, module:V.module, lien:RULES.circ.proche } };
+             mur:RULES.haut.mur, cloison:RULES.haut.cloison, module:V.module, lien:RULES.circ.proche,
+             /* le sol libre toléré dans un corps ; null, la ligne est éteinte */
+             vide:enVigueur("sol-vide") ? V.solVide : null } };
 }
 
 /* LES AILES D'UN VOLUME FUSIONNÉ. Le Massing assemble les corps qui se
