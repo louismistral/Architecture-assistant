@@ -38,7 +38,7 @@ import {
 import { LEVIERS, OPTIONS } from "../data/leviers.js";
 import { NIV } from "../data/cadre.js";
 import { force } from "../data/orientation.js";
-import { AXES, CRITERES, noter } from "../data/jugement.js";
+import { AXES, CRITERES, cleBorne, noter } from "../data/jugement.js";
 import { MESURES } from "../data/donnees.js";
 import "../data/recherche.js";
 import { FLOORS } from "../mix/floors.js";
@@ -450,10 +450,10 @@ function lignesDe(rub, tag){
 function pct(s){ return s == null ? "—" : Math.round(100 * s) + " %"; }
 function fonctionTxt(x){
   var f = x.f; if(!f) return "";
-  var b = V["jb:" + x.id], n = V["jn:" + x.id];
+  var b = V[cleBorne(x, "jb:")], n = V[cleBorne(x, "jn:")];
   if(f.t === "max") return "1 jusqu'à " + nb(b) + ", 0 à " + nb(n);
   if(f.t === "min") return "1 dès " + nb(b) + ", 0 à " + nb(n);
-  if(f.t === "bande") return "1 entre " + nb(b) + " et " + nb(V["jh:" + x.id]) + ", 0 à " + nb(n) + " de marge";
+  if(f.t === "bande") return "1 entre " + nb(b) + " et " + nb(V[cleBorne(x, "jh:")]) + ", 0 à " + nb(n) + " de marge";
   if(f.t === "cout") return "1 au budget, 0 à " + Math.round(n * 100) + " % au-delà";
   if(f.t === "oui") return "la part, telle quelle";
   if(f.t === "options") return Object.keys(f.v).map(function(k){ return k + " → " + f.v[k]; }).join(" · ");
@@ -484,8 +484,9 @@ function critere(x, J){
     var p = el("div", "pr-fn");
     p.appendChild(el("span", "pr-fn__t", "Fonction : " + fonctionTxt(x)));
     [["jb:", "bon"], ["jh:", "haut"], ["jn:", x.f.t === "cout" ? "dépassement nul" : "nul"]].forEach(function(q){
-      if(V[q[0] + x.id] === undefined) return;
-      var k = q[0] + x.id, lab = el("label", "pr-fn__c");
+      var k = cleBorne(x, q[0]);
+      if(V[k] === undefined) return;
+      var lab = el("label", "pr-fn__c");
       lab.appendChild(el("span", null, q[1]));
       lab.appendChild(nombre(V[k], { pas:"any" }, function(v){ if(!regler(k, v)) return false; saveSoon(); rendre(); },
         q[1] + " — " + x.n));
