@@ -108,16 +108,23 @@ export var ORIENT_MASS = [
     d:"L'écart entre façades qui se font face. La réparation écarte doucement les corps vers "
       + "cet écart." },
   { id:"compa", sujet:"Compacité", tag:"prioritaire", src:{ t:"reglement", a:"2.9" },
-    n:"Un volume compact", k:"compaBon", def:0.95, min:0.1, max:1.5, pas:0.01, unite:"m² de façade par m² de plancher — favorable",
-    k2:"compaMax", def2:1.10, min2:0.1, max2:2, unite2:"— défavorable au-delà",
-    d:"Les seuils sont calés sur les variantes valides du site : le rez prend les 7,40 m de la "
-      + "salle de sport, d'où des valeurs proches de 1." },
+    n:"Un volume compact", k:"compaBon", def:0.82, min:0.1, max:1.5, pas:0.01, unite:"m² de façade par m² de plancher — favorable",
+    k2:"compaMax", def2:0.95, min2:0.1, max2:2, unite2:"— défavorable au-delà",
+    d:"Les seuils sont calés sur les variantes valides du site, chaque volume à sa hauteur : "
+      + "un corps de classes à 3,20 m, la salle de sport seule à 7,40 m — de 0,6 à 1." },
   { id:"align", sujet:"Alignement", tag:"souhaite",
     n:"Des corps alignés", val:"sur le site, une limite, une route ou un voisin",
     d:"Préféré à égalité du reste ; rien n'oblige à s'aligner." },
+  { id:"nivalign", sujet:"Niveaux", tag:"prioritaire", admet:MOUS,
+    n:"Des niveaux alignés", val:"tous les bâtiments d'école posent leur rez à la même altitude",
+    lu:"src/mass/model.js — assiseEff(), etagesDe() · src/mass/mesures.js — qualites()",
+    d:"Plus forte que la mise au terrain : les planchers des bâtiments se rejoignent, et le "
+      + "terrain ne se lit plus que dans le terrassement que cette altitude demande. Éteinte "
+      + "ou indicative, chaque volume se pose sur le terrain sous son emprise." },
   { id:"pente", sujet:"Pente", tag:"souhaite", src:{ t:"site" },
-    n:"Peu de terrassement", k:"penteMax", def:2, min:0.5, max:6, pas:0.1, unite:"m de dénivelé sous une emprise",
-    d:"Moitié du seuil : favorable ; au-delà : terrassement important." },
+    n:"Peu de terrassement", k:"penteMax", def:2, min:0.5, max:6, pas:0.1, unite:"m entre le rez et le terrain sous une emprise",
+    d:"Le dénivelé du terrain sous une emprise, et l'écart du rez au terrain quand les niveaux "
+      + "sont alignés. Moitié du seuil : favorable ; au-delà : terrassement important." },
   { id:"elan", sujet:"Élancement", tag:"souhaite",
     n:"Des corps pas trop élancés", k:"elanceMax", def:9, min:2, max:30, pas:1, unite:"× plus long que large",
     d:"Garde-fou secondaire." },
