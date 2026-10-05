@@ -37,7 +37,7 @@ import {
   ecart, ecartAngle, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
 import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
-  profPieces, sousSol, volEtage, volRect, volRects, solRects, assiseDe, contourDe, hauteurEtage } from "./model.js";
+  profPieces, sousSol, volEtage, volRect, volRects, solRects, assiseDe, contourDe, hauteurEtage, partsDe } from "./model.js";
 export { lies };
 import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
   from "./mesures.js";
@@ -864,6 +864,7 @@ export function fusionner(vols, ponts, etage){
   /* la ligne `fusion` du cadre choisi ; les morceaux d'un même corps importé
      (`etage`) se recollent toujours */
   if(!etage && !enVigueur("fusion")) return 0;
+  if(!etage) recoller(vols);
   var m = 2 * RULES.haut.mur, faits = 0, encore = true;
   while(encore){
     encore = false;
@@ -871,14 +872,15 @@ export function fusionner(vols, ponts, etage){
       var a = vols[i], b = vols[j];
       if(a.ph || b.ph || a.fix || b.fix || !touchent(a, b, etage)) continue;
       var pl = alignes(a, b);
-      if(!pl) continue;
-      pl.forEach(function(p){
-        var e = p.ea;
-        if(!e){ e = Object.assign({}, p.eb); a.lv.push(e); }
-        else if(p.eb && p.eb.keys) e.keys = (e.keys || []).concat(p.eb.keys);
-        e.w = Math.max(.5, p.d - p.g - m); e.d = p.d0 - m; e.dx = (p.g + p.d) / 2; e.dy = p.v;
-        delete e.w0; delete e.d0; delete e.dx0; delete e.dy0;
-      });
+      if(pl){
+        pl.forEach(function(p){
+          var e = p.ea;
+          if(!e){ e = Object.assign({}, p.eb); a.lv.push(e); }
+          else if(p.eb && p.eb.keys) e.keys = (e.keys || []).concat(p.eb.keys);
+          e.w = Math.max(.5, p.d - p.g - m); e.d = p.d0 - m; e.dx = (p.g + p.d) / 2; e.dy = p.v;
+          delete e.w0; delete e.d0; delete e.dx0; delete e.dy0;
+        });
+      } else if(etage || !assembler(a, b, vols)) continue;
       a.lv.sort(function(p, q){ return p.i - q.i; });
       vols.forEach(function(o){ if(o.joint === b.id) o.joint = a.id; });
       if(!a.joint && b.joint) a.joint = b.joint;
@@ -904,6 +906,126 @@ export function fusionner(vols, ponts, etage){
     else v.bat = C.bat;
   });
   return faits;
+}
+
+/* ---------- le volume n'est pas qu'un rectangle ------------------------------
+   Deux bâtiments à moins de `V.fusionDist` (1 m, la ligne `fusion` du cadre)
+   l'un de l'autre, côtés parallèles ou en équerre, se RECOLLENT : l'un glisse
+   jusqu'à toucher l'autre, s'il le peut sans rien recouvrir ni sortir du
+   périmètre. Deux corps d'école qui se touchent alors s'ASSEMBLENT en un seul
+   volume fait de plusieurs rectangles (`model.js — partsDe`) : à la jonction,
+   les deux murs disparaissent et leur épaisseur entre dans le corps, comme
+   bout à bout. La salle de sport, à sa hauteur et à ses cotes, reste un
+   volume : elle se recolle et fait un même bâtiment. Tout se lit dans le
+   repère de `a`. */
+var TOL_ANGLE = 3 * Math.PI / 180;
+function boite(a, o, p, mm){
+  var c = Math.cos(o.a), s = Math.sin(o.a), wx = o.x + p.dx * c - p.dy * s, wy = o.y + p.dx * s + p.dy * c;
+  var ca = Math.cos(a.a), sa = Math.sin(a.a), dx = wx - a.x, dy = wy - a.y;
+  var u = dx * ca + dy * sa, v = -dx * sa + dy * ca, tr = Math.abs(Math.sin(o.a - a.a)) > .5;
+  var hw = (tr ? p.d : p.w) / 2 + mm, hd = (tr ? p.w : p.d) / 2 + mm;
+  return { x0:u - hw, x1:u + hw, y0:v - hd, y1:v + hd };
+}
+function boitesDe(a, o, e, mm){ return partsDe(e).map(function(p){ return boite(a, o, p, mm); }); }
+/* le plus petit écart entre les emprises de deux volumes, côtés en regard */
+function jeu(a, b){
+  var best = null;
+  a.lv.forEach(function(ea){
+    var eb = volEtage(b, ea.i);
+    if(!eb || lvlOf(ea.i) < 0) return;
+    boitesDe(a, a, ea, RULES.haut.mur).forEach(function(A){
+      boitesDe(a, b, eb, RULES.haut.mur).forEach(function(B){
+        var oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0), ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
+        [[oy, B.x0 - A.x1, -1, 0], [oy, A.x0 - B.x1, 1, 0], [ox, B.y0 - A.y1, 0, -1], [ox, A.y0 - B.y1, 0, 1]]
+          .forEach(function(c){
+            if(c[0] > .5 && c[1] >= -CONTACT && (!best || c[1] < best.g))
+              best = { g:c[1], u:c[2] * c[1], v:c[3] * c[1], du:c[2], dv:c[3] };
+          });
+      });
+    });
+  });
+  return best;
+}
+function recoller(vols){
+  var D = V.fusionDist == null ? 1 : V.fusionDist;
+  for(var i = 0; i < vols.length; i++) for(var j = i + 1; j < vols.length; j++){
+    var a = vols[i], b = vols[j], k = Math.round((b.a - a.a) / (Math.PI / 2));
+    if(a.ph || b.ph || Math.abs(b.a - a.a - k * Math.PI / 2) > TOL_ANGLE) continue;
+    if(ecartVols(a, b, null, D + 1) > D) continue;
+    /* celui qui bouge : le second, sinon le premier, à l'angle de l'autre */
+    [[b, a], [a, b]].some(function(x){
+      var m = x[0], f = x[1], g0 = { x:m.x, y:m.y, a:m.a };
+      m.a = f.a + Math.round((m.a - f.a) / (Math.PI / 2)) * Math.PI / 2;
+      var J = jeu(f, m);
+      if(J && Math.abs(J.g) > 1e-3 && J.g <= D){
+        var c = Math.cos(f.a), s = Math.sin(f.a);
+        /* `J` dit de combien m doit avancer vers f, dans le repère de f */
+        m.x = m.x + J.u * c - J.v * s; m.y = m.y + J.u * s + J.v * c;
+      }
+      if(J && J.g <= D && dansPerimetre(m) && !chevauche(m, vols)) return true;
+      m.x = g0.x; m.y = g0.y; m.a = g0.a;
+      return false;
+    });
+  }
+}
+/* Deux corps d'école qui se touchent, en un volume : `b` avance de
+   l'épaisseur des deux murs qui se faisaient face, ses intérieurs touchent
+   ceux de `a`, et ses parts passent dans `a`, niveau par niveau. Rien ne
+   s'allonge : chaque part garde ses cotes, donc sa surface et son module. Ne
+   se fait que si `b`, ainsi avancé, ne recouvre ni un intérieur de `a` ni
+   aucun autre volume, et reste dans le périmètre. */
+function assembler(a, b, vols){
+  if(a.lv.concat(b.lv).some(function(e){ return (e.keys && e.keys.length) || e.h; })) return false;
+  if(Math.abs(Math.sin(2 * (a.a - b.a))) > 1e-3) return false;
+  var J = jeu(a, b), M = 2 * RULES.haut.mur;
+  if(!J || Math.abs(J.g) > CONTACT) return false;
+  var c = Math.cos(a.a), s = Math.sin(a.a), k = J.g + M, ux = (J.du * c - J.dv * s) * k, uy = (J.du * s + J.dv * c) * k;
+  function libre(m){
+    return dansPerimetre(m) && !seRecouvrent() && !vols.some(function(o){
+      return o !== a && o !== b && ecartVols(m, o, null, 1) < -CONTACT; });
+  }
+  /* `b` avance vers `a` ; s'il ne le peut pas, c'est `a` qui recule vers `b`.
+     Les sous-sols ne bougent pas : ils ne sont pas du contact, et sous terre
+     un volume se tient sous ses étages sans s'y aligner. */
+  function bouger(m, dx, dy){
+    m.x += dx; m.y += dy;
+    var c2 = Math.cos(m.a), s2 = Math.sin(m.a);
+    m.lv.forEach(function(e){
+      if(lvlOf(e.i) >= 0) return;
+      e.dx = (e.dx || 0) - (dx * c2 + dy * s2); e.dy = (e.dy || 0) - (-dx * s2 + dy * c2);
+    });
+  }
+  bouger(b, ux, uy);
+  if(!libre(b)){
+    bouger(b, -ux, -uy); bouger(a, -ux, -uy);
+    if(!libre(a)){ bouger(a, ux, uy); return false; }
+  }
+  function seRecouvrent(){
+    return b.lv.some(function(eb){
+      var ea = volEtage(a, eb.i);
+      if(lvlOf(eb.i) < 0) return false;
+      return ea && boitesDe(a, a, ea, 0).some(function(A){
+        return boitesDe(a, b, eb, 0).some(function(B){
+          return Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0) > .05 && Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0) > .05;
+        });
+      });
+    });
+  }
+  b.lv.forEach(function(eb){
+    var ea = volEtage(a, eb.i), B = boitesDe(a, b, eb, 0), R;
+    if(ea) R = boitesDe(a, a, ea, 0).concat(B);
+    else {
+      var r0 = B[0];
+      ea = Object.assign({}, eb, { w:r0.x1 - r0.x0, d:r0.y1 - r0.y0, dx:(r0.x0 + r0.x1) / 2, dy:(r0.y0 + r0.y1) / 2 });
+      a.lv.push(ea);
+      R = B;
+    }
+    ["w0", "d0", "dx0", "dy0"].forEach(function(x){ delete ea[x]; });
+    ea.ext = R.slice(1).map(function(r){
+      return { w:r.x1 - r.x0, d:r.y1 - r.y0, dx:(r.x0 + r.x1) / 2 - (ea.dx || 0), dy:(r.y0 + r.y1) / 2 - (ea.dy || 0) };
+    });
+  });
+  return true;
 }
 
 /* PLUS RIEN NE SE RECOUVRE : un corps qui en recouvre un autre (un corps que

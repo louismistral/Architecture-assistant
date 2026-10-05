@@ -534,10 +534,14 @@ function hauteurDe(keys){
   return Math.round((hl + RULES.haut.dalle) * 100) / 100;
 }
 /* La hauteur d'un niveau pour les corps d'école : celle de ses pièces, hors
-   des postes aux cotes imposées — ceux-là ont leur volume (`placerSport`). */
+   des postes qui ont leur propre volume — aux cotes imposées (`placerSport`)
+   ou hors de l'enveloppe scolaire (le second temps, `secondTemps`). */
 function hauteurCourante(i){
   var keys = [];
-  BLOCKS.forEach(function(b){ if(b.fl === i && !PMAP[b.key].solid && keys.indexOf(b.key) < 0) keys.push(b.key); });
+  BLOCKS.forEach(function(b){
+    var p = PMAP[b.key];
+    if(b.fl === i && !p.solid && !p.hors && keys.indexOf(b.key) < 0) keys.push(b.key);
+  });
   return hauteurDe(keys);
 }
 export function volNiv(v){
