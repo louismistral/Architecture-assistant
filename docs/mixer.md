@@ -26,7 +26,8 @@ pas.
 
 Chaque niveau candidat reçoit une note : la place qui y reste, les adjacences ACTIVES déjà
 satisfaites, la grappe qui y pèse, la famille d'usage, ce que l'usage scolaire veut au rez
-et ce qu'il veut à l'étage. Un bruit de Gumbel d'amplitude `V.temperature` — la part du hasard,
+et ce qu'il veut à l'étage — la coupe par le poids : le public, le bruit et les petits en bas
+(règles de niveau), le calme en haut (`cla-haut`, `bruit-calme`, Prioritaires). Un bruit de Gumbel d'amplitude `V.temperature` — la part du hasard,
 `data/recherche.js` — s'y ajoute, et le meilleur gagne. À zéro le tirage est déterministe et rend
 la répartition la mieux orientée ; plus elle monte, plus il propose des variantes. Chaque terme de
 la note est une ligne d'ORIENTATION (`data/orientation.js`) — sa valeur en points fois la force de

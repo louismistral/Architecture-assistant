@@ -126,7 +126,9 @@ surface · la cour du programme, et notre cour utile de 620 m² · les classes e
 son tag ; celles de notre choix se désactivent ou s'assouplissent en orientation.
 
 L'orientation du massing : dimensions dans les domaines, distance souhaitée, soleil, vue, jour
-entre corps, compacité, cour généreuse (Prioritaires) ; alignement, terrassement, élancement,
+entre corps, compacité, cour généreuse, et l'orientation par l'usage — classes à l'est,
+salle de sport au nord, cour au soleil et loin de la rue, une façade libre du rez vers la vue
+(Prioritaires, `docs/parametres.md`) ; alignement, terrassement, élancement,
 connexions, nappe, terrain libre (Souhaitées). Une ligne passée en Imposé jette la variante où
 elle se lit défavorable.
 

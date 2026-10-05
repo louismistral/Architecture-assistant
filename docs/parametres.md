@@ -189,6 +189,21 @@ rompue suffit à ce que le massing ne propose aucun volume. Une règle de niveau
 assouplie ne ferme plus aucun niveau : elle ajoute `pts:<id>` au niveau qu'elle voudrait
 (`niv.js — prefereNiveau()`).
 
+**Orienter par l'usage** (massing, toutes Prioritaires, admettent l'Imposé) : `cla-soleil` lit
+chaque façade longue d'un corps de classes par son azimut — à l'est (± `claEst`, 45°) +1, au sud
++½ (acceptable avec protection), au sud-ouest/ouest (± `claOuest`, 22,5° autour de 247,5°) −1,
+au nord 0 ; une barre n'a qu'une façade à l'est au mieux, d'où le double. `sport-nord` : l'axe de
+la façade longue de la salle de sport au nord (`sportNordBon` / `sportNordMax`). `cour-sud` et
+`cour-route` : la façade devant laquelle s'ouvre la meilleure cour (`courUtile()`) regarde le sud,
+son centre est loin de la rue (`courRoute`) ; l'UAPE, au rez, ouvre sur elle. `collectif-vue` :
+une façade du rez que rien ne masque, vers le terrain de football, aux seuils de `vue`. Ce que le
+massing ne sait pas — quel corps porte l'UAPE ou le hall, le vent — reste à la typologie.
+
+**La coupe par le poids** (mixer) : en bas le public, le bruit et les petits — les règles de
+niveau (`niv-uape`, `niv-refectoire`, `niv-halls`, `niv-admin`) ; en haut le calme — `cla-haut`
+et `bruit-calme`, passées Prioritaires ; la grande portée de la salle de sport jamais au milieu
+de la pile — `gabarit` et `sport`, déjà du cadre opposable.
+
 ## Le jugement
 
 Six **axes** — les critères du règlement (art. 1.26, « sans ordre hiérarchique ») — avec des
