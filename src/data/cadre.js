@@ -216,7 +216,13 @@ export var CADRE_TYPO = [
   { id:"couloir-acces", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Toutes les pièces ont accès à un couloir", val:"une porte sur la circulation, pour chaque pièce",
     lu:"src/typo/plans.html — composer(), contrôle",
-    d:"Aucune pièce ne se traverse pour en atteindre une autre." }
+    d:"Aucune pièce ne se traverse pour en atteindre une autre." },
+  { id:"sol-vide", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Pas de sol inutilisé dans un corps", k:"solVide", def:100, min:0, max:300, pas:5,
+    unite:"m² de sol libre au plus, par corps et par niveau",
+    lu:"src/typo/plans.html — genNiveau(), contrôle",
+    d:"Ce que les pièces, le couloir et les noyaux laissent libre dans un corps devient un "
+      + "dégagement ; au-delà de ce seuil, c'est un plateau vide, et le contrôle le signale." }
 ];
 CADRE_TYPO.forEach(function(x){ x.role = "cadre"; x.onglet = "typologie"; });
 
