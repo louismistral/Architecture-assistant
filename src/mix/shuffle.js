@@ -436,7 +436,6 @@ function plateauxDeLaPile(){
 /* ---------- la répartition ------------------------------------------------ */
 export function repartir(opts){
   var alea = !!(opts && opts.alea);
-  if(alea) tirerReglages();
   if(opts && opts.etages) proposerPile(alea);
   else plateauxDeLaPile();
 
