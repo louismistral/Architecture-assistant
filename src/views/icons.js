@@ -12,6 +12,9 @@ var NS = "http://www.w3.org/2000/svg";
 var P = {
   reglages: [["path", { d:"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" }]],
   plus:     [["path", { d:"M12 5v14M5 12h14" }]],
+  /* le cadenas d'un onglet : fermé, ses décisions sont figées */
+  cadenas:  [["rect", { x:"4", y:"11", width:"16", height:"10", rx:"2" }], ["path", { d:"M8 11V7a4 4 0 0 1 8 0v4" }]],
+  ouvert:   [["rect", { x:"4", y:"11", width:"16", height:"10", rx:"2" }], ["path", { d:"M8 11V7a4 4 0 0 1 7.75-1.4" }]],
   croix:    [["path", { d:"M18 6 6 18M6 6l12 12" }]],
   poubelle: [["path", { d:"M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" }],
              ["path", { d:"M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" }],

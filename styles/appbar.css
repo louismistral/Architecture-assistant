@@ -128,9 +128,23 @@
   font-size:var(--t-2xs);color:var(--muted-foreground);
 }
 .sidenav__l{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* une ligne : l'onglet, puis son cadenas */
+.sidenav__row{display:flex;align-items:center;gap:0}
+.sidenav__row>.sidenav__item{flex:1;min-width:0}
+.sidenav__lock{
+  appearance:none;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  inline-size:24px;block-size:var(--ctl-h);padding:0;
+  background:none;border:0;border-radius:var(--radius-md);cursor:pointer;
+  color:var(--faint-foreground);opacity:.55;
+}
+.sidenav__lock svg{inline-size:14px;block-size:14px}
+.sidenav__lock:hover{opacity:1;background:var(--sidebar-accent);color:var(--sidebar-accent-foreground)}
+.sidenav__lock:focus-visible{opacity:1;outline-color:var(--sidebar-ring)}
+.sidenav__lock[data-etat="ferme"]{opacity:1;color:var(--foreground)}
+.sidenav__lock[data-etat="fige"]{opacity:.8;color:var(--muted-foreground)}
 /* Le cadre du projet n'est pas une étape : un filet le sépare de la chronologie. */
-.sidenav__item.is-cadre{position:relative;margin-block-end:var(--s-3)}
-.sidenav__item.is-cadre::after{
+.sidenav__row.is-cadre{position:relative;margin-block-end:var(--s-3)}
+.sidenav__row.is-cadre::after{
   content:"";position:absolute;inset-inline:0;inset-block-end:calc(var(--s-2) * -1);
   block-size:1px;background:var(--sidebar-border);
 }

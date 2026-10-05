@@ -28,6 +28,7 @@
    ========================================================================= */
 import { CIRCSET, COULOIR, loadCirc, recompute, userAreas } from "../core/model.js";
 import { ecarts, poser } from "../data/lignes.js";
+import { PARTAGES, setVerrous, verrousOf } from "../core/verrou.js";
 import { applyAreas, onSave } from "../mix/store.js";
 import { CPT } from "./compte.js";
 import { selectApi, upsertApi } from "./supa.js";
@@ -37,8 +38,12 @@ var dernier = null;      /* la signature de ce qu'on a écrit ou lu en dernier *
 var occupe = false;      /* on applique du distant : ne pas le renvoyer aussitôt */
 var minuteur = null;
 
+/* Les cadenas du cahier des charges et des Paramètres sont du groupe, comme
+   ce qu'ils protègent : ils voyagent dans `doctrine`, sous une clé que
+   `poser()` ignore — aucune colonne de plus. */
 function partDeLEtat(){
-  return { areas: userAreas, circulation: CIRCSET ? COULOIR : null, doctrine: ecarts(false) };
+  return { areas: userAreas, circulation: CIRCSET ? COULOIR : null,
+           doctrine: Object.assign(ecarts(false), { verrous: verrousOf(PARTAGES) }) };
 }
 function signature(o){ return JSON.stringify([o.areas, o.circulation, o.doctrine]); }
 
@@ -57,6 +62,7 @@ export async function tirerReglages(){
     if(r.areas) applyAreas(r.areas);
     if(r.circulation != null) loadCirc(r.circulation);
     if(r.doctrine) poser(r.doctrine, false);
+    if(r.doctrine && r.doctrine.verrous) setVerrous(r.doctrine.verrous, PARTAGES);
     recompute();
   } finally { occupe = false; }
   dernier = signature({ areas:r.areas || {}, circulation:r.circulation, doctrine:r.doctrine || {} });

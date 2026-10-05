@@ -21,6 +21,7 @@ import { saveSoon } from "../mix/store.js";
 import { MASS, niveaux, partiOf } from "../mass/model.js";
 import { massOf } from "../mass/etat.js";
 import { TYPO } from "./etat.js";
+import { fige } from "../core/verrou.js";
 
 export function donneesTypo(){
   var NV = niveaux();
@@ -42,7 +43,7 @@ export function donneesTypo(){
       }) };
   });
   var pid = MASS.vol.parti || MASS.parti;
-  return { floors:floors, graine:TYPO.graine,
+  return { floors:floors, graine:TYPO.graine, verrou:fige("typologie"),
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
                        vols:ailes(massOf().vol), ponts:MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
@@ -93,13 +94,14 @@ export function ailes(vols){
 /* LA SEED des Typologies : celle que rejoue « Shuffle typologie ». Elle ne
    change que l'ordonnance des pièces DANS les volumes du Massing. */
 export function typoGraine(g){
-  if(g){ TYPO.graine = g >>> 0 || 1; saveSoon(); }
+  if(g && !fige("typologie")){ TYPO.graine = g >>> 0 || 1; saveSoon(); }
   return TYPO.graine;
 }
 /* La largeur d'une pièce d'un poste, au module, ramenée à une proportion qui
    garde la surface exacte ; null rend la cote du mixer (ou le calcul). Elle
    reste aux Typologies : la régler ici ne recompose pas le Massing. */
 export function typoRegle(key, w){
+  if(fige("typologie")) return;
   if(w == null) delete TYPO.cotes[key];
   else TYPO.cotes[key] = nearestDims(uOf(key), w).w;
   saveSoon();

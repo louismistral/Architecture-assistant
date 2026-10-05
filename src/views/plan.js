@@ -15,6 +15,7 @@
    TOURNE par sa poignée. Chacun de ces gestes redessine la 3D dans la foulée :
    les deux vues ne sont pas deux dessins, c'est le même modèle vu deux fois.
    ========================================================================= */
+import { fige } from "../core/verrou.js";
 import { dec, fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
@@ -351,8 +352,10 @@ function wirePlan(){
     if(!root || !host || !host.contains(e.target)) return;
     var w = monde(e);
     if(!w) return;
+    /* verrouillé, le plan se regarde et se choisit : rien ne bouge */
+    var fg = fige("massing");
     var tir = e.target.closest ? e.target.closest("[data-cote]") : null;
-    if(tir && MASS.sel){
+    if(tir && MASS.sel && !fg){
       var vt = volDe(MASS.sel), ct = +tir.getAttribute("data-cote");
       /* l'axe du côté tiré, et l'état de départ du geste */
       var ax = ct % 2 ? [-Math.sin(vt.a), Math.cos(vt.a)] : [Math.cos(vt.a), Math.sin(vt.a)];
@@ -363,7 +366,7 @@ function wirePlan(){
       return;
     }
     var poi = e.target.closest ? e.target.closest("[data-poi]") : null;
-    if(poi && MASS.sel){
+    if(poi && MASS.sel && !fg){
       var v0 = volDe(MASS.sel);
       drag = { mode:"tourne", v:v0, a0:v0.a,
                th0:Math.atan2(w.y - v0.y, w.x - v0.x),
@@ -374,7 +377,7 @@ function wirePlan(){
     var v = volAu(w.x, w.y);
     if(v){
       MASS.sel = v.id;
-      drag = { mode:"bouge", v:v, dx:v.x - w.x, dy:v.y - w.y, live:false,
+      drag = fg ? null : { mode:"bouge", v:v, dx:v.x - w.x, dy:v.y - w.y, live:false,
                libre: tient(v) ? 0 : 1 };
       planDraw(); change("sel");
       e.preventDefault();

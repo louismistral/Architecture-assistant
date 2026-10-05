@@ -23,6 +23,7 @@
    Le massing n'essaie pas de finir un projet. Il répond à une question de début
    d'étude : à quoi ce programme ressemblerait-il, physiquement, sur ce site ?
    ========================================================================= */
+import { fige } from "../core/verrou.js";
 import { dec, el, fmt } from "../core/format.js";
 import { parseSeed } from "../core/rand.js";
 import { RULES } from "../data/rules.js";
@@ -136,7 +137,8 @@ export function massPanel(){
    besoin d'une largeur mesurable, et WebGL d'un élément attaché. */
 export function drawMass(){
   if(!planEl) return;
-  if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
+  /* verrouillé, le Massing ne se recompose pas de lui-même */
+  if(!fige("massing") && ((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
   planMount(planEl);
   if(!monte){ vue3dMount(troisEl); monte = true; }
   else vue3dDraw();
@@ -258,6 +260,7 @@ function puce(txt, cls, titre){
 function versContraintes(b){
   var a = el("button", "btn btn--quiet mass-renvoi", "Régler ligne à ligne — volet Contraintes");
   a.type = "button";
+  a.dataset.vue = "";
   a.addEventListener("click", function(){ if(massNav) massNav("contraintes"); });
   b.appendChild(a);
 }
@@ -659,6 +662,7 @@ function carteSel(v){
            + "Elle se déplace et se tourne, elle ne se redimensionne pas."));
   var cen = el("button", "btn btn--quiet btn--icon");
   cen.type = "button";
+  cen.dataset.vue = "";
   cen.setAttribute("aria-label", "Centrer la vue dessus");
   cen.title = "Centrer la vue dessus";
   cen.appendChild(icone("cible", 15));
@@ -667,6 +671,7 @@ function carteSel(v){
   var x = el("button", "btn btn--quiet btn--icon");
   x.type = "button";
   x.setAttribute("aria-label", "Ne plus choisir ce volume");
+  x.dataset.vue = "";
   x.title = "Ne plus choisir ce volume";
   x.appendChild(icone("croix", 15));
   x.addEventListener("click", function(){ MASS.sel = null; planDraw(); vue3dDraw(); dessineRail(); });
@@ -871,11 +876,14 @@ function etapeProgramme(){
     programmeCorps, vide);
 }
 function programmeCorps(b){
-  b.appendChild(tirBtn("de", "Shuffle programme", "autre répartition dans les étages", false, function(){
+  var shp = tirBtn("de", "Shuffle programme", "autre répartition dans les étages", false, function(){
     repartir({ alea:true, etages: dePile });
     regenere();
     redessine();
-  }));
+  });
+  /* il rebat le programme : c'est le cadenas du mixer qui le garde */
+  shp.dataset.onglet = "mixer";
+  b.appendChild(shp);
   if(aPoser() > 0) b.appendChild(blocBilan());
 }
 function blocBilan(){
@@ -1131,6 +1139,7 @@ function blocEmporter(){
     var r = el("div", "mass-deux");
     var t = el("button", "btn", "Exporter (.3dm)");
     t.type = "button";
+    t.dataset.vue = "";
     t.prepend(icone("telecharger", 15));
     t.disabled = !MASS.vol.length;
     t.addEventListener("click", function(){
@@ -1210,10 +1219,11 @@ export function setMassNav(f){ massNav = f; }
    direct, un rechargement sur `#massing/contraintes`. Les lignes n'auraient
    alors rien à dire, alors que le programme, lui, est réparti. */
 export function massPrepare(){
-  if(((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
+  /* verrouillé, le Massing ne se recompose pas de lui-même */
+  if(!fige("massing") && ((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
 }
 export function massRejouer(){
-  if(aPoser() > 0){
+  if(aPoser() > 0 && !fige("massing")){
     massSet("graine", graineSuivante());
     regenere();
     saveSoon();

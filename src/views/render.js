@@ -10,6 +10,7 @@ import { forensicsVue } from "./forensics.js";
 import { renduVue } from "./rendu.js";
 import { donneesTypo, typoGraine, typoRegle } from "../typo/donnees.js";
 import { icone } from "./icons.js";
+import { VERROU, fige, figePar, setVerrou } from "../core/verrou.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
@@ -36,12 +37,12 @@ import { tip } from "./tooltip.js";
    tout ce qui la montre est refait. Le mixer n'a pas besoin d'être ouvert : il
    relit les surfaces à chaque rendu, il n'en garde aucune copie. */
 setAreaHandler(function(key, v){
-  if(!setItemArea(key, v)) return false;
+  if(fige("programme") || !setItemArea(key, v)) return false;
   refreshProgramme();
   return true;
 });
 setCircHandler(function(p){
-  if(!setCirc(p)) return false;
+  if(fige("programme") || !setCirc(p)) return false;
   refreshProgramme();
   return true;
 });
@@ -186,10 +187,57 @@ export function typoHote(){
   window.typoIcone = function(n, t){ return icone(n, t).outerHTML; };
 }
 
+/* ---------- le cadenas, dans l'onglet ----------
+   Un bandeau dit qu'on regarde sans pouvoir changer, et qui le veut ; le
+   bouton rouvre le bon cadenas. Puis UNE garde, sur tout le panneau : un
+   geste qui modifie — un clic, une saisie, un glisser — ne passe pas sur un
+   onglet figé. Ce qui sert à regarder passe : volets, replis, barre des vues,
+   plan et 3D (le plan ne laisse rien bouger, `plan.js`), le contrôle qu'on
+   ouvre, l'export (`data-vue`). Un élément dit à quel onglet il appartient
+   par `data-onglet` : les lignes de Paramètres montrées au volet Contraintes
+   d'un outil, « Shuffle programme » au rail du Massing. */
+function bandeauVerrou(tabs){
+  var t = tabs.filter(function(x){ return fige(x); })[0];
+  if(!t) return null;
+  var qui = VERROU[t] ? t : figePar(t), b = el("div", "tab-verrou");
+  b.appendChild(icone("cadenas"));
+  b.appendChild(el("span", null, VERROU[t]
+    ? tabOf(t).label + " est verrouillé : on regarde, rien ne change."
+    : tabOf(t).label + " est figé par " + tabOf(qui).label + ", qui est verrouillé : ce qu'il a décidé ne bouge plus."));
+  var o = el("button", "btn btn--quiet", "Déverrouiller " + tabOf(qui).label);
+  o.type = "button";
+  o.addEventListener("click", function(){ setVerrou(qui, false); });
+  b.appendChild(o);
+  return b;
+}
+var VUE_OK = ".subtabs, .tab-verrou, .viewbar, .mass-barre, .mass-vues, .mix-iss, .mass-al__b, .pr__q, [data-vue]";
+var MODIFIE = "button, input, select, textarea, label, a[href], [role=button], [contenteditable], .mixblk, .mixchip, .mixpc";
+function ongletDe(t){ var o = t.closest("[data-onglet]"); return o ? o.dataset.onglet : view.tab; }
+function pourRegarder(t){
+  var ctl = t.closest(MODIFIE), sm = t.closest("summary");
+  /* un repli s'ouvre ; un champ posé dans son résumé reste un champ */
+  if(sm && !(ctl && sm.contains(ctl))) return true;
+  /* la carte du volume, sur le plan, se règle : seuls ses boutons de vue passent */
+  if(t.closest(".mass-sel")) return !!t.closest("[data-vue]");
+  return !!t.closest(VUE_OK);
+}
+["click", "pointerdown", "keydown", "beforeinput", "change", "input", "dragstart", "drop"].forEach(function(type){
+  panelsEl.addEventListener(type, function(e){
+    var t = e.target;
+    if(!t || !t.closest || !fige(ongletDe(t)) || pourRegarder(t)) return;
+    if(type === "keydown" && (e.key === "Tab" || e.key === "Escape")) return;
+    if((type === "click" || type === "pointerdown" || type === "keydown") && !t.closest(MODIFIE)) return;
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+});
+
 export function render(){
   while(panelsEl.firstChild) panelsEl.removeChild(panelsEl.firstChild);
   tip.style.opacity = "0";
   renderBar();
+  document.body.toggleAttribute("data-fige", fige(view.tab));
+  var bv = bandeauVerrou([view.tab].concat(curSub() === "contraintes" && view.tab !== "programme" ? ["parametres"] : []));
+  if(bv) panelsEl.appendChild(bv);
 
   /* Les deux outils ont chacun deux volets : ce qu'ils FONT, et les CONTRAINTES
      qui gouvernent ce qu'ils font. Le second est la page Paramètres &

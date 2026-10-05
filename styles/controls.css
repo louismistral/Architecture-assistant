@@ -115,3 +115,17 @@
 .savechip{font-size:var(--t-2xs);color:var(--muted-foreground);white-space:nowrap}
 .savechip b{color:var(--ok);font-weight:400}
 .savechip.is-bad{color:var(--destructive);white-space:normal}
+
+/* --- le cadenas d'un onglet -----------------------------------------------
+   Le bandeau dit qu'on regarde sans pouvoir changer, et rouvre le bon
+   cadenas. Sous lui, ce qui modifie ne répond plus (`render.js`) : on le dit
+   aussi au curseur. */
+.tab-verrou{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);
+  margin-block:var(--s-3);padding:var(--s-2) var(--s-3);
+  font-size:var(--t-xs);color:var(--foreground);
+  background:var(--muted);border:1px solid var(--border);border-radius:var(--radius-md);
+}
+.tab-verrou svg{inline-size:15px;block-size:15px;flex:none}
+.tab-verrou span{flex:1 1 20ch}
+body[data-fige] #panels :is(button, input, select, textarea, .mixblk, .mixchip):not(:is(.subtabs, .tab-verrou, .viewbar, .mass-barre, .mix-iss, .mass-al__b, [data-vue]) *):not([data-vue]):not(.pr__q){cursor:not-allowed}

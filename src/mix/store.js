@@ -21,6 +21,7 @@
    perdre aussi les surfaces.
    ========================================================================= */
 import { el } from "../core/format.js";
+import { setVerrous, verrousOf } from "../core/verrou.js";
 import { CIRCSET, COULOIR, ITEMBYKEY, loadCirc, recompute, userAreas } from "../core/model.js";
 import { acceptList, setAccepts } from "./accept.js";
 import { optsOf, setOpts } from "./opts.js";
@@ -95,6 +96,8 @@ export function snapshot(){
        jour, et une valeur corrigée dans le code ne parviendrait jamais à qui a
        déjà ouvert l'application. Le jury n'y est pas. */
     doc: ecarts(true),
+    /* Les CADENAS : ce qu'on a figé voyage avec l'état (`core/verrou.js`). */
+    verrous: verrousOf(),
     updatedAt: Date.now()
   };
 }
@@ -112,6 +115,7 @@ export function restore(o){
   try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
   try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
   try{ setTypo(o.typo); }catch(_){ lost.push("typologies"); }
+  try{ setVerrous(o.verrous); }catch(_){ lost.push("cadenas"); }
   /* Les lignes d'un instantané sont ce qui s'écarte du DÉFAUT : on repart du
      défaut avant de les poser. Sans cela, une valeur réglée avant le
      chargement survivait à une variante qui ne la touchait pas, et la variante

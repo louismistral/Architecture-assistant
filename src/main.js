@@ -1,8 +1,9 @@
-import { TABS, isTool, readHash, view, writeHash } from "./core/viewstate.js";
+import { TABS, isTool, readHash, tabOf, view, writeHash } from "./core/viewstate.js";
+import { VERROU, VERROUILLABLES, figePar, setVerrou, surVerrou } from "./core/verrou.js";
 import { render } from "./views/render.js";
 import { resizeMix } from "./views/mixer.js";
 import { resizeMass } from "./views/massing.js";
-import { initStore, verifieQuantites } from "./mix/store.js";
+import { initStore, saveSoon, verifieQuantites } from "./mix/store.js";
 import { initCompte } from "./net/compte.js";
 import { initReglages } from "./net/reglages.js";
 import { PREFS, initPrefs, onPrefs, setPref } from "./net/prefs.js";
@@ -90,10 +91,41 @@ var tabBtns = TABS.map(function(t){
   var l = document.createElement("span");
   l.className = "sidenav__l"; l.textContent = t.label;
   b.appendChild(l);
-  if(t.icon) b.classList.add("is-cadre");
-  liste.appendChild(b);
-  return { t:t, el:b };
+  /* Le CADENAS de l'onglet, à côté de sa ligne et non dedans : un bouton
+     dans un bouton n'existe pas. */
+  var row = document.createElement("div");
+  row.className = "sidenav__row" + (t.icon ? " is-cadre" : "");
+  row.setAttribute("role", "presentation");
+  row.appendChild(b);
+  var k = null;
+  if(VERROUILLABLES.indexOf(t.id) >= 0){
+    k = document.createElement("button");
+    k.type = "button"; k.className = "sidenav__lock";
+    k.addEventListener("click", function(){ setVerrou(t.id, !VERROU[t.id]); });
+    row.appendChild(k);
+  }
+  liste.appendChild(row);
+  return { t:t, el:b, lock:k };
 });
+/* fermé : l'onglet est verrouillé ; fermé et pâle : figé par un onglet en
+   aval ; ouvert : on y travaille */
+function peindreCadenas(){
+  tabBtns.forEach(function(b){
+    if(!b.lock) return;
+    var own = !!VERROU[b.t.id], par = figePar(b.t.id), nom = b.t.label;
+    while(b.lock.firstChild) b.lock.removeChild(b.lock.firstChild);
+    b.lock.appendChild(icone(own || par ? "cadenas" : "ouvert"));
+    b.lock.setAttribute("aria-pressed", String(own));
+    b.lock.dataset.etat = own ? "ferme" : par ? "fige" : "ouvert";
+    var dit = own ? nom + " est verrouillé — cliquer pour le déverrouiller"
+      : par ? nom + " est figé par " + tabOf(par).label + " — cliquer pour le verrouiller aussi"
+      : "Verrouiller " + nom + " : ses décisions ne bougeront plus par erreur";
+    b.lock.title = dit;
+    b.lock.setAttribute("aria-label", dit);
+  });
+}
+peindreCadenas();
+surVerrou(function(){ peindreCadenas(); saveSoon(); if(document.body.dataset.view) render(); });
 
 function etroit(){ return window.matchMedia("(max-width: 900px)").matches; }
 function peindreNav(){

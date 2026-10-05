@@ -29,6 +29,7 @@
    La barre du haut ne porte que ce qui agit sur l'ENSEMBLE : Shuffle, Tout au
    bac, et la seed qui rejoue une proposition.
    ========================================================================= */
+import { fige } from "../core/verrou.js";
 import { dec, el, fmt } from "../core/format.js";
 import { CIRC, CIRCA, COULOIR, FMAP } from "../core/model.js";
 import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
@@ -179,6 +180,7 @@ function drawCirc(){
     + "niveau, et ses cages d’escalier. Le cahier des charges en estime "
     + fmt(Math.round(CIRCA)) + " m² (" + Math.round(CIRC * 100) + " % du bâti)."));
   var b = el("button","btn btn--quiet mix-circ__go","Régler dans le cahier des charges");
+  b.dataset.vue = "";
   b.type = "button";
   b.addEventListener("click", function(){
     /* La circulation se saisit dans le volet Surfaces : le lien menait au
@@ -1181,6 +1183,7 @@ var mixNav = null;
 export function setMixNav(f){ mixNav = f; }
 
 export function mixRejouer(){
+  if(fige("mixer")){ if(mixNav) mixNav("repartition"); return; }
   seed(null);
   repartir({ alea: true, etages: dePile });
   selU = null; openIss = null; issFocus = null;

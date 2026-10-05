@@ -675,6 +675,7 @@ function outils(host){
     var g = el("div", "btn-group");
     g.setAttribute("role", "group");
     g.setAttribute("aria-label", titre);
+    g.dataset.vue = "";       /* un filtre se règle même sous cadenas */
     g.appendChild(el("span", "btn-group__label", titre));
     liste.forEach(function(o){
       var b = el("button", "btn", o[1]);
@@ -715,6 +716,8 @@ export function parametresVue(render, opts){
   ECRAN = lectureEcran();
   ETAT = etatDe(opts.onglet || "page", opts.onglet);
   var s = el("section", "pr" + (opts.onglet ? " pr--volet" : ""));
+  /* les lignes sont à Paramètres, où qu'on les montre : leur cadenas est le sien */
+  s.dataset.onglet = "parametres";
   var h = el("header", "pr__h");
   h.appendChild(el("h1", null, opts.titre || "Paramètres & contraintes"));
   h.appendChild(el("p", "pr__lead", opts.onglet
@@ -727,10 +730,12 @@ export function parametresVue(render, opts){
     var rb = el("div", "pr-rejouer");
     var b = el("button", "btn btn--primary", opts.onglet === "mixer" ? "Rejouer la répartition" : "Rejouer la volumétrie");
     b.type = "button";
+    b.dataset.onglet = opts.onglet;
     b.addEventListener("click", opts.rejouer);
     rb.appendChild(b);
     var lien = el("a", "btn btn--quiet", "Tout le classement");
     lien.href = "#parametres";
+    lien.dataset.vue = "";
     rb.appendChild(lien);
     h.appendChild(rb);
   }

@@ -1135,7 +1135,12 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   var seedIn = $("seed");
   function seedTxt(){ return (DATA.graine >>> 0).toString(36); }
   function suivante(g){ return (g * 1103515245 + 12345) >>> 8 || 1; }
+  /* verrouillées (ou figées par un cadenas en aval — il n'y en a pas encore),
+     les Typologies se regardent : ni Shuffle, ni seed, ni cote de pièce */
+  function fige(){ return !!(DATA && DATA.verrou); }
+  if(fige()){ $("shuffle").disabled = true; seedIn.disabled = true; $("shuffle").title = "Typologies verrouillées"; }
   function rejouer(g){
+    if(fige()){ seedIn.value = seedTxt(); return; }
     if(parent.typoGraine) parent.typoGraine(g);
     DATA = parent.typoDonnees();
     PG.oublier(); CTL = null; choisir(null); dessiner(false);
@@ -1771,7 +1776,9 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       '<label class="mass-par"><span class="mass-par__n">Largeur, au module de ' + fmt(m, 2) + ' m</span>' +
         '<input id="ed-w" type="number" step="' + m + '" min="' + (2 * m) + '" value="' + (Math.round(I.W / m) * m) + '"><span class="mass-par__u">m</span></label>' +
       '<button class="btn btn--quiet mass-renvoi" id="ed-0" type="button">Rendre au calcul</button></section>';
+    if(fige()) Array.prototype.forEach.call(document.querySelectorAll("#ed-w, #ed-0"), function(x){ x.disabled = true; });
     function appliquer(w){
+      if(fige()) return;
       parent.typoRegle(R.key, w);
       DATA = parent.typoDonnees(); PG.oublier(); CTL = null; dessiner(false);
       choisir(null);

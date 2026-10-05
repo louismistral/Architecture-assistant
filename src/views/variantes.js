@@ -21,6 +21,7 @@
    mettre dans le même panneau aurait mêlé « où je travaille » et « ce que
    j'ai fait ».
    ========================================================================= */
+import { unVerrou } from "../core/verrou.js";
 import { noteVue } from "./note.js";
 import { el, fmt } from "../core/format.js";
 import { perime } from "../core/empreinte.js";
@@ -957,12 +958,16 @@ async function faireEnregistrer(nom){
 
 /* Charger écrase : on prévient, et on propose d'enregistrer d'abord. Un seul
    endroit décide — la carte ne charge jamais directement. */
+/* Une variante REMPLACE tout l'état, onglets verrouillés compris — et leurs
+   cadenas par les siens : c'est un geste qu'on fait exprès, on le dit avant. */
 function demandeCharge(v){
-  if(!travailEnCours()){ faireCharger(v); return; }
+  var cad = unVerrou(), tec = travailEnCours();
+  if(!tec && !cad){ faireCharger(v); return; }
   var d = el("div", "vp-alerte");
-  d.appendChild(el("p", null, "La composition à l'écran n'est pas enregistrée. La charger la remplacera."));
+  d.appendChild(el("p", null, (tec ? "La composition à l'écran n'est pas enregistrée. La charger la remplacera." : "")
+    + (cad ? (tec ? " " : "") + "Des onglets sont verrouillés : la variante les remplacera, cadenas compris." : "")));
   var r = el("div", "vp-alerte__a");
-  r.appendChild(btn("btn btn--primary", "Enregistrer d'abord", async function(){
+  if(tec) r.appendChild(btn("btn btn--primary", "Enregistrer d'abord", async function(){
     await faireEnregistrer(); faireCharger(v);
   }));
   r.appendChild(btn("btn", "Charger quand même", function(){ faireCharger(v); }));
