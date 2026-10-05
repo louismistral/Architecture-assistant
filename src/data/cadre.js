@@ -184,10 +184,14 @@ export var CADRE_MASS = [
     lu:"src/mass/model.js — profFacade() · src/mass/mesures.js — ecarts()",
     d:"Toutes les salles de classe sont en façade." },
   { id:"fusion", sujet:"Volumes", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
-    n:"Deux volumes qui se touchent n'en font qu'un", val:"bout à bout, même angle, mêmes niveaux et profondeur",
-    lu:"src/mass/gen.js — fusionner()",
-    d:"Les pignons qui se touchaient disparaissent, leur épaisseur entre dans le corps. Éteint : "
-      + "les deux corps restent deux volumes accolés." },
+    n:"Deux volumes qui se touchent n'en font qu'un", k:"fusionDist", def:1, min:0, max:3, pas:0.1,
+    unite:"m d'écart au plus — côtés parallèles ou en équerre",
+    lu:"src/mass/gen.js — fusionner(), recoller(), assembler() · src/typo/plans.html — fusion",
+    d:"Ce qui s'approche à moins de cet écart se recolle : les deux murs qui se faisaient face "
+      + "disparaissent, leur épaisseur entre dans le corps, et le volume devient un assemblage de "
+      + "rectangles — un L, un U, un peigne d'un seul tenant. La salle de sport, à ses cotes et à "
+      + "sa hauteur, reste un volume accolé : un même bâtiment, un seul mur entre eux. Éteint : "
+      + "les corps restent des volumes accolés." },
   { id:"module", sujet:"Module", tag:"intangible", src:CHOIX, qui:"groupe",
     n:"Module dimensionnel", k:"module", def:0.5, min:0.1, max:3, pas:0.1, unite:"m",
     lu:"src/mass/model.js — auModule(), horsModule()",

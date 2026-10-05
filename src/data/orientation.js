@@ -108,10 +108,10 @@ export var ORIENT_MASS = [
     d:"L'écart entre façades qui se font face. La réparation écarte doucement les corps vers "
       + "cet écart." },
   { id:"compa", sujet:"Compacité", tag:"prioritaire", src:{ t:"reglement", a:"2.9" },
-    n:"Un volume compact", k:"compaBon", def:0.82, min:0.1, max:1.5, pas:0.01, unite:"m² de façade par m² de plancher — favorable",
-    k2:"compaMax", def2:0.95, min2:0.1, max2:2, unite2:"— défavorable au-delà",
+    n:"Un volume compact", k:"compaBon", def:0.65, min:0.1, max:1.5, pas:0.01, unite:"m² de façade par m² de plancher — favorable",
+    k2:"compaMax", def2:0.75, min2:0.1, max2:2, unite2:"— défavorable au-delà",
     d:"Les seuils sont calés sur les variantes valides du site, chaque volume à sa hauteur : "
-      + "un corps de classes à 3,20 m, la salle de sport seule à 7,40 m — de 0,6 à 1." },
+      + "un corps de classes à 3,20 m, la salle de sport seule à 7,40 m — de 0,5 à 0,8." },
   { id:"align", sujet:"Alignement", tag:"souhaite",
     n:"Des corps alignés", val:"sur le site, une limite, une route ou un voisin",
     d:"Préféré à égalité du reste ; rien n'oblige à s'aligner." },
