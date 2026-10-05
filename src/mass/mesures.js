@@ -634,21 +634,22 @@ export function mesuresMass(vols, L){
 
 /* ---------- le bâtiment entier ---------------------------------------------------
    Le programme réparti, la volumétrie ET le plan des Typologies tiré dedans, à
-   la seed typologie du moment : ce que le jury voit. `main` : les notes posées
-   à la main sur une variante enregistrée. C'est le seul endroit où les plans
-   rejoignent la note — le rail du Massing, la page Paramètres, les variantes
-   et le classement de `genMass()` les reçoivent d'ici. */
-export function evaluer(vols, main){
+   la seed typologie du moment — ou à `graineTypo` : ce que le jury voit.
+   `main` : les notes posées à la main sur une variante enregistrée. C'est le
+   seul endroit où les plans rejoignent la note — le rail du Massing, la page
+   Paramètres, les variantes et le classement de `genMass()` (à la seed par
+   défaut) les reçoivent d'ici. */
+export function evaluer(vols, main, graineTypo){
   if(!vols || !vols.length) return null;
   oublier();
   var L = lire(vols), Q = qualites(vols, L), E = ecarts(vols, false, Q);
   var mes = Object.assign({}, mesuresMix(), mesuresMass(vols, L));
-  return joindre({ mes:mes, qualites:Q, ecarts:E }, typoDe(vols), main);
+  return joindre({ mes:mes, qualites:Q, ecarts:E }, typoDe(vols, graineTypo), main);
 }
 /* Un plan qui ne se tire pas — un bâtiment importé aux volumes inattendus —
    ne casse pas la note : ses critères sont sans objet, le reste est noté. */
-function typoDe(vols){
-  try { return evaluerTypo(vols, vols.ponts || []); }
+function typoDe(vols, graine){
+  try { return evaluerTypo(vols, vols.ponts || [], graine); }
   catch(e){ console.error(e); return { mes:{}, ecarts:[] }; }
 }
 function joindre(ev, T, main, moy){

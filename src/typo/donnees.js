@@ -25,8 +25,9 @@ import { TYPO } from "./etat.js";
 import { fige } from "../core/verrou.js";
 
 /* `vols`, `ponts` : les volumes à planifier — ceux à l'écran par défaut, ceux
-   d'une candidate quand le générateur du massing la juge (`evaluer()`). */
-export function donneesTypo(vols, ponts){
+   d'une candidate quand le générateur du massing la juge (`evaluer()`) ;
+   `graine` : la seed typologie, celle à l'écran par défaut. */
+export function donneesTypo(vols, ponts, graine){
   vols = vols || MASS.vol;
   var NV = niveaux();
   var floors = FLOORS.map(function(F, i){
@@ -57,7 +58,7 @@ export function donneesTypo(vols, ponts){
       alt[v.id + "|" + s.e.i] = { z:Math.round((s.z0 - r) * 100) / 100, h:s.h };
     });
   });
-  return { floors:floors, graine:TYPO.graine, verrou:fige("typologie"),
+  return { floors:floors, graine:graine || TYPO.graine, verrou:fige("typologie"),
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
                        vols:ailes(volsOf(vols)), ponts:ponts || MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },

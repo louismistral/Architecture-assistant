@@ -43,6 +43,7 @@ import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier
   from "./mesures.js";
 import { PARTIS_FIGURES, composer } from "./partis.js";
 import { architecturer } from "./archi.js";
+import { GRAINE0 } from "../typo/etat.js";
 
 /* ---------- le hasard du massing, et lui seul -------------------------------
    Une graine propre : celle du mixer rejoue une RÉPARTITION, celle-ci rejoue
@@ -686,7 +687,10 @@ export function genMass(graine){
     poserSecond(c.vols, r);
     if(ecarts(c.vols, false).length) retirerSecond(c.vols);
     if(ecarts(c.vols, false).length) return;
-    var ev = evaluer(c.vols);
+    /* plans compris, à la seed typologie PAR DÉFAUT : la seed du massing seule
+       décide du massing, quelle que soit la typologie à l'écran — la recherche
+       essaie ensuite les typologies du volume retenu */
+    var ev = evaluer(c.vols, null, GRAINE0);
     c.vols.score = ev.jugement.total;
     c.vols.pref = c.pref;
     c.vols.valides = n0; c.vols.essais = nEssais;

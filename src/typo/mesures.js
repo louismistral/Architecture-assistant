@@ -262,8 +262,9 @@ export function typoVerdict(E){
   return o;
 }
 
-/* Les mesures et les écarts d'un bâtiment, d'un seul plan. */
-export function evaluerTypo(vols, ponts){
-  var D = donneesTypo(vols, ponts), L = lirePlans(D);
+/* Les mesures et les écarts d'un bâtiment, d'un seul plan — à la seed
+   typologie `graine`, celle à l'écran par défaut. */
+export function evaluerTypo(vols, ponts, graine){
+  var D = donneesTypo(vols, ponts, graine), L = lirePlans(D);
   return { mes:mesuresDe(L, D), ecarts:ecartsDe(L, D) };
 }
