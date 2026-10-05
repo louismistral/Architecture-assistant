@@ -31,6 +31,22 @@ volumétrie, et l'on retrouve au Massing celle qu'on y avait laissée.
   pile, ont disparu avec la mesure : ils épaississaient le volume. Les liens à la salle se tiennent
   quand le Massing l'accole (levier « Salle de sport accolée »).
 
+## Un volume fusionné, un seul mur
+
+Le Massing assemble ce qui se touche en un volume de plusieurs rectangles (`docs/massing.md` — *Le
+volume n'est pas qu'un rectangle*). Les plans se composent rectangle par rectangle :
+`donnees.js — ailes()` fait de chaque part une aile, un corps du même bâtiment (`bat`) qui partage
+les noyaux des autres, suivie d'un niveau à l'autre par ce qu'elle recouvre en plan pour que son
+noyau s'empile. Tous les murs se dessinent AVANT tous les sols : là où deux ailes se touchent, le sol
+de l'une recouvre le mur de l'autre, et il n'y a plus de mur entre elles — la séparation des pièces
+est leur cloison. Deux volumes qui ne font que se toucher (la salle de sport et l'école, ou deux
+corps que le Massing n'a pas pu assembler) gardent UN mur : celui de l'autre, et ce qui les sépare
+encore (moins de `regles.fusion`, 1 m), devient un dégagement, ouvert sur une baie de passage.
+
+**Verrouillées** (`core/verrou.js`), les Typologies se regardent : le Shuffle, la seed et la cote
+d'une pièce sont désactivés (`DATA.verrou`). Un cadenas sur les Typologies fige aussi le Massing,
+le mixer et le cahier des charges : le plan ne peut plus bouger sous elles.
+
 ## Shuffle typologie et sa seed
 
 `TYPO.graine`, à côté de `MASS.graine` et de la seed du mixer, et indépendante des deux. Elle ne

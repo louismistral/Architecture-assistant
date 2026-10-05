@@ -189,6 +189,25 @@ distances et la cour —, `volInt()` l'intérieur où l'on pave le programme, `m
 du plan et de la 3D. La dalle de 40 cm (`RULES.haut.dalle`) s'ajoute à la hauteur libre. Toutes
 les cotes de corps passent par `auModule()` (0,50 m).
 
+## Chaque volume a ses hauteurs d'étage
+
+La hauteur d'un étage est celle du VOLUME, pas celle du niveau (`model.js — hauteurEtage`). Le
+mixer donne au niveau la hauteur de sa plus haute pièce ; le rez prenait donc partout les 7,40 m de
+la salle de sport, et un corps de classes posé à côté d'elle montait d'autant. Désormais :
+un ouvrage du second temps ou un corps importé porte sa hauteur mesurée (`e.h`) ; un volume aux
+postes nommés (`e.keys`, la salle de sport) la leur ; un corps d'école celle de son niveau sans les
+postes qui ont leur propre volume — aux cotes imposées ou hors enveloppe (`niveaux()[i].hc`, 3,20 m
+au rez). La 3D, l'export, les mesures et le contrôle lisent tous `etagesDe()`. Les seuils de
+compacité ont suivi : 0,65 favorable, 0,75 défavorable (0,95 et 1,10 avec un rez à 7,40 m).
+
+**Les niveaux s'alignent** (`orientation.js — nivalign`, Prioritaire) : tous les bâtiments d'école
+posent leur rez à la même altitude — la moyenne du terrain sous leurs emprises, pondérée par elles
+(`datumEcole()`, `assiseEff()`). C'est plus fort que la mise au terrain (« Peu de terrassement »,
+Souhaitée) : le terrain ne décide plus de l'altitude, il se lit dans le terrassement que cette
+altitude demande — l'écart entre le plus haut et le plus bas du terrain ET du rez sous une emprise.
+Éteinte ou indicative, chaque volume se pose sur le terrain sous son emprise. Le second temps garde
+la sienne.
+
 ## Chaque volume a son nombre d'étages
 
 Le parti propose une silhouette, et une fois sur deux les corps secondaires tirent leur nombre
@@ -207,7 +226,7 @@ seuls, plus rarement des R+1.
 Aucune cote de volume n'est du cadre — seule la salle de sport double reste fixée à 28 × 32 m
 par le règlement. Les domaines des leviers (11–28 m par défaut) règlent `besoins()` et
 `profBornes()`, et l'orientation « des corps dans leurs fourchettes » les relit.
-Aucune forme de repli n'est appliquée : ni décrochement, ni fusion, ni règle de porte-à-faux.
+Aucune forme de repli n'est appliquée : ni décrochement, ni règle de porte-à-faux.
 
 Avec les réglages par défaut, un corps d'école vise au plus 28 × 19,5 m (les classes en façade), soit environ
 550 m² par étage, et le rez en demande quatre fois plus. `genMass()` calcule donc le nombre de
@@ -222,8 +241,22 @@ Une passerelle est une CONNEXION `{ a, b, i }` (`MASS.pont`) : sa géométrie se
 lecture des deux façades qui se font face (`pontRect()`), donc un corps déplacé l'emporte avec
 lui. `relier()` n'en pose qu'entre ensembles pas encore reliés, la plus courte d'abord, dans le
 périmètre et sans traverser un corps. Deux corps accolés portent `joint` : ils font un seul
-bâtiment et peuvent se toucher sans se recouvrir — c'est ce qui intègre la salle de sport ou
-fait un L d'un seul tenant.
+bâtiment et peuvent se toucher sans se recouvrir — c'est ce qui intègre la salle de sport.
+
+## Le volume n'est pas qu'un rectangle
+
+Ce qui s'approche à moins de `V.fusionDist` (1 m, la ligne `fusion` du cadre) d'un autre bâtiment,
+côtés parallèles ou en équerre (à 3° près), se **recolle** (`gen.js — recoller`) : l'un glisse — et
+tourne au besoin — jusqu'à toucher l'autre, s'il le peut sans rien recouvrir ni sortir du périmètre.
+Deux corps d'école qui se touchent alors s'**assemblent** (`assembler`) en UN volume fait de
+plusieurs rectangles (`model.js — partsDe`, `e.ext`) : l'un avance de l'épaisseur des deux murs qui
+se faisaient face, leurs intérieurs se touchent, ses parts passent dans l'autre niveau par niveau.
+Rien ne s'allonge : chaque part garde ses cotes, donc la surface et le module tiennent. Les
+sous-sols ne bougent pas. Bout à bout, à mêmes profondeurs, les deux corps deviennent toujours un
+seul rectangle (`alignes`). Un L, un U, une cour, un peigne sont ainsi d'un seul tenant ; la salle
+de sport, à ses cotes et à sa hauteur, se recolle mais reste un volume accolé — les Typologies ne
+laissent qu'un mur entre elle et l'école. Le plan trace le contour d'union, la 3D les parts sous un
+même contour, les mesures lisent la façade sur ce contour.
 
 ## Le second temps occupe du terrain, donc il se dessine
 
@@ -289,8 +322,8 @@ un étage en gradin reste en gradin. Les tirettes et la poignée se dessinent pa
 signale en rouge. Déplacer et tourner ne tiennent que le PÉRIMÈTRE (`gen.js — dansPerimetre`) et une règle :
 RIEN NE SE SUPERPOSE (`chevauche`) — la main avance jusqu'au voisin, pas au-delà ; la distance
 aux autres bâtiments et à l'existant ne la bloque pas, le contrôle la signale. CE QUI SE TOUCHE NE
-FAIT QU'UN (`fusionner`) : bout à bout, même angle, mêmes niveaux, même profondeur, deux corps
-deviennent un volume ; autrement, un même bâtiment (`bat`, `joint`). La règle joue en fin de geste,
+FAIT QU'UN (`fusionner`) : à moins d'un mètre, deux corps se recollent et s'assemblent en un
+volume de plusieurs rectangles ; la salle de sport devient un même bâtiment (`bat`, `joint`). La règle joue en fin de geste,
 après un tirage. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.

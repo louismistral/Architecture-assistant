@@ -270,6 +270,12 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
   `PREFS` dans `src/net/prefs.js` (colonne `profile.prefs`, copie sur l'appareil). Jamais une
   décision de projet : celles-là sont dans `net/reglages.js`.
 - **Un onglet** : une entrée dans `TABS` (numéro `n` ou `icon`) et une branche dans `render()`.
+- **Un cadenas** : `src/core/verrou.js` seul — `VERROU`, `fige(tab)`, `figePar(tab)`. Verrouiller un
+  onglet fige aussi ce qu'il lit en amont (cahier → mixer → Massing → Typologies) ; Paramètres a le
+  sien, figé par personne. Le geste est gardé une fois, sur le panneau (`render.js`) : ce qui
+  regarde passe (volets, replis, barre des vues, plan, 3D, export — `data-vue`), ce qui modifie
+  non ; un élément dit son onglet par `data-onglet`. Les cadenas du cahier et des Paramètres sont
+  du groupe (`net/reglages.js`, dans `doctrine.verrous`) ; les autres voyagent dans l'instantané.
 
 ---
 

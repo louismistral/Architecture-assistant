@@ -202,19 +202,26 @@ Les locaux engins de la salle de gym (2 × 90 m²) sont des pièces posées, li�
 sport (adjacence exigée : à proximité immédiate, au même niveau). Le règlement permet de les
 convertir en abri PC, sans l'imposer : le lien abri–engins reste une mutualisation.
 
-## À l'échelle, et les cotes de chaque pièce
+## Un niveau est un rectangle plein, et les cotes de chaque pièce
 
-Chaque niveau est dessiné **à l'échelle du mètre** (√`AIRE` pixels par mètre, le même pour tous) :
-une pièce occupe ses cotes réelles, largeur × profondeur, et les pièces d'un poste se rangent en
-grille. Le pavage d'avant donnait à chaque bloc la bonne surface mais une forme quelconque.
+Chaque niveau est **un rectangle de sa surface bâtie**, à la même échelle pour tous (`AIRE` px² par
+m², la largeur de la pile), **divisé** en la surface de chaque poste — famille par famille, puis
+poste par poste (`squarify`, `core/treemap.js`) — puis en sa bande de circulation ; la bande hors
+enveloppe (cour, piscine, chauffage à distance) le prolonge sous un filet. Ni gouttière, ni trou, ni
+vide jusqu'à la ligne de plateau : celle-ci ne se dessine que là où le bâti la dépasse. Les niveaux
+sont **posés l'un sur l'autre**, sans écart (`.mix-pile`). Délié, un poste divise son bloc en
+rangées, chacune haute à proportion de ses pièces : une dernière rangée incomplète s'élargit, et
+chaque pièce garde la même surface.
+
+> Avant : chaque pièce était dessinée à ses cotes, les postes rangés en rangées — d'où des
+> gouttières, un grand vide à côté de la salle de sport et des cases vides dans les grilles.
 
 Les cotes d'une pièce viennent de **`coteDe(key)`** (`mix/opts.js`) — la LARGEUR choisie pour le
 poste, enregistrée avec le projet ; la profondeur s'en déduit, à **surface exacte**, au module de
 0,5 m (`validDims`, `core/geometry.js`). Sans cote, la pièce prend la profondeur que le massing
 donne à ses bandes (`bandeMassing()`), sinon la plus carrée. Un bloc choisi offre la liste des
-proportions admissibles, et « auto » ; il se **tire** aussi par ses poignées — le bord droit
-élargit les pièces, le bord bas les approfondit — et la cote visée est ramenée, au lâcher, à la
-proportion admissible la plus proche.
+proportions admissibles, et « auto » ; la cote choisie s'écrit sur le bloc. Les poignées qui
+étiraient un bloc dessiné à l'échelle ont disparu avec ce dessin.
 
 Une source pour trois onglets :
 - **le massing** — une cote fixée dicte la profondeur des corps (`profPieces()` : la pièce la plus

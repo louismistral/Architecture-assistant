@@ -193,6 +193,10 @@ de l'instantané : une valeur réglée avant de charger une variante survivait s
 JURY n'est pas dans l'instantané : charger une variante ne change jamais les poids
 qui la notent.
 
+Les **cadenas** y sont (`verrous`, `core/verrou.js`) : une variante reprend ce qu'elle
+avait figé. La charger alors que des onglets sont verrouillés le dit d'abord — elle
+les remplace, cadenas compris. Une variante d'avant les cadenas rouvre tout.
+
 L'état est celui de `snapshot()` dans `src/mix/store.js`, sans un octet de plus :
 un seul objet dit ce qu'est « l'état du projet », et deux choses le lisent —
 l'enregistrement sur l'appareil, et une variante. Les séparer aurait fait deux
