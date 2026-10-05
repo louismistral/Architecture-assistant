@@ -7,6 +7,7 @@
    `src/data/rules.js`. Aucune n'est réécrite ici : un chiffre qui change au
    règlement ne se change qu'à un endroit.
    ========================================================================= */
+import { V as VC } from "../data/cadre.js";
 import { dec, el, fmt } from "../core/format.js";
 import { RULES, hNiv } from "../data/rules.js";
 
@@ -61,7 +62,7 @@ export function constraintsSection(){
 
   grid.appendChild(grp("Distances retenues", [
     ["Entre bâtiments", dec(D.entre, 0) + " m", "AEAI — opposable"],
-    ["Recul sur le périmètre", dec(D.retrait, 0) + " m", "règle de projet, faute d'alignement routier numérisé"]
+    ["Recul sur le périmètre", dec(VC.recul, 0) + " m", "règle de projet, faute d'alignement routier numérisé"]
   ]));
 
   /* Les hauteurs libres sont EXIGÉES ; la hauteur de niveau qu'on en déduit est
