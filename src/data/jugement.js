@@ -124,7 +124,7 @@ export var CRITERES = [
   /* la classe elle-même, sur le plan : sa façade de jour à l'est ou au sud */
   Object.assign(c("d33", "D", 7, "Classes éclairées naturellement, bien orientées", "classesSoleil", mn(0.9, 0.5),
     "directives vaudoises 2002, Matran"),
-    { axes:{ D:.5, H:.5 } }),
+    { axes:{ D:.5, H:.5 }, kb:"d33-plan" }),
   c("d34", "D", 4, "Les plus jeunes au rez, accès direct à l'extérieur", null, null, "Broc"),
   c("d35", "D", 4, "Organisation par étage selon le cycle"),
   c("d36", "D", 4, "Pas le même plan répété à chaque étage sans réflexion", null, null, "Schlieren"),
@@ -138,7 +138,8 @@ export var CRITERES = [
   c("d43", "D", 4, "Locaux techniques regroupés, accessibles aux livraisons", "techGroupes", mx(1, 4), "Broc"),
   /* au plan : bord à bord, au même niveau — le mixer ne disait que « au même niveau » */
   c("prox", "D", 8, "Les proximités du schéma fonctionnel sont tenues", "liensPlan", mn(1, 0.6)),
-  c("calme", "D", 5, "Le bruyant séparé du calme", "murBruyant", mx(0, 9), "VS 400.200 art. 13"),
+  Object.assign(c("calme", "D", 5, "Le bruyant séparé du calme", "murBruyant", mx(0, 9), "VS 400.200 art. 13"),
+    { kb:"calme-plan" }),
   c("etage", "D", 4, "Les classes à l'étage, l'accueil au rez", "classesEtage", mn(1, 0.5)),
   c("degre", "D", 5, "Un degré par niveau", "classesNiveauMax", mx(11, 16)),
   /* ce que le plan des Typologies ne loge pas dans le volume : au jury, comme au contrôle */
@@ -213,11 +214,15 @@ CRITERES.forEach(function(x){
   x.lu = "src/data/jugement.js — noter()";
 });
 declarer(CRITERES);
+/* LA CLÉ D'UNE BORNE change avec son sens (`kb`) : d33 se mesurait en degrés,
+   calme en niveaux — une borne réglée alors ne doit pas être relue en part ou en
+   mètres. L'ancienne clé, inconnue, est ignorée à la lecture. */
+export function cleBorne(x, p){ return p + (x.kb || x.id); }
 CRITERES.forEach(function(x){
   if(!x.f) return;
-  if(x.f.bon !== undefined) valeur("jb:" + x.id, x.f.bon, null, true);
-  if(x.f.nul !== undefined) valeur("jn:" + x.id, x.f.nul, null, true);
-  if(x.f.haut !== undefined) valeur("jh:" + x.id, x.f.haut, null, true);
+  if(x.f.bon !== undefined) valeur(cleBorne(x, "jb:"), x.f.bon, null, true);
+  if(x.f.nul !== undefined) valeur(cleBorne(x, "jn:"), x.f.nul, null, true);
+  if(x.f.haut !== undefined) valeur(cleBorne(x, "jh:"), x.f.haut, null, true);
 });
 var PAR_ID = {};
 CRITERES.forEach(function(x){ PAR_ID[x.id] = x; });
@@ -231,14 +236,14 @@ export function manuel(x){ return !x.mesure; }
 function lin(x, a, b){ return b === a ? (x >= a ? 1 : 0) : Math.max(0, Math.min(1, (x - b) / (a - b))); }
 export function scoreDe(x, m){
   if(m == null || !isFinite(m) || !x.f) return null;
-  var bon = V["jb:" + x.id], nul = V["jn:" + x.id];
+  var bon = V[cleBorne(x, "jb:")], nul = V[cleBorne(x, "jn:")];
   switch(x.f.t){
     case "max":  return lin(-m, -bon, -nul);
     case "min":  return lin(m, bon, nul);
     case "oui":  return Math.max(0, Math.min(1, m));
     case "options": return x.f.v[m] == null ? null : x.f.v[m];
     case "bande":
-      var haut = V["jh:" + x.id];
+      var haut = V[cleBorne(x, "jh:")];
       if(m >= bon && m <= haut) return 1;
       return m < bon ? lin(m, bon, bon - nul) : lin(-m, -haut, -(haut + nul));
     case "cout":
