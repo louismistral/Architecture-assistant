@@ -15,7 +15,7 @@ src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
 src/mass/archi.js     l'architecture d'un volume : toit, lanterneaux, entrée, rampe, sous-passage
 src/mass/export.js    le fichier .3dm pour Rhino — ce qu'il contient (pur), puis les octets
 src/mass/import.js    le chemin inverse : un .3dm relu en volumes, qui se jugent comme les autres
-src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
+src/views/massing.js  le rail en chaîne, la barre des vues, la carte du volume, le plan et la 3D
 src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation, étirement
 src/views/vue3d.js    la 3D : terrain maillé, courbes drapées, existant, volumes
 ```
@@ -74,6 +74,30 @@ le champ passent par un seul chemin, `rejouerMassing()` : une seed retapée ne p
 autre chose que ce que le tirage avait montré. Une seed illisible ou nulle remet la valeur
 courante sans rien tirer. Elle est enregistrée avec le reste (`mass/etat.js`) : après un
 rechargement, la seed affichée est celle de la volumétrie relue.
+
+## Le rail est une chaîne
+
+Le rail suit l'ordre du générateur, et chaque chose de même nature a un seul lieu.
+
+- **Proposer**, en tête et toujours visible : « Shuffle massing » (le geste de l'onglet), les
+  flèches qui parcourent le classement dans les deux sens sans rien tirer, le rang et la seed.
+- **Les étapes**, chacune repliable, son ÉTAT écrit à droite pour qu'on le lise sans l'ouvrir :
+  1 · **Parti** — une tuile par parti, sa figure en plein (`p-*` dans `views/icons.js`) ; en Auto,
+  un point marque celui qui a été retenu. 2 · **Programme** — « Shuffle programme », qui rebat le
+  programme et vit donc ici, et le bilan par niveau ; l'état est l'écart. 3 · **Leviers** — ce que
+  Shuffle massing tire, en deux groupes, Composition et Architecture. 4 · **Cadre** — le contrôle :
+  ce qui est enfreint, avec ses gestes ; les infos se replient ; une erreur ouvre l'étape d'elle-même.
+  5 · **Orientation** — chaque ligne, défavorables en tête, et ce qu'elle lit. 6 · **Jugement** — la
+  note, écrite ici seulement, et les axes. **Emporter** — l'export Rhino et le diagramme du rendu.
+- Le corps d'une étape ne se construit que si elle est OUVERTE : le rail se refait à chaque geste,
+  et le diagramme prend une seconde.
+- Le volet **Contraintes** reste à côté : on y règle chaque ligne, sa valeur et son tag. Les étapes
+  Leviers, Cadre, Orientation et Jugement y renvoient.
+
+Ce qu'on REGARDE se règle dans une barre posée sur les deux vues — couleurs, étages montrés,
+recadrage du plan et du volume. Le volume CLIQUÉ s'édite dans une carte posée sur le plan, dans le
+coin opposé au volume pour ne pas cacher ce qu'elle décrit ; rien de choisi, pas de carte. Les
+paragraphes qui restaient affichés en permanence sont devenus des infobulles.
 
 ## Le cadre élimine, l'orientation retient, le jugement classe
 
@@ -143,8 +167,8 @@ L'ordre est imposé : **1. les leviers — le parti, le programme · 2. le cadre
    plus, elle est abandonnée. Ce qui reste est classé par la note du jury, bâtiment entier.
    `genMass()` rend la première (`vols.props`, `vols.rang`, `vols.score` — la note,
    `vols.pref` — l'orientation) ; « Shuffle massing » passe à la suivante, et ne rejoue un
-   tirage qu'au bout de la liste. La note est affichée sous les boutons : « 62/100 au jugement ·
-   dans le cadre · proposition 1 sur 8 ».
+   tirage qu'au bout de la liste. La note s'écrit sur l'étape Jugement du rail, le rang
+   (« 1 sur 8 ») sous « Shuffle massing ».
 
 Avec ce programme, la Barre ne tient presque jamais : une seule file de volumes d'au plus 28 m
 fait 130 m. Les pavillons, six à neuf bâtiments à la distance souhaitée les uns des autres, tiennent
@@ -269,7 +293,7 @@ tirer vers le haut relève son côté proche. La composante horizontale était i
 caméra suivait le curseur, et le projet tournait à rebours du geste.
 
 **Les étages montrés sont une PLAGE** (`MASS.etages`, `plageVue()` / `vu()` dans `model.js`),
-réglée par un curseur à deux poignées sous « Affichage », un cran par étage. Toute la plage,
+réglée par un curseur à deux poignées dans la barre posée sur les vues, un cran par étage. Toute la plage,
 c'est tout le bâtiment ; deux poignées sur le même cran, un seul étage. Le plan pave le plus
 bas des étages montrés (hors sous-sol) et trace les autres en trait fin ; la 3D ne pose que
 ceux-là. Le curseur est fait main : deux `<input type="range">` superposés laissaient l'input
@@ -283,14 +307,14 @@ second temps à sa propre hauteur. La 3D et l'export la lisent tous deux.
 
 ## L'architecture d'un volume
 
-Le rail du volume choisi a un bloc **Architecture** : toiture (plat, végétalisé, un pan, deux pans,
+La carte du volume choisi a un volet **Architecture**, replié : toiture (plat, végétalisé, un pan, deux pans,
 sheds), puits de lumière (lanterneaux au faîte), entrée (un auvent sur une façade), rampe (le long
 d'une façade, à 6 %), sous-passage (au rez, de part en part), jeu de niveaux (les étages au-dessus
 du rez glissent tour à tour de ±j, dans la parcelle). Porte-à-faux, étages et passerelles se règlent
 déjà ailleurs. Les choix vivent dans `v.ar` (enregistré par `etat.js`), la géométrie dans
 `mass/archi.js — archiDe()`, une fois pour le plan, la 3D et l'export (groupe `Architecture`). Les
 cotes de dessin sont des hypothèses : `RULES.archi`. Aucun élément ne touche une surface ; le
-sous-passage coupe le rez sans que le bilan le décompte — le rail le dit.
+sous-passage coupe le rez sans que le bilan le décompte — la carte le dit.
 
 Ces choix sont aussi des **leviers** de la composition (`lev-toit`, `lev-pf`, `lev-jeu`,
 `lev-puits`, `lev-entree`, `lev-rampe`, `lev-sous`, dans `leviers.js`, état dans `MASS.lev`). Libre,
@@ -305,14 +329,14 @@ soit pas plus petit que celui du dessus : `mesures.js — qualites()` compare ch
 
 ## L'export vers Rhino, et l'import
 
-Deux boutons en fin de rail, bloc « Rhino ». **rhino3dm** — la bibliothèque de McNeel qui lit
+Deux boutons en fin de rail, à l'étape Emporter. **rhino3dm** — la bibliothèque de McNeel qui lit
 et écrit le .3dm — se charge depuis jsDelivr au premier clic, et seulement là : 3 Mo de
 WebAssembly que le reste du site ne demande pas. C'est la seule dépendance du projet, et elle
 ne sert qu'à ces deux gestes.
 
 ### Exporter
 
-« Exporter pour Rhino (.3dm) » télécharge `saxon-massing-<seed>.3dm`. `mass/export.js —
+« Exporter (.3dm) » télécharge `saxon-massing-<seed>.3dm`. `mass/export.js —
 piecesMassing()` dit ce que contient le fichier, en pur ; `dm3Massing()` l'écrit.
 
 - **Un .3dm, plus un .obj** : l'OBJ ne porte pas d'unité, et Rhino l'ouvrait en millimètres —
@@ -343,7 +367,7 @@ piecesMassing()` dit ce que contient le fichier, en pur ; `dm3Massing()` l'écri
 
 ### Importer
 
-« Importer depuis Rhino (.3dm) » relit un fichier dans le même repère, **remplace** la
+« Importer (.3dm) » relit un fichier dans le même repère, **remplace** la
 volumétrie après confirmation, et la note se recalcule. Le jugement ne lit que des mesures, et
 les mesures ne lisent que des volumes `{ x, y, a, lv }` : `mass/import.js` RECONSTRUIT donc ces
 volumes, et la note ne dépend plus de qui a dessiné le bâtiment. L'unité est celle que le
