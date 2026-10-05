@@ -51,7 +51,8 @@ export function setMass(o){
   var k, L = o.lev || {};
   for(k in MASS.lev) MASS.lev[k] = L[k] === undefined ? null : L[k];
   MASS.mono = !!o.mono;
-  if(o.second) MASS.second = o.second;
+  /* « non représentés » n'existe plus : la piscine se dessine toujours */
+  if(o.second) MASS.second = o.second === "non" ? "auto" : o.second;
   /* `etage`, un seul niveau ou -1, est l'écriture d'avant la plage. */
   if(o.etages !== undefined) MASS.etages = o.etages;
   else if(o.etage !== undefined) MASS.etages = o.etage >= 0 ? [o.etage, o.etage] : null;

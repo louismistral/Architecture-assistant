@@ -185,9 +185,18 @@ export function dessinEclatee(t, c, niveaux){
   var z = 0;
   N.forEach(function(n){ n.z = z; z += pas; });
   z -= pas;
+  /* la parcelle, au rez, en trait tireté : le cadrage la tient aussi */
+  var R = N.filter(function(n){ return n.lvl === 0; })[0] || N[0];
+  var par = R.prims.filter(function(p){ return p.ctx === "site" && p.k === "p"; });
+  var cadre = pts.slice();
+  par.forEach(function(p){ cadre = cadre.concat(p.pts); });
   /* la place des noms de niveau, à gauche : le dessin ne la prend pas */
-  var A = axo([c[0] + 70, c[1], c[2] - 70, c[3]], pts, z);
+  var A = axo([c[0] + 70, c[1], c[2] - 70, c[3]], cadre, z);
   N.forEach(function(n, k){
+    if(n === R) par.forEach(function(p){
+      t[p.ferme ? "poly" : "ligne"](p.pts.map(function(r){ return A(r[0], r[1], n.z - AXO.dalle); }),
+        { stroke:NUIT.encre, lw:NUIT.lw.min * 2 * ECH, dash:[6, 3] });
+    });
     /* la dalle : le poché extérieur de chaque corps, épaissi */
     n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:NUIT.lw.structure * ECH }); });
     n.prims.forEach(function(p){

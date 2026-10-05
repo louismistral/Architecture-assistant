@@ -186,6 +186,13 @@ export function ecarts(vols, vite, Q){
       dit("sport", k, "La salle de sport ne fait plus " + it.w + " × " + it.h + " m.");
   });
 
+  /* la scène, collée à la salle de sport : la salle doit toucher l'école */
+  if(enVigueur("scene-sport")) vols.forEach(function(v, k){
+    if(!v.fix || stop()) return;
+    if(!vols.some(function(o){ return o !== v && !o.fix && !o.ph && lies(v, o); }))
+      dit("scene-sport", k, "La salle de sport ne touche pas l'école : la scène ne peut pas lui être collée.");
+  });
+
   /* l'abri PC, au moins partiellement enterré */
   if(!stop()){
     var ab = abriNiv();

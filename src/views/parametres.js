@@ -390,7 +390,7 @@ function leviers(){
     "lev-second":  function(){ return deLev(MASS.second === "auto", "Second temps", function(on){
       massSet("second", on ? "auto" : "sep"); saveSoon(); rendre(); }); }
   };
-  var SECONDS = [{ id:"un", n:"Réunis" }, { id:"sep", n:"Séparés" }, { id:"non", n:"Non représentés" }];
+  var SECONDS = [{ id:"un", n:"Réunis" }, { id:"sep", n:"Séparés" }];
   return LEVIERS.map(function(l){
     var o = base(l);
     o.force = F[l.id] ? F[l.id]() : null;

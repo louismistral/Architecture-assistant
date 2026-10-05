@@ -163,7 +163,7 @@ export function architecturer(vols, lev, graine, tient){
     return best;
   }
   vols.forEach(function(v){
-    if(v.fix){ v.ar = { toit:"shed" }; return; }
+    if(v.fix){ v.ar = { toit:"plat" }; return; }   /* la salle de sport : toit plat */
     if(v.ph){ v.ar = { toit:"plat" }; return; }
     var E = etagesDe(v).filter(function(e){ return e.n.lvl >= 0; });
     if(!E.length) return;

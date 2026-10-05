@@ -462,7 +462,7 @@ function leviersCorps(b){
   if(MASS.second !== "auto"){
     sc = el("select", "mass-lev__s");
     sc.setAttribute("aria-label", "Second temps");
-    [["un", "Réunis"], ["sep", "Séparés"], ["non", "Non représentés"]].forEach(function(o){
+    [["un", "Réunis"], ["sep", "Séparés"]].forEach(function(o){
       var op = el("option", null, o[1]); op.value = o[0]; op.selected = o[0] === MASS.second; sc.appendChild(op);
     });
     sc.addEventListener("change", function(){ massSet("second", sc.value); relever(); });
@@ -898,7 +898,7 @@ function blocBilan(){
     n.appendChild(el("b", null, "Hors enveloppe : "));
     n.appendChild(document.createTextNode(H.map(function(h){
       return h.n.replace(/ avec préau couvert/, "") + " " + fmt(Math.round(h.a));
-    }).join(" · ") + " m²" + (MASS.second === "non" ? " — piscine et CAD non posés" : " — posés à part, en pointillé")));
+    }).join(" · ") + " m² — posés à part, en pointillé"));
     n.title = "Le règlement les veut indépendants des bâtiments scolaires et réalisés au second temps : "
       + "ils ne comptent dans aucun niveau du bilan. "
       + (MASS.second === "non" ? "La piscine et le local CAD ne sont pas posés — ils occupent pourtant du terrain."

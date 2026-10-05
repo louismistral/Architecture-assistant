@@ -223,7 +223,6 @@ export function relier(vols){
    générateur essayer les deux ; le rail peut l'imposer. Quand rien ne tient,
    l'ouvrage n'est pas posé et le contrôle le dit. */
 function poserSecond(vols, r){
-  if(MASS.second === "non") return;
   var S = secondTemps();
   if(!S.length) return;
   var tot = 0;
@@ -251,6 +250,11 @@ function poserSecond(vols, r){
     });
     if(tous) return;
   }
+}
+function secondPose(vols){
+  var pose = {};
+  vols.forEach(function(v){ if(v.ph) (v.lv[0].keys || []).forEach(function(k){ pose[k] = 1; }); });
+  return secondTemps().every(function(x){ return pose[x.key]; });
 }
 function retirerSecond(vols){
   for(var i = vols.length - 1; i >= 0; i--) if(vols[i].ph) vols.splice(i, 1);
@@ -497,12 +501,20 @@ export function intact(vols){
 }
 /* La salle de sport — un LEVIER : accolée à la figure, ou sur le bas du
    terrain, à distance. Libre, une chance sur deux ; accolée sans y parvenir,
-   elle se pose à part. Ses cotes ne bougent pas. */
+   elle se pose à part. Ses cotes ne bougent pas. Le cadre `scene-sport` (la
+   scène collée à la salle, sur un de ses côtés) la veut TOUJOURS accolée : il
+   essaie chaque corps d'école, et sans succès l'essai échoue. */
 function placerSport(vols, imp, r, th){
   var sp = { id:"vsport", x:0, y:0, a:th, fix:1, ancre:1, key:imp.key, prof:imp.d, grad:0,
              lv:[{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, keys:[imp.key] }] };
   vols.push(sp);
   var E = vols.filter(function(v){ return !v.fix && !v.ph; });
+  if(enVigueur("scene-sport")){
+    var o = Math.floor(r() * Math.max(1, E.length));
+    for(var e = 0; e < E.length; e++) if(accolerA(sp, E[(o + e) % E.length], vols, r)) return true;
+    vols.pop();
+    return false;
+  }
   if(E.length && levier("sport", ["accolee", "part"], r) === "accolee"
      && accolerA(sp, E[Math.floor(r() * E.length)], vols, r)) return true;
   delete sp.joint;
@@ -647,7 +659,9 @@ export function genMass(graine){
      l'écran. Ce qui reste est classé par le JUGEMENT — le bâtiment entier,
      second temps compris : la première est montrée, les suivantes attendent
      « Shuffle massing ». */
-  var n0 = valides.length, props = [];
+  /* La piscine et le CAD sont TOUJOURS dessinés : une candidate qui ne sait pas
+     les poser ne passe qu'à défaut de toute autre — et le contrôle le dit en rouge. */
+  var n0 = valides.length, props = [], sans = [];
   retenir(valides, partis.length > 1, r).forEach(function(c){
     poserSecond(c.vols, r);
     if(ecarts(c.vols, false).length) retirerSecond(c.vols);
@@ -656,8 +670,9 @@ export function genMass(graine){
     c.vols.score = ev.jugement.total;
     c.vols.pref = c.pref;
     c.vols.valides = n0; c.vols.essais = nEssais;
-    props.push(c.vols);
+    (secondPose(c.vols) ? props : sans).push(c.vols);
   });
+  if(!props.length) props = sans;
   props.sort(function(a, b){ return (b.score || 0) - (a.score || 0); });
   /* ce qui a fait échouer les essais, compté — gardé aussi quand ça réussit :
      c'est la moitié de l'histoire d'une variante (la planche de diagrammes) */

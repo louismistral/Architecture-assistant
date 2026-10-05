@@ -48,7 +48,7 @@ var COUR = courProgramme();
 /* Pour chaque ligne du cadre : l'article, et les gestes qui la réparent. Une
    ligne d'orientation passée en Imposé n'a pas de geste à elle : on relance. */
 function courFix(){ return [fixRelancer(),
-  fixSecond("non", "Ne pas représenter le second temps", "il libère le terrain qu’il occupe")]; }
+  fixSecond("un", "Grouper les ouvrages du second temps", "une emprise au lieu de deux")]; }
 var DUR = {
   perimetre:{ ref:"2.3",      fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
   recul:    { ref:"projet",   fix:function(i){ return [fixRecaler(i), fixEcarter()]; } },
@@ -212,7 +212,7 @@ export function massCheck(){
 
   /* --- LES OUVRAGES DU SECOND TEMPS ------------------------------------- */
   var S2 = secondTemps();
-  if(S2.length && MASS.second !== "non"){
+  if(S2.length){
     var pose2 = {}, aire2 = {};
     V.forEach(function(v){
       if(!v.ph) return;
@@ -222,20 +222,18 @@ export function massCheck(){
     });
     var manque2 = S2.filter(function(x){ return !pose2[x.key]; });
     if(manque2.length){
-      dit("w", "second", manque2.map(function(x){ return x.n; }).join(" et ")
+      dit("e", "second", manque2.map(function(x){ return x.n; }).join(" et ")
         + " ne trouve" + (manque2.length > 1 ? "nt" : "") + " pas de place : "
         + fmt(Math.round(manque2.reduce(function(a, x){ return a + x.a; }, 0)))
-        + " m² à poser à distance de tout, sans entamer la cour. Le second temps reste au "
-        + "programme et au bilan ; il n’est simplement pas dessiné.",
+        + " m² à poser à distance de tout, sans entamer la cour. La piscine et le local CAD "
+        + "doivent figurer dans toute variante.",
         "2.2", manque2[0].n, -1,
         { fix:[fixReposerSecond(),
                fixSecond("un", "Grouper les ouvrages du second temps",
                  "la piscine et le local CAD en un seul volume : une emprise au lieu de deux"),
                fixSecond("sep", "Séparer les deux ouvrages",
                  "deux volumes plus petits trouvent parfois deux places là où un seul n’en trouve aucune"),
-               fixRelancer(),
-               fixSecond("non", "Ne pas les représenter",
-                 "l’implantation ne montre plus que l’école")] });
+               fixRelancer()] });
     }
     var id2;
     for(id2 in aire2){
@@ -261,8 +259,6 @@ export function massCheck(){
       + fmt(besoin) + ".", "2.4", "", -1,
       { fix:[fixSecond("un", "Grouper les ouvrages du second temps",
                "la piscine et le local CAD en un seul volume : une emprise au lieu de deux"),
-             fixSecond("non", "Ne pas représenter le second temps",
-               "ils restent au programme et au bilan, mais ne sont plus posés"),
              fixRelancer()] });
   }
 

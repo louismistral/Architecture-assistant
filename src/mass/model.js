@@ -75,7 +75,7 @@ export var MASS = {
     /* l'architecture des corps (`data/leviers.js` — Architecture) */
     toit: null, pf: null, jeu: null, puits: null, entree: null, rampe: null, sous: null
   },
-  /* second temps : "auto" libre · "sep" deux volumes · "un" groupés · "non" */
+  /* second temps : "auto" libre · "sep" deux volumes · "un" groupés — toujours posé */
   second: "auto",
   vol: [],
   pont: [],         /* passerelles : { a, b, i } — deux volumes et un niveau */
