@@ -29,12 +29,14 @@ Pour **retomber en place sur le fichier**, c'est pourtant ce repère qu'il faut.
 écrit donc l'origine dans `site.js`, en fin de fichier :
 
 ```js
-export var RHINO = { x0: 2588337.89, y0: 1090758.30, u: 100 };
+export var RHINO = { x0: 2588337.89, y0: 1090758.30, u: 100, z0: 465 };
 ```
 
-Un point (x, y, z) du dessin, en mètres, est dans le fichier en (x0 + u·x, y0 + u·y, u·z).
-C'est ce que lit l'export du massing (`src/mass/export.js`) : son .obj se superpose au relevé
-sans rien déplacer. La conversion ne change pas de maison — `U` et l'origine sont dans le
+Un point (x, y, z) du dessin, en mètres, est dans le fichier du massing en
+(x0 + u·x, y0 + u·y, u·(z − z0)) : le relevé garde ses altitudes absolues, le massing échangé
+avec Rhino met son zéro à 465 m. C'est ce que lisent l'export et l'import du massing
+(`src/mass/export.js`, `src/mass/import.js`) : le .3dm se superpose au relevé en plan sans
+rien déplacer. La conversion ne change pas de maison — `U`, `Z0` et l'origine sont dans le
 script, `site.js` n'en garde que le résultat. Les calques 2D du fichier — périmètre,
 parcelles, bâtiments, courbes « 2d » — sont posés à z = 0 ; seuls les solides des bâtiments et
 les courbes « 3d » portent leur altitude.

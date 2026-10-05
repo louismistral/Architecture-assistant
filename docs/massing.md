@@ -13,7 +13,8 @@ src/mass/checks.js    alertes info / à vérifier / erreur, avec code et remède
 src/mass/fix.js       les remèdes : recaler, écarter, reformer, rééquilibrer
 src/mass/etat.js      ce qui s'enregistre (lu par `mix/store.js`)
 src/mass/archi.js     l'architecture d'un volume : toit, lanterneaux, entrée, rampe, sous-passage
-src/mass/export.js    le fichier .obj pour Rhino — une fonction pure, qui rend du texte
+src/mass/export.js    le fichier .3dm pour Rhino — ce qu'il contient (pur), puis les octets
+src/mass/import.js    le chemin inverse : un .3dm relu en volumes, qui se jugent comme les autres
 src/views/massing.js  le rail de commandes, le plan et la 3D côte à côte
 src/views/plan.js     le plan : relevé, volumes, sélection, déplacement, rotation, étirement
 src/views/vue3d.js    la 3D : terrain maillé, courbes drapées, existant, volumes
@@ -302,20 +303,32 @@ Typologies — passe par `gen.js — poser()` : poser, dégager, fusionner, arch
 L'orientation **socle** (`orientation.js`, valeur `socleMin`, 80 % par défaut) veut qu'un étage ne
 soit pas plus petit que celui du dessus : `mesures.js — qualites()` compare chaque niveau au suivant.
 
-## L'export vers Rhino
+## L'export vers Rhino, et l'import
 
-« Exporter pour Rhino (.obj) », en fin de rail, télécharge `saxon-massing-<seed>.obj`.
-`mass/export.js` écrit le texte, la vue ne fait que le donner.
+Deux boutons en fin de rail, bloc « Rhino ». **rhino3dm** — la bibliothèque de McNeel qui lit
+et écrit le .3dm — se charge depuis jsDelivr au premier clic, et seulement là : 3 Mo de
+WebAssembly que le reste du site ne demande pas. C'est la seule dépendance du projet, et elle
+ne sert qu'à ces deux gestes.
 
-- **Le repère est celui de `DOC/site_plan.3dm`**, en centimètres, Z vers le haut à l'altitude
-  absolue : le fichier s'y pose en place, sans rien déplacer. L'origine vient de `RHINO`, que le
-  script du relevé écrit dans `site.js`. Ce repère a l'allure du LV95 sans en être — voir
-  `docs/releve.md` ; pour se superposer au relevé, c'est pourtant lui qu'il faut.
-- **Un groupe OBJ par calque** : `Niveau_Sous-sol`, `Niveau_Rez`, `Niveau_1er_etage`… — chaque
+### Exporter
+
+« Exporter pour Rhino (.3dm) » télécharge `saxon-massing-<seed>.3dm`. `mass/export.js —
+piecesMassing()` dit ce que contient le fichier, en pur ; `dm3Massing()` l'écrit.
+
+- **Un .3dm, plus un .obj** : l'OBJ ne porte pas d'unité, et Rhino l'ouvrait en millimètres —
+  dix fois trop petit. Le .3dm se déclare en **centimètres** et arrive avec ses calques, sans
+  case à cocher.
+- **Le repère est celui de `DOC/site_plan.3dm` en plan** : le fichier s'y pose en place, sans
+  rien déplacer. **Z = 0 à 465 m** (`RHINO.z0`) : 300 = 468,00 m. L'origine vient de `RHINO`,
+  que le script du relevé écrit dans `site.js`. Ce repère a l'allure du LV95 sans en être —
+  voir `docs/releve.md` ; pour se superposer au relevé, c'est pourtant lui qu'il faut.
+- **Un calque par groupe** : `Niveau_Sous-sol`, `Niveau_Rez`, `Niveau_1er_etage`… — chaque
   étage de chaque volume en maillage fermé, huit sommets, six faces, normales vers l'extérieur,
   de plancher à plancher, murs compris ; les passerelles vont au niveau qu'elles desservent.
-  `Second_temps` porte la piscine et le local CAD, `Perimetre` et `Recul_5m` les deux limites.
-  Les objets portent le nom du plan : le V3 qu'on lit au plan est le `V3_Rez` du fichier.
+  `Second_temps` porte la piscine et le local CAD, `Architecture` les toits et auvents,
+  `Perimetre` et `Recul_5m` les deux limites. Les objets portent le nom du plan : le V3 qu'on lit
+  au plan est le `V3_Rez` du fichier. L'en-tête est dans le texte utilisateur du document
+  (`Saxon massing`).
 - **Le recul est celui que le contrôle mesure.** Aucun module ne le traçait : la règle est une
   distance, `bordDist()` ≥ 5 m. `ligneRecul()` (`geom.js`) en fait une ligne sans refaire le
   calcul autrement — les côtés poussés vers l'intérieur, un arc à chaque angle rentrant, et
@@ -325,11 +338,64 @@ soit pas plus petit que celui du dessus : `mesures.js — qualites()` compare ch
   fichier Rhino n'a pas de surface de terrain, rien que des courbes, et y draper une ligne est
   long quand la remettre à plat est une commande (`ProjectToCPlane`).
 - Ni l'acrotère, ni le jour de 12 cm que la 3D laisse entre deux étages, ni le programme à
-  l'intérieur des volumes. Tout le fichier est en ASCII : un nom de calque accentué arrive
-  mutilé selon la version de Rhino.
+  l'intérieur des volumes. Les noms sont en ASCII : un nom de calque accentué arrive mutilé
+  selon la version de Rhino.
 
-À l'import : **ne pas cocher** « Map OBJ Y to Rhino Z » — Z monte déjà dans le fichier —, et
-**cocher** « Import OBJ groups as layers ». La ligne sous le bouton le dit.
+### Importer
+
+« Importer depuis Rhino (.3dm) » relit un fichier dans le même repère, **remplace** la
+volumétrie après confirmation, et la note se recalcule. Le jugement ne lit que des mesures, et
+les mesures ne lisent que des volumes `{ x, y, a, lv }` : `mass/import.js` RECONSTRUIT donc ces
+volumes, et la note ne dépend plus de qui a dessiné le bâtiment. L'unité est celle que le
+fichier déclare ; le calque `Architecture` n'est pas relu (un auvent n'est pas un étage).
+
+- **Des boîtes** — l'export d'ici, ou un modèle construit étage par étage, une boîte par étage
+  — se lisent boîte par boîte. Les boîtes empilées font un volume ; son rez est celle posée au
+  plus près du terrain, les autres montent ou descendent d'un niveau chacune. Une boîte seule,
+  perchée, de la largeur d'une passerelle, qui touche deux volumes, est une passerelle. Un
+  massing exporté puis réimporté revient **à l'identique** : même corps, même surface, même note,
+  sur les douze partis.
+- **Un solide unifié** (une union booléenne) se lit par ses **toits** : en chaque point du plan,
+  la colonne de matière (une face qui regarde le ciel y fait entrer, une face qui regarde le sol
+  en fait sortir — un porte-à-faux garde son vide dessous) ; les toits d'une même altitude,
+  d'un seul tenant, font une région, découpée en rectangles dans l'axe de ses bords les plus
+  longs ; `fusionner(…, true)` recolle les morceaux d'un même corps. Un solide n'a pas de
+  dalles : les étages se comptent sur la **pile du mixer** si la plupart du bâti y tombe, sinon
+  à **3,20 m** (vide de classe + dalle), chacun gardant la hauteur mesurée.
+- **Ce que le solide ne nomme pas, ses mesures le disent** : la salle de sport est le corps aux
+  cotes du programme (au mètre près, murs dedans ou dehors) ; un corps isolé d'un étage, de la
+  surface d'un ouvrage du second temps à 5 % près, en est un.
+- Ne passe pas : un toit en pente (il n'est pas horizontal), une bande de moins d'un mètre (un
+  reste de découpe). Là où un corps bute en biais contre un autre, la découpe laisse de petits
+  rectangles. rhino3dm ne maille pas : il relit les maillages de rendu que Rhino enregistre — un
+  fichier « Save small » est refusé, avec la marche à suivre.
+
+L'aller-retour se vérifie sans rhino3dm — l'export rend ses maillages en clair :
+
+```bash
+node --input-type=module -e "
+Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
+             import('./src/mass/model.js'),import('./src/mass/mesures.js'),
+             import('./src/mass/export.js'),import('./src/mass/import.js'),
+             import('./src/data/site.js'),import('./src/core/rand.js')]).then(([S,G,M,E,X,I,ST,R])=>{
+  R.seed(1);
+  S.repartir({ alea:false, etages:true });
+  var H = ST.RHINO;
+  ['auto','barres','pavillons','peigne'].forEach(function(p){
+    M.massSet('parti', p);
+    G.poser(G.genMass(11));
+    var avant = M.bilanTotal().pose, note = E.evaluationCourante().jugement.total, n = M.MASS.vol.length;
+    var sol = X.piecesMassing().objets.filter(function(o){ return o.f && o.calque !== 'Architecture'; })
+      .map(function(o){
+        var P = o.v.map(function(q){ return [(q[0] - H.x0) / H.u, (q[1] - H.y0) / H.u, q[2] / H.u + H.z0]; });
+        return [].concat.apply([], o.f.map(function(f){ return [[P[f[0]], P[f[1]], P[f[2]]], [P[f[0]], P[f[2]], P[f[3]]]]; }));
+      });
+    M.massVols(I.volsDe3dm(sol).vols);
+    console.log(p.padEnd(10), n + ' → ' + M.MASS.vol.length + ' corps', 'posé ' + Math.round(avant) + ' → ' + Math.round(M.bilanTotal().pose),
+                'note ' + note + ' → ' + E.evaluationCourante().jugement.total);
+  });
+});"
+```
 
 L'état du massing — volumes, positions, rotations, parti, réglages — est persisté avec le reste
 (`mass/etat.js`, clé `saxon-mix-v1`) : aller au mixer et revenir ne défait pas une implantation qu'on
