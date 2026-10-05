@@ -326,7 +326,7 @@ sous-passage coupe le rez sans que le bilan le décompte — la carte le dit.
 Ces choix sont aussi des **leviers** de la composition (`lev-toit`, `lev-pf`, `lev-jeu`,
 `lev-puits`, `lev-entree`, `lev-rampe`, `lev-sous`, dans `leviers.js`, état dans `MASS.lev`). Libre,
 le dé tire UNE valeur pour toute la composition, à la graine du massing ; `architecturer()` la pose
-sur chaque corps d'école — la salle garde ses sheds, le second temps reste plat. Porte-à-faux (3 m,
+sur chaque corps d'école — la salle de sport et le second temps restent plats. Porte-à-faux (3 m,
 dernier étage, vers l'entrée) et jeu de niveaux (1,5 m) ne sont pris que si le corps reste dans la
 parcelle et ne recouvre personne. Toute volumétrie — tirage, proposition suivante, remède
 — passe par `gen.js — poser()` : poser, dégager, fusionner, architecturer.
@@ -434,3 +434,13 @@ vient de composer.
 
 Le massing n'essaie pas de finir un projet. Il répond à une question de début d'étude : à quoi ce
 programme ressemblerait-il, physiquement, sur ce site ?
+
+## Salle de sport, scène, second temps
+
+- **La scène est collée à la salle de sport** (cadre `scene-sport`, Intangible) : `placerSport()`
+  accole toujours la salle à un corps d'école — elle essaie chacun, sinon l'essai échoue —, et
+  `ecarts()` signale une salle qui ne touche plus l'école. Les Typologies posent la scène contre
+  l'un de ses murs, et leur contrôle le vérifie.
+- **La piscine et le local CAD sont dessinés dans toute variante** : l'option « non représentés »
+  a disparu (une variante ancienne qui la portait revient à `auto`). Une candidate qui ne sait pas
+  les poser ne passe qu'à défaut de toute autre (`secondPose()`), et le contrôle le dit en rouge.

@@ -111,7 +111,13 @@ massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
   (`typoPlanches()`, sans cotes ni mobilier), sur une dalle tirée du poché extérieur, avec ses
   **murs coupés** à `AXO.murs` m — l'enveloppe entre le poché et la circulation, les cloisons sur
   les côtés des pièces (`AXO.cloison`), dessus poché. Feuille blanche ; dalles et murs noirs en trait blanc, sans aplat (`NUIT`) ;
-  dalles et murs noirs aux arêtes blanches ; chaque noyau relié en tirets à celui qu'il porte au
+  dalles et murs noirs aux arêtes blanches ; au rez, la parcelle en trait tireté (le cadrage la
+  tient) ; chaque noyau relié en tirets à celui qu'il porte au
   niveau du dessus. L'écart entre deux niveaux est `AXO.pas`
   fois la profondeur du plan dans la vue (au-delà de 1, un blanc les sépare), `AXO.ecart` m au
   moins.
+
+**L'échelle du midterm, vérifiée** : le plan « Representative Floor plan 1:200 » se pose à
+`K = 1000 / 200 × 72 / 25,4` pt par mètre (5 mm pour 1 m), sur une page A1 de 2381,1 × 1683,8 pt
+— celle du gabarit, sans mise à l'échelle (le contenu d'origine entre `q … Q`). Les primitives des
+Typologies sont en mètres : la salle de sport y mesure 33 × 29 m hors tout (32 × 28 + les murs).

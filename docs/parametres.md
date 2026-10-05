@@ -153,6 +153,7 @@ première du mixer —, les règles de niveau qui restent opposables (abri, CAD,
 périmètre — aucun étage n'en dépasse —, la salle de sport, l'abri, **les surfaces posées**, la
 cour du programme, le module… Choisi (Imposé) : le recul de 5 m, notre cour de 620 m², les
 classes en façade, la salle de classe de 8 × 9 m, la fusion de deux volumes qui se touchent,
+la trame de placement des pièces et l'accès de chaque pièce à un couloir (Typologies),
 l'emprise d'un plateau, le seuil d'un sous-sol, les sanitaires par niveau. Passés en
 préférences (Prioritaire) : la salle de sport, la piscine, l'UAPE et l'administration au rez,
 chaque hall comme entrée de sa famille, les classes au plus au 2ᵉ étage, la distance incendie

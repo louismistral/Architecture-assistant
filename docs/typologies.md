@@ -57,3 +57,8 @@ l'hôte, et en reprend les composants :
 
 La palette du DESSIN (poché, papier, lavis) reste celle de la page — un rendu de concours — et suit
 `data-mode` ; `typoPlanches()` la force en clair pour le Rendu.
+
+**Au contrôle, deux lignes du cadre** : la scène collée à la salle de sport (mur contre mur, au
+même niveau — `scene-sport`) et toutes les pièces ouvertes sur un couloir (`couloir-acces`, tenu
+par construction de `composer()`). La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
+est déclarée au cadre mais pas encore lue : à construire.
