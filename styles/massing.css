@@ -5,6 +5,11 @@
    gauche. La disposition est celle du mixer : ce qui agit sur l'ENSEMBLE est
    rangé sur un bord, ce qu'on regarde tient tout le reste.
 
+   Le rail est une CHAÎNE : « Proposer » en tête, puis les étapes dans l'ordre
+   du générateur, chacune repliable et portant son état. Ce qu'on regarde se
+   règle dans la barre posée sur les vues ; le volume choisi, dans une carte
+   posée sur le plan.
+
    Aucune valeur de dessin ici qui ne vienne de `tokens.css`. Les couleurs de
    famille des volumes sont posées en ligne par le JS parce qu'elles sortent du
    programme, comme dans le mixer ; le trait, lui, est au style.
@@ -24,40 +29,110 @@
 
 /* --- le rail ------------------------------------------------------------- */
 .mass-rail{
-  display:flex; flex-direction:column; gap:var(--s-5);
+  display:flex; flex-direction:column; gap:var(--s-4);
   max-height: calc(100vh - 120px); overflow:auto;
   padding-right: var(--s-2);
 }
-.mass-bloc{ border-top:1px solid var(--border); padding-top:var(--s-3); }
-.mass-bloc:first-child{ border-top:0; padding-top:0; }
-.mass-bloc__h{
-  display:flex; align-items:baseline; gap:var(--s-2);
-  margin-bottom:var(--s-2);
-}
-.mass-bloc__h .chip{ margin-left:auto; }
 .mass-note{
-  margin:var(--s-2) 0 0; font-size:var(--t-2xs); line-height:var(--lh-base);
+  margin:0; font-size:var(--t-2xs); line-height:var(--lh-base);
   color:var(--muted-foreground);
 }
 .mass-note.is-bas{ color:var(--destructive); }
 .mass-deux{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
 .mass-deux .btn{ width:100%; }
-/* La seed, dans la colonne du « Shuffle massing » qu'elle rejoue : le champ du
-   mixer, au même dessin. */
-.mass-seed{ grid-column:2; display:flex; align-items:center; }
-.mass-seed .segcap{ padding-inline:0 var(--s-2); }
-.mass-seed input{
-  flex:1 1 auto; min-width:0;
-  font:inherit; font-family:var(--font-mono); font-size:var(--t-xs);
-  padding:var(--s-1) var(--s-2); min-height:var(--ctl-h);
-  border:1px solid var(--border); border-radius:var(--radius-md);
-  background:var(--card); color:var(--foreground);
-}
 
-/* Les partis : une grille de boutons plutôt qu'une liste déroulante. On les
-   compare du regard, et l'on voit d'un coup combien il y en a. */
-.mass-partis{ display:flex; flex-wrap:wrap; gap:var(--s-1); }
-.mass-partis .btn{ font-size:var(--t-3xs); padding-inline:var(--s-2); }
+/* --- proposer : le geste de l'onglet, toujours visible ------------------------ */
+.mass-prop{ display:flex; flex-direction:column; gap:var(--s-2); }
+.mass-prop__h{ margin:0; font-size:var(--t-sm); font-weight:600; color:var(--foreground); }
+/* Le grand bouton de l'Atelier : l'icône, ce qu'il fait, ce qu'il garde. */
+.btn.mass-tir{
+  justify-content:flex-start; gap:var(--s-3); width:100%; text-align:left;
+  padding:var(--s-2) var(--s-3); white-space:normal;
+}
+.mass-tir__t{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.mass-tir__t b{ font-size:var(--t-sm); font-weight:600; color:var(--foreground); }
+.mass-tir__t span{ font-size:var(--t-2xs); color:var(--muted-foreground); }
+.btn--primary.mass-tir .mass-tir__t b{ color:var(--primary-foreground); }
+.btn--primary.mass-tir .mass-tir__t span{ color:color-mix(in srgb, var(--primary-foreground) 68%, transparent); }
+.mass-nav{ display:flex; align-items:center; gap:var(--s-1); }
+.mass-nav__r{
+  flex:1 1 auto; display:flex; align-items:center; justify-content:center; gap:var(--s-1);
+  min-height:var(--ctl-h); border-radius:var(--radius-md); background:var(--muted);
+  font-size:var(--t-xs); color:var(--muted-foreground); white-space:nowrap;
+}
+.mass-nav__r b{ color:var(--foreground); font-weight:600; }
+/* La seed, à côté du classement qu'elle a produit : le champ du mixer, au même dessin. */
+.mass-seed{ display:flex; align-items:center; gap:var(--s-1);
+  padding-inline:var(--s-2); min-height:var(--ctl-h);
+  border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); }
+.mass-seed .segcap{ padding:0; font-size:var(--t-2xs); color:var(--muted-foreground); }
+.mass-seed input{
+  inline-size:4.5em; min-width:0; border:0; background:none; padding:0;
+  font:inherit; font-family:var(--font-mono); font-size:var(--t-xs); color:var(--foreground);
+}
+.mass-seed input:focus-visible{ outline:none; }
+.mass-seed:focus-within{ border-color:var(--ring); }
+
+/* --- la chaîne : une étape par temps du générateur ----------------------------- */
+.mass-etapes{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--s-2); }
+.mass-etape > details{
+  border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--card);
+}
+.mass-etape > details[open]{ border-color:var(--border-strong); }
+.mass-etape__s{
+  display:flex; align-items:center; gap:var(--s-3); list-style:none; cursor:pointer;
+  padding:var(--s-2) var(--s-3); min-height:var(--s-7); box-sizing:border-box;
+  border-radius:var(--radius-lg);
+}
+.mass-etape__s::-webkit-details-marker{ display:none; }
+.mass-etape__s:hover{ background:var(--accent); }
+.mass-etape__s:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; }
+.mass-etape__num{
+  flex:none; inline-size:var(--s-5); block-size:var(--s-5); display:grid; place-items:center;
+  border:1px solid var(--border-strong); border-radius:var(--radius-full);
+  font-size:var(--t-2xs); color:var(--soft-foreground);
+}
+details[open] > .mass-etape__s .mass-etape__num{
+  background:var(--primary); border-color:var(--primary); color:var(--primary-foreground);
+}
+.mass-etape__t{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.mass-etape__t b{ font-size:var(--t-sm); font-weight:600; color:var(--foreground); }
+.mass-etape__t span{ font-size:var(--t-2xs); color:var(--muted-foreground);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mass-etape__e{ flex:none; display:flex; align-items:center; gap:var(--s-1); }
+.mass-etape__s > .ic--chevron{ flex:none; color:var(--muted-foreground);
+  transition:transform var(--dur-2) var(--ease-out); }
+details[open] > .mass-etape__s > .ic--chevron{ transform:rotate(180deg); }
+.mass-etape__note{ font-size:var(--t-md); color:var(--ok); }
+.mass-etape__note.is-bas{ color:var(--destructive); }
+.mass-etape__b{
+  display:flex; flex-direction:column; gap:var(--s-2);
+  padding:var(--s-3); border-top:1px solid var(--border-soft);
+}
+.mass-etape__b:empty{ display:none; }
+/* Le renvoi au volet Contraintes, en pied d'étape. */
+.btn.mass-renvoi{ align-self:flex-start; padding-inline:var(--s-1); font-size:var(--t-2xs); color:var(--muted-foreground); }
+@media (prefers-reduced-motion: reduce){ .mass-etape__s > .ic--chevron{ transition:none; } }
+
+/* Les partis : une tuile par parti, sa figure en plein. On les compare du
+   regard, et l'on voit d'un coup combien il y en a. */
+.mass-partis{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:var(--s-1); }
+.mass-parti{
+  position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:var(--s-1); min-block-size:calc(var(--s-7) + var(--s-1)); padding:var(--s-1);
+  font:inherit; font-size:var(--t-2xs); color:var(--soft-foreground); cursor:pointer;
+  background:var(--background); border:1px solid var(--border); border-radius:var(--radius-md);
+  transition:color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+.mass-parti:hover{ color:var(--foreground); border-color:var(--border-strong); }
+.mass-parti[aria-pressed="true"]{ color:var(--foreground); background:var(--accent); border-color:var(--foreground); }
+.mass-parti:focus-visible{ outline:2px solid var(--ring); outline-offset:1px; }
+/* En Auto, le parti retenu : un point, et son cadre à la couleur de la sélection. */
+.mass-parti.is-retenu{ color:var(--foreground); border-color:var(--ring); }
+.mass-parti.is-retenu::after{
+  content:""; position:absolute; inset-block-start:var(--s-1); inset-inline-end:var(--s-1);
+  inline-size:calc(var(--s-1) * 1.5); block-size:calc(var(--s-1) * 1.5); border-radius:var(--radius-full); background:var(--ring);
+}
 /* Les étages montrés : une piste fine, la plage pleine entre deux poignées, un
    cran par étage et son nom dessous — rien d'autre. Tout glisse par transform :
    la plage se pose d'un cran à l'autre sans rien remettre en page. La piste et
@@ -127,10 +202,37 @@
   display:flex; justify-content:space-between; gap:var(--s-2);
   font-size:var(--t-3xs); color:var(--muted-foreground);
 }
-.mass-sous{ margin:var(--s-4) 0 var(--s-2); }
-.mass-bloc__h--soft{ margin-top:var(--s-3); }
+/* Un groupe dans une étape : Composition, Architecture. */
+.mass-sous{ margin:0; font-size:var(--t-2xs); font-weight:600; color:var(--soft-foreground); }
+.mass-bloc__h--soft{ display:flex; align-items:baseline; gap:var(--s-2); margin-top:var(--s-2); }
 .mass-bloc__h--soft .btn{ margin-left:auto; }
 .mass-sel__l{ margin:0; font-size:var(--t-2xs); color:var(--soft-foreground); }
+/* Les infos du contrôle, repliées : elles n'attendent aucune correction. */
+.mass-infos > summary{ cursor:pointer; font-size:var(--t-2xs); color:var(--muted-foreground); padding-block:var(--s-1); }
+.mass-infos > summary:hover{ color:var(--foreground); }
+
+/* L'orientation : une pastille d'état, le nom, ce qu'elle lit. */
+.mass-ori{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--s-2); }
+.mass-ori__i{ display:flex; gap:var(--s-2); align-items:baseline; }
+.mass-ori__p{
+  flex:none; inline-size:calc(var(--s-1) * 2); block-size:calc(var(--s-1) * 2); border-radius:var(--radius-full);
+  background:var(--ok); transform:translateY(1px);
+}
+.mass-ori__i.is-warn .mass-ori__p{ background:var(--warn); }
+.mass-ori__i.is-soft .mass-ori__p{ background:none; border:1.5px solid var(--muted-foreground); box-sizing:border-box; }
+.mass-ori__t{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.mass-ori__t b{ font-size:var(--t-xs); font-weight:500; color:var(--foreground); }
+.mass-ori__t span{ font-size:var(--t-2xs); color:var(--muted-foreground); }
+
+/* Le jugement : une barre par axe, à l'échelle de 0 à 100 %. */
+.mass-axe{ display:grid; grid-template-columns:minmax(0, 1fr) 30% 3.2em; align-items:center; gap:var(--s-2);
+  font-size:var(--t-2xs); color:var(--soft-foreground); }
+.mass-axe__n{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mass-axe__b{ block-size:var(--s-1); border-radius:var(--radius-full); background:var(--muted); overflow:hidden; }
+.mass-axe__b i{ display:block; block-size:100%; background:var(--foreground); border-radius:inherit; }
+.mass-axe__s{ text-align:right; color:var(--foreground); }
+
+
 
 /* Le bilan : demandé, posé, écart. Trois colonnes de chiffres alignés — c'est
    la question à laquelle l'outil doit répondre à tout moment. */
@@ -181,11 +283,43 @@
 .mass-al__r{ color:var(--muted-foreground); font-size:var(--t-3xs); }
 
 /* --- les deux vues ------------------------------------------------------- */
+.mass-main{ min-width:0; display:flex; flex-direction:column; gap:var(--s-3); }
+/* La barre de ce qu'on regarde : couleurs, étages montrés, recadrage. */
+.mass-barre{ display:flex; align-items:center; flex-wrap:wrap; gap:var(--s-2) var(--s-4); }
+.mass-barre__et{ display:flex; align-items:center; gap:var(--s-2); }
+.mass-barre__l{ font-size:var(--t-2xs); color:var(--muted-foreground); }
+.mass-barre .mass-plage{ margin-top:0; inline-size:13rem; }
 .mass-vues{ display:grid; gap:var(--s-4); }
 @media (min-width: 1180px){
   .mass-vues{ grid-template-columns:1fr 1fr; }
 }
 .mass-vue{ min-width:0; }
+.mass-vue__cadre{ position:relative; }
+.mass-barre .spacer{ flex:1 1 auto; }
+
+/* Le volume choisi : une carte posée sur le plan, dans le coin opposé au
+   volume (`is-droite`, `is-haut`). Elle défile si l'Architecture dépliée la
+   rend plus haute que le plan. */
+.mass-carte{
+  position:absolute; inset-inline-start:var(--s-2); inset-block-end:var(--s-2);
+  inline-size:min(20rem, calc(100% - var(--s-4)));
+  max-block-size:calc(min(62vh, 560px) - var(--s-4)); overflow:auto;
+  background:var(--popover); color:var(--popover-foreground);
+  border:1px solid var(--ring); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
+}
+.mass-carte.is-droite{ inset-inline-start:auto; inset-inline-end:var(--s-2); }
+.mass-carte.is-haut{ inset-block-end:auto; inset-block-start:var(--s-2); }
+.mass-carte__c{ display:flex; flex-direction:column; gap:var(--s-2); padding:var(--s-2) var(--s-3) var(--s-3); }
+.mass-carte__h{ display:flex; align-items:center; gap:var(--s-2); }
+.mass-carte__h .btn--icon:first-of-type{ margin-left:auto; }
+.mass-carte__id{
+  padding:1px var(--s-2); border-radius:var(--radius-sm); font-size:var(--t-xs); font-weight:600;
+  background:color-mix(in srgb, var(--ring) 22%, transparent); color:var(--foreground);
+}
+.mass-carte .mass-par{ margin-top:0; }
+.mass-carte__ar > summary{ cursor:pointer; font-size:var(--t-2xs); font-weight:600; color:var(--soft-foreground);
+  padding-block:var(--s-1); border-top:1px solid var(--border-soft); }
+.mass-carte__ar[open] > summary{ margin-bottom:var(--s-1); }
 .mass-vue__h{
   display:flex; align-items:baseline; gap:var(--s-2); margin-bottom:var(--s-2);
 }
@@ -259,11 +393,6 @@
 .plan-ech, .plan-nord{ fill:none; stroke:var(--muted-foreground); stroke-width:.35; }
 .plan-ech__t{ font-size:2.6px; fill:var(--muted-foreground); font-family:var(--font-mono); }
 
-/* Le score de la proposition à l'écran. */
-.mass-score{ display:flex; align-items:baseline; gap:var(--s-3); margin:var(--s-3) 0 0; flex-wrap:wrap; }
-.mass-score__n{ font-size:var(--t-lg); color:var(--ok); }
-.mass-score__n.is-bas{ color:var(--destructive); }
-.mass-score span{ font-size:var(--t-2xs); color:var(--soft-foreground); }
 
 /* --- les leviers du massing : le dé du mixer, et la valeur quand elle est figée */
 .mass-lev{ list-style:none; margin:0 0 var(--s-2); padding:0; display:flex; flex-direction:column; gap:var(--s-1); }
@@ -282,5 +411,4 @@ input.mass-lev__s{ inline-size:5.5em; text-align:right; }
 .plan-ar{ fill:none; stroke:var(--foreground); stroke-width:.25; pointer-events:none; }
 .plan-ar--puits{ fill:var(--f-eau); fill-opacity:.35; }
 .plan-ar--sous{ stroke-dasharray:1.2 .8; }
-.mass-archi{ display:grid; gap:var(--s-1); padding-top:var(--s-2); border-top:1px solid var(--border-soft); }
-.mass-archi__t{ margin:0; font-size:var(--t-3xs); text-transform:uppercase; letter-spacing:.06em; color:var(--muted-foreground); }
+.mass-archi{ display:grid; gap:var(--s-1); }
