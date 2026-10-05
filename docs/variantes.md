@@ -124,7 +124,7 @@ des filtres qui se cumulent, une recherche.
 
 | outil | règle |
 |---|---|
-| trier | note, chaque AXE du jugement (le plus économique, le mieux inséré…), date, nom, auteur, type de massing — dans un sens ou l'autre. Par défaut : la note, la meilleure d'abord |
+| trier | note, chaque AXE du jugement (le plus économique, le mieux inséré…), la part Typologie, date, nom, auteur, type de massing — dans un sens ou l'autre. Par défaut : la note, la meilleure d'abord |
 | filtrer | note (de… à…), auteur, état (à jour · périmées), date (24 h · 7 · 30 jours), type de massing, origine (recherche auto · à la main) |
 | chercher | le nom, l'auteur, le type, les étiquettes |
 
@@ -177,7 +177,10 @@ ce qu'une variante périmée doit montrer.
 
 Elle porte trois familles de choses :
 
-- **ce qui rejoue** — les deux graines, le parti, et l'instantané de `store.js`.
+- **ce qui rejoue** — les trois graines (programme, massing, typologies), le parti, et
+  l'instantané de `store.js`. La seed des typologies est dans l'instantané (`typo`) ; la
+  miniature la répète (`thumbnail.typo`) pour que le modal la montre sans tirer l'état — une
+  variante d'avant revient à la seed 1 ;
   Les graines suffiraient à reconstruire une composition TIRÉE ; l'état complet
   est là pour celle qu'on a RETOUCHÉE à la main, et qu'aucune graine ne retrouve ;
 - **ce qui se trie** — note, niveaux, corps, surfaces, en colonnes et non en
@@ -203,8 +206,9 @@ l'enregistrement sur l'appareil, et une variante. Les séparer aurait fait deux
 vérités.
 
 **Le tirage est reproductible**, et ce n'est pas une promesse en l'air : il n'y a
-aucun `Math.random` hors de `src/core/rand.js`, et les deux tirages ont deux
-graines séparées (`curSeed` pour le programme, `MASS.graine` pour le massing).
+aucun `Math.random` hors de `src/core/rand.js`, et les trois tirages ont trois
+graines séparées (`curSeed` pour le programme, `MASS.graine` pour le massing,
+`TYPO.graine` pour les typologies).
 
 ## La péremption
 
@@ -272,32 +276,50 @@ recherche, jamais le jury — : sans cela la variante ne se reproduirait pas.
 
 Tirer cinquante fois à la main pour garder les trois meilleures, c'est le geste
 qu'on faisait déjà. Le bouton **Recherche automatique**, sous « Enregistrer »,
-le fait seul. On y décide quatre choses :
+le fait seul. Elle **obéit aux dés** : ce qui est fixé au mixer ou au Massing
+reste fixé, ce qui est libre se rebat. La grille « Les partis essayés » a
+disparu — elle doublait le levier parti, et deux endroits pour une décision en
+faisaient deux vérités. On y décide :
 
 | on décide | par défaut |
 |---|---|
-| ce qu'on rebat : le **programme** (répartition du mixer, pile comprise), le **massing**, ou les deux | les deux |
-| les partis essayés — aucun coché : celui à l'écran ; plusieurs : on tourne sur la liste | aucun |
+| ce qu'on rebat : le **programme**, le **massing**, les **typologies** — une ou plusieurs | les trois |
+| les typologies essayées **par volume**, quand elles sont cochées avec un volume | 5 |
 | combien d'essais, et combien on en garde | 30 · 3 |
-| ce qu'on garde : **sans erreur rouge** (mixer et massing), **un seul par parti** | oui · oui |
+| ce qu'on garde : **sans erreur rouge** (mixer, massing, typologies), **un seul par parti** | oui · oui |
+
+Sous chaque case cochée, en lecture seule, **l'essentiel de son Shuffle**, lu là
+où il se règle : la pile libre ou fixée, les postes liés, les cotes fixées, la
+part du hasard (mixer) ; le parti, le second temps, les leviers libres et ceux
+qui sont fixés, les compositions essayées, la part du hasard (Massing) ; ce que
+la seed change et les cotes réglées aux Typologies. Les seeds à l'écran sont
+dites, et remises à la fin.
+
+**Pour un même volume, il y a une bonne et une mauvaise typologie.** Cochées
+avec le programme ou le massing, les typologies sont essayées sur CHAQUE volume
+tiré — cinq seeds par défaut, notées sans remesurer le massing
+(`mass/mesures.js — renoterTypo()`) — et le volume garde la meilleure : moins
+d'erreurs rouges d'abord (la scène collée à la salle de sport, que la seed
+change), puis la note. Il est ensuite comparé aux autres volumes avec elle.
+Cochées seules, chaque essai est une typologie du massing à l'écran : le parti
+ne change pas, « un seul par parti » se tait, et il faut des volumes posés.
 
 On garde les meilleures **notes du jugement** (`data/jugement.js — noter()`), sur
-100 ; à note égale, la moins fautive. Le générateur cherche par l'orientation, le
-jugement classe ce qu'il trouve. La recherche,
-elle, trie ce que le générateur a rendu, et c'est exactement ce qu'on faisait
-à l'œil.
+100, plans des Typologies compris ; à note égale, la moins fautive. Le générateur
+cherche par l'orientation, le jugement classe ce qu'il trouve.
 
-- **Elle ne connaît pas d'autre tirage que les deux boutons** : `repartir()` et
-  `genMass()`. Une variante trouvée est une variante qu'on aurait pu tirer
-  soi-même, et elle se rejoue par ses graines.
+- **Elle ne connaît pas d'autre tirage que les trois boutons** : `repartir()`,
+  `genMass()` et la seed des Typologies. Une variante trouvée est une variante
+  qu'on aurait pu tirer soi-même, et elle se rejoue par ses graines.
 - **Elle travaille sur l'état vivant et le remet tel quel** à la fin, graine du
-  programme comprise : chercher n'est pas composer. Ce qu'on toucherait pendant
-  la recherche serait donc perdu — le formulaire le dit.
+  programme et seed des typologies comprises : chercher n'est pas composer. Ce
+  qu'on toucherait pendant la recherche serait donc perdu — le formulaire le dit.
 - **Les résultats vont au groupe**, en un seul envoi, avec l'étiquette
   `algo search` dans la colonne `tags` (migration `20260928120000`). Le panneau
   les marque de l'étiquette `algo`, et le filtre « Origine » les sépare.
-- Un essai coûte près d'une seconde, presque tout au massing. La page reste
-  vivante entre deux essais, la progression se lit dans le panneau, et
+- Un essai qui tire un volume coûte près d'une seconde, presque tout au massing ;
+  une typologie, quelques millisecondes. La page reste vivante entre deux essais,
+  la progression nomme le parti et la seed typologie de chaque retenue, et
   « Arrêter » garde ce qui a été trouvé jusque-là.
 
 En « Auto », `MASS.parti` vaut `auto` : c'est la composition (`MASS.vol.parti`)

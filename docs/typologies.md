@@ -3,11 +3,71 @@
 Dessiner les plans de chaque niveau DANS les volumes du Massing.
 
 ```
-src/typo/plans.html   la page des plans : le générateur (PG), le mobilier, le rail, la planche
-src/typo/donnees.js   ce que la page lit : la pile du mixer, les volumes du massing, les liens actifs
+src/typo/gen.js       le générateur de plans (PG) : `creerPG(D)`, `planifier(D)` — pur, hors de la page
+src/typo/mesures.js   ce qu'on lit sur le plan : `lirePlans(D)`, `evaluerTypo(vols, ponts)`, `typoVerdict()`
+src/typo/plans.html   la page des plans : le dessin, le mobilier, le rail, la planche
+src/typo/donnees.js   ce que le générateur lit : la pile du mixer, les volumes (ceux à l'écran, ou ceux
+                      qu'on lui passe), les liens actifs
 src/typo/etat.js      ce qu'elle enregistre : sa seed, ses cotes de pièces — rien d'autre
-src/views/render.js   `typoHote()` : ce que l'onglet et le Rendu donnent à la page avant de la charger
+src/views/render.js   `typoHote()` : ce que l'onglet et le Rendu donnent à la page avant de la charger —
+                      données, générateur, relevé, évaluation
 ```
+
+## Le plan se mesure hors de la page
+
+Le générateur vivait en script dans `plans.html` : seul l'iframe savait tirer un plan, et rien
+d'autre ne pouvait le mesurer. Il est dans `gen.js`, à l'identique — une sonde a comparé l'ancien
+et le nouveau sur les douze partis et cinq seeds, 180 niveaux, sans un écart. La page le reçoit de
+son hôte (`parent.typoPG`), comme ses données ; le jugement, la recherche, les variantes et node
+tirent le même plan qu'elle.
+
+Le contrôle de la page n'écrit plus que ses phrases : les nombres viennent de `lirePlans()`
+(`parent.typoLecture`), le relevé même que le jugement lit. Le test du passage d'un couloir vers le
+corps voisin est dans `gen.js` (`passage()`) : le dessin y ouvre les pignons, la mesure ne compte
+pas ce bout comme un bout de couloir.
+
+## Le score des typologies
+
+Pour un même volume, il y a une bonne et une mauvaise typologie. Les plans donnent des MESURES
+(`donnees.js — MESURES`, `de:"typo"`), et le jury les note comme celles du mixer et du massing :
+elles entrent par `mass/mesures.js — evaluer()`, le seul point de jonction. Le rail du Massing, la
+page Paramètres, les variantes et le classement de `genMass()` les reçoivent de là — chaque
+candidate du générateur est planifiée dans SES volumes, à la seed typologie du moment.
+
+| mesure | ce qu'elle lit | critère |
+|---|---|---|
+| `classesSoleil` | part des salles de classe dont la façade de jour regarde de l'est au sud-sud-ouest (½ du sud-ouest à l'ouest) | d33, à la place de la façade du corps |
+| `liensPlan` | part des liens du schéma tenus à 15 m bord à bord, au même niveau | prox, à la place du « même niveau » du mixer |
+| `circPlan` | couloirs, paliers et noyaux dessinés, sur le bâti | g59, à la place de l'estimation |
+| `murBruyant` | mur partagé entre une classe et une pièce bruyante, UAPE ou technique | calme, à la place des niveaux mêlés |
+| `noyaux` | noyaux escalier + ascenseur | d42, noté à la main jusqu'ici |
+| `grappes` | part des classes en suites de 3 ou 4, même bande, même couloir | d32, noté à la main jusqu'ici |
+| `techGroupes` | groupes de locaux techniques qui ne se touchent pas | d43, noté à la main jusqu'ici |
+| `posePlan` | part du programme posée dans les plans | « Tout le programme tient dans les plans », nouveau |
+| `couloirsJour` | part des bouts de couloir sur une façade | « Couloirs éclairés à leurs bouts », nouveau |
+
+Les règles viennent des directives vaudoises (2002, 1-4P), de VS 400.200, de l'AEAI 16-15, des
+Raumstandards de Zurich et des rapports de jury de Broc, Vignettaz, Praroman, Matran, Cugy et
+Suhr. Ne sont retenues que celles que la SEED déplace : une règle que le volume seul décide — la
+profondeur d'une classe, le front des vestiaires — ne départage pas deux typologies.
+
+La **part Typologie** (`jugement.js — scoreTypo()`) est la moyenne, au poids de chacun, de ces
+critères. Ce n'est pas un axe : elle ne change pas la note, elle la lit. Au départ, d'une seed à
+l'autre, elle va de 51 à 63 % pour une note générale de 63 à 64 — les critères du plan pèsent
+peu dans les six axes ; leurs poids se règlent dans Paramètres.
+
+**Les écarts au cadre** (onglet typologie, sévérité lue sur le tag) : `scene-sport` (Intangible,
+rouge — la seed le change : 9 seeds sur 20 ne collent pas la scène), `typo-pose`,
+`noyaux-empiles`, `fuites` et `sia500` (Imposés, ambre). L'évacuation et l'accessibilité sont
+opposables et pourtant Imposées : le générateur pose ses noyaux sans tenir les 35 m ni desservir
+chaque sous-sol, et aucune seed n'y change rien — le noyau suit le volume. Rouges, elles
+rendaient presque toute variante invalide et vidaient la recherche. Elles repassent Intangibles
+quand les noyaux sauront les tenir. Un écart ne jette aucun volume : `genMass()` ne garde que sa
+garde du massing.
+
+**Le programme qui ne tient pas** : 160 m² (barre) à 1'180 m² (cour) selon le parti, à toute
+seed — le massing dimensionne ses volumes sur la circulation estimée, les plans en dessinent
+davantage. Noté (`posePlan`) et notifié (`typo-pose`) ; le corriger est au massing.
 
 ## Chaque onglet tire chez lui
 
@@ -70,8 +130,10 @@ l'hôte, et en reprend les composants :
 
 - **le rail en chaîne** — Proposer en tête (Shuffle typologie, le nombre de volumes lus, la seed),
   puis les étapes repliables, leur état à droite : 1 · Bilan du niveau (part posée, ce qui ne tient
-  pas), 2 · Contrôle (toute la pile ; ouvert dès qu'un point est à revoir), 3 · Familles ;
-  Emporter au pied (Copier le SVG) ;
+  pas), 2 · Évaluation (la note du bâtiment entier à cette seed, rouge s'il est invalide ; la part
+  Typologie ; chaque critère du plan, sa mesure et sa barre — `parent.typoEvaluation()`, refaite à
+  chaque Shuffle), 3 · Contrôle (toute la pile ; ouvert dès qu'un point est à revoir),
+  4 · Familles ; Emporter au pied (Copier le SVG) ;
 - **la barre** de ce qu'on regarde — niveau, couleurs, mobilier · cotes · site, cadrage — une
   préférence de l'appareil (`localStorage`, `typo-saxon`), pas une décision de projet ;
 - **la pièce cliquée** dans une carte posée sur le plan, au coin opposé au clic : sa largeur au
@@ -101,13 +163,18 @@ fixe ; le pavage règle la FORME, dans les limites de `RULES.plan.piece` et `RUL
 Le prix est dit, pas caché : le dégagement et le sas sont du sol que les pièces ne prennent
 pas, donc un plan plus long, plus de sol libre et plus de pièces au bac.
 
-**Au contrôle, trois lignes du cadre** : la scène collée à la salle de sport (mur contre mur, au
-même niveau — `scene-sport`), toutes les pièces ouvertes sur un couloir (`couloir-acces`,
-VÉRIFIÉ pièce par pièce dans les blocs : la face par où l'on entre ne touche aucune autre
-pièce) et pas de sol inutilisé dans un corps (`sol-vide`). Une ligne de plus, « proportions
-vivables », lit `RULES.plan.piece` et `pmr` : ce qu'elle signale vient d'une bande trop mince
-(un corps de 14 m à deux rangs) ou d'un très grand local — c'est au Massing d'y répondre. La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
-est déclarée au cadre mais pas encore lue : à construire.
+**Au contrôle, les lignes du cadre** : la scène collée à la salle de sport (mur contre mur, au
+même niveau — `scene-sport`), l'évacuation (`fuites`), un noyau à chaque niveau (`sia500`), les
+noyaux empilés, le programme posé, pas de sol inutilisé dans un corps (`sol-vide`) — tous lus
+sur le plan par `typo/mesures.js — evaluerTypo()` —, et toutes les pièces ouvertes sur un couloir
+(`couloir-acces`, VÉRIFIÉ pièce par pièce dans les blocs : la face par où l'on entre ne touche
+aucune autre pièce). Une ligne de plus, « proportions vivables », lit `RULES.plan.piece` et
+`pmr` : ce qu'elle signale vient d'une bande trop mince (un corps de 14 m à deux rangs) ou d'un
+très grand local — c'est au Massing d'y répondre. La **trame** de placement des pièces (`trame`,
+Imposé, 1,20 m) est déclarée au cadre mais pas encore lue : à construire.
+
+La seed est la troisième de la recherche automatique : elle y est rebattue par volume
+(`docs/variantes.md`), et chaque variante la garde (`snapshot().typo`, `thumbnail.typo`).
 
 ## Le dessin suit les conventions d'un plan d'architecte
 

@@ -13,6 +13,7 @@ src/data/recherche.js    GÉNÉRATEUR   essais, seeds, part du hasard
 src/data/donnees.js      DONNÉES      nos hypothèses, et le catalogue des mesures
 src/mass/mesures.js      ce qu'on lit sur une volumétrie : écarts au cadre, qualités, mesures brutes
 src/mix/mesures.js       ce qu'on lit sur une répartition : les mesures brutes
+src/typo/mesures.js      ce qu'on lit sur le plan des Typologies : mesures brutes, écarts au cadre
 src/views/parametres.js  la page, et les volets « Contraintes » du mixer et du massing
 styles/parametres.css    son dessin
 ```
@@ -159,8 +160,10 @@ préférences (Prioritaire) : la salle de sport, la piscine, l'UAPE et l'adminis
 chaque hall comme entrée de sa famille, les classes au plus au 2ᵉ étage, la distance incendie
 entre bâtiments. Retirés : le niveau vide sous un niveau chargé, l'existant, les étages au plus,
 l'unité pédagogique, le nettoyage et la conciergerie. Il y a aussi, au cadre, ce que le massing ne sait
-pas encore lire (voies d'évacuation, SIA 500, séisme, Minergie, rendu) : leur onglet est celui
-qui les vérifiera.
+pas encore lire (séisme, Minergie, rendu) : leur onglet est celui qui les vérifiera. Les voies
+d'évacuation et SIA 500 se lisent désormais sur les plans des Typologies (`typo/mesures.js`),
+avec les noyaux empilés et le programme posé — Imposés, donc ambre : le générateur de plans ne
+sait pas encore tenir les 35 m, et aucune seed n'y change rien (`docs/typologies.md`).
 
 **Ce qui ne vient pas du générateur n'est jamais supprimé** — une composition retouchée, un
 bâtiment extérieur, une variante qu'un changement de cadre rend invalide. Il est noté, et ses
@@ -244,13 +247,25 @@ Une **note générale** donne un classement unique ; chaque axe donne un **sous-
 (tri « Axe — économie générale »… dans le panneau des variantes). Changer un poids reclasse
 tout, sans rien regénérer.
 
+**Le plan des Typologies** donne ses propres mesures (`de:"typo"`), lues par `evaluer()` à la
+seed typologie du moment : pour un même volume, la bonne et la mauvaise typologie. Quatre critères
+qui lisaient une ESTIMATION au mixer ou au massing lisent désormais le plan — d33 (les classes
+elles-mêmes, et non la façade du corps), prox (bord à bord, et non « au même niveau »), g59 (la
+circulation dessinée), calme (le mur partagé, et non les niveaux mêlés) ; trois critères notés à
+la main deviennent mesurés — d42 (les noyaux), d32 (les grappes), d43 (les locaux techniques) ; deux
+sont nouveaux — tout le programme tient dans les plans, les couloirs éclairés à leurs bouts. Les
+mesures `soleil`, `adjTenues`, `circPart`, `bruitMixte` restent : l'orientation les lit. La
+**part Typologie** (`scoreTypo()`) est la moyenne pondérée de ces critères — un sous-classement
+(tri « Typologie »), pas un axe : elle lit la note, elle ne la change pas.
+
 ## Chaque variante garde ses mesures
 
-`criteria` vaut `{ v:3, mes, cadre:{ ko, notif }, main }` : les **mesures brutes** du bâtiment
+`criteria` vaut `{ v:4, mes, cadre:{ ko, notif }, main }` : les **mesures brutes** du bâtiment
 (`donnees.js — MESURES`), ses écarts au cadre, ses notes manuelles. La note se refait côté client
 avec le jury du jour (`net/variantes.js — noteDe()`) ; la colonne `score` ne garde que la note du
 jour de l'enregistrement, pour le premier tri de la base. Une variante d'avant n'a pas de mesures
-— sa note est en italique, « Reload » la mesure et la renote, et garde ses notes manuelles.
+— sa note est en italique, « Reload » la mesure et la renote, et garde ses notes manuelles. Une v3
+a ses mesures mais pas celles du plan : notée sur ce qu'elle a, en italique aussi, jusqu'au Reload.
 
 Aucune migration : les mesures et les notes manuelles vont dans `criteria` (jsonb), les lignes
 du groupe dans `team_settings.doctrine` (jsonb, le nom de la colonne est resté).

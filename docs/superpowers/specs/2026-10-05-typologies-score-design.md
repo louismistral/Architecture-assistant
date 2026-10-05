@@ -109,11 +109,17 @@ lit. Elle s'affiche avec l'évaluation et devient un tri du panneau des variante
 
 | ligne | tag | écart |
 |---|---|---|
-| `fuites` | Intangible (AEAI 16-15) | plus de 35 m vers un escalier (50 m vers deux) ; un étage de plus de 900 m² à un seul noyau |
-| `sia500` | Intangible | un niveau sans noyau escalier + ascenseur |
+| `fuites` | ~~Intangible~~ Imposé (AEAI 16-15) — voir la décision ci-dessous | plus de 35 m vers un escalier (50 m vers deux) ; un étage de plus de 900 m² à un seul noyau |
+| `sia500` | ~~Intangible~~ Imposé — voir la décision ci-dessous | un niveau sans noyau escalier + ascenseur |
 | `scene-sport` | Intangible | le plan ne colle pas la scène à la salle de sport |
 | *nouveau* `noyaux-empiles` | Imposé | des noyaux décalés d'un niveau à l'autre |
 | *nouveau* `typo-pose` | Imposé | des pièces non posées (ambre) |
+
+**Décision à l'implémentation (Task 3).** Mesurés, `fuites` et `sia500` enfreignent sur 11 partis
+sur 12, à TOUTE seed (0 seed sur 20 ne les tient) : le noyau suit le volume, pas l'ordonnance.
+Intangibles, ils rendaient presque toute variante invalide et vidaient la recherche par défaut.
+Ils sont Imposés (ambre), non affaiblissables, jusqu'à ce que le générateur de plans pose ses
+noyaux pour tenir les 35 m — même principe que `typo-pose`.
 
 `fuites` et `sia500` (aujourd'hui « à vérifier — onglet typologie ») deviennent mesurés ;
 `couloir-acces` reste tenu par construction ; `trame` reste à construire.

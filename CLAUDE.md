@@ -66,7 +66,7 @@ fini doit se voir sur le site en ligne** — donc finir veut dire : sur `main`.
 3. **Travailler**, en s'aidant des plugins et skills utiles à la tâche.
    Les plugins du projet sont déclarés dans `.claude/settings.json`, les skills copiés
    dans `.claude/skills/` — toute session, locale ou cloud, les reçoit.
-4. **Vérifier** — il n'y a pas de build : les trois snapshots de la section *Vérifier* en
+4. **Vérifier** — il n'y a pas de build : les quatre snapshots de la section *Vérifier* en
    tiennent lieu. S'ils ne passent pas, on ne va pas plus loin.
 5. **Commiter, puis se rebaser sur le dernier `main`** — `git fetch origin main`,
    `git rebase origin/main`, résoudre les conflits (`site.js` : voir plus haut), **rejouer les
@@ -239,8 +239,9 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
     `src/data/donnees.js`.
   Le TAG d'une ligne (Intangible, Imposé, Prioritaire, Souhaité, Indicatif) se lit dans l'état,
   jamais en dur : `tagDe()`, `enVigueur()`, `force()`.
-- **Une mesure du bâtiment** : `src/mass/mesures.js` ou `src/mix/mesures.js`, et son entrée
-  dans `MESURES` (`donnees.js`). Le jugement ne lit QUE des mesures.
+- **Une mesure du bâtiment** : `src/mass/mesures.js`, `src/mix/mesures.js` ou
+  `src/typo/mesures.js` (le plan des Typologies), et son entrée dans `MESURES` (`donnees.js`).
+  Le jugement ne lit QUE des mesures ; elles se joignent dans `mass/mesures.js — evaluer()`.
 - **Une adjacence** : `src/data/schema.js` seul — le lien, le pôle du nœud, et les postes qu'il
   désigne (`nd.k`). Ni surface ni coordonnée : la surface se lit dans `program.js` par cette
   table, la géométrie est déduite par la vue. `LIENS_ORPHELINS` signale tout nom de poste qui ne
@@ -281,7 +282,7 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
 
 ## Vérifier
 
-Aucun test automatisé. Ces trois snapshots en tiennent lieu — **à jouer avant tout push**, et
+Aucun test automatisé. Ces quatre snapshots en tiennent lieu — **à jouer avant tout push**, et
 surtout après une résolution de conflit.
 
 Ils fixent la seed (`seed(1)`) avant de répartir : même « ordonné » (`alea:false`), le tirage
@@ -347,6 +348,31 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
   j.axes.forEach(function(a){ console.log(a.n.padEnd(52), a.s == null ? '—' : Math.round(100 * a.s) + ' %'); });
   Object.keys(ev.qualites).forEach(function(id){
     console.log('  qualité', id.padEnd(8), N[ev.qualites[id].niv].padEnd(12), ev.qualites[id].txt);
+  });
+});"
+```
+
+Ce que disent les PLANS des Typologies, à volume égal, d'une seed à l'autre — la note, la part
+Typologie, chaque mesure du plan et ses écarts au cadre. La note doit bouger avec la seed :
+pour un même volume, il y a une bonne et une mauvaise typologie (`docs/typologies.md`) :
+
+```bash
+node --input-type=module -e "
+Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
+             import('./src/mass/model.js'),import('./src/mass/mesures.js'),
+             import('./src/typo/etat.js'),import('./src/data/jugement.js'),
+             import('./src/core/rand.js')]).then(([S,G,M,E,T,J,R])=>{
+  R.seed(1);
+  S.repartir({ alea:false, etages:true });
+  M.massSet('parti','auto');
+  M.massVols(G.genMass(11));
+  [1,2,3,4,5].forEach(function(g){
+    T.TYPO.graine = g;
+    var ev = E.evaluationCourante(), m = ev.mes;
+    console.log('typo', g, '· jugement', ev.jugement.total, '· typologie', Math.round(100 * J.scoreTypo(ev.jugement)) + ' %',
+      '· classes', m.classesSoleil, '· liens', m.liensPlan, '· circ', m.circPlan, '· bruit', m.murBruyant,
+      '· noyaux', m.noyaux, '· grappes', m.grappes, '· tech', m.techGroupes, '· posé', m.posePlan, '· jour', m.couloirsJour,
+      '· écarts', ev.ecarts.filter(function(x){ return x.c === 'typo'; }).map(function(x){ return x.k; }).join(',') || '—');
   });
 });"
 ```
