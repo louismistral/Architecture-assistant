@@ -64,6 +64,10 @@
   border:1px solid var(--border);border-radius:var(--radius-lg);
   background:var(--card);overflow:hidden;
 }
+/* posés l'un sur l'autre : un seul cadre pour la pile, un filet entre deux niveaux */
+.mix-pile{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.mix-pile>.mix-fl{border:0;border-radius:0}
+.mix-pile>.mix-fl+.mix-fl{border-top:1px solid var(--border-strong)}
 .mix-fl.is-drop{border-color:var(--ring);box-shadow:inset 0 0 0 1px var(--ring)}
 .mix-fl__bar{
   display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);
@@ -146,15 +150,16 @@
    rive tombant exactement sur le cadre qui la borde — d'où les marges
    négatives, que `overflow:hidden` rattrape. */
 .mixblk__pcs{
-  flex:1 1 auto;min-height:0;display:grid;gap:0;
-  grid-auto-rows:1fr;align-content:stretch;
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:0;
   margin-inline:calc(-1 * var(--s-1));margin-bottom:-2px;
 }
 /* Une cellule = une pièce, à la surface unitaire du poste. Elle ne porte que
    ses deux traits de refend : celui de droite et celui du bas. Les quatre côtés
    auraient doublé chaque séparation, et le tireté d'une surface « à préciser »
    — même trait, autre sens — s'y serait perdu. */
+.mixpc__row{display:flex;flex:1 1 0;min-height:0;gap:inherit}
 .mixpc{
+  flex:1 1 0;
   border-right:1px dashed color-mix(in srgb, currentColor 50%, transparent);
   border-bottom:1px dashed color-mix(in srgb, currentColor 50%, transparent);
   cursor:grab;touch-action:none;
@@ -292,7 +297,7 @@
    Le niveau visé prend le filet de l'écart, les pièces en cause le portent.
    Lire un conflit et devoir ensuite chercher ses coupables dans la pile, c'est
    tout le travail laissé à faire. */
-.mix-fl.is-flagged{outline:2px solid var(--warn);outline-offset:3px;border-radius:var(--radius-md)}
+.mix-fl.is-flagged{outline:2px solid var(--warn);outline-offset:-2px;border-radius:var(--radius-md)}
 .mix-fl.is-flagged.is-e{outline-color:var(--destructive)}
 .mixblk.is-flag{outline:2px solid var(--warn);outline-offset:-2px;z-index:2}
 .mixblk.is-flag.is-e{outline-color:var(--destructive)}
@@ -433,7 +438,3 @@
 .mixblk__a{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Les poignées d'un bloc choisi : tirer le bord droit élargit les pièces, le
    bord bas les approfondit. */
-.mixblk__poignee{position:absolute;z-index:2;touch-action:none;background:var(--ring);opacity:.55}
-.mixblk__poignee:hover{opacity:1}
-.mixblk__poignee.is-e{top:0;right:0;width:6px;height:100%;cursor:ew-resize}
-.mixblk__poignee.is-s{left:0;bottom:0;height:6px;width:100%;cursor:ns-resize}

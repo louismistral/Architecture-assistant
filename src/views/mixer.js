@@ -33,6 +33,7 @@ import { dec, el, fmt } from "../core/format.js";
 import { CIRC, CIRCA, COULOIR, FMAP } from "../core/model.js";
 import { curSeed, parseSeed, seed, seedLabel } from "../core/rand.js";
 import { s as svg } from "../core/svg.js";
+import { squarify } from "../core/treemap.js";
 import { view } from "../core/viewstate.js";
 import { RULES } from "../data/rules.js";
 import { accept, unaccept } from "../mix/accept.js";
@@ -499,7 +500,10 @@ function drawStack(){
   /* Le niveau le plus haut en tête, le rez en bas, les sous-sols dessous :
      c'est la convention de coupe, la seule qu'un architecte lise sans
      traduire. */
-  for(var i = FLOORS.length - 1; i >= 0; i--) stackEl.appendChild(floorNode(i));
+  /* Les niveaux POSÉS l'un sur l'autre, sans écart : la pile est un bloc. */
+  var pile = el("div","mix-pile");
+  for(var i = FLOORS.length - 1; i >= 0; i--) pile.appendChild(floorNode(i));
+  stackEl.appendChild(pile);
   /* Le sol, pour que la pile se lise comme une coupe et non comme une liste. */
   stackEl.appendChild(el("div","mix-ground"));
   stackEl.appendChild(addRow("Creuser un sous-sol",
@@ -608,37 +612,35 @@ function paintFloor(host, i){
   var net = flNet(i), hors = horsAt(i), circ = flBuilt(i) - net;
   var plate = FLOORS[i] && FLOORS[i].plate > 0 ? FLOORS[i].plate : Infinity;
   var capH = isFinite(plate) ? plate * AIRE / W : 0;
-  var circH = circ * AIRE / W;
+  var netH = net * AIRE / W, circH = circ * AIRE / W, horsH = hors * AIRE / W;
 
   if(!bl.length){
-    host.style.height = Math.round(Math.max(capH, 34)) + "px";
+    host.style.height = "34px";
     host.appendChild(el("p","mix-empty","niveau vide — glisse une pièce ici"));
     return;
   }
 
-  /* À L'ÉCHELLE, ET NON AU PRORATA : chaque pièce est dessinée à ses cotes,
-     largeur × profondeur (`dimsDe`), au même mètre pour tous les niveaux
-     (√AIRE pixels par mètre). Les pièces d'un poste se rangent en grille, les
-     postes en rangées, famille par famille. Le pavage d'avant donnait à chaque
-     bloc la bonne surface mais une forme quelconque. */
-  var M = Math.sqrt(AIRE), PAS = 3;
-  function bande(list, y0){
-    if(!list.length) return 0;
-    var fl = famList(list), x = 0, y = y0, hr = 0;
-    fl.order.forEach(function(f){
-      fl.by[f].forEach(function(b){
-        var d = dimsDe(b.key), pw = d.w * M, ph = d.h * M;
-        /* la grille la plus carrée qui tienne dans la largeur du niveau */
-        var cols = Math.max(1, Math.min(b.q, Math.round(Math.sqrt(b.q * ph / pw)), Math.floor(W / pw) || 1));
-        var rows = Math.ceil(b.q / cols), bw = cols * pw, bh = rows * ph;
-        if(x > 0 && x + bw > W){ x = 0; y += hr + PAS; hr = 0; }
-        host.appendChild(blockNode(b, { x:x, y:y, w:bw, h:bh, cols:cols, d:d }));
-        x += bw + PAS; hr = Math.max(hr, bh);
+  /* UN RECTANGLE PLEIN : le niveau est un rectangle de sa surface bâtie, à
+     l'échelle commune (AIRE px² par m²), divisé en la surface de chaque poste
+     — famille par famille, puis poste par poste — et de sa circulation. Ni
+     goutte, ni trou, ni vide jusqu'à la ligne de plateau : la pile se lit comme
+     un empilement de surfaces. Les cotes d'une pièce (`dimsDe`) restent dites
+     sur le bloc : le massing et les Typologies les lisent. */
+  function bande(list, rect){
+    if(!list.length || rect.h <= 0) return;
+    var fl = famList(list);
+    squarify(fl.order.map(function(f){
+      var s = 0;
+      fl.by[f].forEach(function(b){ s += areaOf(b); });
+      return { key:f, v:s };
+    }), rect).forEach(function(c){
+      squarify(fl.by[c.key].map(function(b){ return { key:b.u, v:areaOf(b) }; }), c).forEach(function(r){
+        var b = blockOf(r.key);
+        if(b) host.appendChild(blockNode(b, Object.assign(r, { d:dimsDe(b.key) })));
       });
     });
-    return y + hr - y0;
   }
-  var netH = bande(bl.filter(function(b){ return !PMAP[b.key].hors; }), 0);
+  bande(bl.filter(function(b){ return !PMAP[b.key].hors; }), { x:0, y:0, w:W, h:netH });
   var horsL = bl.filter(function(b){ return PMAP[b.key].hors; });
   /* Hachurée, sans couleur de famille — comme sa ligne de légende au volet
      Surfaces, et comme le bloc qu'elle y occupe déjà. */
@@ -655,8 +657,9 @@ function paintFloor(host, i){
       + fmt(Math.round(circ)) + " m² · " + Math.round(circ / (net + circ) * 100) + " %"));
     host.appendChild(cb);
   }
-  var horsH = horsL.length ? bande(horsL, netH + circH + PAS) + PAS : 0;
-  host.style.height = Math.round(Math.max(capH, netH + circH + horsH, 34)) + "px";
+  if(!horsL.length) horsH = 0;
+  bande(horsL, { x:0, y:netH + circH, w:W, h:horsH });
+  host.style.height = Math.round(Math.max(netH + circH + horsH, 34)) + "px";
   if(horsH > 0){
     var sep = el("div","mix-hors");
     sep.style.top = (netH + circH).toFixed(1) + "px";
@@ -666,20 +669,20 @@ function paintFloor(host, i){
   }
 
   /* Après les blocs : le pavage remplit son rectangle sans laisser un pixel,
-     donc tout repère posé avant lui disparaît sous les blocs. */
-  /* Le dépassement se mesure sur la seule bande de l'enveloppe : la bande hors
-     enveloppe n'occupe aucun plateau, elle ne peut pas le dépasser. */
+     donc tout repère posé avant lui disparaît sous les blocs. Le niveau ne
+     s'allonge plus jusqu'au plateau : la ligne ne se dessine que là où le bâti
+     le dépasse, avec la bande de dépassement. */
   if(isFinite(plate) && net + circ > plate + 0.5 && netH + circH > capH + 0.5){
     var oz = el("div","mix-over");
     oz.style.top = capH.toFixed(1) + "px";
     oz.style.height = (netH + circH - capH).toFixed(1) + "px";
     host.appendChild(oz);
-  }
-  if(isFinite(plate) && capH > 6){
-    var cl = el("div","mix-cap");
-    cl.style.top = capH.toFixed(1) + "px";
-    cl.appendChild(el("span", null, "plateau · " + fmt(Math.round(plate)) + " m²"));
-    host.appendChild(cl);
+    if(capH > 6){
+      var cl = el("div","mix-cap");
+      cl.style.top = capH.toFixed(1) + "px";
+      cl.appendChild(el("span", null, "plateau · " + fmt(Math.round(plate)) + " m²"));
+      host.appendChild(cl);
+    }
   }
 }
 
@@ -734,17 +737,29 @@ function pieceGrid(b, r){
      dix-huit salles sur huit colonnes laissaient six cases vides, et la
      dernière rangée semblait inachevée. Un partage exact vaut donc un peu
      d'allongement : d'où le poids donné au reste. */
-  /* les colonnes sont celles de la grille à l'échelle (`r.cols`) : chaque
-     cellule est une pièce, à ses cotes */
-  var cols = r.cols || 1;
-  if(w / cols < PC_W || h / Math.ceil(b.q / cols) < PC_H) return null;
-  var g = el("div","mixblk__pcs");
-  g.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+  var cols = 1, best = Infinity, c, rw, cw, ch, sc;
+  for(c = 1; c <= b.q; c++){
+    rw = Math.ceil(b.q / c);
+    cw = w / c; ch = h / rw;
+    if(cw < PC_W || ch < PC_H) continue;
+    sc = Math.abs(Math.log(cw / ch)) + 1.2 * (c * rw - b.q) / b.q;
+    if(sc < best){ best = sc; cols = c; }
+  }
+  if(best === Infinity) return null;
+  /* Des RANGÉES, chacune haute à proportion de ses pièces : une dernière
+     rangée incomplète s'élargit sans laisser de case vide, et chaque pièce
+     garde la même surface. */
+  var g = el("div","mixblk__pcs"), row = null;
   for(var i = 0; i < b.q; i++){
+    if(i % cols === 0){
+      row = el("div","mixpc__row");
+      row.style.flexGrow = String(Math.min(cols, b.q - i));
+      g.appendChild(row);
+    }
     var c = el("span","mixpc");
     c.dataset.u = String(b.u);
     c.dataset.pc = "1";
-    g.appendChild(c);
+    row.appendChild(c);
   }
   return g;
 }
@@ -793,17 +808,6 @@ function blockNode(b, r){
      dimensions n'en a pas d'autres */
   if(b.u === selU && r.d && !p.solid) lb.appendChild(choixDims(b.key));
   d.appendChild(lb);
-  /* choisi, le bloc se TIRE aussi : le bord droit élargit les pièces, le bord
-     bas les approfondit — toujours à surface exacte, au module (`etirer`) */
-  if(b.u === selU && r.d && !p.solid){
-    d.dataset.cols = String(r.cols || 1);
-    ["e", "s"].forEach(function(dir){
-      var h = el("span", "mixblk__poignee is-" + dir);
-      h.dataset.dir = dir;
-      h.setAttribute("aria-hidden", "true");
-      d.appendChild(h);
-    });
-  }
   var g = delie ? pieceGrid(b, r) : null;
   if(g){ d.appendChild(g); d.classList.add("has-pcs"); }
   if(delie){
@@ -1069,36 +1073,6 @@ function wireMix(){
     var i = parseInt(t.dataset.plate, 10);
     var v = parseFloat(String(t.value).replace(",", "."));
     if(!setPlate(i, v)){ t.value = String(FLOORS[i] ? FLOORS[i].plate : ""); return; }
-    drawMix(); saveSoon();
-  });
-
-  /* TIRER UN BORD : la pièce change de proportion, jamais de surface. Pendant
-     le geste le bloc suit la main ; au lâcher, la largeur (ou la profondeur)
-     visée est ramenée à la proportion admissible la plus proche. */
-  var etire = null;
-  document.addEventListener("pointerdown", function(e){
-    var h = e.target.closest ? e.target.closest(".mixblk__poignee") : null;
-    if(!h || e.button !== 0) return;
-    var node = h.closest(".mixblk"), b = blockOf(parseInt(node.dataset.u, 10));
-    if(!b) return;
-    e.stopPropagation(); e.preventDefault();
-    var q = b.q, cols = parseInt(node.dataset.cols, 10) || 1;
-    etire = { key:b.key, dir:h.dataset.dir, el:node, x0:e.clientX, y0:e.clientY,
-              w0:node.offsetWidth, h0:node.offsetHeight, cols:cols, rows:Math.ceil(q / cols) };
-    try{ h.setPointerCapture(e.pointerId); }catch(_){}
-  }, true);
-  document.addEventListener("pointermove", function(e){
-    if(!etire) return;
-    if(etire.dir === "e") etire.el.style.width = Math.max(8, etire.w0 + e.clientX - etire.x0) + "px";
-    else etire.el.style.height = Math.max(8, etire.h0 + e.clientY - etire.y0) + "px";
-  });
-  document.addEventListener("pointerup", function(){
-    if(!etire) return;
-    var M = Math.sqrt(AIRE), u = uOf(etire.key), x = etire;
-    etire = null;
-    var d = x.dir === "e" ? nearestDims(u, x.el.offsetWidth / x.cols / M)
-                          : dimsAProf(u, x.el.offsetHeight / x.rows / M);
-    setCote(x.key, d.w);
     drawMix(); saveSoon();
   });
 
