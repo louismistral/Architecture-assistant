@@ -37,19 +37,27 @@
    `orientation.js`, `jugement.js`, `recherche.js` — et dans `donnees.js`.
    ========================================================================= */
 
+/* Les noms sont ceux de la page ; les `id` sont restés, le code les lit.
+   Cinq rubriques, une question chacune :
+     Contraintes  (cadre)        valide ou non, par des forces extérieures ;
+     Leviers      (levier)       ce que nous décidons pour borner la recherche,
+                                 la machine comprise (recherche) ;
+     Préférences  (orientation)  ce qui guide le moteur sans le borner ;
+     Évaluation   (jugement)     mesurer puis noter — rien n'y sert à générer ;
+     Données      (donnee)       le contexte que tout lit. */
 export var ROLES = [
   { id:"donnee",      n:"Données",      moteur:"—",
-    q:"Ce que les rôles lisent : le contexte et les mesures du bâtiment. Rien n'y est tiré ni noté." },
+    q:"Le contexte que tout lit : le site, le règlement, nos hypothèses de construction. Rien n'y est tiré ni noté." },
   { id:"levier",      n:"Leviers",      moteur:"recherche",
-    q:"Que fait-on varier ? Seuls les leviers sont tirés : fixe, la valeur est la nôtre ; libre, le hasard la tire." },
-  { id:"cadre",       n:"Cadre",        moteur:"recherche",
-    q:"La variante est-elle valide ? Le cadre ne note pas : le générateur ne propose jamais une variante qui en sort." },
-  { id:"orientation", n:"Orientation",  moteur:"recherche",
-    q:"Où chercher d'abord ? Nos intentions : elles choisissent entre deux candidats, dosées avec le hasard. Elles n'entrent pas dans la note." },
-  { id:"jugement",    n:"Jugement",     moteur:"jugement",
-    q:"Combien vaut le bâtiment pour le jury ? Une mesure lue sur le bâtiment, une fonction de score, un poids dans un axe." },
-  { id:"recherche",   n:"Générateur",   moteur:"recherche",
-    q:"La machine, pas le bâtiment : essais, seeds, dosage entre le hasard et l'orientation." }
+    q:"Ce que nous décidons pour limiter ou élargir la recherche : le domaine où le moteur tire, les surfaces que nous précisons, la machine elle-même. Aucun effet propre sur la note." },
+  { id:"cadre",       n:"Contraintes",  moteur:"recherche",
+    q:"La variante est-elle valide ? Oui ou non, fixé de l'extérieur — le site, le règlement, l'AEAI, le cahier des charges. Le générateur ne propose jamais une variante qui en sort." },
+  { id:"orientation", n:"Préférences",  moteur:"recherche",
+    q:"Ce qui guide le moteur sans définir ce qu'il a le droit de chercher : nos intentions, dosées par leur tag — Imposé, Prioritaire, Souhaité, Indicatif. Elles n'entrent pas dans la note." },
+  { id:"jugement",    n:"Évaluation",   moteur:"jugement",
+    q:"Une variante est mesurée, puis jugée — critères, fonctions, poids — jusqu'à une note. Rien ici ne sert à générer : une géométrie venue d'ailleurs s'évalue de même." },
+  { id:"recherche",   n:"Moteur de recherche", moteur:"recherche",
+    q:"La machine, pas le bâtiment : essais, seeds, dosage entre le hasard et les préférences." }
 ];
 export function roleNom(id){
   for(var i = 0; i < ROLES.length; i++) if(ROLES[i].id === id) return ROLES[i].n;
@@ -66,9 +74,9 @@ export function roleNom(id){
    la façon d'assouplir ou de durcir un choix. Intangible ne se change pas. */
 export var TAGS = [
   { id:"intangible",  n:"Intangible",  role:"cadre",
-    d:"Cadre opposable — règlement, AEAI. Jamais enfreint par le générateur ; hors générateur, la variante est invalide. Ne se change pas." },
+    d:"Contrainte — site, règlement, AEAI. Jamais enfreint par le générateur ; hors générateur, la variante est invalide. Ne se change pas." },
   { id:"impose",      n:"Imposé",      role:"cadre",
-    d:"Cadre choisi — un arbitrage à nous, appliqué comme une règle. Jamais enfreint par le générateur ; hors générateur, l'écart est notifié." },
+    d:"Préférence ferme — un arbitrage à nous, appliqué comme une règle. Jamais enfreint par le générateur ; hors générateur, l'écart est notifié. Se relâche en Prioritaire." },
   { id:"prioritaire", n:"Prioritaire", role:"orientation",
     d:"La recherche n'y renonce que s'il n'y a pas d'autre issue." },
   { id:"souhaite",    n:"Souhaité",    role:"orientation",
