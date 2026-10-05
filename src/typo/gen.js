@@ -718,9 +718,22 @@ export function creerPG(D){
     return [x0 + u, -f.D / 2 + v];
   }
   function versMonde(f, x, y){ return local(f.cx, f.cy, f.a, x, y); }
+  /* Le couloir d'un corps passe-t-il, par son bout `sg` (−1 ou +1), dans le
+     couloir d'un corps voisin du même niveau (`F`) ? Le dessin y ouvre les
+     deux pignons ; la mesure ne compte pas ce bout comme un bout de couloir. */
+  function passage(F, f, sg){
+    if(f.fixe || (sg < 0 ? f.zl > -f.L / 2 + 0.01 : f.zr < f.L / 2 - 0.01)) return false;
+    var wpt = versMonde(f, sg * (f.L / 2 + 1.0), (f.yc0 + f.yc1) / 2);
+    return F.some(function(g){
+      if(g === f || g.fixe) return false;
+      var c = Math.cos(-g.a), s2 = Math.sin(-g.a), dx = wpt[0] - g.cx, dy = wpt[1] - g.cy;
+      var lx = dx * c - dy * s2, ly = dx * s2 + dy * c;
+      return Math.abs(lx) <= g.L / 2 + 0.05 && ly > g.yc0 + 0.3 && ly < g.yc1 - 0.3;
+    });
+  }
 
   return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes,
-           local:local, versEtage:versEtage, versMonde:versMonde,
+           local:local, versEtage:versEtage, versMonde:versMonde, passage:passage,
            COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE,
            PETIT:PETIT, VIDE:VIDE, PLAN:PLAN, ratioDe:ratioDe, cabine:cabine };
 }

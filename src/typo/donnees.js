@@ -20,11 +20,14 @@ import { nearestDims } from "../core/geometry.js";
 import { saveSoon } from "../mix/store.js";
 import { MASS, datumEcole, etagesDe, niveaux, partiOf } from "../mass/model.js";
 import { ETAGES, TRAITS } from "../data/planches.js";
-import { massOf } from "../mass/etat.js";
+import { volsOf } from "../mass/etat.js";
 import { TYPO } from "./etat.js";
 import { fige } from "../core/verrou.js";
 
-export function donneesTypo(){
+/* `vols`, `ponts` : les volumes à planifier — ceux à l'écran par défaut, ceux
+   d'une candidate quand le générateur du massing la juge (`evaluer()`). */
+export function donneesTypo(vols, ponts){
+  vols = vols || MASS.vol;
   var NV = niveaux();
   var floors = FLOORS.map(function(F, i){
     var q = {}, ordre = [];
@@ -43,12 +46,12 @@ export function donneesTypo(){
                  w:TYPO.cotes[k] != null ? TYPO.cotes[k] : coteDe(k) };
       }) };
   });
-  var pid = MASS.vol.parti || MASS.parti;
+  var pid = vols.parti || MASS.parti;
   /* LES COTES DE NIVEAU : le pied de chaque étage de chaque volume, depuis le
      ±0.00 du rez de l'école, et sa hauteur — chaque volume a la sienne
      (`etagesDe`) */
-  var vols = massOf().vol, z0 = datumEcole(MASS.vol), alt = {};
-  MASS.vol.forEach(function(v){
+  var z0 = datumEcole(vols), alt = {};
+  vols.forEach(function(v){
     etagesDe(v).forEach(function(s, k, S){
       var r = z0 != null ? z0 : S[0].z0;
       alt[v.id + "|" + s.e.i] = { z:Math.round((s.z0 - r) * 100) / 100, h:s.h };
@@ -56,7 +59,7 @@ export function donneesTypo(){
   });
   return { floors:floors, graine:TYPO.graine, verrou:fige("typologie"),
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
-                       vols:ailes(vols), ponts:MASS.pont || [] } },
+                       vols:ailes(volsOf(vols)), ponts:ponts || MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
     liens:PROX.filter(function(l){ return adjActive(l.id); }).map(function(l){ return { a:l.a, b:l.b, q:l.q }; }),
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier

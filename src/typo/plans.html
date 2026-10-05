@@ -868,18 +868,9 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 
     /* passages entre corps accolés : le couloir traverse les deux murs de pignon */
     res.F.forEach(function(f){
-      if(f.fixe) return;
       var ym = (f.yc0 + f.yc1) / 2;
       [-1, 1].forEach(function(sg){
-        if(sg < 0 ? f.zl > -f.L / 2 + 0.01 : f.zr < f.L / 2 - 0.01) return;
-        var wpt = PG.versMonde(f, sg * (f.L / 2 + 1.0), ym);
-        var ok = res.F.some(function(g){
-          if(g === f || g.fixe) return false;
-          var c = Math.cos(-g.a), s2 = Math.sin(-g.a), dx = wpt[0] - g.cx, dy = wpt[1] - g.cy;
-          var lx = dx * c - dy * s2, ly = dx * s2 + dy * c;
-          return Math.abs(lx) <= g.L / 2 + 0.05 && ly > g.yc0 + 0.3 && ly < g.yc1 - 0.3;
-        });
-        if(!ok) return;
+        if(!PG.passage(res.F, f, sg)) return;
         var x0 = sg < 0 ? -f.L / 2 - 1.05 : f.L / 2 - 0.02, x1 = sg < 0 ? -f.L / 2 + 0.02 : f.L / 2 + 1.05;
         out.ouv.push('<polygon class="circ" points="' + pts(f, rectL(f, x0, ym - 0.9, x1, ym + 0.9)) + '"/>');
       });
@@ -1187,57 +1178,22 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   var CTL = null;
   function controle(){
     if(CTL) return CTL;
-    var tous = DATA.floors.map(function(_, i){ return PG.genNiveau(DATA, st.parti, i); }), L = [];
-    var vols = DATA.partis[st.parti].vols, F0 = PG.FEU;
-    function nom(v){ return v.nom || String(v.id).toUpperCase(); }
+    /* les NOMBRES viennent du projet (`typo/mesures.js — lirePlans()`), le même
+       relevé que le jugement : la page n'en écrit que les phrases */
+    var R = parent.typoLecture(DATA), tous = R.tous, L = [], F0 = PG.FEU;
     function niv(i){ return DATA.floors[i].name; }
     var nOk = 0, nBad = 0;
     function dit(ok, t, d){ if(ok) nOk++; else nBad++; L.push('<li>' + puce(ok ? "ok" : "à revoir", ok ? "ok" : "warn") + '<span>' + t + '</span>' + (d ? '<small>' + d + '</small>' : "") + '</li>'); }
     /* le programme */
-    var nm = 0, am = 0, ou = [];
-    tous.forEach(function(r, i){
-      var a = 0; r.non.forEach(function(u){ nm++; am += u.a; a += u.a; });
-      if(a) ou.push(niv(i).toLowerCase() + " " + fmt(a, 0) + " m²");
-    });
+    var nm = R.nm, am = R.am, ou = R.non.map(function(x){ return niv(x.i).toLowerCase() + " " + fmt(x.a, 0) + " m²"; });
     dit(!nm, nm ? nm + " pièce" + (nm > 1 ? "s" : "") + " non posée" + (nm > 1 ? "s" : "") + " — " + fmt(am, 0) + " m²"
                 : "Tout le programme est posé, à surface exacte",
         nm ? "Il manque du plateau : " + ou.join(", ") + ". Le couloir et les noyaux prennent leur place ; agrandir le volume au Massing ou alléger le niveau au Programme mixer."
            : "Une pièce change de proportions, jamais de surface.");
     /* les noyaux : présents, empilés, aux mêmes cotes */
-    var sig = {}, acces = [], empile = [], feu = [], fuite = 0, fuiteMax = F0.fuiteSimple;
-    function monde(f, frame, x0, u, v){ var q = PG.versEtage(f, frame, x0, u, v); return PG.versMonde(f, q[0], q[1]); }
-    function grp(v){ return v.bat || v.id; }
-    tous.forEach(function(r, i){
-      /* les noyaux de ce niveau, par bâtiment, en coordonnées du site */
-      var N = {}, aire = {};
-      r.F.forEach(function(f){
-        if(f.fixe) return;
-        aire[grp(f.v)] = (aire[grp(f.v)] || 0) + f.L * f.D;
-        f.cages.forEach(function(c){ (N[grp(f.v)] = N[grp(f.v)] || []).push(monde(f, c.bande, c.x0, c.W / 2, (c.v0 || 0) + c.H / 2)); });
-        var s2 = f.cages.map(function(c){
-          var p = monde(f, c.bande, c.x0, 0, c.v0 || 0);
-          return p[0].toFixed(1) + "," + p[1].toFixed(1) + "," + c.W.toFixed(1) + "×" + c.H.toFixed(1);
-        }).join(" ");
-        /* un corps qui porte un noyau le porte à TOUS ses niveaux, au même endroit */
-        if(PG.hotes(vols)[f.v.id]) (sig[f.v.id] = sig[f.v.id] || { v:f.v, s:{} }).s[s2] = 1;
-      });
-      Object.keys(aire).forEach(function(g){
-        if(aire[g] > F0.cageSeuil && (N[g] || []).length < 2) feu.push("bâtiment " + g + " au " + niv(i).toLowerCase());
-      });
-      r.F.forEach(function(f){
-        if(f.fixe) return;
-        var C = N[grp(f.v)] || [], rez = DATA.floors[i].lvl === 0;
-        if(!C.length){ if(!rez) acces.push(nom(f.v) + " au " + niv(i).toLowerCase()); return; }
-        if(rez) return;     /* au rez, on sort par la façade : halls et portes */
-        var lim = C.length > 1 ? F0.fuiteDouble : F0.fuiteSimple;
-        f.rooms.forEach(function(rm){
-          var p = monde(f, rm.frame === "full" ? "full" : rm.frame, rm.x0, rm.W / 2, (rm.H || 0) / 2), d = Infinity;
-          C.forEach(function(c){ d = Math.min(d, Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1])); });
-          if(d - lim > fuite - fuiteMax){ fuite = d; fuiteMax = lim; }
-        });
-      });
-    });
-    Object.keys(sig).forEach(function(k){ if(Object.keys(sig[k].s).length > 1) empile.push(nom(sig[k].v)); });
+    var acces = R.acces.map(function(x){ return x.nom + " au " + niv(x.i).toLowerCase(); }), empile = R.empile,
+        feu = R.feu.map(function(x){ return "bâtiment " + x.g + " au " + niv(x.i).toLowerCase(); }),
+        fuite = R.fuite, fuiteMax = R.fuiteMax;
     dit(!acces.length, acces.length ? "Niveaux sans noyau : " + acces.join(", ")
         : "Chaque niveau est desservi par un noyau escalier + ascenseur",
         acces.length ? "Ces niveaux ne sont ni accessibles ni évacuables." : "Un noyau par bâtiment et par niveau : les corps accolés se desservent par leurs couloirs ; accessible à tous (SIA 500).");
@@ -1249,51 +1205,15 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     dit(fuite <= fuiteMax + 0.01, "Évacuation : " + fmt(fuite, 1) + " m au plus jusqu'à un escalier",
         "Mesurée en équerre, du centre de la pièce au noyau. Au plus " + fmt(F0.fuiteSimple, 0) + " m vers un seul escalier, " + fmt(F0.fuiteDouble, 0) + " m vers deux (AEAI 16-15).");
     /* les liens du schéma : deux postes en lien, au même niveau, dans le même
-       bâtiment, à moins de la distance d'un lien */
-    var pos = {};
-    tous.forEach(function(r, i){
-      r.F.forEach(function(f){
-        f.rooms.forEach(function(rm){
-          /* la pièce et sa boîte englobante dans le repère du site */
-          function met(key, p, W, H){
-            if(!key) return;
-            var c = Math.abs(Math.cos(f.a)), s2 = Math.abs(Math.sin(f.a));
-            (pos[key] = pos[key] || []).push({ i:i, p:p, ex:(W * c + H * s2) / 2, ey:(W * s2 + H * c) / 2 });
-          }
-          if(rm.kind === "bloc") rm.cel.forEach(function(c){ met(c.key, monde(f, rm.frame, rm.x0, c.u0 + c.W / 2, (rm.v0 || 0) + c.v0 + c.H / 2), c.W, c.H); });
-          else met(rm.key, monde(f, rm.frame, rm.x0, rm.W / 2, (rm.v0 || 0) + (rm.H || 0) / 2), rm.W, rm.H || 0);
-        });
-      });
-    });
-    function nomPoste(k){ return String(k).split("|")[1] || k; }
-    var rompus = [];
-    (DATA.liens || []).forEach(function(l){
-      var A = pos[l.a], B = pos[l.b];
-      if(!A || !B) return;
-      var pire = 0, separes = false;
-      A.forEach(function(x){
-        var d = Infinity;
-        /* l'écart entre les deux pièces, de bord à bord, en équerre */
-        B.forEach(function(y){
-          if(y.i !== x.i) return;
-          d = Math.min(d, Math.max(0, Math.abs(x.p[0] - y.p[0]) - x.ex - y.ex) + Math.max(0, Math.abs(x.p[1] - y.p[1]) - x.ey - y.ey));
-        });
-        if(d === Infinity) separes = true; else pire = Math.max(pire, d);
-      });
-      if(separes || pire > PG.LIEN) rompus.push(nomPoste(l.a) + " – " + nomPoste(l.b) + (separes ? " (pas au même niveau)" : " (" + fmt(pire, 0) + " m)"));
-    });
+       bâtiment, à moins de la distance d'un lien — de bord à bord, en équerre */
+    var rompus = R.rompus.map(function(x){ return x.a + " – " + x.b + (x.separes ? " (pas au même niveau)" : " (" + fmt(x.d, 0) + " m)"); });
     dit(!rompus.length, rompus.length ? rompus.length + " lien" + (rompus.length > 1 ? "s" : "") + " du schéma non tenu" + (rompus.length > 1 ? "s" : "") + " : " + rompus.slice(0, 6).join(" ; ") + (rompus.length > 6 ? "…" : "")
         : "Toutes les adjacences du schéma sont tenues", "Chaque pièce à moins de " + fmt(PG.LIEN, 0) + " m de bord à bord de celle qui lui est liée, au même niveau. Les liens éteints au mixer ne comptent pas."
           + (rompus.some(function(t){ return /pas au même niveau/.test(t); }) ? " Deux postes à deux niveaux : c\u2019est au Programme mixer qu\u2019ils se rapprochent." : "")
           + (rompus.some(function(t){ return /Salle de sport double/.test(t); }) ? " Les liens à la salle de sport ne se tiennent que si elle touche l\u2019école : levier « Salle de sport accolée » au Massing." : ""));
     /* la scène, collée à la salle de sport sur un de ses côtés : mur contre mur */
-    var kSc = Object.keys(pos).filter(function(k){ return /Scène/.test(k); })[0];
-    var kSp = Object.keys(pos).filter(function(k){ return /Salle de sport double/.test(k); })[0];
-    if(kSc && kSp){
-      var dSc = Infinity;
-      pos[kSc].forEach(function(x){ pos[kSp].forEach(function(y){
-        if(y.i === x.i) dSc = Math.min(dSc, Math.max(0, Math.abs(x.p[0] - y.p[0]) - x.ex - y.ex) + Math.max(0, Math.abs(x.p[1] - y.p[1]) - x.ey - y.ey));
-      }); });
+    if(R.scene != null){
+      var dSc = R.scene;
       dit(dSc <= 2 * PG.MUR + .05, dSc <= 2 * PG.MUR + .05 ? "La scène est collée à la salle de sport"
           : "La scène n\u2019est pas collée à la salle de sport" + (isFinite(dSc) ? " (" + fmt(dSc, 1) + " m)" : " (pas au même niveau)"),
         "Sur un de ses côtés, mur contre mur — une contrainte du concours.");
@@ -1324,10 +1244,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     /* le sol libre : ce que les rangs laissent quand leurs pièces sont posées */
     if(PG.VIDE != null){
       var vides = [];
-      tous.forEach(function(r, i){ r.F.forEach(function(f){
-        if(f.fixe || !(f.vide > PG.VIDE)) return;
-        vides.push(nom(f.v) + " au " + niv(i).toLowerCase() + " (" + fmt(f.vide, 0) + " m²)");
-      }); });
+      R.vides.forEach(function(x){ vides.push(x.nom + " au " + niv(x.i).toLowerCase() + " (" + fmt(x.a, 0) + " m²)"); });
       dit(!vides.length, vides.length ? "Sol inutilisé : " + vides.slice(0, 6).join(" ; ") + (vides.length > 6 ? "…" : "")
           : "Aucun corps ne garde plus de " + fmt(PG.VIDE, 0) + " m² de sol libre",
         "Le sol que les pièces laissent devient un dégagement sur le couloir ; au-delà de " + fmt(PG.VIDE, 0) + " m² dans un corps, le plateau ne se remplit pas : ce qui reste du niveau n\u2019y entre pas d\u2019un tenant, ou le niveau n\u2019en a pas assez — ajuster le volume au Massing, ou la répartition au Programme mixer.");
