@@ -33,7 +33,7 @@ import { dePile } from "../mix/opts.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
-import { dansPerimetre, genMass, poser, rectSol } from "../mass/gen.js";
+import { dansPerimetre, empSol, genMass, poser, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { dm3Massing } from "../mass/export.js";
 import { solides3dm, volsDe3dm } from "../mass/import.js";
@@ -673,11 +673,14 @@ function carteSel(v){
   h.appendChild(x);
   b.appendChild(h);
 
-  var rc = rectSol(v);
-  b.appendChild(el("p", "mass-sel__l mono", dec(rc.w) + " × " + dec(rc.d) + " m · "
-    + fmt(Math.round(rc.w * rc.d)) + " m² au sol · " + volNiv(v) + " niv. · " + dec(volHaut(v)) + " m"));
+  var rc = rectSol(v), fu = v.lv.some(function(e){ return e.ext && e.ext.length; });
+  /* un volume fusionné n'a pas deux cotes : il dit ses ailes */
+  b.appendChild(el("p", "mass-sel__l mono", (fu ? "fusionné · " + ((basDe(v).ext || []).length + 1) + " ailes"
+      : dec(rc.w) + " × " + dec(rc.d) + " m") + " · "
+    + fmt(Math.round(empSol(v))) + " m² au sol · " + volNiv(v) + " niv. · " + dec(volHaut(v)) + " m"));
 
-  if(!v.fix){
+  /* ses cotes ne se changent pas d'un bloc : les ailes se tiennent */
+  if(!v.fix && !fu){
     var r = el("div", "mass-deux");
     cote(r, "Largeur", v, "w");
     cote(r, "Profondeur", v, "d");
@@ -839,7 +842,13 @@ function etage(v, d){
     N.forEach(function(n){ if(n.i > haut && (suiv === null || n.i < suiv)) suiv = n.i; });
     if(suiv === null) return;
     var e0 = basDe(v);
-    v.lv.push({ i:suiv, w:e0.w, d:e0.d, dx:0, dy:0 });
+    /* l'étage copié garde les ailes d'un volume fusionné, à leur place */
+    var nv = { i:suiv, w:e0.w, d:e0.d, dx:0, dy:0 };
+    if(e0.ext && e0.ext.length){
+      nv.dx = e0.dx || 0; nv.dy = e0.dy || 0;
+      nv.ext = e0.ext.map(function(p){ return Object.assign({}, p); });
+    }
+    v.lv.push(nv);
   } else {
     if(haut < 0) return;
     v.lv = v.lv.filter(function(e){ return e.i !== haut; });

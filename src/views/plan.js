@@ -19,8 +19,8 @@ import { dec, fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volHaut, volInt, volNom,
-  volRect, vu } from "../mass/model.js";
+import { MASS, aireEtage, contourDe, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volFusionne,
+  volHaut, volInts, volNom, volRect, volRects, vu } from "../mass/model.js";
 import { chevauche, dansPerimetre, fusionner } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 import { archiDe, emprise } from "../mass/archi.js";
@@ -37,6 +37,11 @@ function Y(y){ return -y; }
 function pt(p){ return p[0].toFixed(2) + "," + Y(p[1]).toFixed(2); }
 function chemin(P, close){
   return "M " + P.map(pt).join(" L ") + (close ? " Z" : "");
+}
+/* Le contour d'un niveau : une boucle par rectangle seul, plusieurs pour un
+   volume fusionné — la cour d'un anneau en est un trou (evenodd). */
+function contour(v, e){
+  return contourDe(v, e).loops.map(function(L){ return chemin(L, true); }).join(" ");
 }
 
 /* ---------- montage ---------------------------------------------------------
@@ -154,19 +159,20 @@ function dessineVol(g, v, k){
   var plein = bas(montres);
   montres.forEach(function(e){
     if(e === plein) return;
-    var r = volRect(v, e);
-    gv.appendChild(svg("path", { d: chemin(coins(r), true), "class":"plan-vol__et" }));
+    gv.appendChild(svg("path", { d: contour(v, e), "class":"plan-vol__et", "fill-rule":"evenodd" }));
   });
   if(plein){
     /* L'emprise MURS COMPRIS pour le contour ; l'intérieur — la surface utile —
        pour le programme ; les murs en poché entre les deux. */
-    var rc = volRect(v, plein), ri = volInt(v, plein);
-    var q = coins(rc);
+    var rc = volRect(v, plein), fu = volFusionne(v);
+    var q = contour(v, plein);
     if(MASS.mono){
-      gv.appendChild(svg("path", { d: chemin(q, true), "class":"plan-vol__p" }));
+      gv.appendChild(svg("path", { d: q, "class":"plan-vol__p", "fill-rule":"evenodd" }));
     } else {
       /* Le programme, pavé dans le rectangle : on lit OÙ sont les classes, pas
-         seulement qu'il y a un bâtiment. */
+         seulement qu'il y a un bâtiment. Un volume fusionné se pave part par
+         part, chacune au prorata de sa surface. */
+      volInts(v, plein).forEach(function(ri){
       cellules(plein.i, ri.w, ri.d, filtreDe(v, plein)).forEach(function(c){
         var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
         var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
@@ -178,10 +184,11 @@ function dessineVol(g, v, k){
         p.lastChild.textContent = c.n + " · " + fmt(Math.round(c.a)) + " m²";
         gv.appendChild(p);
       });
+      });
       mursDe(v, plein).forEach(function(m){
         gv.appendChild(svg("path", { d: chemin(coins(m), true), "class":"plan-mur" }));
       });
-      gv.appendChild(svg("path", { d: chemin(q, true), "class":"plan-vol__c" }));
+      gv.appendChild(svg("path", { d: q, "class":"plan-vol__c", "fill-rule":"evenodd" }));
     }
     /* Le nom et la cote, au centre, dans le sens du bâtiment. */
     var nv = 0;
@@ -191,14 +198,16 @@ function dessineVol(g, v, k){
       transform: "rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " "
                + rc.x.toFixed(2) + " " + Y(rc.y).toFixed(2) + ")" });
     t.textContent = volNom(v, k)
-      + " · " + fmt(Math.round(ri.w * ri.d)) + " m²"
+      + " · " + fmt(Math.round(aireEtage(plein))) + " m²"
       + (nv > 1 ? " · R+" + (nv - 1) : "");
     gv.appendChild(t);
     if(sel){
-      gv.appendChild(cotation(rc, v));
+      gv.appendChild(cotation(rc, v, fu));
       DESSUS = svg("g", { "class":"plan-outils" });
       DESSUS.appendChild(poignee(rc));
-      if(!v.fix) DESSUS.appendChild(tirettes(rc));
+      /* ni la salle aux cotes imposées, ni un volume fusionné, dont les ailes
+         se tiennent : ils ne s'étirent pas d'un côté */
+      if(!v.fix && !fu) DESSUS.appendChild(tirettes(rc));
     }
   }
   /* L'architecture en trait fin : pans et dents du toit, lanterneaux, auvent,
@@ -224,7 +233,7 @@ function bas(L){
 /* LES COTES du volume choisi : longueur et profondeur hors tout, murs compris,
    en lignes de cote posées à 4 m du bâtiment, et la hauteur au milieu. On clique
    un volume, on lit ses dimensions — sans aller les chercher dans le rail. */
-function cotation(rc, v){
+function cotation(rc, v, fu){
   /* À l'échelle de la vue : lisibles de loin comme de près. */
   var k = Math.max(1, VUE.w / 160), D = 4 * k, F = 2.4 * k;
   var g = svg("g", { "class":"plan-cote" }), q = coins(rc);
@@ -246,8 +255,11 @@ function cotation(rc, v){
   var c = Math.cos(rc.a), s2 = Math.sin(rc.a);
   /* le long côté vers l'« avant » du volume, le petit côté à GAUCHE — la
      poignée de rotation est à droite */
-  ligne(q[0], q[1], s2, -c, dec(rc.w) + " m");
-  ligne(q[3], q[0], -c, -s2, dec(rc.d) + " m");
+  /* un volume fusionné n'a pas deux cotes : sa hauteur seule */
+  if(!fu){
+    ligne(q[0], q[1], s2, -c, dec(rc.w) + " m");
+    ligne(q[3], q[0], -c, -s2, dec(rc.d) + " m");
+  }
   var h = svg("text", { x: rc.x.toFixed(2), y: (Y(rc.y) + F * 1.4).toFixed(2), "class":"plan-cote__t",
     "text-anchor":"middle", transform:"rotate(" + (-rc.a * 180 / Math.PI).toFixed(1) + " "
       + rc.x.toFixed(2) + " " + Y(rc.y).toFixed(2) + ")" });
@@ -324,7 +336,7 @@ function volAu(x, y){
   MASS.vol.forEach(function(v){
     var e = bas(montresDe(v));
     if(!e) return;
-    if(dansRect(volRect(v, e), x, y)) found = v;
+    if(volRects(v, e).some(function(r){ return dansRect(r, x, y); })) found = v;
   });
   return found;
 }

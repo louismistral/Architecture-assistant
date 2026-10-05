@@ -26,10 +26,10 @@ import { STRIDE, cssRGB, themeKey, glDraw, glDrawStatic, glInit, glLibere, glSta
   orbitEye, orbitMVP } from "../core/gl.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { assise, coins, grille, terrain } from "../mass/geom.js";
+import { coins, grille, terrain } from "../mass/geom.js";
 import { archiDe, faces } from "../mass/archi.js";
-import { MASS, cellules, etagesDe, famTok, filtreDe, mursDe, niveaux, pontEtage,
-  volInt, volRect, vu } from "../mass/model.js";
+import { MASS, assiseDe, cellules, etagesDe, famTok, filtreDe, fusionne, mursDe, niveaux, pontEtage,
+  solRects, volInts, volRects, vu } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
 var G = null, cv = null, host = null, DPR = 1;
@@ -117,6 +117,17 @@ function aretes(M, q, z0, z1, c){
   var n = [0, 0, 0], i, A, B;
   for(i = 0; i < 4; i++){
     A = q[i]; B = q[(i + 1) % 4];
+    push(M.l, [A[0], A[1], z1], n, c, 1); push(M.l, [B[0], B[1], z1], n, c, 1);
+    push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [B[0], B[1], z0], n, c, 1);
+    push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [A[0], A[1], z1], n, c, 1);
+  }
+}
+/* Les arêtes d'un CONTOUR quelconque — celui d'un volume fusionné : ses
+   côtés en haut et en bas, ses sommets en montant. */
+function aretesP(M, P, z0, z1, c){
+  var n = [0, 0, 0], i, A, B;
+  for(i = 0; i < P.length; i++){
+    A = P[i]; B = P[(i + 1) % P.length];
     push(M.l, [A[0], A[1], z1], n, c, 1); push(M.l, [B[0], B[1], z1], n, c, 1);
     push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [B[0], B[1], z0], n, c, 1);
     push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [A[0], A[1], z1], n, c, 1);
@@ -232,13 +243,20 @@ function volMesh(){
          quand même sa profondeur, et l'on retrouverait le moucheté noir que la
          boîte-enveloppe donnait déjà. */
       var op = v.ph ? .40 : undefined;
+      var fu = fusionne(e);
       if(MASS.mono || n.lvl < 0){
-        boite(M, q, z0, z0 + h - .12,
-          n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono), 1, edge);
+        var cm = n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono);
+        /* un volume fusionné : une boîte par part, sans arêtes — leurs faces
+           communes sont dans la masse —, et les arêtes du seul contour */
+        if(fu){
+          s.rcs.forEach(function(r){ boite(M, coins(r), z0, z0 + h - .12, cm, 1, null); });
+          s.contour.loops.forEach(function(L){ aretesP(M, L, z0, z0 + h - .12, edge); });
+        }
+        else boite(M, q, z0, z0 + h - .12, cm, 1, edge);
       } else {
         /* Le programme dans la surface UTILE, les murs de 50 cm autour, en
            blanc de maquette : ce que le volume a de plus que ses mètres carrés. */
-        var ri = volInt(v, e);
+        volInts(v, e).forEach(function(ri){
         cellules(e.i, ri.w, ri.d, filtreDe(v, e)).forEach(function(c){
           var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
           var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
@@ -246,10 +264,12 @@ function volMesh(){
                       w: c.w, d: c.d, a: ri.a };
           boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f), op), 1, null);
         });
+        });
         mursDe(v, e).forEach(function(m){
           boite(M, coins(m), z0, z0 + h - .12, v.ph ? teinte("--site-mono", .40) : cMono, 1, null);
         });
-        aretes(M, q, z0, z0 + h - .12, edge);
+        if(fu) s.contour.loops.forEach(function(L){ aretesP(M, L, z0, z0 + h - .12, edge); });
+        else aretes(M, q, z0, z0 + h - .12, edge);
       }
     });
   });
@@ -277,15 +297,7 @@ function volMesh(){
   });
   return M;
 }
-function rectBas(v){
-  var e = null;
-  v.lv.forEach(function(x){
-    if(lvlOf(x.i) < 0) return;
-    if(!e || x.i < e.i) e = x;
-  });
-  if(!e) e = v.lv[0];
-  return volRect(v, e);
-}
+
 
 /* ---------- montage et dessin ------------------------------------------------ */
 export function vue3dMount(hostEl){
@@ -382,11 +394,11 @@ export function camVers(v){
 export function camFit(){
   var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, n = 0;
   MASS.vol.forEach(function(v){
-    coins(rectBas(v)).forEach(function(p){
+    solRects(v).forEach(function(r){ coins(r).forEach(function(p){
       if(p[0] < x0) x0 = p[0]; if(p[0] > x1) x1 = p[0];
       if(p[1] < y0) y0 = p[1]; if(p[1] > y1) y1 = p[1];
       n++;
-    });
+    }); });
   });
   if(!n){ camReset(); return; }
   CAM.tx = (x0 + x1) / 2; CAM.ty = (y0 + y1) / 2;
@@ -428,7 +440,7 @@ export function vue3dPick(px, py){
   var mvp = orbitMVP(CAM, r.width, r.height), eye = orbitEye(CAM);
   var N = niveaux(), best = null, bd = Infinity;
   MASS.vol.forEach(function(v){
-    var as = assise(rectBas(v)).z - ZBAS, z = as, sous = 0;
+    var as = assiseDe(solRects(v)).z - ZBAS, z = as, sous = 0;
     var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
     lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
     z = as - sous;
@@ -437,11 +449,14 @@ export function vue3dPick(px, py){
       if(!n) return;
       var z0 = z; z += n.h;
       if(!vu(e.i)) return;
-      var q = coins(volRect(v, e)).map(function(p){
-        return m4project(mvp, [p[0], p[1], z0 + n.h], r.width, r.height);
+      /* chaque part d'un volume fusionné a son toit */
+      var touche = volRects(v, e).some(function(rc){
+        var q = coins(rc).map(function(p){
+          return m4project(mvp, [p[0], p[1], z0 + n.h], r.width, r.height);
+        });
+        return !q.some(function(p){ return !p; }) && dansPoly(q, px, py);
       });
-      if(q.some(function(p){ return !p; })) return;
-      if(!dansPoly(q, px, py)) return;
+      if(!touche) return;
       var d = Math.hypot(eye[0] - v.x, eye[1] - v.y, eye[2] - z0);
       if(d < bd){ bd = d; best = v; }
     });
