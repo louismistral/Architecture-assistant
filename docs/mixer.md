@@ -198,8 +198,9 @@ La barre du haut ne garde que ce qui agit sur l'ensemble : **Shuffle**, **Tout a
 
 ## À savoir
 
-Les locaux engins de la salle de gym (180 m²) ne sont pas posés : le règlement les convertit
-en abri PC, dont les 750 m² les contiennent. Les poser compterait deux fois.
+Les locaux engins de la salle de gym (2 × 90 m²) sont des pièces posées, liées à la salle de
+sport (adjacence exigée : à proximité immédiate, au même niveau). Le règlement permet de les
+convertir en abri PC, sans l'imposer : le lien abri–engins reste une mutualisation.
 
 ## À l'échelle, et les cotes de chaque pièce
 

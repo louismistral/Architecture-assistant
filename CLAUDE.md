@@ -189,9 +189,9 @@ cages   = 1 ou 2 par niveau × 24 m²        deux au-delà de 900 m² d'étage (
 ```
 
 Les petites pièces d'un poste (sous 12 m²) forment un bloc à une porte ; un grand local
-n'ouvre jamais plus de 12 m. À 2,40 m de couloir : 508 m de front, **754 m²** de circulation
-(610 de couloirs, 144 de cages sur trois niveaux supposés), soit **12 %** du bâti scolaire,
-6'379 m². La part devient un RÉSULTAT. Elle ne porte que sur le **bâti scolaire** — les quatre
+n'ouvre jamais plus de 12 m. À 2,40 m de couloir : 528 m de front, **777 m²** de circulation
+(633 de couloirs, 144 de cages sur trois niveaux supposés), soit **12 %** du bâti scolaire,
+6'402 m². La part devient un RÉSULTAT. Elle ne porte que sur le **bâti scolaire** — les quatre
 premiers chapitres ; la piscine, le chauffage à distance, la cour et son préau n'ont pas de
 couloirs à nous.
 
