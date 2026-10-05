@@ -42,7 +42,7 @@ import { evaluationCourante } from "../mass/mesures.js";
 import { V, reculVise } from "../data/cadre.js";
 import { OPTIONS } from "../data/leviers.js";
 import { noter } from "../data/jugement.js";
-import { actif, ligne, roleDe } from "../data/lignes.js";
+import { actif, ligne, roleDe, roleNom } from "../data/lignes.js";
 import {
   MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
   massLev, massSet, massVols, niveaux, partiOf, plageVue,
@@ -254,8 +254,8 @@ function puce(txt, cls, titre){
 }
 /* Le renvoi au volet Contraintes : tout ce qui gouverne l'étape, ligne à ligne,
    avec sa valeur et son tag. */
-function versContraintes(b, quoi){
-  var a = el("button", "btn btn--quiet mass-renvoi", "Régler " + quoi + " — Contraintes");
+function versContraintes(b){
+  var a = el("button", "btn btn--quiet mass-renvoi", "Régler ligne à ligne — volet Contraintes");
   a.type = "button";
   a.addEventListener("click", function(){ if(massNav) massNav("contraintes"); });
   b.appendChild(a);
@@ -344,11 +344,11 @@ function blocProposer(){
     b.appendChild(el("p", "mass-note", "Le mixer n’a encore rien posé : tout le programme est au "
       + "bac. « Shuffle programme », à l’étape 2, en propose une répartition, et la volumétrie suivra."));
   } else if(!MASS.vol.length && (MASS.vol.impossible || MASS.vol.erreur)){
-    /* RIEN À L'ÉCRAN : on le dit ici, là où l'on vient de cliquer ; l'étape Cadre
+    /* RIEN À L'ÉCRAN : on le dit ici, là où l'on vient de cliquer ; l'étape Contraintes
        en donne les causes et les remèdes. */
     b.appendChild(el("p", "mass-note is-bas", MASS.vol.erreur
       ? "Le générateur s'est arrêté sur une erreur : " + MASS.vol.erreur
-      : "Aucune composition ne tient dans le cadre — l’étape Cadre dit pourquoi."));
+      : "Aucune composition ne tient dans le cadre — l’étape Contraintes dit pourquoi."));
   }
   return b;
 }
@@ -428,7 +428,7 @@ function etapeLeviers(){
   var n = 0, t = 0;
   LEV_COMPO.concat(LEV_ARCHI, ["prof"]).forEach(function(k){ n++; if(MASS.lev[k] == null) t++; });
   n++; if(MASS.second === "auto") t++;
-  return etape("leviers", "3", "Leviers", "ce que Shuffle massing tire",
+  return etape("leviers", "3", roleNom("levier"), "ce que Shuffle massing tire",
     puce(t === n ? "tous tirés" : t + " tirés · " + (n - t) + " figés", t === n ? "soft" : "warn"),
     leviersCorps);
 }
@@ -494,7 +494,7 @@ function leviersCorps(b){
   groupe("Architecture");
   LEV_ARCHI.forEach(function(k){ opts(k, "lev-" + k); });
   b.appendChild(el("p", "mass-note", "Toucher un levier rejoue la volumétrie."));
-  versContraintes(b, "les domaines");
+  versContraintes(b);
 }
 
 /* --- ce qu'on regarde : la barre posée sur les deux vues ---
@@ -917,9 +917,9 @@ function blocBilan(){
 function etapeCadre(ev){
   var list = massCheck(), v = massVerdict(list);
   var sous = !MASS.vol.length ? "rien n’est posé"
-    : ev && ev.invalide ? "hors du cadre opposable : invalide"
-    : ev && ev.notifie ? "hors du cadre choisi" : "dans le cadre";
-  return etape("cadre", "4", "Cadre", sous,
+    : ev && ev.invalide ? "une contrainte enfreinte : invalide"
+    : ev && ev.notifie ? "une préférence ferme enfreinte" : "valide";
+  return etape("cadre", "4", roleNom("cadre"), sous,
     puce(v.e ? v.e + " erreur" + (v.e > 1 ? "s" : "") : v.w ? v.w + " à vérifier" : "tenu",
       v.e ? "danger" : v.w ? "warn" : "ok",
       "Une erreur est une règle écrite — le règlement, l’AEAI — ou une géométrie impossible ; "
@@ -932,7 +932,7 @@ function cadreCorps(b, list){
   var infos = list.filter(function(x){ return !x.ok && x.sev === "i"; });
   var assumes = list.filter(function(x){ return x.ok; });
   if(vifs.length) b.appendChild(alListe(vifs, false));
-  else b.appendChild(el("p", "mass-note", "Rien d’enfreint : la composition tient dans le cadre."));
+  else b.appendChild(el("p", "mass-note", "Rien d’enfreint : la composition est valide."));
   if(infos.length){
     var di = el("details", "mass-infos");
     di.open = openAl != null && infos.some(function(x){ return x.code === openAl; });
@@ -957,7 +957,7 @@ function cadreCorps(b, list){
     b.appendChild(ah);
     b.appendChild(alListe(assumes, true));
   }
-  versContraintes(b, "le cadre");
+  versContraintes(b);
 }
 
 /* --- 5 · l'orientation : où le générateur a cherché d'abord ---
@@ -977,7 +977,7 @@ function etapeOrientation(ev){
   var etat = L.length ? [2, 1, 0].filter(function(i){ return c[i]; }).map(function(i){
     return puce(String(c[i]), NIV[i][0], c[i] + " " + NIV[i][1] + (c[i] > 1 ? "s" : ""));
   }) : null;
-  return etape("orientation", "5", "Orientation", "où chercher d’abord", etat, function(b){
+  return etape("orientation", "5", roleNom("orientation"), "ce qui guide le moteur", etat, function(b){
     if(!L.length){ b.appendChild(el("p", "mass-note", "Aucune composition posée.")); return; }
     var ul = el("ul", "mass-ori");
     L.forEach(function(x){
@@ -991,7 +991,7 @@ function etapeOrientation(ev){
       ul.appendChild(li);
     });
     b.appendChild(ul);
-    versContraintes(b, "l’orientation");
+    versContraintes(b);
   });
 }
 
@@ -1004,7 +1004,7 @@ function etapeJugement(ev){
   try { J = ev ? noter(ev.mes, null, moyennesMain()) : null; } catch(e){ console.error(e); }
   var etat = J && J.total != null ? el("b", "mass-etape__note mono" + (ev.invalide ? " is-bas" : ""), J.total + "/100") : null;
   if(etat) etat.title = "Moyenne géométrique des axes, pondérée — " + Math.round(J.couv * 100) + " % du poids lu";
-  return etape("jugement", "6", "Jugement", J ? Math.round(J.couv * 100) + " % du poids lu" : "aucune composition", etat, function(b){
+  return etape("jugement", "6", roleNom("jugement"), J ? Math.round(J.couv * 100) + " % du poids lu" : "aucune composition", etat, function(b){
     if(!J){ b.appendChild(el("p", "mass-note", "Aucune composition posée.")); return; }
     J.axes.forEach(function(a){
       var r = el("div", "mass-axe");
@@ -1017,7 +1017,7 @@ function etapeJugement(ev){
       r.appendChild(el("span", "mass-axe__s mono", a.s == null ? "—" : Math.round(a.s * 100) + " %"));
       b.appendChild(r);
     });
-    versContraintes(b, "les poids");
+    versContraintes(b);
   });
 }
 
