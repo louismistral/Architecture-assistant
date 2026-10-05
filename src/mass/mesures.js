@@ -29,7 +29,7 @@ import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
-import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
+import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
 import { CONTACT, MASS, aireEtage, assiseEff, bilan, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
@@ -96,16 +96,18 @@ export function courUtile(vols){
     [[[-s, c], [c, s], rc.w / 2, rc.d / 2], [[s, -c], [c, s], rc.w / 2, rc.d / 2],
      [[c, s], [-s, c], rc.d / 2, rc.w / 2], [[-c, -s], [-s, c], rc.d / 2, rc.w / 2]]
       .forEach(function(f){
-        var n = f[0], t = f[1], a = 0, u, z;
+        var n = f[0], t = f[1], a = 0, sx = 0, sy = 0, u, z;
         for(u = -f[2] + pas / 2; u < f[2]; u += pas){
           for(z = pas / 2; z < COUR_FOND; z += pas){
             var x = rc.x + n[0] * (f[3] + z) + t[0] * u;
             var y = rc.y + n[1] * (f[3] + z) + t[1] * u;
             if(!libre(x, y)) break;
-            a += pas * pas;
+            a += pas * pas; sx += x; sy += y;
           }
         }
-        if(a > best.a) best = { a:a, v:vols.indexOf(v) };
+        /* `n` : où regarde la façade de la cour ; `x, y` : son centre — le
+           soleil et la rue se lisent là */
+        if(a > best.a) best = { a:a, v:vols.indexOf(v), n:n, x:sx * pas * pas / a, y:sy * pas * pas / a };
       });
   }); });
   return best;
@@ -274,6 +276,36 @@ function palier(x, bon, max){ return x <= bon ? 2 : x <= max ? 1 : 0; }
 function normale(v, r){
   return r.w >= r.d ? v.a + Math.PI / 2 : v.a;
 }
+/* L'azimut d'une direction du dessin (x à l'est, y au nord), en degrés de
+   0 à 360 depuis le nord, dans le sens horaire. */
+function azimut(t){ return ((90 - t / DEG) % 360 + 360) % 360; }
+function ecartAz(a, b){ var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+/* La façade du rez la mieux tournée vers la vue, parmi celles que rien ne
+   masque sur `COUR_FOND` : l'écart, en degrés, de sa normale à la direction du
+   terrain de football. Le hall, le réfectoire et le foyer s'y ouvriront. */
+function collectifVue(E, T){
+  var rects = [], best = Infinity, pas = 2;
+  E.forEach(function(v){ v.lv.forEach(function(e){ volRects(v, e).forEach(function(r){ rects.push(r); }); }); });
+  E.forEach(function(v){
+    if(v.fix) return;
+    v.lv.forEach(function(e){
+      if(lvlOf(e.i) !== 0) return;
+      volRects(v, e).forEach(function(rc){
+        var c = Math.cos(rc.a), s = Math.sin(rc.a);
+        [[[-s, c], rc.d / 2], [[s, -c], rc.d / 2], [[c, s], rc.w / 2], [[-c, -s], rc.w / 2]].forEach(function(f){
+          var n = f[0], mx = rc.x + n[0] * f[1], my = rc.y + n[1] * f[1], z, k;
+          for(z = pas / 2; z < COUR_FOND; z += pas){
+            var x = mx + n[0] * z, y = my + n[1] * z;
+            for(k = 0; k < rects.length; k++) if(rects[k] !== rc && dansRect(rects[k], x, y)) return;
+          }
+          best = Math.min(best, ecartAz(azimut(Math.atan2(n[1], n[0])), azimut(Math.atan2(T.y - my, T.x - mx))));
+        });
+      });
+    });
+  });
+  return best;
+}
+
 /* L'optimum soleil-vue en un point : la façade longue qui partage l'écart entre
    le sud et la direction du terrain de football. Rend l'angle du grand axe. */
 export function angleSoleilVue(x, y){
@@ -307,6 +339,22 @@ function lire(vols){
   }
   var sud = angles(function(v, r){ return ecartAngle(normale(v, r), Math.PI / 2); });
   var vue = angles(function(v, r){ return ecartAngle(normale(v, r), Math.atan2(T.y - r.y, T.x - r.x)); });
+
+  /* les DEUX façades longues des corps de classes, chacune son azimut (0 au
+     nord, 90 à l'est) : un corps de classes en porte des deux côtés */
+  var cotes = [];
+  CL.forEach(function(v){
+    var nh = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; }).length;
+    solRects(v).forEach(function(r){
+      var w = Math.max(r.w, r.d) * Math.max(1, nh), t = normale(v, r);
+      cotes.push({ w:w, az:azimut(t) }, { w:w, az:azimut(t + Math.PI) });
+    });
+  });
+  /* la salle de sport : l'écart de sa façade longue à l'axe nord-sud */
+  var sportNord = null;
+  E.forEach(function(v){
+    if(v.fix) solRects(v).forEach(function(r){ sportNord = Math.abs(ecartAngle(normale(v, r), Math.PI / 2)) / DEG; });
+  });
 
   /* le jour entre façades qui se font face : l'écart ÷ la hauteur du plus haut */
   var ratio = Infinity;
@@ -397,7 +445,7 @@ function lire(vols){
   var sp = E.filter(function(v){ return v.fix; });
 
   return {
-    E:E, CL:CL, sud:sud, vue:vue, ratio:ratio, compa: bat ? fac / bat : 0,
+    E:E, CL:CL, sud:sud, vue:vue, cotes:cotes, sportNord:sportNord, collectif:collectifVue(E, T), ratio:ratio, compa: bat ? fac / bat : 0,
     cour: courUtile(vols), emprise:emp, volume:vol, sousPart: tot ? sous / tot : 0,
     dn:dn, dok:dok, pmax:pmax, el:el, pente:pt, ecartRez:zhi > zlo ? zhi - zlo : 0, rang:rang, niv:niv, dirs:dirs.length,
     pn:pn, pok:pok, pfeu:pfeu, dmin:dmin, dex:dex, marge:marge, PF:PF, fmax:fmax,
@@ -447,6 +495,38 @@ export function qualites(vols, L){
       + " à " + dec(RULES.dist.entre) + " m au moins");
   q("vue", "Vue vers le nord-ouest", vu.niv, vu.q,
     "façades longues à " + Math.round(moyenne(L.vue)) + "° du terrain de football");
+  /* les classes : chaque façade longue +1 à l'est, +½ au sud, −1 au couchant,
+     0 au nord. Une barre n'a qu'une façade à l'est au mieux — l'autre regarde
+     l'ouest ou le nord —, d'où le double : la meilleure barre atteint +1. */
+  var cb = 0, cm = 0, cs = 0, ct = 0;
+  L.cotes.forEach(function(x){
+    ct += x.w;
+    if(ecartAz(x.az, 90) <= V.claEst) cb += x.w;
+    else if(ecartAz(x.az, 247.5) <= V.claOuest) cm += x.w;
+    else if(x.az > 90 && x.az < 270) cs += x.w;
+  });
+  var cq = ct ? borne(2 * (cb + cs / 2 - cm) / ct) : 0;
+  q("cla-soleil", "Les classes à l'est, jamais au couchant",
+    /* favorable : mieux qu'une barre nord-sud, que le sud seul ne fait qu'admettre */
+    !ct ? 1 : cm / ct > 1 / 3 ? 0 : cq > .5 ? 2 : 1, cq,
+    !ct ? "aucun corps de classes" : Math.round(100 * cb / ct) + " % des façades de classes à l'est, "
+      + Math.round(100 * cs / ct) + " % au sud, " + Math.round(100 * cm / ct) + " % au couchant");
+  var sn = L.sportNord;
+  q("sport-nord", "La salle de sport ouverte au nord",
+    sn == null ? 1 : palier(sn, V.sportNordBon, V.sportNordMax), sn == null ? 0 : lin(sn, V.sportNordBon, V.sportNordMax),
+    sn == null ? "pas de salle de sport posée" : "façade longue à " + Math.round(sn) + "° du nord");
+  var cn = cu.n ? ecartAz(azimut(Math.atan2(cu.n[1], cu.n[0])), 180) : null;
+  q("cour-sud", "La cour et l'UAPE au soleil",
+    cn == null ? 0 : palier(cn, V.courSudBon, V.courSudMax), cn == null ? -1 : lin(cn, V.courSudBon, V.courSudMax),
+    cn == null ? "aucune cour" : "la cour s'ouvre à " + Math.round(cn) + "° du sud");
+  var cr = cu.n ? distRoute({ x:cu.x, y:cu.y, w:0, d:0, a:0 }) : null, CR = V.courRoute;
+  q("cour-route", "La cour à l'abri de la route",
+    cr == null ? 0 : cr >= CR ? 2 : cr >= CR / 2 ? 1 : 0, cr == null ? -1 : CR ? borne(2 * cr / CR - 1) : 1,
+    cr == null ? "aucune cour" : "centre de la cour à " + Math.round(cr) + " m de la rue");
+  var cv = L.collectif;
+  q("collectif-vue", "Hall, réfectoire et foyer vers la vue",
+    !isFinite(cv) ? 0 : palier(cv, V.orientBon, V.orientMax), !isFinite(cv) ? -1 : lin(cv, V.orientBon, V.orientMax),
+    !isFinite(cv) ? "aucune façade libre au rez" : "une façade libre du rez à " + Math.round(cv) + "° du terrain de football");
   q("jour", "Lumière entre bâtiments", jour, paires ? lin(Math.max(0, pire), 0, .25) : 1,
     !paires ? "aucune façade en vis-à-vis"
       : pire <= 0 ? "tous les vis-à-vis tiennent " + dec(V.ombreK) + " × la hauteur"
