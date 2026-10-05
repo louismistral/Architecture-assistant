@@ -101,7 +101,7 @@ export var SLINK = [
   { a:"sport",     b:"scene",      q:"attenante à la salle de sport" },
   { a:"sport",     b:"engins",     q:"en lien avec la salle de sport" },
   { a:"sport",     b:"rangement",  q:"local de rangement pour les tables et chaises" },
-  { a:"sport",     b:"nettoyage",  q:"local de nettoyage de la salle polyvalente" },
+  { a:"sport",     b:"nettoyage",  opt:1, q:"local de nettoyage de la salle polyvalente — sans proximité exigée" },
   { a:"vest_el",   b:"vest_pr",    q:"à proximité des vestiaires élèves" },
   { a:"sport",     b:"vest_el",    q:"vestiaires de la salle de sport" },
   { a:"abri",      b:"engins",     opt:1, q:"possibilité de convertir les locaux engins de la salle de gym en abri" }
@@ -110,7 +110,7 @@ export var SLINK = [
 /* Les postes que le règlement mentionne sans leur imposer de voisin. Les citer
    est la seule façon de dire que le schéma est complet : ce qui n'y figure pas
    n'a pas été oublié, il n'a simplement aucune proximité exigée. */
-export var FREE = ["Salle de classe de réserve","Salle de dédoublement","Salles d'appui / soutien",
+export var FREE = ["Hall d'entrée","Salle de classe de réserve","Salle de dédoublement","Salles d'appui / soutien",
   "Local pédago-thérapeutique","Salle détente / allaitement","WC PMR",
   "Local de rangement UAPE","Toilette individuelle","Toilettes publiques",
   "Local technique","Conciergerie","Local chauffage CAD","Piscine","Cour d'école avec préau"];

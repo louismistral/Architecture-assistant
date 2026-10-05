@@ -41,38 +41,34 @@ var CHOIX = { t:"choix" };
    aucun niveau : elle ajoute `pts:<id>` points au niveau qu'elle voudrait. */
 var SPORT = "sport|Salle de sport double";
 export var NIV = [
-  { id:"niv-sport", re:/Salle de sport double/, grade:1, tag:"intangible", src:r("2.10"),
+  { id:"niv-sport", re:/Salle de sport double/, grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
     n:"Salle de sport double au rez", msg:"7 m de hauteur libre sous structure — la salle double ne peut être qu'au rez" },
   { id:"niv-abri", re:/Abri PC/, lvl:{ min:-9, max:0 }, tag:"intangible", src:r("2.10"),
     n:"Abri PC au rez ou en sous-sol", msg:"Abri PC au rez ou en sous-sol, accès et dalle de protection" },
   { id:"niv-cad", re:/Local chauffage CAD/, grade:1, tag:"intangible", src:r("2.10"),
     n:"Local CAD de plain-pied", msg:"Accessible de plain-pied par camion, hauteur libre 5,20 m" },
-  { id:"niv-piscine", re:/Piscine/, grade:1, tag:"intangible", src:r("2.10"),
+  { id:"niv-piscine", re:/Piscine/, grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
     n:"Piscine au niveau du terrain", msg:"Bassin, vestiaires et locaux techniques au niveau du terrain" },
   { id:"niv-cour", re:/Cour d'école/, grade:1, tag:"intangible", src:r("2.10"),
     n:"Cour et préau de plain-pied", msg:"La cour et son préau sont des aménagements de plain-pied" },
-  { id:"niv-halls", re:/^Hall/, grade:1, tag:"intangible", src:r("2.10"),
-    n:"Halls au rez", msg:"Tous les halls sont au rez-de-chaussée, au niveau du terrain" },
+  { id:"niv-halls", re:/^Hall/, grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
+    n:"Chaque hall est l'entrée de sa famille", msg:"Le hall ouvre sa famille sur l'extérieur : au rez, de plain-pied, en tête des locaux qu'il dessert" },
   { id:"niv-scene", re:/Scène/, same:SPORT, tag:"intangible", src:r("2.10"),
     n:"Scène attenante à la salle de sport", msg:"Attenante à la salle de sport" },
   { id:"niv-rangement", key:"sport|Local de rangement", same:SPORT, tag:"impose", admet:TOUS, src:r("2.10"),
     n:"Rangement au niveau de la salle de sport", msg:"Rangement des tables et chaises de la salle polyvalente" },
   { id:"niv-vestiaires", re:/Vestiaires (élèves|professeurs)/, same:SPORT, tag:"impose", admet:TOUS, src:r("2.10"),
     n:"Vestiaires au niveau de la salle de sport", msg:"À proximité des vestiaires de la salle de sport" },
-  { id:"niv-nettoyage", key:"sport|Local de nettoyage", same:SPORT, tag:"impose", admet:TOUS, src:r("2.10"),
-    n:"Nettoyage au niveau de la salle de sport", msg:"Local de nettoyage de la salle polyvalente" },
   { id:"niv-refectoire", re:/Réfectoire|^Cuisine/, grade:1, tag:"impose", admet:TOUS, src:r("2.10"),
     n:"Réfectoire et cuisine au rez", msg:"Livraisons et lien avec le foyer : de préférence au rez" },
-  { id:"niv-uape", chap:"uape", grade:1, tag:"intangible", src:r("2.10"),
+  { id:"niv-uape", chap:"uape", grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
     n:"UAPE sur un seul niveau, au rez", msg:"L'UAPE tient sur un seul niveau, au rez-de-chaussée : accès direct à l'extérieur et aux parents, sans traverser l'école" },
-  { id:"niv-admin", fam:"adm", grade:1, tag:"intangible", src:r("2.10"),
+  { id:"niv-admin", fam:"adm", grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
     n:"Administration au rez", msg:"Bureaux, direction et administration au rez-de-chaussée : ils reçoivent le public et les parents de plain-pied" },
   { id:"niv-classes", re:/Salles de classe|Salle de classe|Salle de dédoublement|Salle ACM|Salles d'appui/,
-    etageMax: RULES.niv.classeMax, tag:"intangible", src:r("2.10"),
+    etageMax: RULES.niv.classeMax, tag:"prioritaire", admet:TOUS, src:r("2.10"),
     n:"Classes au plus au " + RULES.niv.classeMax + "ᵉ étage",
-    msg:"Classes situées au-delà du " + RULES.niv.classeMax + "ᵉ étage — évacuation et âge des élèves (9 à 12 ans)" },
-  { id:"niv-concierge", re:/Conciergerie/, grade:1, tag:"impose", admet:TOUS, src:r("2.10"),
-    n:"Conciergerie au rez", msg:"Local de nettoyage et vestiaires du personnel : accès de service" }
+    msg:"Classes situées au-delà du " + RULES.niv.classeMax + "ᵉ étage — évacuation et âge des élèves (9 à 12 ans)" }
 ];
 NIV.forEach(function(x){
   x.role = "cadre"; x.sujet = "Niveau d'un local"; x.onglet = "mixer";
@@ -105,44 +101,37 @@ export var CADRE_MIX = [
     n:"Rien au-dessus d'une grande hauteur libre", val:"hors ce que le niveau laisse à côté d'elle",
     lu:"src/mix/checks.js — gab:",
     d:"7 m libres sous la salle de sport : le plateau du dessus ne peut couvrir que le reste du rez." },
-  { id:"vide", sujet:"Pile", tag:"intangible", src:{ t:"construction" }, qui:"code",
-    n:"Pas de niveau vide sous un niveau chargé", val:"la pile est continue",
-    lu:"src/mix/shuffle.js — tasserSommet() · src/mix/checks.js — vide:",
-    d:"Cela ne se construit pas." },
   { id:"plateau", sujet:"Plateau", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Emprise d'un plateau", k:"plateauPart", def:0.40, min:0.15, max:0.85, pas:0.01, pct:1,
     unite:"de l'aire posable", lu:"src/mix/shuffle.js — pilesAdmissibles(), ajusterPlateaux()",
     d:"L'aire posable est de 10'528 m² (périmètre moins le recul). Le reste va à la cour, aux "
       + "accès, au stationnement et aux distances entre corps. C'est LE réglage du nombre "
       + "d'étages : plus on l'ouvre, plus le bâtiment s'étale. Éteint : toute l'aire posable." },
-  { id:"etages", sujet:"Pile", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
-    n:"Étages au-dessus du rez, au plus", k:"etagesMax", def:3, min:1, max:6, pas:1, unite:"niveaux",
-    lu:"src/mix/shuffle.js — pilesAdmissibles()",
-    d:"Le règlement ne plafonne rien (zone A, aucun gabarit), mais les classes s'arrêtent au "
-      + "2ᵉ étage : un 4ᵉ niveau ne logerait plus que du technique. Éteint : six étages." },
   { id:"soussol", sujet:"Sous-sol", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Seuil d'ouverture d'un sous-sol", k:"sousSolMin", def:300, min:0, max:2000, pas:50,
     unite:"m² enterrables", lu:"src/mix/shuffle.js — pilesAdmissibles()",
     d:"Un sous-sol se creuse trois mètres au-dessus d'une nappe à 462,25 m, et n'est tenable "
       + "qu'au tiers est du site. En deçà du seuil, il ne se justifie pas. Éteint : dès le "
       + "premier mètre carré enterrable." },
-  { id:"unite", sujet:"Classes", tag:"impose", admet:DURS, off:1, src:{ t:"usage" }, qui:"groupe",
-    n:"Unité pédagogique", k:"clsParNiveau", def:11, min:2, max:24, pas:1,
-    unite:"salles de classe par niveau", lu:"src/mix/shuffle.js — capParNiveau(), etagesDeClasses()",
-    d:"Un degré tient sur un niveau, avec ses dégagements ; au-delà, c'est un couloir "
-      + "d'hôpital. Ne compte que les vraies salles de classe. Fixe aussi le nombre minimum "
-      + "d'étages : vingt et une salles à onze par niveau en demandent deux." },
-  { id:"adj", sujet:"Adjacences", tag:"impose", admet:TOUS, off:1, src:r("2.10 — schéma"), qui:"groupe",
-    n:"Adjacence active : même niveau", k:"pts:adj", def:40, min:0, max:400, pas:5,
-    unite:"points par niveau d'écart, en orientation",
-    lu:"src/mix/shuffle.js — noteNiveau(), poser() · src/mix/checks.js — adj:",
-    d:"Chaque lien du schéma fonctionnel est un LEVIER — actif ou éteint, à la main ou au dé. "
-      + "Actif, il met ses deux postes au même niveau : c'est cette ligne. Assouplie en "
-      + "orientation, elle ne fait plus que les rapprocher." },
+  { id:"adj", sujet:"Adjacences", tag:"intangible", src:r("2.10 — schéma et remarques"), qui:"code",
+    n:"Les adjacences exigées sont respectées", val:"chaque lien du schéma, ses deux postes au même niveau",
+    lu:"src/mix/shuffle.js — noteNiveau(), poser() · src/mix/checks.js — adj: · src/mass/gen.js — genMass()",
+    d:"LA contrainte du mixer : le schéma fonctionnel et les remarques du programme. Chaque lien "
+      + "exigé met ses deux postes au même niveau ; les mutualisations ne lient rien. Une "
+      + "répartition qui en enfreint un est invalide, et le massing n'en propose aucun volume." },
   { id:"wc", sujet:"Sanitaires", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
-    n:"Chaque niveau occupé a ses sanitaires", val:"les WC et les vestiaires suivent les classes",
+    n:"Chaque niveau occupé a ses sanitaires", val:"superposés d'un étage à l'autre, filles et garçons séparés, chacun sur la circulation",
     lu:"src/mix/shuffle.js — equilibrerWC() · src/mix/checks.js — wc:",
-    d:"Aucun article ne l'écrit, mais un étage sans WC ne se dessine pas." }
+    d:"Aucun article ne l'écrit, mais un étage sans WC ne se dessine pas. Les blocs sanitaires se "
+      + "superposent d'un étage à l'autre (gaines), les WC filles et garçons sont séparés, et "
+      + "chacun a un accès direct à la circulation. Le mixer tient le premier point ; les trois "
+      + "autres se dessinent à la typologie." },
+  { id:"classe-dim", sujet:"Classes", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Dimension d'une salle de classe", k:"classeL", def:8, min:6, max:12, pas:0.5, unite:"m de front",
+    k2:"classeP", def2:9, min2:6, max2:12, unite2:"m de profondeur",
+    lu:"src/mass/model.js — profFacade()",
+    d:"8 × 9 m, les 72 m² du programme. La profondeur donne celle d'un corps de classes : deux "
+      + "salles et leur couloir." }
 ];
 CADRE_MIX.forEach(function(x){ x.role = "cadre"; x.onglet = "mixer"; });
 
@@ -151,9 +140,9 @@ CADRE_MIX.forEach(function(x){ x.role = "cadre"; x.onglet = "mixer"; });
    rend : le contrôle et la page disent la même chose, avec les mêmes mots. */
 export var CADRE_MASS = [
   { id:"perimetre", sujet:"Périmètre", tag:"intangible", src:r("2.3"), qui:"code",
-    n:"Tout le bâti dans le périmètre du concours", val:"tous les étages, porte-à-faux et passerelles compris",
+    n:"Tout le bâti dans le périmètre du concours", val:"aucun étage ne dépasse — porte-à-faux et passerelles compris",
     lu:"src/mass/gen.js — admissible() · src/mass/mesures.js — ecarts()",
-    d:"Les parcelles du concours, et rien au-delà." },
+    d:"On ne construit que dans le périmètre du concours, et aucun étage n'en dépasse." },
   { id:"recul", sujet:"Périmètre", tag:"impose", admet:TOUS, off:1,
     src:{ t:"choix", a:"— le règlement (2.3) ne fixe pas de distance aux limites" }, qui:"groupe",
     n:"Recul sur le périmètre", k:"recul", def:5, min:0, max:20, pas:0.5, unite:"m",
@@ -161,15 +150,6 @@ export var CADRE_MASS = [
     d:"Tout le bâti à 5 m au moins de la limite. Le règlement communal ne fixe aucune distance "
       + "aux limites en zone A : c'est notre recul, et il décide aussi de l'aire posable, donc "
       + "du nombre d'étages du mixer." },
-  { id:"dist", sujet:"Distance entre bâtiments", tag:"intangible", src:{ t:"aeai", a:"15-15 (règlement 2.3)" }, qui:"code",
-    n:"Distance incendie entre bâtiments", val: String(RULES.dist.entre).replace(".", ",") + " m — RULES.dist.entre",
-    lu:"src/mass/gen.js — admissible() · src/mass/mesures.js — ecarts()",
-    d:"La seule distance BLOQUANTE entre deux bâtiments. Le règlement renvoie à l'AEAI sans la "
-      + "chiffrer ; 5 m est le cas de base (deux façades à couche extérieure incombustible)." },
-  { id:"existant", sujet:"Existant", tag:"intangible", src:{ t:"aeai", a:"15-15 (règlement 2.3)" }, qui:"code",
-    n:"Bâtiments existants", val:"rien dessus, et la distance incendie",
-    lu:"src/mass/gen.js — admissible() · src/mass/mesures.js — ecarts()",
-    d:"On ne construit pas sur l'ancien Casino, ni à côté de lui sans la distance incendie." },
   { id:"sport", sujet:"Salle de sport", tag:"intangible", src:r("2.10"), qui:"code",
     n:"Salle de sport double", val:"28 × 32 m, 7,00 m libres, rien au-dessus",
     lu:"src/mass/gen.js — corpsImpose() · src/mass/mesures.js — ecarts()",
@@ -195,16 +175,19 @@ export var CADRE_MASS = [
     d:"Notre marge sur le programme : 500 m² de cour ET 120 m² de préau, comptés en plus. Le "
       + "programme donne 500 m² préau compris — la ligne du dessus le tient." },
   { id:"facade", sujet:"Classes", tag:"impose", admet:TOUS, off:1, src:{ t:"choix", a:"— jour naturel" }, qui:"groupe",
-    n:"Toutes les salles de classe en façade", val:"deux salles et leur couloir de profondeur, au plus",
+    n:"Toutes les salles de classe en façade", val:"chaque salle a sa fenêtre",
     lu:"src/mass/model.js — profFacade() · src/mass/mesures.js — ecarts()",
-    d:"Deux rangées de salles, chacune au carré de sa surface, et le couloir entre elles "
-      + "(2 × √72 + 2,40 ≈ 19,5 m) : au-delà, une salle n'a plus de fenêtre. La cote vient du "
-      + "programme et du couloir, pas d'un réglage." },
-  { id:"module", sujet:"Module", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    d:"Toutes les salles de classe sont en façade." },
+  { id:"fusion", sujet:"Volumes", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Deux volumes qui se touchent n'en font qu'un", val:"bout à bout, même angle, mêmes niveaux et profondeur",
+    lu:"src/mass/gen.js — fusionner()",
+    d:"Les pignons qui se touchaient disparaissent, leur épaisseur entre dans le corps. Éteint : "
+      + "les deux corps restent deux volumes accolés." },
+  { id:"module", sujet:"Module", tag:"intangible", src:CHOIX, qui:"groupe",
     n:"Module dimensionnel", k:"module", def:0.5, min:0.1, max:3, pas:0.1, unite:"m",
     lu:"src/mass/model.js — auModule(), horsModule()",
     d:"Toutes les cotes des corps sont des multiples du module, comme les proportions des "
-      + "pièces. Éteint : les cotes s'arrondissent encore, mais un écart n'est plus signalé." },
+      + "pièces." },
   { id:"second", sujet:"Second temps", tag:"intangible", src:r("2.2"), qui:"code",
     n:"L'école fonctionne avec et sans piscine", val:"piscine et local CAD sont des bâtiments à part",
     lu:"src/mass/gen.js — poserSecond()",

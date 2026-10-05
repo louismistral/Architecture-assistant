@@ -155,6 +155,7 @@ export var RULES = {
      décide à quel étage va chaque poste, avant toute volumétrie. */
   niv: {
     classeMax: 2,      /* classes au plus au 2ᵉ étage — évacuation et âge des élèves */
+    etagesMax: 6,      /* étages au-dessus du rez que la recherche essaie — le règlement ne plafonne rien (zone A) */
     solRez: ["Salle de sport double","Local chauffage CAD","Piscine","Hall","UAPE","Bureaux"],
     sousSol: ["Abri PC","Technique","Stockage","Nettoyage"]
   },

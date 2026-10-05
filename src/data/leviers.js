@@ -13,8 +13,7 @@
    groupe : tout le monde cherche dans le même espace.
 
    Où vivent les états :
-     le mixer     `mix/opts.js` — la pile, les plateaux, le lien des postes,
-                  les adjacences, chacun avec son dé ;
+     le mixer     `mix/opts.js` — la pile, avec son dé ;
      le massing   `mass/model.js — MASS` — le parti (`auto` = libre), le second
                   temps (`auto` = libre), et `MASS.lev` pour le reste (`null` =
                   libre).
@@ -31,23 +30,6 @@ export var LEVIERS = [
     etat:"sur la pile, au mixer · dé allumé par défaut", lu:"src/mix/shuffle.js — proposerPile()",
     d:"Dé allumé, la pile est tirée parmi les piles admissibles, la plus compacte d'abord "
       + "(orientation « pile compacte ») ; éteint, elle reste celle qu'on a composée." },
-  { id:"lev-plateau", sujet:"Plateau", onglet:"mixer", src:G,
-    n:"Plateau de chaque niveau", val:"de 400 m² à l'emprise que le cadre admet",
-    etat:"sur chaque niveau, au mixer", lu:"src/mix/shuffle.js — proposerPile(), ajusterPlateaux()",
-    d:"Dé allumé, le plateau se déduit de la pile tirée puis suit ce que le niveau porte ; "
-      + "éteint, la valeur saisie sert de capacité." },
-  { id:"lev-lien", sujet:"Lien des postes", onglet:"mixer", src:G,
-    n:"Lié ou délié, poste par poste", val:"lié · délié",
-    etat:"sur chaque bloc, au mixer · dés éteints par défaut", lu:"src/mix/shuffle.js — tirerReglages()",
-    d:"Lié, les pièces d'un poste vont ensemble, à un seul niveau ; délié, elles sont "
-      + "indépendantes. Libre : une chance sur deux." },
-  { id:"lev-adj", sujet:"Adjacences", onglet:"mixer", src:{ t:"reglement", a:"2.10 — schéma" },
-    n:"Adjacences actives, lien par lien", val:"active · éteinte",
-    etat:"au flanc du mixer · exigées actives, mutualisations éteintes",
-    lu:"src/mix/shuffle.js — tirerReglages() · src/mix/opts.js",
-    d:"Active, l'adjacence met ses deux postes au même niveau — c'est une ligne du cadre ; "
-      + "éteinte, ils sont indépendants. Libre : une chance sur deux." },
-
   /* ---- le massing ---- */
   { id:"lev-parti", sujet:"Parti", onglet:"massing", src:G,
     n:"Le parti", val:"les onze partis — bloc compact, barre, barres, L, U, cour, pavillons, hameau, terrasses, peigne, libre",
@@ -61,26 +43,15 @@ export var LEVIERS = [
     d:"L'identité du parti reste, sa forme varie : chaque cote est tirée dans les directives "
       + "du parti. Un volume de plus par classe de hauteur, une fois sur deux." },
   { id:"lev-prof", sujet:"Dimensions des corps", onglet:"massing", src:G,
-    n:"Profondeur des corps", k:"profMin", def:11, min:1, max:100, pas:0.5, unite:"m au moins",
-    k2:"profMax", def2:28, min2:1, max2:100, unite2:"m au plus — murs compris",
+    n:"Profondeur des corps", k:"profMin", def:11, min:1, max:100, pas:0.5, unite:"m au moins — murs compris",
     etat:"au rail · libre : tirée dans le domaine", lu:"src/mass/model.js — profBornes() · src/mass/gen.js — essai()",
-    d:"Le petit côté d'un corps. Un corps de classes reste en plus sous la profondeur de "
-      + "façade (le cadre)." },
+    d:"Le petit côté d'un corps. Pas de maximum réglé : il vient de la profondeur de façade "
+      + "des classes (le cadre)." },
   { id:"lev-larg", sujet:"Dimensions des corps", onglet:"massing", src:G,
-    n:"Largeur des corps", k:"largeurMin", def:11, min:1, max:200, pas:0.5, unite:"m au moins",
-    k2:"largeurMax", def2:28, min2:1, max2:300, unite2:"m au plus — murs compris",
+    n:"Largeur des corps", k:"largeurMin", def:11, min:1, max:200, pas:0.5, unite:"m au moins — murs compris",
     etat:"toujours libre · suit la surface et la profondeur", lu:"src/mass/partis.js — besoins()",
-    d:"Le grand côté. La borne haute fixe le nombre de corps : au-delà, un niveau se partage "
-      + "entre plus de volumes." },
-  { id:"lev-cap", sujet:"Orientation générale", onglet:"massing", src:G,
-    n:"Orientation de la figure", val:"l'axe du périmètre · l'optimum soleil-vue · un angle libre autour de l'axe",
-    etat:"au rail · libre : une des trois", lu:"src/mass/gen.js — orientation()",
-    d:"Dans les partis libres, chaque corps choisit la sienne ; les terrasses suivent toujours "
-      + "les courbes de niveau." },
-  { id:"lev-implant", sujet:"Implantation", onglet:"massing", src:G,
-    n:"Position sur la parcelle", val:"toute position où la figure tient d'un bloc",
-    etat:"toujours libre · la seed la fige, la main la déplace", lu:"src/mass/gen.js — implanter()",
-    d:"La figure est posée d'un bloc, position et angle, et rien ne la déforme ensuite." },
+    d:"Le grand côté. Pas de maximum réglé : un niveau se partage entre plus de volumes quand "
+      + "un corps passerait l'élancement souhaité (orientation « élan »)." },
   { id:"lev-sport", sujet:"Salle de sport", onglet:"massing", src:G,
     n:"Salle de sport accolée ou à part", val:"accolée au corps principal · à part, sur le bas du site",
     etat:"au rail · libre : une chance sur deux", lu:"src/mass/gen.js — placerSport()",
@@ -137,7 +108,6 @@ declarer(LEVIERS);
 
 /* Les options d'un levier du massing, et la valeur qui veut dire « libre ». */
 export var OPTIONS = {
-  cap:   [{ id:"axe", n:"Axe du périmètre" }, { id:"soleil", n:"Soleil et vue" }, { id:"libre", n:"Angle libre" }],
   sport: [{ id:"accolee", n:"Accolée" }, { id:"part", n:"À part" }],
   ponts: [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
   toit:  [{ id:"plat", n:"Plate" }, { id:"vert", n:"Végétalisée" }, { id:"pan", n:"Un pan" },
