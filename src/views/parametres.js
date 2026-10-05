@@ -6,10 +6,18 @@
    valeur, sa force, et ce qu'elle dit de la composition à l'écran. On y lit
    d'un coup d'œil ce qui agit, où, pourquoi, et qui le règle.
 
-   Deux moteurs, et la page les sépare :
+   Cinq rubriques, qui se déplient niveau par niveau :
 
-     la RECHERCHE   les leviers, le cadre, l'orientation, le générateur ;
-     le JUGEMENT    les axes, leurs poids, les critères et leurs fonctions.
+     CONTRAINTES   valide ou non, fixé de l'extérieur — le tag Intangible ;
+     LEVIERS       ce que nous décidons pour borner la recherche : le bâtiment,
+                   les surfaces à préciser du cahier, le moteur de recherche ;
+     PRÉFÉRENCES   ce qui guide le moteur — Imposé, Prioritaire, Souhaité,
+                   Indicatif ;
+     ÉVALUATION    les mesures, puis le jugement : axe › sous-axe › critère ;
+     DONNÉES       le contexte, nos hypothèses de construction.
+
+   Une ligne suit son tag : Intangible ne se change pas ; passée d'Imposé à
+   Souhaité, elle change de sous-niveau dans les préférences.
 
    Aucune copie : chaque contrôle lit et écrit la case même que les moteurs
    lisent — `V` pour les lignes, `mix/opts.js` et `mass/model.js` pour l'état
@@ -51,7 +59,7 @@ import { deBtn } from "./mixer.js";
    filtre à la page. */
 var ETATS = {}, ETAT = null;
 function etatDe(cle, onglet){
-  return ETATS[cle] || (ETATS[cle] = { q:"", grouper:"role", onglet:onglet || "", tag:"", qui:"" });
+  return ETATS[cle] || (ETATS[cle] = { q:"", grouper:"role", onglet:onglet || "", tag:"", qui:"", ouverts:{} });
 }
 var rendre = null;
 
@@ -212,8 +220,14 @@ function rangee(o){
   return r;
 }
 /* Ce que toutes les lignes déclarées partagent. */
+/* La rubrique d'une ligne du cadre ou de l'orientation se lit sur son tag :
+   Intangible, une contrainte ; tout le reste, une préférence. */
+function rubrique(l){
+  if(l.role !== "cadre" && l.role !== "orientation") return l.role;
+  return tagDe(l.id) === "intangible" || (!l.tag && l.role === "cadre") ? "cadre" : "orientation";
+}
 function base(l){
-  return { n:l.n, sujet:l.sujet, role:roleDe(l.id), onglet:l.onglet, src:sourceTxt(l.src),
+  return { n:l.n, sujet:l.sujet, role:rubrique(l), onglet:l.onglet, src:sourceTxt(l.src),
            qui:l.qui, tag:l.tag ? tagDe(l.id) : null, d:l.d, lu:l.lu,
            modifie: [l.k, l.k2, "t:" + l.id, "on:" + l.id].some(function(k){ return k && V[k] !== undefined && V[k] !== defaut(k); }),
            inactif: l.off !== undefined && !actif(l.id) };
@@ -269,10 +283,11 @@ function ctx(n, val, a, sujet, onglet){
   return rangee({ n:n, val:val, role:"donnee", sujet:sujet || "Règlement", onglet:onglet || "programme",
                   src:"règlement " + a, qui:"code" });
 }
-function donnees(){
+/* Les surfaces que le cahier laisse au projet, et la largeur du couloir :
+   des LEVIERS — nous les décidons, et la génération les lit. */
+function surfacesCahier(){
   var R = RULES, L = [];
-  /* les hypothèses du groupe */
-  L.push(rangee(Object.assign(base(ligne("couloir")), {
+  L.push(rangee(Object.assign(base(ligne("couloir")), { role:"levier",
     val: (function(){
       var w = el("span", "pr-val");
       w.appendChild(nombre(COULOIR, { min:R.circ.couloir.min, max:R.circ.couloir.max, pas:0.05 },
@@ -288,22 +303,51 @@ function donnees(){
       renderBar(); saveSoon(); rendre();
     }, it.n));
     w.appendChild(el("span", "pr-nb__u", "m²/pièce"));
-    L.push(rangee({ n:it.n + (it.nb > 1 ? " ×" + it.nb : ""), sujet:"Programme", role:"donnee", onglet:"programme",
+    L.push(rangee({ n:it.n + (it.nb > 1 ? " ×" + it.nb : ""), sujet:"Programme", role:"levier", onglet:"programme",
       src:"hypothèse — " + (it.set ? "précisée" : "à préciser"), qui:"groupe", val:w,
       d:"Une des huit surfaces que le règlement laisse « selon projet »." }));
   });
-  ["m3", "pass-larg", "couverture", "enveloppe", "place-parc", "cages"].forEach(function(id){
+  return L;
+}
+/* Le prix au m³ : une hypothèse du jury, rangée avec le critère de coût. */
+function prixM3(){
+  var l = ligne("m3"), o = base(l);
+  o.role = "jugement";
+  o.val = valeurDe(l);
+  if(ECRAN && ECRAN.ev){
+    var c = ECRAN.ev.mes.volume * V.m3;
+    o.ecran = el("span", "pr-eff mono", dec(c / 1e6, 1) + " M CHF");
+    o.ecranTxt = fmt(ECRAN.ev.mes.volume) + " m³ × " + V.m3 + " CHF = " + fmt(Math.round(c)) + " CHF, pour "
+      + fmt(RULES.budget) + " CHF au budget";
+  }
+  return rangee(o);
+}
+/* Les mesures du bâtiment : la première moitié de l'évaluation. */
+function mesures(){
+  return MESURES.map(function(x){
+    var o = base(x), m = ECRAN && ECRAN.ev ? ECRAN.ev.mes[x.m] : null;
+    o.role = "jugement";
+    o.val = x.unite ? "en " + x.unite : "un nombre";
+    if(m != null) o.ecran = el("span", "pr-eff mono", (typeof m === "number" ? String(m).replace(".", ",") : String(m)) + (x.unite && x.unite.length < 6 ? " " + x.unite : ""));
+    return rangee(o);
+  });
+}
+/* Le reste : nos hypothèses de construction, puis le contexte opposable — le
+   règlement, un sous-niveau par thème. */
+var THEMES = { mobilite:"Mobilité", economie:"Économie", procedure:"Procédure" };
+function donnees(cle, niv){
+  var D = contexte(), regl = D.filter(function(r){ return r.dataset.regl; });
+  return parSujet(cle, niv, D.filter(function(r){ return !r.dataset.regl; }))
+    .concat(regl.length ? [groupe(cle + "/reglement", niv, "Règlement", parSujet(cle + "/reglement", niv + 1, regl))] : []);
+}
+function contexte(){
+  var R = RULES, L = [];
+  ["pass-larg", "couverture", "enveloppe", "place-parc", "cages"].forEach(function(id){
     var l = ligne(id), o = base(l);
     o.val = valeurDe(l);
-    if(id === "m3" && ECRAN && ECRAN.ev){
-      var c = ECRAN.ev.mes.volume * V.m3;
-      o.ecran = el("span", "pr-eff mono", dec(c / 1e6, 1) + " M CHF");
-      o.ecranTxt = fmt(ECRAN.ev.mes.volume) + " m³ × " + V.m3 + " CHF = " + fmt(Math.round(c)) + " CHF, pour "
-        + fmt(RULES.budget) + " CHF au budget";
-    }
+    o.sujet = "Hypothèses";
     L.push(rangee(o));
   });
-  /* le contexte opposable */
   L.push(ctx("Périmètre", "parcelles " + R.site.parcelles.join(", ") + " · " + fmt(R.site.aire) + " m²", "2.3", "Site"));
   L.push(ctx("Zone", R.site.zone + " — ni gabarit, ni hauteur, ni distance aux limites", "2.3", "Site"));
   L.push(ctx("Nappe phréatique", nb(R.site.nappe[0]) + " – " + nb(R.site.nappe[1]) + " msm · terrain à " + nb(R.site.altMoy), "2.3", "Site"));
@@ -318,15 +362,10 @@ function donnees(){
   L.push(ctx("Parasismique", "zone " + R.seisme.zone + " · agd " + nb(R.seisme.agd) + " m/s² · sol " + R.seisme.sol, "2.5", "Structure"));
   Object.keys(R.cadre).forEach(function(th){
     R.cadre[th].forEach(function(c){
-      L.push(ctx(c.n, c.v, c.art + (c.verif ? " — à vérifier" : ""), "Règlement · " + th));
+      var r = ctx(c.n, c.v, c.art + (c.verif ? " — à vérifier" : ""), THEMES[th] || th.charAt(0).toUpperCase() + th.slice(1));
+      r.dataset.regl = "1";
+      L.push(r);
     });
-  });
-  /* les mesures du bâtiment */
-  MESURES.forEach(function(x){
-    var o = base(x), m = ECRAN && ECRAN.ev ? ECRAN.ev.mes[x.m] : null;
-    o.val = x.unite ? "en " + x.unite : "un nombre";
-    if(m != null) o.ecran = el("span", "pr-eff mono", (typeof m === "number" ? String(m).replace(".", ",") : String(m)) + (x.unite && x.unite.length < 6 ? " " + x.unite : ""));
-    L.push(rangee(o));
   });
   return L;
 }
@@ -401,11 +440,12 @@ function leviers(){
   });
 }
 
-/* ---------- 3 · le cadre et 4 · l'orientation ----------------------------------------- */
-function lignesDe(role){
-  /* le rôle VIVANT : une ligne passée d'Imposé à Prioritaire change de section */
+/* ---------- 3 · les contraintes et 4 · les préférences ---------------------------------
+   La rubrique se lit sur le tag VIVANT ; `tag` en plus range les préférences
+   par force. */
+function lignesDe(rub, tag){
   return LIGNES.filter(function(l){ return (l.role === "cadre" || l.role === "orientation")
-      && (l.tag ? roleDe(l.id) : l.role) === role; })
+      && rubrique(l) === rub && (!tag || tagDe(l.id) === tag); })
     .map(function(l){
       var o = base(l);
       o.val = valeurDe(l);
@@ -466,7 +506,10 @@ function critere(x, J){
   }
   return rangee(o);
 }
-function jugement(){
+/* Le résumé des axes, puis axe › sous-axe › critères. Dans un volet, le
+   résumé seul : les critères notent le bâtiment entier, et se règlent sur la
+   page. `cle` : la clé du groupe parent, pour que chaque dépliage se retienne. */
+function jugement(cle, niv, resume){
   var J = ECRAN && ECRAN.jug, out = [];
   var t = el("div", "pr-axes");
   var h = el("div", "pr-axes__h");
@@ -496,23 +539,24 @@ function jugement(){
     + "critère sans mesure reçoit la note posée à la main sur la variante, sinon la moyenne des notes "
     + "posées sur les autres, sinon 0,5."));
   out.push(t);
+  if(resume) return out;
   AXES.forEach(function(a){
-    a.sous.forEach(function(sx){
-      var sj = J ? J.axes.filter(function(x){ return x.id === a.id; })[0].sous.filter(function(x){ return x.id === sx.id; })[0] : null;
-      var hd = el("div", "pr-sous");
-      hd.appendChild(el("b", null, a.n.split(",")[0] + " › " + sx.n));
-      if(a.sous.length > 1){
-        var w = el("span", "pr-val");
-        w.appendChild(nombre(V["sx:" + sx.id], { min:0, max:100, pas:1 }, function(v){
-          if(!regler("sx:" + sx.id, v)) return false; saveSoon(); rendre(); }, "Poids du sous-axe « " + sx.n + " »"));
-        w.appendChild(el("span", "pr-nb__u", "dans l'axe"));
-        hd.appendChild(w);
-      }
-      hd.appendChild(el("span", "pr-sous__s mono", sj ? pct(sj.s) + " · lu à " + Math.round(sj.couv * 100) + " %" : ""));
-      hd.dataset.onglet = "tous";
-      out.push(hd);
-      CRITERES.filter(function(x){ return x.axes[sx.id]; }).forEach(function(x){ out.push(critere(x, J)); });
-    });
+    var aj = J ? J.axes.filter(function(x){ return x.id === a.id; })[0] : null;
+    var ca = cle + "/" + a.id;
+    var sous = a.sous.map(function(sx){
+      var sj = aj ? aj.sous.filter(function(x){ return x.id === sx.id; })[0] : null;
+      var crits = CRITERES.filter(function(x){ return x.axes[sx.id]; });
+      var rows = crits.map(function(x){ return critere(x, J); });
+      if(crits.some(function(x){ return x.f && x.f.t === "cout"; })) rows.unshift(prixM3());
+      if(a.sous.length < 2) return rows;
+      var w = el("span", "pr-val");
+      w.appendChild(nombre(V["sx:" + sx.id], { min:0, max:100, pas:1 }, function(v){
+        if(!regler("sx:" + sx.id, v)) return false; saveSoon(); rendre(); }, "Poids du sous-axe « " + sx.n + " »"));
+      w.appendChild(el("span", "pr-nb__u", "dans l'axe"));
+      w.appendChild(el("span", "pr-g__sc mono", sj ? pct(sj.s) + " · lu à " + Math.round(sj.couv * 100) + " %" : ""));
+      return [groupe(ca + "/" + sx.id, niv + 1, sx.n, rows, { extra:w })];
+    }).reduce(function(x, y){ return x.concat(y); }, []);
+    out.push(groupe(ca, niv, a.n, sous, { extra: el("span", "pr-g__sc mono", aj ? pct(aj.s) : "") }));
   });
   return out;
 }
@@ -528,40 +572,95 @@ function generateur(){
   });
 }
 
-/* ---------- les sections --------------------------------------------------------------- */
-function section(titre, sous, nodes, cls){
-  var s = el("section", "pr-f" + (cls ? " " + cls : ""));
-  var h = el("header", "pr-f__h");
-  h.appendChild(el("h2", null, titre));
-  if(sous) h.appendChild(el("p", null, sous));
-  s.appendChild(h);
-  var l = el("div", "pr-f__l");
-  nodes.forEach(function(x){ l.appendChild(x); });
-  s.appendChild(l);
-  return s;
+/* ---------- les groupes, qui se déplient ---------------------------------------------
+   Un groupe porte des rangées ou d'autres groupes, à n'importe quelle
+   profondeur. Il retient s'il est ouvert, d'un rendu à l'autre : la page se
+   refait à chaque réglage. Par défaut, la première profondeur est ouverte —
+   les deux dans un volet, plus court. `o` : `{ q, extra }`. */
+function groupe(cle, niv, titre, enfants, o){
+  o = o || {};
+  var d = el("details", "pr-g pr-g--" + Math.min(niv, 4));
+  d.open = cle in ETAT.ouverts ? ETAT.ouverts[cle] : niv <= ETAT.ouvrir;
+  d.addEventListener("toggle", function(){ ETAT.ouverts[cle] = d.open; });
+  var s = el("summary", "pr-g__s");
+  s.appendChild(icone("chevron", 14));
+  s.appendChild(el(niv === 1 ? "h2" : "h3", "pr-g__t", titre));
+  s.appendChild(el("span", "pr-g__nb mono"));
+  if(o.extra){ o.extra.classList.add("pr-g__x"); s.appendChild(o.extra); }
+  if(o.q) s.appendChild(el("p", "pr-g__q", o.q));
+  /* un champ dans le titre ne doit pas replier le groupe */
+  s.addEventListener("click", function(ev){
+    if(ev.target.closest("input, label, .menu")) ev.preventDefault();
+  });
+  d.appendChild(s);
+  var l = el("div", "pr-g__l");
+  enfants.forEach(function(x){ l.appendChild(x); });
+  d.appendChild(l);
+  return d;
+}
+/* Un sous-niveau par onglet, quand les rangées en touchent plusieurs. */
+var ORDRE_ONGLETS = ["programme", "mixer", "massing", "typologie", "rendu", "tous"];
+function parOnglet(cle, niv, rangees){
+  var G = {};
+  rangees.forEach(function(r){ var k = r.dataset.onglet || "tous"; (G[k] = G[k] || []).push(r); });
+  var ks = ORDRE_ONGLETS.filter(function(k){ return G[k]; });
+  /* un volet est déjà filtré sur son onglet */
+  if(ks.length < 2 || ETAT.onglet) return rangees;
+  return ks.map(function(k){ return groupe(cle + "/" + k, niv, ONGLETS[k], G[k]); });
+}
+/* Un sous-niveau par sujet, dans l'ordre où ils viennent. */
+function parSujet(cle, niv, rangees){
+  var G = {}, ordre = [];
+  rangees.forEach(function(r){
+    var k = r.dataset.sujet || "—";
+    if(!G[k]){ G[k] = []; ordre.push(k); }
+    G[k].push(r);
+  });
+  return ordre.map(function(k){ return groupe(cle + "/" + k, niv, k, G[k]); });
 }
 function roleDef(id){ return ROLES.filter(function(r){ return r.id === id; })[0]; }
-function toutesLesRangees(){
-  return {
-    donnee: donnees(), levier: leviers(), cadre: lignesDe("cadre"),
-    orientation: lignesDe("orientation"), jugement: jugement(), recherche: generateur()
-  };
+var TAGS_PREF = ["impose", "prioritaire", "souhaite", "indicatif"];
+/* L'arbre entier. */
+function rubriques(resume){
+  function rub(id, enfants){ var d = roleDef(id); return groupe(id, 1, d.n, enfants, { q:d.q }); }
+  var gen = roleDef("recherche");
+  return [
+    rub("cadre", parOnglet("cadre", 2, lignesDe("cadre"))),
+    rub("levier", [
+      groupe("levier/batiment", 2, "Le bâtiment", parOnglet("levier/batiment", 3, leviers()),
+        { q:"Que fait-on varier ? Fixe, la valeur est la nôtre ; libre, le moteur la tire dans le domaine." }),
+      groupe("levier/cahier", 2, "Les surfaces du cahier des charges", surfacesCahier(),
+        { q:"Ce que le règlement laisse « selon projet », et la largeur du couloir : nous les fixons, la génération les lit." }),
+      groupe("levier/moteur", 2, gen.n, parOnglet("levier/moteur", 3, generateur()), { q:gen.q })
+    ]),
+    rub("orientation", TAGS_PREF.map(function(t){
+      var x = tagInfo(t), c = "orientation/" + t;
+      return groupe(c, 2, x.n, parOnglet(c, 3, lignesDe("orientation", t)), { q:x.d });
+    })),
+    rub("jugement", [
+      groupe("jugement/mesures", 2, "Les mesures", parOnglet("jugement/mesures", 3, mesures()),
+        { q:"Ce qu'on lit sur un bâtiment — le nôtre comme celui d'un concurrent. Le jugement ne lit qu'elles." }),
+      groupe("jugement/jury", 2, "Le jugement", jugement("jugement/jury", 3, resume),
+        { q:"Six axes, leurs sous-axes, et dans chacun des critères : une mesure, une fonction de score, un poids." })
+    ]),
+    rub("donnee", donnees("donnee", 2))
+  ];
 }
 
 function appliquerFiltre(host){
   var q = ETAT.q.trim().toLowerCase();
-  host.querySelectorAll(".pr-f").forEach(function(f){
-    var vus = 0;
-    f.querySelectorAll(".pr-l").forEach(function(l){
-      var ok = (!q || l.dataset.q.indexOf(q) >= 0)
-        && (!ETAT.onglet || l.dataset.onglet === ETAT.onglet || l.dataset.onglet === "tous")
-        && (!ETAT.tag || l.dataset.tag === ETAT.tag)
-        && (!ETAT.qui || l.dataset.qui === ETAT.qui);
-      l.hidden = !ok;
-      if(ok) vus++;
-    });
+  host.querySelectorAll(".pr-g .pr-l").forEach(function(l){
+    l.hidden = !((!q || l.dataset.q.indexOf(q) >= 0)
+      && (!ETAT.onglet || l.dataset.onglet === ETAT.onglet || l.dataset.onglet === "tous")
+      && (!ETAT.tag || l.dataset.tag === ETAT.tag)
+      && (!ETAT.qui || l.dataset.qui === ETAT.qui));
+  });
+  host.querySelectorAll(".pr-g").forEach(function(g){
+    var vus = g.querySelectorAll(".pr-l:not([hidden])").length;
+    g.querySelector(".pr-g__nb").textContent = vus ? String(vus) : "";
     /* le résumé des axes reste, même quand les critères sont filtrés */
-    f.hidden = !vus && !f.querySelector(".pr-axes");
+    g.hidden = !vus && !g.querySelector(".pr-axes");
+    if(q && vus) g.open = true;
   });
 }
 
@@ -601,7 +700,7 @@ function outils(host){
     });
     return g;
   }
-  bar.appendChild(seg("Grouper", [["role", "Rôle"], ["sujet", "Sujet"], ["onglet", "Onglet"]], "grouper", true));
+  bar.appendChild(seg("Grouper", [["role", "Rubrique"], ["sujet", "Sujet"], ["onglet", "Onglet"]], "grouper", true));
   bar.appendChild(seg("Onglet", [["", "Tous"], ["programme", "Cahier"], ["mixer", "Mixer"], ["massing", "Massing"],
     ["typologie", "Suivants"]], "onglet"));
   bar.appendChild(seg("Tag", [["", "Tous"]].concat(TAGS.map(function(t){ return [t.id, t.n]; })), "tag"));
@@ -632,9 +731,9 @@ export function parametresVue(render, opts){
   h.appendChild(el("p", "pr__lead", opts.onglet
     ? "Les lignes qui agissent sur cet onglet, et ce que chacune dit de la composition à l'écran. "
       + "Tout le classement est dans Paramètres & contraintes."
-    : "Tout ce qui influe sur une variante, une ligne par décision. La RECHERCHE produit des variantes — "
-      + "ses leviers, son cadre, son orientation ; le JUGEMENT les note comme le jury, par leurs seules "
-      + "mesures. Une ligne a un rôle, et un seul ; un même sujet peut en porter une par rôle."));
+    : "Tout ce qui influe sur une variante, une ligne par décision. Les CONTRAINTES disent si elle est "
+      + "valide, les LEVIERS bornent la recherche, les PRÉFÉRENCES la guident ; l'ÉVALUATION mesure le "
+      + "bâtiment produit puis le note, sans rien savoir de la façon dont il l'a été."));
   if(opts.rejouer){
     var rb = el("div", "pr-rejouer");
     var b = el("button", "btn btn--primary", opts.onglet === "mixer" ? "Rejouer la répartition" : "Rejouer la volumétrie");
@@ -656,28 +755,21 @@ export function parametresVue(render, opts){
   ["Ligne", "Valeur", "Force", "À l'écran"].forEach(function(t){ tete.appendChild(el("span", null, t)); });
   s.appendChild(tete);
 
-  var R = toutesLesRangees();
-  /* Dans un volet, le jugement se résume à ses axes : ses critères notent le
-     bâtiment entier, et se règlent sur la page. */
-  if(opts.onglet) R.jugement = R.jugement.slice(0, 1);
-  if(ETAT.grouper === "role"){
-    ["levier", "cadre", "orientation", "jugement", "recherche", "donnee"].forEach(function(id){
-      var d = roleDef(id);
-      s.appendChild(section(d.n + (d.moteur !== "—" ? " — moteur de " + d.moteur : ""), d.q, R[id], "pr-f--" + id));
-    });
-  } else {
-    /* par sujet ou par onglet : les rangées de tous les rôles, regroupées */
-    var tous = [];
-    ["levier", "cadre", "orientation", "recherche", "jugement", "donnee"].forEach(function(k){
-      R[k].forEach(function(n){ if(n.classList.contains("pr-l")) tous.push(n); });
-    });
+  ETAT.ouvrir = opts.onglet ? 2 : 1;
+  var arbre = rubriques(!!opts.onglet);
+  if(ETAT.grouper === "role") arbre.forEach(function(g){ s.appendChild(g); });
+  else {
+    /* par sujet ou par onglet : les rangées de toutes les rubriques, regroupées */
+    var tous = [], tmp = el("div");
+    arbre.forEach(function(g){ tmp.appendChild(g); });
+    tmp.querySelectorAll(".pr-l").forEach(function(n){ tous.push(n); });
     var G = {}, ordre = [];
     tous.forEach(function(n){
       var cle = (ETAT.grouper === "onglet" ? ONGLETS[n.dataset.onglet] : n.dataset.sujet) || "—";
       if(!G[cle]){ G[cle] = []; ordre.push(cle); }
       G[cle].push(n);
     });
-    ordre.forEach(function(k){ s.appendChild(section(k, null, G[k])); });
+    ordre.forEach(function(k){ s.appendChild(groupe(ETAT.grouper + "/" + k, 1, k, G[k])); });
   }
   s.appendChild(el("p", "pr-note", "Hors modèle : le thème, le mode, le tri et les filtres des variantes — des "
     + "préférences du compte (menu ◐, `net/prefs.js`). Elles ne changent aucune variante."));

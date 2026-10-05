@@ -2,7 +2,7 @@
    Paramètres & contraintes — des lignes, et rien d'autre.
    Quatre colonnes partout : la ligne et ses niveaux de classement, sa valeur,
    sa force (le tag, le poids, le dé), ce qu'elle dit de l'écran. La tête des
-   colonnes est posée une fois, collante ; chaque rôle a sa section. Le détail
+   colonnes est posée une fois, collante ; les rubriques se déplient par niveaux. Le détail
    d'une ligne se déplie. Aucune valeur brute : tout vient de `tokens.css`.
    ========================================================================= */
 .pr__h{border-bottom:1px solid var(--border);padding-bottom:var(--s-4)}
@@ -49,11 +49,32 @@
 .pr-tags__i{display:flex;align-items:baseline;gap:var(--s-2);font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 .pr-tags__i .chip{flex:none}
 
-/* --- les sections, une par rôle ------------------------------------------ */
-.pr-f{margin-top:var(--s-6)}
-.pr-f__h h2{margin:0;font-size:var(--t-lg);font-weight:600;letter-spacing:-.015em}
-.pr-f__h p{margin:var(--s-1) 0 var(--s-3);max-width:72ch;font-size:var(--t-xs);color:var(--muted-foreground)}
-.pr-f__l{border-top:1px solid var(--border)}
+/* --- les groupes : rubrique › sous-niveau › …, chacun se déplie ----------
+   Seul le titre se décale avec la profondeur : les rangées gardent toute la
+   largeur, pour que leurs colonnes tombent sous la tête. */
+.pr-g{border-top:1px solid var(--border-soft)}
+.pr-g--1{margin-top:var(--s-6);border-top:0}
+.pr-g__s{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-1) var(--s-2);
+  padding:var(--s-2) 0;list-style:none;cursor:pointer;
+}
+.pr-g__s::-webkit-details-marker{display:none}
+.pr-g__s>.ic--chevron{flex:none;color:var(--muted-foreground);transform:rotate(-90deg);transition:transform var(--dur-2) var(--ease-out)}
+.pr-g[open]>.pr-g__s>.ic--chevron{transform:none}
+.pr-g__s:hover .pr-g__t{color:var(--primary)}
+.pr-g__t{margin:0;font-weight:600;transition:color var(--dur-1) var(--ease)}
+.pr-g--1>.pr-g__s{border-bottom:1px solid var(--border)}
+.pr-g--1>.pr-g__s .pr-g__t{font-size:var(--t-lg);letter-spacing:-.015em}
+.pr-g--2>.pr-g__s{padding-inline-start:var(--s-3)}
+.pr-g--2>.pr-g__s .pr-g__t{font-size:var(--t-md)}
+.pr-g--3>.pr-g__s{padding-inline-start:var(--s-6)}
+.pr-g--3>.pr-g__s .pr-g__t,.pr-g--4>.pr-g__s .pr-g__t{font-size:var(--t-sm)}
+.pr-g--4>.pr-g__s{padding-inline-start:var(--s-8)}
+.pr-g__nb{font-size:var(--t-2xs);color:var(--muted-foreground)}
+.pr-g__x{margin-inline-start:auto}
+.pr-g__sc{font-size:var(--t-2xs);color:var(--muted-foreground)}
+/* la question passe sous le titre ; sa ligne s'arrête à 72ch */
+.pr-g__q{flex-basis:100%;margin:0 0 var(--s-1);padding-inline:calc(14px + var(--s-2)) max(0px, 100% - 72ch);font-size:var(--t-xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 
 /* --- une ligne ------------------------------------------------------------ */
 .pr-l{border-bottom:1px solid var(--border-soft);font-size:var(--t-sm)}
@@ -123,7 +144,7 @@
 .pr-sel__v.is-neuf{animation:pr-neuf var(--dur-2) ease}
 @keyframes pr-neuf{from{opacity:.6;filter:blur(2px)}}
 
-/* --- le jugement : les axes, puis les sous-axes et leurs critères ------------ */
+/* --- le jugement : le résumé des axes ---------------------------------------- */
 .pr-axes{padding:var(--s-3) 0;border-bottom:1px solid var(--border)}
 .pr-axes__h{display:flex;align-items:baseline;gap:var(--s-3);flex-wrap:wrap;margin-block-end:var(--s-3)}
 .pr-axes__n{font-size:var(--t-num-lg);font-weight:500;line-height:1;color:var(--ok)}
@@ -136,13 +157,6 @@
 .pr-axe__b,.vm-bar{display:block;block-size:6px;border-radius:var(--radius-full);background:var(--border-soft);overflow:hidden}
 .pr-axe__b i,.vm-bar i{display:block;block-size:100%;background:var(--primary);border-radius:inherit}
 .pr-axe__s{text-align:right;color:var(--soft-foreground)}
-.pr-sous{
-  display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);
-  margin-top:var(--s-4);padding-bottom:var(--s-1);border-bottom:1px solid var(--border);
-  font-size:var(--t-xs);
-}
-.pr-sous b{font-weight:600}
-.pr-sous__s{margin-inline-start:auto;font-size:var(--t-2xs);color:var(--muted-foreground)}
 
 /* --- les piles du mixer, au volet ------------------------------------------ */
 .pr-piles{margin-top:var(--s-4)}
