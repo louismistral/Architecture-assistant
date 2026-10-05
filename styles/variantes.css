@@ -464,7 +464,9 @@
 .vr-case{display:flex;align-items:flex-start;gap:var(--s-2);padding-block:var(--s-1);font-size:var(--t-sm);cursor:pointer}
 .vr-case input{margin-block-start:3px}
 .vr-case small{display:block;font-size:var(--t-2xs);color:var(--muted-foreground)}
-.vr-partis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0 var(--s-3);margin-block-start:var(--s-2)}
+/* ce que rebat le Shuffle coché, sous sa case, aligné sur son libellé */
+.vr-resume{margin:0 0 var(--s-2);padding-inline-start:calc(13px + var(--s-2))}
+.vr-parvol{margin-block-start:var(--s-2)}
 .vr-nbs{display:flex;flex-wrap:wrap;gap:var(--s-4)}
 .vr-nb{display:flex;flex-direction:column;gap:var(--s-1);font-size:var(--t-xs);color:var(--soft-foreground)}
 .vr-nb input{inline-size:8ch}

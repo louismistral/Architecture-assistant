@@ -41,7 +41,13 @@ import { PREFS, onPrefs, setPref } from "../net/prefs.js";
 import { icone } from "./icons.js";
 import { deroulant, item, titre } from "./menu.js";
 import { BORNES, RECH, TAG_RECHERCHE, rechercher } from "../net/recherche.js";
-import { MASS, PARTIS, partiOf } from "../mass/model.js";
+import { MASS, partiOf } from "../mass/model.js";
+import { curSeed } from "../core/rand.js";
+import { V, ligne as ligneDe } from "../data/lignes.js";
+import { FLOORS } from "../mix/floors.js";
+import { PMAP } from "../mix/prog.js";
+import { dePile, estLie, toutesCotes } from "../mix/opts.js";
+import { TYPO } from "../typo/etat.js";
 import { supaOn } from "../net/supa.js";
 
 var SVGNS = "http://www.w3.org/2000/svg";
@@ -1014,11 +1020,49 @@ function nombre(id, lab, v, b){
   w.champ = i;
   return w;
 }
-/* Un essai de massing coûte près d'une seconde : le dire avant de lancer. */
-var SEC_PAR_ESSAI = 0.8;
-function duree(n){
-  var s = n * SEC_PAR_ESSAI;
+/* Un essai qui tire un volume coûte près d'une seconde, presque tout au
+   massing ; une typologie, quelques millisecondes ; un essai de typologies
+   seules, le temps de noter le bâtiment. Le dire avant de lancer. */
+var SEC_PAR_ESSAI = 0.8, SEC_PAR_TYPO = 0.01, SEC_TYPO_SEULE = 0.02;
+function duree(n, parVol, volume){
+  var s = volume ? n * (SEC_PAR_ESSAI + parVol * SEC_PAR_TYPO) : n * SEC_TYPO_SEULE;
   return s < 90 ? "≈ " + Math.max(1, Math.round(s)) + " s" : "≈ " + Math.round(s / 60) + " min";
+}
+
+/* L'ESSENTIEL DE CHAQUE SHUFFLE, en lecture seule : la recherche obéit aux dés,
+   elle n'a plus de réglage qui les double. On lit donc, là où ils vivent, ce
+   qu'elle rebattra et ce qu'elle laissera. */
+function b36(g){ return (g >>> 0).toString(36); }
+function pl(n, mot){ return n + " " + mot + (n > 1 ? "s" : ""); }
+function resumeProgramme(){
+  var lies = Object.keys(PMAP).filter(estLie).length, cotes = Object.keys(toutesCotes()).length;
+  return [dePile ? "pile libre, tirée au Shuffle" : "pile fixée à " + pl(FLOORS.length, "niveau"),
+    lies ? pl(lies, "poste") + " lié" + (lies > 1 ? "s" : "") : "aucun poste lié",
+    cotes ? pl(cotes, "cote") + " de pièce fixée" + (cotes > 1 ? "s" : "") : "aucune cote fixée",
+    "hasard " + Math.round(V.temperature * 100) + " %"]
+    /* 0 : le mixer n'a encore rien tiré dans cette session */
+    .concat(curSeed ? ["seed à l'écran " + b36(curSeed)] : []).join(" · ") + " — se règle au mixer.";
+}
+function resumeMassing(){
+  var libres = 0, fixes = [];
+  Object.keys(MASS.lev).forEach(function(k){
+    if(MASS.lev[k] == null) libres++;
+    else fixes.push(((ligneDe("lev-" + k) || {}).n || k).toLowerCase());
+  });
+  return [MASS.parti === "auto" ? "parti libre, tous essayés" : "parti fixé : " + partiOf(MASS.parti).n,
+    "second temps " + (MASS.second === "auto" ? "libre" : MASS.second === "sep" ? "en deux volumes" : "groupé"),
+    libres + " levier" + (libres > 1 ? "s" : "") + " libre" + (libres > 1 ? "s" : "") + " sur " + (libres + fixes.length)
+      + (fixes.length ? " (fixés : " + fixes.join(", ") + ")" : ""),
+    pl(V.essais, "composition") + " essayées par tirage",
+    "hasard " + Math.round(V.hasardMass * 100) + " %",
+    "seed à l'écran " + b36(MASS.graine)].join(" · ") + " — se règle au Massing.";
+}
+function resumeTypo(){
+  var cotes = Object.keys(TYPO.cotes).length;
+  return ["l'ordre des familles et le bout du noyau, jamais les volumes",
+    cotes ? pl(cotes, "cote") + " de pièce réglée" + (cotes > 1 ? "s" : "") + " aux Typologies, gardée" + (cotes > 1 ? "s" : "")
+          : "aucune cote réglée aux Typologies",
+    "seed à l'écran " + b36(TYPO.graine)].join(" · ") + ".";
 }
 
 function ouvrirRecherche(){
@@ -1028,26 +1072,25 @@ function ouvrirRecherche(){
     "Recherche automatique");
   var body = el("div", "vm__body vm__body--un");
 
+  /* Ce qu'on rebat : chaque case, et sous elle ce que son Shuffle rebat et
+     laisse — fixé ou libre, lu là où ça se règle. */
   var s1 = el("section", "vm-sec");
   s1.appendChild(el("h4", null, "Ce qu'on rebat à chaque essai"));
-  var cP = caseA("Le programme", RECH.programme, "la répartition du mixer, pile comprise");
-  var cM = caseA("Le massing", RECH.massing, "la volumétrie, à programme égal");
-  s1.appendChild(cP); s1.appendChild(cM);
-  body.appendChild(s1);
-
-  var s2 = el("section", "vm-sec");
-  s2.appendChild(el("h4", null, "Les partis essayés"));
-  s2.appendChild(el("p", "vp-note", "Aucun coché : le parti à l'écran (" + partiOf(MASS.parti).n + "). Plusieurs : on tourne sur la liste."));
-  var grille = el("div", "vr-partis");
-  var cases = PARTIS.map(function(p){
-    var c = caseA(p.n, RECH.partis.indexOf(p.id) >= 0);
-    c.title = p.d;
-    c.pid = p.id;
-    grille.appendChild(c);
+  s1.appendChild(el("p", "vp-note", "Ce qui est fixé au mixer ou au Massing reste fixé ; ce qui est libre se rebat."));
+  function rebat(txt, on, aide, resume){
+    var c = caseA(txt, on, aide), r = el("p", "vp-note vr-resume", resume());
+    s1.appendChild(c); s1.appendChild(r);
+    c.resume = r;
     return c;
-  });
-  s2.appendChild(grille);
-  body.appendChild(s2);
+  }
+  var cP = rebat("Le programme", RECH.programme, "la répartition du mixer", resumeProgramme);
+  var cM = rebat("Le massing", RECH.massing, "la volumétrie, à programme égal", resumeMassing);
+  var cT = rebat("Les typologies", RECH.typologies, "l'ordonnance des pièces dans les volumes", resumeTypo);
+  var nV = nombre("vrParVol", "Typologies essayées par volume", RECH.parVolume, BORNES.parVolume);
+  nV.classList.add("vr-parvol");
+  nV.title = "Chaque volume tiré garde la meilleure de ses typologies avant d'être comparé aux autres.";
+  s1.appendChild(nV);
+  body.appendChild(s1);
 
   var s3 = el("section", "vm-sec");
   s3.appendChild(el("h4", null, "Combien"));
@@ -1057,29 +1100,44 @@ function ouvrirRecherche(){
   ligneN.appendChild(nE); ligneN.appendChild(nG);
   s3.appendChild(ligneN);
   var est = el("p", "vp-note", "");
-  function majEst(){ est.textContent = "Durée : " + duree(+nE.champ.value || 0) + ". Ne touche à rien pendant ce temps : l'écran est remis tel quel à la fin."; }
-  nE.champ.addEventListener("input", majEst); majEst();
   s3.appendChild(est);
   body.appendChild(s3);
 
   var s4 = el("section", "vm-sec");
   s4.appendChild(el("h4", null, "Ce qu'on garde"));
   s4.appendChild(el("p", "vp-note", "Les meilleures notes du jugement, sur 100 — à note égale, la moins fautive. Les générateurs cherchent par l’orientation ; le jugement classe ce qu’ils trouvent."));
-  var cE = caseA("Sans erreur rouge", RECH.sansErreur, "ni au mixer, ni au massing");
+  var cE = caseA("Sans erreur rouge", RECH.sansErreur, "ni au mixer, ni au massing, ni aux typologies");
   var cD = caseA("Un seul par parti", RECH.distincts, "pour ne pas garder trois fois le même peigne");
   s4.appendChild(cE); s4.appendChild(cD);
   body.appendChild(s4);
   box.appendChild(body);
 
+  /* Typologies cochées avec un volume : on en essaie plusieurs par volume.
+     Seules : chaque essai est une typologie du massing à l'écran, et le parti
+     ne change pas. */
+  function maj(){
+    var volume = cP.champ.checked || cM.champ.checked, typo = cT.champ.checked;
+    [cP, cM, cT].forEach(function(c){ c.resume.hidden = !c.champ.checked; });
+    nV.hidden = !(volume && typo);
+    nE.firstChild.textContent = volume || !typo ? "Essais" : "Typologies essayées";
+    cD.hidden = !volume;
+    est.textContent = "Durée : " + duree(+nE.champ.value || 0, typo ? +nV.champ.value || 0 : 0, volume)
+      + ". Ne touche à rien pendant ce temps : l'écran est remis tel quel à la fin.";
+  }
+  [cP, cM, cT].forEach(function(c){ c.champ.addEventListener("change", maj); });
+  [nE, nV].forEach(function(n){ n.champ.addEventListener("input", maj); });
+  maj();
+
   var pied = el("footer", "vm__pied");
   var dit3 = el("span", "vm__dit", "");
   var go = btn("btn btn--primary", "Lancer", function(){
-    if(!cP.champ.checked && !cM.champ.checked){
-      dit3.textContent = "Coche au moins le programme ou le massing."; return;
+    if(!cP.champ.checked && !cM.champ.checked && !cT.champ.checked){
+      dit3.textContent = "Coche au moins le programme, le massing ou les typologies."; return;
     }
     RECH.programme = cP.champ.checked;
     RECH.massing = cM.champ.checked;
-    RECH.partis = cases.filter(function(c){ return c.champ.checked; }).map(function(c){ return c.pid; });
+    RECH.typologies = cT.champ.checked;
+    RECH.parVolume = +nV.champ.value;
     RECH.essais = +nE.champ.value;
     RECH.garder = +nG.champ.value;
     RECH.sansErreur = cE.champ.checked;
@@ -1109,7 +1167,7 @@ function majCherche(){
     var l = el("ol", "vp-rech__top");
     cherche.top.forEach(function(t){
       var li = el("li");
-      li.appendChild(el("span", null, partiOf(t.pid).n));
+      li.appendChild(el("span", null, partiOf(t.pid).n + " · typologie " + b36((t.state.typo || {}).graine || 1)));
       li.appendChild(el("b", "mono", t.row.score + "/100"));
       l.appendChild(li);
     });
