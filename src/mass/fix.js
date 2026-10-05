@@ -27,8 +27,8 @@ import { acte } from "../mix/fix.js";
 import { repartir } from "../mix/shuffle.js";
 import {
   admissible, ecarter, genMass, poser, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
-import { MASS, auModule, massSet, massVols, niveaux, profBornes, profFacade, volEtage }
-  from "./model.js";
+import { MASS, aireEtage, auModule, fusionne, massSet, massVols, niveaux, profBornes, profFacade, volEtage,
+  volFusionne } from "./model.js";
 
 function vol(i){ return (i >= 0 && MASS.vol[i]) ? MASS.vol[i] : null; }
 /* Ce qu'on rejoue quand la géométrie d'un volume a changé : rien ne garantit
@@ -78,14 +78,15 @@ function reformer(v, fd){
 function profCible(){ return Math.min(profBornes().hi, profFacade()); }
 export function fixProfondeur(i){
   var v = vol(i), p = profCible();
-  if(!v || v.fix) return null;
+  /* un volume fusionné ne se reforme pas d'un bloc : ses ailes se tiennent */
+  if(!v || v.fix || volFusionne(v)) return null;
   return acte("Ramener " + nomDe(v, i) + " à " + dec(p) + " m de profondeur",
     "à surface exacte : il s'allonge d'autant qu'il s'amincit",
     function(){ return reformer(v, function(){ return p; }); });
 }
 export function fixCarrer(i){
   var v = vol(i), p = profCible();
-  if(!v || v.fix) return null;
+  if(!v || v.fix || volFusionne(v)) return null;
   return acte("Ramener " + nomDe(v, i) + " à des proportions tenables",
     "au plus carré que la profondeur retenue permet, à surface exacte",
     function(){
@@ -121,7 +122,7 @@ export function requilibre(){
     var som = 0;
     port.forEach(function(v){
       var e = volEtage(v, n.i);
-      if(e) som += e.w * e.d;
+      if(e) som += aireEtage(e);
     });
     if(som <= 0) return;
     var k = Math.sqrt(n.A / som);
@@ -129,6 +130,14 @@ export function requilibre(){
     port.forEach(function(v){
       var e = volEtage(v, n.i);
       if(!e) return;
+      /* un niveau fusionné se met à l'échelle d'un bloc, autour de sa part 0 :
+         les jonctions se tiennent, au prix du module */
+      // ponytail: pas d'arrondi au module sur un niveau fusionné ; recaler les parts sur le module si le contrôle s'en plaint
+      if(fusionne(e)){
+        e.w *= k; e.d *= k;
+        e.ext.forEach(function(p){ p.w *= k; p.d *= k; p.dx = (p.dx || 0) * k; p.dy = (p.dy || 0) * k; });
+        return;
+      }
       e.w = auModule(e.w * k);
       e.d = auModule(e.d * k);
     });

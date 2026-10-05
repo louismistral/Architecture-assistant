@@ -37,7 +37,7 @@ import {
   ecart, ecartAngle, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
 import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
-  profPieces, sousSol, volEtage, volRect } from "./model.js";
+  profPieces, sousSol, volEtage, volRect, volRects, solRects, assiseDe, contourDe } from "./model.js";
 export { lies };
 import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
   from "./mesures.js";
@@ -201,7 +201,7 @@ export function relier(vols){
       if(!rc || rc.long > V.passMax || rc.long < RULES.dist.entre - .01) return;
       if(margeAu(PER, rc) < recul() - .01) return;
       var bute = vols.some(function(o){
-        return o !== A && o !== B && ecart(rc, rectSol(o)) < .5; });
+        return o !== A && o !== B && solRects(o).some(function(r){ return ecart(rc, r) < .5; }); });
       if(!bute) cand.push({ p:p, l:rc.long });
     });
   });
@@ -292,8 +292,9 @@ function auBord(v, vols){
    recouvrir. */
 export function rectsHors(v, P){
   var Q = P || v, out = [];
-  v.lv.forEach(function(e){ if(lvlOf(e.i) >= 0) out.push(volRect(Q, e)); });
-  if(!out.length && v.lv[0]) out.push(volRect(Q, v.lv[0]));
+  /* toutes les parts d'un volume fusionné : c'est elles qui se mesurent */
+  v.lv.forEach(function(e){ if(lvlOf(e.i) >= 0) volRects(Q, e).forEach(function(r){ out.push(r); }); });
+  if(!out.length && v.lv[0]) volRects(Q, v.lv[0]).forEach(function(r){ out.push(r); });
   return out;
 }
 /* La plus petite distance entre deux volumes, étage par étage. Au-delà de
@@ -318,8 +319,10 @@ export function ecartVols(v, o, P, seuil){
    à la main respecte ; les distances, le contrôle les signale. */
 export function dansPerimetre(v, x, y, a){
   var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a };
-  for(var i = 0; i < v.lv.length; i++)
-    if(!tientA(PER, volRect(P, v.lv[i]), recul() - .01)) return false;
+  for(var i = 0; i < v.lv.length; i++){
+    var R = volRects(P, v.lv[i]);
+    for(var k = 0; k < R.length; k++) if(!tientA(PER, R[k], recul() - .01)) return false;
+  }
   return true;
 }
 export function admissible(v, vols, x, y, a){
@@ -361,9 +364,9 @@ function reparer(vols){
   for(pas = 0; pas < 60; pas++){
     var bouge = 0;
     for(i = 0; i < vols.length; i++){
-      var v = vols[i], rc = rectSol(v), dx = 0, dy = 0;
+      var v = vols[i], dx = 0, dy = 0;
       var pire = Infinity;
-      v.lv.forEach(function(e){ pire = Math.min(pire, margeAu(PER, volRect(v, e))); });
+      v.lv.forEach(function(e){ volRects(v, e).forEach(function(r){ pire = Math.min(pire, margeAu(PER, r)); }); });
       var m = pire - RV - .3;
       if(m < 0){
         var k = Math.min(3, -m) * .55;
@@ -372,9 +375,8 @@ function reparer(vols){
       }
       for(j = 0; j < vols.length; j++){
         if(j === i || lies(v, vols[j])) continue;
-        var o = rectSol(vols[j]);
-        var e = ecart(rc, o);
-        var jour = visAVis(rc, o) > 8 ? Math.max(HV[i], HV[j]) * OK : 0;
+        var es = ecartSols(v, vols[j]), e = es.e;
+        var jour = es.vis > 8 ? Math.max(HV[i], HV[j]) * OK : 0;
         var vise = Math.max(cible, Math.min(jour + MARGE_JOUR, cible + 14));
         if(e < vise){
           var ox = v.x - vols[j].x, oy = v.y - vols[j].y, ol = Math.hypot(ox, oy) || 1;
@@ -448,6 +450,21 @@ function etageSol(v){
   return e || v.lv[0];
 }
 function rectSol(v){ return volRect(v, etageSol(v)); }
+/* Pour un volume fusionné, l'emprise au sol est faite de plusieurs parts :
+   l'assise les pondère, l'emprise est l'aire de leur union, et deux volumes se
+   mesurent par leurs deux parts les plus proches (`vis` : leur vis-à-vis). */
+export function assiseVol(v){ return assiseDe(solRects(v)); }
+export function empSol(v){ return contourDe(v, etageSol(v)).aire; }
+export function ecartSols(a, b){
+  var A = solRects(a), B = solRects(b), best = { e:Infinity, vis:0 };
+  A.forEach(function(ra){
+    B.forEach(function(rb){
+      var e = ecart(ra, rb);
+      if(e < best.e) best = { e:e, vis:visAVis(ra, rb), ra:ra, rb:rb };
+    });
+  });
+  return best;
+}
 
 /* ---------- poser une figure de parti D'UN BLOC --------------------------------
    La figure de `partis.js` arrive dans son repère ; on ne la déforme plus. On
@@ -737,11 +754,11 @@ function enterrer(vols){
   if(!S.length || !vols.length) return;
   var cand = vols.filter(function(v){ return !v.fix && !v.ph; });
   if(!cand.length) cand = vols;
-  var big = cand[0], bz = assise(rectSol(cand[0])).z, i;
+  var big = cand[0], bz = assiseVol(cand[0]).z, i;
   for(i = 1; i < cand.length; i++){
-    var z = assise(rectSol(cand[i])).z;
+    var z = assiseVol(cand[i]).z;
     if(z > bz + .15 || (Math.abs(z - bz) <= .15
-        && rectSol(cand[i]).w * rectSol(cand[i]).d > rectSol(big).w * rectSol(big).d)){
+        && empSol(cand[i]) > empSol(big))){
       bz = Math.max(bz, z); big = cand[i];
     }
   }
@@ -749,7 +766,7 @@ function enterrer(vols){
      il dépasse ce qu'un volume peut avoir : chaque part garde la profondeur de
      son corps et reste sous la cote maximale. */
   var ordre = cand.slice().sort(function(a, b){
-    return assise(rectSol(b)).z - assise(rectSol(a)).z; });
+    return assiseVol(b).z - assiseVol(a).z; });
   ordre.splice(ordre.indexOf(big), 1); ordre.unshift(big);
   S.forEach(function(n){
     var reste = n.A, k = 0;

@@ -31,9 +31,9 @@ import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, bilan, etagesDe, horsModule, horsSol, niveaux, pontRect, postesDe,
-  profFacade, secondTemps, volNiv, volRect, volTitre as nomV } from "./model.js";
-import { ecartVols, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
+import { CONTACT, MASS, aireEtage, bilan, etagesDe, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
+  profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
+import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
 export { courProgramme };
 var DEG = Math.PI / 180;
@@ -67,7 +67,7 @@ export function portClasses(v){
    `r` : le jugement mesure sur tout le périmètre, sans rien de nos choix. */
 export function terrainLibre(vols, r){
   var emp = 0;
-  vols.forEach(function(v){ var rc = rectSol(v); emp += rc.w * rc.d; });
+  vols.forEach(function(v){ emp += empSol(v); });
   var posable = airePosable(r == null ? reculVise() : r);
   return { libre: posable - emp, posable: posable,
            besoin: courProgramme() + RULES.ext.voitures * RULES.ext.mPlace };
@@ -88,8 +88,9 @@ export function courUtile(vols){
     for(k = 0; k < OB.length; k++) if(dedans(OB[k], x, y)) return false;
     return true;
   }
-  E.forEach(function(v){
-    var rc = rectSol(v);
+  /* chaque part d'un volume fusionné a ses façades ; celles d'une jonction
+     butent aussitôt sur la part voisine et ne comptent pour rien */
+  E.forEach(function(v){ solRects(v).forEach(function(rc){
     OB = obstaclesPres(rc, COUR_FOND);
     var c = Math.cos(rc.a), s = Math.sin(rc.a);
     [[[-s, c], [c, s], rc.w / 2, rc.d / 2], [[s, -c], [c, s], rc.w / 2, rc.d / 2],
@@ -106,7 +107,7 @@ export function courUtile(vols){
         }
         if(a > best.a) best = { a:a, v:vols.indexOf(v) };
       });
-  });
+  }); });
   return best;
 }
 
@@ -130,7 +131,8 @@ export function ecarts(vols, vite, Q){
   /* le périmètre — opposable — et notre recul, à tous les étages */
   for(i = 0; i < vols.length && !stop(); i++){
     var mm = Infinity;
-    vols[i].lv.forEach(function(e){ mm = Math.min(mm, margeAu(PER, volRect(vols[i], e))); });
+    vols[i].lv.forEach(function(e){
+      volRects(vols[i], e).forEach(function(r){ mm = Math.min(mm, margeAu(PER, r)); }); });
     if(mm < -.01) dit("perimetre", i, nomV(vols[i], i) + " sort du périmètre de " + dec(-mm) + " m.");
     else if(mm < R - .01)
       dit("recul", i, nomV(vols[i], i) + " est à " + dec(mm) + " m de la limite ; le recul est de "
@@ -161,17 +163,17 @@ export function ecarts(vols, vite, Q){
   var PF = profFacade(), MOD = enVigueur("module"), FAC = enVigueur("facade");
   for(i = 0; i < vols.length && !stop(); i++){
     var v = vols[i], cla = FAC && portClasses(v), vu = {};
-    v.lv.forEach(function(e){
-      var sol = lvlOf(e.i) >= 0, pt = Math.min(e.w, e.d);
+    v.lv.forEach(function(e){ partsDe(e).forEach(function(p){
+      var sol = lvlOf(e.i) >= 0, pt = Math.min(p.w, p.d);
       function une(k, msg){ if(!vu[k]){ vu[k] = 1; dit(k, i, msg); } }
-      if(MOD && (horsModule(e.w) || horsModule(e.d)))
-        une("module", nomV(v, i) + " — " + dec(e.w) + " × " + dec(e.d) + " m : hors du module de "
+      if(MOD && (horsModule(p.w) || horsModule(p.d)))
+        une("module", nomV(v, i) + " — " + dec(p.w) + " × " + dec(p.d) + " m : hors du module de "
           + dec(V.module) + " m.");
       if(!sol || v.fix) return;
       if(cla && pt > PF + .01)
         une("facade", nomV(v, i) + " porte des classes sur " + dec(pt) + " m de profondeur : "
           + "au-delà de " + dec(PF) + " m — deux salles —, une salle n'a plus de façade.");
-    });
+    }); });
   }
 
   /* la salle de sport : ses cotes, et rien au-dessus */
@@ -201,7 +203,7 @@ export function ecarts(vols, vite, Q){
         + "enterré. C'est au mixer qu'il se descend.", 1);
     else if(ab >= 0 && lvlOf(ab) === 0){
       var pente = ecole(vols).some(function(v){
-        return !v.fix && assise(rectSol(v)).d >= 1; });
+        return !v.fix && assiseVol(v).d >= 1; });
       if(!pente) dit("abri", -1, "L'abri PC est au rez, et aucun corps ne s'enterre d'un "
         + "mètre dans la pente : il doit être au moins partiellement enterré.");
     }
@@ -252,7 +254,7 @@ function bilanDe(vols){
   if(vols === MASS.vol) return bilan();
   return niveaux().map(function(n){
     var po = 0;
-    vols.forEach(function(v){ if(v.ph) return; v.lv.forEach(function(e){ if(e.i === n.i) po += e.w * e.d; }); });
+    vols.forEach(function(v){ if(v.ph) return; v.lv.forEach(function(e){ if(e.i === n.i) po += aireEtage(e); }); });
     return { i:n.i, nom:n.nom, demande:n.A, pose:po, ecart:po - n.A };
   });
 }
@@ -267,8 +269,9 @@ export function valide(vols){
 function borne(q){ return Math.max(-1, Math.min(1, q)); }
 function lin(x, bon, max){ return borne(1 - (x - bon) / Math.max(1e-6, max - bon)); }
 function palier(x, bon, max){ return x <= bon ? 2 : x <= max ? 1 : 0; }
-function normale(v){
-  var r = rectSol(v);
+/* la normale à la façade longue d'une emprise — d'une part, pour un volume
+   fusionné : chaque aile a la sienne */
+function normale(v, r){
   return r.w >= r.d ? v.a + Math.PI / 2 : v.a;
 }
 /* L'optimum soleil-vue en un point : la façade longue qui partage l'écart entre
@@ -293,40 +296,46 @@ function lire(vols){
   /* les façades longues des corps de classes, pondérées par leur longueur × les
      étages : leur écart au sud et à la vue */
   function angles(f){
-    return CL.map(function(v){
-      var r = rectSol(v);
-      return { w: Math.max(r.w, r.d) * Math.max(1, rectsHors(v).length), a: Math.abs(f(v, r)) / DEG };
+    var out = [];
+    CL.forEach(function(v){
+      var nh = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; }).length;
+      solRects(v).forEach(function(r){
+        out.push({ w: Math.max(r.w, r.d) * Math.max(1, nh), a: Math.abs(f(v, r)) / DEG });
+      });
     });
+    return out;
   }
-  var sud = angles(function(v){ return ecartAngle(normale(v), Math.PI / 2); });
-  var vue = angles(function(v, r){ return ecartAngle(normale(v), Math.atan2(T.y - r.y, T.x - r.x)); });
+  var sud = angles(function(v, r){ return ecartAngle(normale(v, r), Math.PI / 2); });
+  var vue = angles(function(v, r){ return ecartAngle(normale(v, r), Math.atan2(T.y - r.y, T.x - r.x)); });
 
   /* le jour entre façades qui se font face : l'écart ÷ la hauteur du plus haut */
   var ratio = Infinity;
   E.forEach(function(v, i){
     E.forEach(function(o, j){
       if(j <= i || lies(v, o)) return;
-      var a = rectSol(v), b = rectSol(o);
-      if(visAVis(a, b) <= 8) return;
-      ratio = Math.min(ratio, ecart(a, b) / Math.max(haut(v), haut(o)));
+      var es = ecartSols(v, o);
+      if(es.vis <= 8) return;
+      ratio = Math.min(ratio, es.e / Math.max(haut(v), haut(o)));
     });
   });
 
   /* compacité, emprise, volume, part enterrée */
   var fac = 0, bat = 0, emp = 0, vol = 0, tot = 0, sous = 0;
+  /* la façade se lit sur le CONTOUR : le mur commun d'un volume fusionné
+     n'est pas une façade */
   E.forEach(function(v){
-    var rs = rectSol(v);
-    emp += rs.w * rs.d;
-    v.lv.forEach(function(e){
-      tot += e.w * e.d;
-      if(lvlOf(e.i) < 0) sous += e.w * e.d;
+    var es = empSol(v);
+    emp += es;
+    etagesDe(v).forEach(function(x){
+      var e = x.e, a = aireEtage(e);
+      vol += x.contour.aire * x.h;
+      tot += a;
+      if(lvlOf(e.i) < 0) sous += a;
       if(HN[e.i] === undefined) return;
-      var r = volRect(v, e);
-      fac += 2 * (r.w + r.d) * (e.h || HN[e.i]);
-      bat += e.w * e.d;
+      fac += x.contour.perim * (e.h || HN[e.i]);
+      bat += a;
     });
-    etagesDe(v).forEach(function(x){ vol += x.rc.w * x.rc.d * x.h; });
-    vol += rs.w * rs.d * RULES.haut.acrotere;
+    vol += es * RULES.haut.acrotere;
   });
 
   /* les cotes des corps d'école : dans les domaines des leviers, et au plus */
@@ -338,13 +347,19 @@ function lire(vols){
       return o !== v && Math.abs(ecartAngle(2 * v.a, 2 * o.a)) < .07; });
     if(ok) rang++;
     if(v.fix) return;
-    var r = rectSol(v), Lg = Math.max(r.w, r.d), P = Math.min(r.w, r.d);
+    /* un volume fusionné est dans ses domaines quand chacune de ses ailes l'est */
+    var dedansD = true;
+    solRects(v).forEach(function(r){
+      var Lg = Math.max(r.w, r.d), P = Math.min(r.w, r.d);
+      if(!(Lg >= V.largeurMin - .01 && P >= V.profMin - .01)) dedansD = false;
+      pmax = Math.max(pmax, P);
+    });
     dn++;
-    if(Lg >= V.largeurMin - .01 && P >= V.profMin - .01) dok++;
-    pmax = Math.max(pmax, P);
-    pt = Math.max(pt, assise(r).d);
+    if(dedansD) dok++;
+    pt = Math.max(pt, assiseVol(v).d);
     v.lv.forEach(function(e){
-      if(lvlOf(e.i) >= 0) el = Math.max(el, Math.max(e.w, e.d) / Math.max(1, Math.min(e.w, e.d)));
+      if(lvlOf(e.i) >= 0) partsDe(e).forEach(function(p){
+        el = Math.max(el, Math.max(p.w, p.d) / Math.max(1, Math.min(p.w, p.d))); });
     });
     var t = ((v.a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2);
     if(!dirs.some(function(x){ var d = Math.abs(x - t); return Math.min(d, Math.PI / 2 - d) < .07; })) dirs.push(t);
@@ -368,9 +383,9 @@ function lire(vols){
   /* la marge au périmètre, les classes en façade */
   var marge = Infinity, PF = profFacade(), fmax = 0;
   vols.forEach(function(v){
-    v.lv.forEach(function(e){ marge = Math.min(marge, margeAu(PER, volRect(v, e))); });
+    v.lv.forEach(function(e){ volRects(v, e).forEach(function(r){ marge = Math.min(marge, margeAu(PER, r)); }); });
     if(!portClasses(v)) return;
-    v.lv.forEach(function(e){ if(lvlOf(e.i) >= 0) fmax = Math.max(fmax, Math.min(e.w, e.d)); });
+    v.lv.forEach(function(e){ if(lvlOf(e.i) >= 0) partsDe(e).forEach(function(p){ fmax = Math.max(fmax, Math.min(p.w, p.d)); }); });
   });
 
   /* le second temps posé, en part de sa surface au programme */
@@ -449,7 +464,7 @@ export function qualites(vols, L){
   E.forEach(function(v){
     var hs = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; }).sort(function(p, q2){ return p.i - q2.i; });
     for(var k = 0; k + 1 < hs.length; k++){
-      var r = (hs[k].w * hs[k].d) / Math.max(1e-6, hs[k + 1].w * hs[k + 1].d);
+      var r = aireEtage(hs[k]) / Math.max(1e-6, aireEtage(hs[k + 1]));
       if(r < socle){ socle = r; socleV = v; }
     }
   });
@@ -485,7 +500,7 @@ export function couverture(vols){
   var pire = Infinity, qui = -1;
   vols.forEach(function(v, k){
     if(!v.lv.some(function(e){ return lvlOf(e.i) < 0; })) return;
-    var c = assise(rectSol(v)).z - NAPPE;
+    var c = assiseVol(v).z - NAPPE;
     if(c < pire){ pire = c; qui = k; }
   });
   var R = RULES.dist.couverture;

@@ -36,7 +36,10 @@ export function massOf(){
                lv: v.lv.map(function(e){
                  return { i:e.i, w:e.w, d:e.d, dx:e.dx || 0, dy:e.dy || 0, w0:e.w0 == null ? null : e.w0, d0:e.d0 == null ? null : e.d0,
                           dx0:e.dx0 == null ? null : e.dx0, dy0:e.dy0 == null ? null : e.dy0,
-                          h:e.h || 0, keys:e.keys || null };
+                          h:e.h || 0, keys:e.keys || null,
+                          /* les autres parts d'un volume fusionné */
+                          ext:e.ext && e.ext.length ? e.ext.map(function(p){
+                            return { w:p.w, d:p.d, dx:p.dx || 0, dy:p.dy || 0 }; }) : null };
                }) };
     })
   };
@@ -65,7 +68,7 @@ export function setMass(o){
        temps où l'étage n'en portait qu'une. On la remet au plus bas de ses
        étages, qui est celui que le règlement dimensionne. */
     MASS.vol.forEach(function(v){
-      v.lv.forEach(function(e){ if(e.key && !e.keys) e.keys = [e.key]; });
+      v.lv.forEach(function(e){ if(e.key && !e.keys) e.keys = [e.key]; if(!e.ext) delete e.ext; });
       if(!v.key || v.lv.some(function(e){ return e.keys; })) return;
       var bas = v.lv[0];
       v.lv.forEach(function(e){ if(e.i < bas.i) bas = e; });

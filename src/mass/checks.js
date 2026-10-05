@@ -31,8 +31,7 @@ import { lvlOf } from "../mix/floors.js";
    valeurs vivantes s'appellent donc `VAL`. */
 import { V as VAL, courExigee, lu } from "../data/cadre.js";
 import "../data/orientation.js";
-import { assise, ecart, visAVis } from "./geom.js";
-import { lies, rectSol } from "./gen.js";
+import { assiseVol, ecartSols, lies } from "./gen.js";
 import { courProgramme, courUtile, ecarts, terrainLibre } from "./mesures.js";
 import { isAccepted } from "../mix/accept.js";
 import { adjRompues } from "../mix/checks.js";
@@ -40,7 +39,7 @@ import {
   fixAire, fixAuto, fixCarrer, fixEcarter, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
-import { MASS, niveaux, pontRect, profBornes, secondTemps,
+import { MASS, aireEtage, niveaux, pontRect, profBornes, secondTemps, solRects,
   volHaut, volTitre as nom } from "./model.js";
 
 var COUR = courProgramme();
@@ -144,13 +143,13 @@ export function massCheck(){
   });
 
   for(i = 0; i < V.length; i++){
-    var v = V[i], rc = rectSol(v), nm = nom(v, i);
+    var v = V[i], nm = nom(v, i);
 
     /* --- LE JOUR ENTRE LES CORPS — une orientation, donc un avertissement -- */
     for(j = i + 1; j < V.length && lu("jour"); j++){
-      var o = rectSol(V[j]), e = ecart(rc, o), n2 = nom(V[j], j);
+      var es = ecartSols(v, V[j]), e = es.e, n2 = nom(V[j], j);
       if(e < 0 || v.ph || V[j].ph || lies(v, V[j]) || VAL.ombreK <= 0) continue;
-      if(visAVis(rc, o) <= 8) continue;
+      if(es.vis <= 8) continue;
       var req = Math.max(volHaut(v), volHaut(V[j])) * VAL.ombreK;
       if(req > RULES.dist.entre && e < req - .05){
         var manque = (req - e) / req;
@@ -165,7 +164,12 @@ export function massCheck(){
 
     /* --- l'élancement : un garde-fou secondaire ---------------------------- */
     if(!v.fix && !v.ph && lu("elan")){
-      var pt = Math.min(rc.w, rc.d), lg = Math.max(rc.w, rc.d);
+      /* l'aile la plus élancée d'un volume fusionné */
+      var pt = 1, lg = 0;
+      solRects(v).forEach(function(r){
+        if(Math.max(r.w, r.d) / Math.max(1, Math.min(r.w, r.d)) > lg / Math.max(1, pt)){
+          pt = Math.min(r.w, r.d); lg = Math.max(r.w, r.d); }
+      });
       if(lg / Math.max(1, pt) > VAL.elanceMax){
         dit("i", "elan:" + v.id, nm + " est " + Math.round(lg / pt) + " fois plus long "
           + "que large — " + dec(lg) + " × " + dec(pt) + " m.", "", nm, i,
@@ -174,7 +178,7 @@ export function massCheck(){
     }
 
     /* --- le terrain -------------------------------------------------------- */
-    var as = assise(rc);
+    var as = assiseVol(v);
     if(!lu("pente")){ /* éteinte : rien à dire du terrassement */ }
     else if(as.d > VAL.penteMax){
       dit("w", "pente:" + v.id, nm + " est posé sur " + dec(as.d) + " m de dénivelé : "
@@ -201,8 +205,8 @@ export function massCheck(){
 
     /* --- surface d'étage et cages ------------------------------------------ */
     v.lv.forEach(function(x){
-      if(x.w * x.d > RULES.feu.cageSeuil){
-        dit("i", "cage:" + v.id + ":" + x.i, nm + " fait " + fmt(Math.round(x.w * x.d))
+      if(aireEtage(x) > RULES.feu.cageSeuil){
+        dit("i", "cage:" + v.id + ":" + x.i, nm + " fait " + fmt(Math.round(aireEtage(x)))
           + " m² au " + (N[x.i] ? N[x.i].nom.toLowerCase() : "niveau " + x.i)
           + " : deux cages d'escalier compartimentées, qui se dessineront à la "
           + "typologie.", "AEAI 3.4", nm, i);
