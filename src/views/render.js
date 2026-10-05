@@ -9,6 +9,7 @@ import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
 import { renduVue } from "./rendu.js";
 import { donneesTypo, typoGraine, typoRegle } from "../typo/donnees.js";
+import { creerPG } from "../typo/gen.js";
 import { icone } from "./icons.js";
 import { VERROU, fige, figePar, setVerrou } from "../core/verrou.js";
 
@@ -178,12 +179,13 @@ function sectHead(n, titre, sous){
 
 /* Ce que la page des plans (`src/typo/plans.html`) lit chez son hôte : le
    massing préparé — le même que l'onglet Massing aurait posé —, et les
-   fonctions qui le lisent. Elle ne réécrit ni la pile ni les volumes : seules
+   fonctions qui le lisent, dont le générateur de plans (`typo/gen.js`). Elle ne réécrit ni la pile ni les volumes : seules
    sa seed et ses cotes de pièces lui appartiennent. L'onglet Typologies et le
    Rendu l'appellent avant de la charger. */
 export function typoHote(){
   massPrepare();
   window.typoDonnees = donneesTypo; window.typoGraine = typoGraine; window.typoRegle = typoRegle;
+  window.typoPG = creerPG;
   window.typoIcone = function(n, t){ return icone(n, t).outerHTML; };
 }
 
