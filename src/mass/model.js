@@ -33,7 +33,7 @@ import { BLOCKS, FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf
   from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { coteDe, toutesCotes } from "../mix/opts.js";
-import { aire, assise, coins, ecartAngle, local } from "./geom.js";
+import { aire, assise, coins, diffRects, ecartAngle, local, unionRects } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
    Chacun est une FAÇON DE COMPOSER, pas un style : il dit combien de corps, où
@@ -314,6 +314,90 @@ export function volRect(v, e){
   var m = 2 * RULES.haut.mur;
   return local({ x:v.x, y:v.y, w:e.w + m, d:e.d + m, a:v.a }, e.dx || 0, e.dy || 0);
 }
+/* ---------- le volume FUSIONNÉ -----------------------------------------------
+   Deux corps d'école qui se touchent n'en font qu'un (`gen.js — fusionner`) :
+   un L, un U, une cour deviennent UN volume, et chacun de ses niveaux n'est
+   plus un rectangle mais une union de rectangles dans le repère du volume. Le
+   rectangle du niveau (`w, d, dx, dy`) en est la PART 0 ; `e.ext` porte les
+   autres, en cotes intérieures, décalées depuis `(e.dx, e.dy)` — un niveau qui
+   glisse les emporte toutes. Les parts ne se recouvrent jamais : à la
+   jonction, leurs intérieurs se touchent, le mur commun a disparu. Sans
+   `ext`, tout se lit comme avant. */
+export function partsDe(e){
+  var dx = e.dx || 0, dy = e.dy || 0, P = [{ w:e.w, d:e.d, dx:dx, dy:dy }];
+  (e.ext || []).forEach(function(p){ P.push({ w:p.w, d:p.d, dx:dx + (p.dx || 0), dy:dy + (p.dy || 0) }); });
+  return P;
+}
+export function fusionne(e){ return !!(e && e.ext && e.ext.length); }
+export function volFusionne(v){ return v.lv.some(fusionne); }
+/* Les emprises de chaque part, murs compris — elles se recouvrent de
+   l'épaisseur du mur commun disparu —, et leurs intérieurs. */
+export function volRects(v, e){
+  var m = 2 * RULES.haut.mur;
+  return partsDe(e).map(function(p){ return local({ x:v.x, y:v.y, w:p.w + m, d:p.d + m, a:v.a }, p.dx, p.dy); });
+}
+export function volInts(v, e){
+  return partsDe(e).map(function(p){ return local({ x:v.x, y:v.y, w:p.w, d:p.d, a:v.a }, p.dx, p.dy); });
+}
+/* La surface UTILE d'un niveau : la somme de ses parts, qui ne se recouvrent pas. */
+export function aireEtage(e){
+  var a = 0;
+  partsDe(e).forEach(function(p){ a += p.w * p.d; });
+  return a;
+}
+function boiteDe(p, m){ return { x0:p.dx - p.w / 2 - m, x1:p.dx + p.w / 2 + m, y0:p.dy - p.d / 2 - m, y1:p.dy + p.d / 2 + m }; }
+function versSite(v){
+  var c = Math.cos(v.a), s = Math.sin(v.a);
+  return function(p){ return [v.x + p[0] * c - p[1] * s, v.y + p[0] * s + p[1] * c]; };
+}
+/* LE CONTOUR d'un niveau, murs compris : ses boucles au site (les trous d'une
+   cour tournent à l'envers), son aire et son périmètre — la façade réelle,
+   sans le mur commun. */
+export function contourDe(v, e){
+  if(!fusionne(e)){
+    var r = volRect(v, e);
+    return { loops:[coins(r)], aire:r.w * r.d, perim:2 * (r.w + r.d) };
+  }
+  var U = unionRects(partsDe(e).map(function(p){ return boiteDe(p, RULES.haut.mur); })), S = versSite(v);
+  return { loops:U.loops.map(function(L){ return L.map(S); }), aire:U.aire, perim:U.perim,
+           local:U.loops, bords:U.bords };
+}
+/* LES JONCTIONS : là où deux parts se touchent, le côté commun de leurs
+   intérieurs — le passage d'une aile à l'autre. `u0..u1` / `v0..v1` dans le
+   repère du volume, `A`, `B` au site. */
+export function jonctions(v, e){
+  var P = partsDe(e), out = [], S = versSite(v), T = .05;
+  P.forEach(function(p, i){
+    P.forEach(function(q, j){
+      if(j <= i) return;
+      var a = boiteDe(p, 0), b = boiteDe(q, 0), lo, hi;
+      [["x1", "x0"], ["x0", "x1"]].forEach(function(k){
+        if(Math.abs(a[k[0]] - b[k[1]]) > T) return;
+        lo = Math.max(a.y0, b.y0); hi = Math.min(a.y1, b.y1);
+        if(hi - lo > T) out.push({ i:i, j:j, u0:a[k[0]], u1:a[k[0]], v0:lo, v1:hi, L:hi - lo,
+                                   A:S([a[k[0]], lo]), B:S([a[k[0]], hi]) });
+      });
+      [["y1", "y0"], ["y0", "y1"]].forEach(function(k){
+        if(Math.abs(a[k[0]] - b[k[1]]) > T) return;
+        lo = Math.max(a.x0, b.x0); hi = Math.min(a.x1, b.x1);
+        if(hi - lo > T) out.push({ i:i, j:j, u0:lo, u1:hi, v0:a[k[0]], v1:a[k[0]], L:hi - lo,
+                                   A:S([lo, a[k[0]]]), B:S([hi, a[k[0]]]) });
+      });
+    });
+  });
+  return out;
+}
+/* L'assise de plusieurs emprises : la moyenne pondérée par leur aire, les
+   extrêmes de toutes. Une seule emprise rend exactement `assise()`. */
+export function assiseDe(R){
+  if(R.length === 1) return assise(R[0]);
+  var z = 0, A = 0, lo = Infinity, hi = -Infinity;
+  R.forEach(function(r){
+    var q = assise(r), a = r.w * r.d;
+    z += q.z * a; A += a; lo = Math.min(lo, q.lo); hi = Math.max(hi, q.hi);
+  });
+  return { z:z / A, lo:lo, hi:hi, d:hi - lo };
+}
 /* La tolérance d'un contact : les positions sont arrondies au décimètre, un
    contact exact n'existe pas. */
 export var CONTACT = 0.15;
@@ -328,6 +412,16 @@ export function lies(a, b){
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
    largeur, deux pignons entre eux, 50 cm vers l'intérieur de l'emprise. */
 export function mursDe(v, e){
+  if(fusionne(e)){
+    /* un volume fusionné : ce que le contour couvre et qu'aucun intérieur ne
+       couvre — le mur commun d'une jonction n'y est plus */
+    var P = partsDe(e), c = Math.cos(v.a), s = Math.sin(v.a);
+    return diffRects(P.map(function(p){ return boiteDe(p, RULES.haut.mur); }),
+                     P.map(function(p){ return boiteDe(p, 0); })).map(function(b){
+      var u = (b.x0 + b.x1) / 2, w = (b.y0 + b.y1) / 2;
+      return { x:v.x + u * c - w * s, y:v.y + u * s + w * c, w:b.x1 - b.x0, d:b.y1 - b.y0, a:v.a };
+    });
+  }
   var r = volInt(v, e), m = RULES.haut.mur;
   var R = { x:r.x, y:r.y, w:r.w + 2 * m, d:m, a:r.a };
   var P = { x:r.x, y:r.y, w:m, d:r.d, a:r.a };
@@ -377,7 +471,7 @@ export function volEtage(v, i){
 }
 export function volAire(v){
   var a = 0;
-  v.lv.forEach(function(e){ a += e.w * e.d; });
+  v.lv.forEach(function(e){ a += aireEtage(e); });
   return a;
 }
 /* L'emprise au sol : le plus bas étage hors sol, celui qui touche le terrain. */
@@ -389,6 +483,15 @@ export function volSol(v){
   });
   return best ? volRect(v, best) : null;
 }
+/* Toutes les emprises du plus bas étage hors sol — une par part. */
+export function solRects(v){
+  var best = null;
+  v.lv.forEach(function(e){
+    if(lvlOf(e.i) < 0) return;
+    if(!best || e.i < best.i) best = e;
+  });
+  return volRects(v, best || v.lv[0]);
+}
 export function volCoins(v){
   var r = volSol(v);
   return r ? coins(r) : [];
@@ -397,7 +500,7 @@ export function volCoins(v){
    bâtiment posé sur l'altitude de son centre s'enterre d'un côté. */
 export function volAssise(v){
   var r = volSol(v);
-  return r ? assise(r) : { z:RULES.site.altMoy, lo:0, hi:0, d:0 };
+  return r ? assiseDe(solRects(v)) : { z:RULES.site.altMoy, lo:0, hi:0, d:0 };
 }
 /* La hauteur hors sol d'un volume : la somme des hauteurs de niveau qu'il
    porte au-dessus du terrain, plus l'acrotère. Elle n'est pas un réglage —
@@ -451,14 +554,15 @@ export function etagesDe(v){
   var N = niveaux(), out = [], sous = 0;
   var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
   lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
-  var z = assise(volSol(v) || volRect(v, v.lv[0])).z - sous;
+  var z = assiseDe(solRects(v)).z - sous;
   lv.forEach(function(e){
     var n = N[e.i];
     if(!n) return;
     /* Un ouvrage du second temps porte SA hauteur : une piscine indépendante
        ne prend pas les 7,45 m que la salle de sport impose au rez de l'école. */
     var h = hauteurEtage(e, n);
-    out.push({ e:e, n:n, rc:volRect(v, e), z0:z, z1:z + h, h:h });
+    /* `rc` la part 0, `rcs` toutes, `contour` leur union */
+    out.push({ e:e, n:n, rc:volRect(v, e), rcs:volRects(v, e), contour:contourDe(v, e), z0:z, z1:z + h, h:h });
     z += h;
   });
   return out;
@@ -499,7 +603,7 @@ export function bilan(){
          de cinq cents mètres carrés au rez. */
       if(v.ph) return;
       var e = volEtage(v, i);
-      if(e) po += e.w * e.d;
+      if(e) po += aireEtage(e);
     });
     out.push({ i:i, nom:N[i].nom, lvl:N[i].lvl, demande:dem, pose:po, ecart:po - dem });
   }

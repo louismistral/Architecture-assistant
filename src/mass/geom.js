@@ -570,3 +570,91 @@ export function cibleVue(){
   VUE = n ? { x:x / n, y:y / n } : { x:-1e4, y:1e4 };
   return VUE;
 }
+
+/* ---------- l'union de rectangles d'un même repère ----------------------------
+   Un volume fusionné porte, à un niveau, plusieurs rectangles dans SON repère
+   (`model.js — partsDe`). Leur union est son contour : on comprime les
+   abscisses et les ordonnées en une grille, on remplit les cellules couvertes,
+   et le bord se lit entre une cellule pleine et une vide. Exact pour des
+   rectangles alignés, sans tolérance d'angle à régler. `r` : { x0, y0, x1, y1 }. */
+function grilleDe(rects){
+  function axe(k0, k1){
+    var T = [];
+    rects.forEach(function(r){ T.push(r[k0], r[k1]); });
+    T.sort(function(a, b){ return a - b; });
+    /* deux cotes à moins d'un millimètre sont la même : les décalages
+       viennent de sommes de flottants */
+    return T.filter(function(x, k){ return !k || x - T[k - 1] > 1e-3; });
+  }
+  var xs = axe("x0", "x1"), ys = axe("y0", "y1");
+  function rang(T, x){
+    var k = 0, b = Infinity;
+    T.forEach(function(t, j){ if(Math.abs(t - x) < b){ b = Math.abs(t - x); k = j; } });
+    return k;
+  }
+  var plein = xs.map(function(){ return ys.map(function(){ return 0; }); });
+  rects.forEach(function(r){
+    var i0 = rang(xs, r.x0), i1 = rang(xs, r.x1), j0 = rang(ys, r.y0), j1 = rang(ys, r.y1), i, j;
+    for(i = i0; i < i1; i++) for(j = j0; j < j1; j++) plein[i][j] = 1;
+  });
+  return { xs:xs, ys:ys, plein:plein,
+           en:function(i, j){ return i >= 0 && j >= 0 && i < xs.length - 1 && j < ys.length - 1 && plein[i][j]; } };
+}
+/* Le contour : les boucles, intérieur à gauche (les trous tournent à
+   l'envers), l'aire et le périmètre. */
+export function unionRects(rects){
+  var G = grilleDe(rects), xs = G.xs, ys = G.ys, A = [], aire = 0, perim = 0, i, j;
+  function bord(a, b){ A.push({ a:a, b:b }); }
+  for(i = 0; i < xs.length - 1; i++) for(j = 0; j < ys.length - 1; j++){
+    if(!G.en(i, j)) continue;
+    aire += (xs[i + 1] - xs[i]) * (ys[j + 1] - ys[j]);
+    if(!G.en(i, j - 1)) bord([i, j], [i + 1, j]);
+    if(!G.en(i + 1, j)) bord([i + 1, j], [i + 1, j + 1]);
+    if(!G.en(i, j + 1)) bord([i + 1, j + 1], [i, j + 1]);
+    if(!G.en(i - 1, j)) bord([i, j + 1], [i, j]);
+  }
+  A.forEach(function(s){ perim += Math.abs(xs[s.b[0]] - xs[s.a[0]]) + Math.abs(ys[s.b[1]] - ys[s.a[1]]); });
+  var depart = {};
+  A.forEach(function(s){ var k = s.a.join(); (depart[k] = depart[k] || []).push(s); });
+  var loops = [];
+  A.forEach(function(s0){
+    if(s0.pris) return;
+    var L = [], s = s0;
+    while(s && !s.pris){
+      s.pris = 1; L.push(s.a);
+      s = (depart[s.b.join()] || []).filter(function(x){ return !x.pris; })[0];
+    }
+    /* les sommets alignés s'effacent : un côté est un côté */
+    var P = L.filter(function(p, k){
+      var a = L[(k + L.length - 1) % L.length], b = L[(k + 1) % L.length];
+      return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1]));
+    });
+    loops.push(P.map(function(p){ return [xs[p[0]], ys[p[1]]]; }));
+  });
+  return { loops:loops, aire:aire, perim:perim, grille:G, bords:A.map(function(s){
+    return [[xs[s.a[0]], ys[s.a[1]]], [xs[s.b[0]], ys[s.b[1]]]]; }) };
+}
+/* Ce que l'union de `A` couvre et pas celle de `B`, en rectangles : les murs
+   d'un volume fusionné, entre son contour et ses intérieurs. Les cellules
+   d'une même rangée se joignent. */
+export function diffRects(A, B){
+  var G = grilleDe(A.concat(B)), H = grilleDe(B), xs = G.xs, ys = G.ys, out = [], i, j;
+  var GA = grilleDe(A);
+  function dans(Gr, x, y){
+    var i2 = -1, j2 = -1, k;
+    for(k = 0; k < Gr.xs.length - 1; k++) if(x > Gr.xs[k] && x < Gr.xs[k + 1]) i2 = k;
+    for(k = 0; k < Gr.ys.length - 1; k++) if(y > Gr.ys[k] && y < Gr.ys[k + 1]) j2 = k;
+    return Gr.en(i2, j2);
+  }
+  for(j = 0; j < ys.length - 1; j++){
+    var cur = null;
+    for(i = 0; i < xs.length - 1; i++){
+      var cx = (xs[i] + xs[i + 1]) / 2, cy = (ys[j] + ys[j + 1]) / 2;
+      if(dans(GA, cx, cy) && !dans(H, cx, cy)){
+        if(cur && cur.x1 === xs[i]) cur.x1 = xs[i + 1];
+        else { cur = { x0:xs[i], x1:xs[i + 1], y0:ys[j], y1:ys[j + 1] }; out.push(cur); }
+      } else cur = null;
+    }
+  }
+  return out;
+}
