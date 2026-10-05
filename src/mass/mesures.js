@@ -31,7 +31,7 @@ import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, bilan, etagesDe, volEtage, horsModule, horsSol, niveaux, pontRect, postesDe,
+import { CONTACT, MASS, bilan, etagesDe, horsModule, horsSol, niveaux, pontRect, postesDe,
   profFacade, secondTemps, volNiv, volRect, volTitre as nomV } from "./model.js";
 import { ecartVols, lies, obstaclesPres, rectSol, rectsHors } from "./gen.js";
 
@@ -192,9 +192,7 @@ export function ecarts(vols, vite, Q){
     if(!v.fix || stop()) return;
     var it = ITEMBYKEY[v.key], hs = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; });
     if(hs.length > 1) dit("sport", k, "Un étage est posé sur la salle de sport.");
-    /* la salle elle-même : ses cotes d'avant l'annexe que les Typologies lui
-       adossent (`w0`, `d0`) */
-    var hw = hs[0] && (hs[0].w0 || hs[0].w), hd = hs[0] && (hs[0].d0 || hs[0].d);
+    var hw = hs[0] && hs[0].w, hd = hs[0] && hs[0].d;
     if(hs.length > 1){}
     else if(it && it.w && hs[0] && (Math.min(hw, hd) !== Math.min(it.w, it.h)
             || Math.max(hw, hd) !== Math.max(it.w, it.h)))
@@ -218,12 +216,6 @@ export function ecarts(vols, vite, Q){
   /* chaque niveau loge sa surface — la règle première */
   if(!stop()) bilanDe(vols).forEach(function(b){
     if(stop()) return;
-    /* un niveau que les Typologies ont MESURÉ — chaque corps à la longueur de
-       ses pièces, couloirs et noyaux compris — fait foi : l'estimation du
-       mixer cède au plan */
-    var mesure = vols.some(function(v){ return !v.ph && volEtage(v, b.i); }) &&
-      vols.every(function(v){ var e = v.ph ? null : volEtage(v, b.i); return !e || e.w0 != null; });
-    if(mesure) return;
     var tol = Math.max(5, b.demande * .02);
     if(Math.abs(b.ecart) > tol)
       dit("surfaces", -1, b.nom + " — surface demandée " + fmt(Math.round(b.demande))

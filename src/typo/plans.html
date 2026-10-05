@@ -1,99 +1,86 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="fr"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Typologies Saxon</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<!-- Les feuilles du site : la page parle la langue du Massing — son rail en
+     chaîne, sa barre de vues, sa carte posée sur le plan —, avec ses tokens. -->
+<link rel="stylesheet" href="../../styles/tokens.css">
+<link rel="stylesheet" href="../../styles/base.css">
+<link rel="stylesheet" href="../../styles/controls.css">
+<link rel="stylesheet" href="../../styles/massing.css">
+<script>
+/* Le thème et le mode du site, avant le premier rendu : ses attributs, et la
+   feuille du thème s'il en a chargé une. */
+try {
+  var H0 = parent.document.documentElement, H1 = document.documentElement;
+  ["data-theme", "data-mode"].forEach(function(a){ var v = H0.getAttribute(a); if(v) H1.setAttribute(a, v); });
+  parent.document.querySelectorAll('link[href*="styles/themes/"]').forEach(function(l){
+    var n = document.createElement("link"); n.rel = "stylesheet"; n.href = l.href; document.head.appendChild(n);
+  });
+} catch(e){}
+</script>
 <style>
-/* Mise en page : un outil plein cadre — rail de commandes à gauche, planche à droite,
-   bilan des surfaces sous la planche. Le plan est dessiné comme un rendu de concours :
-   poché noir, cloisons à l'échelle, mobilier au trait fin, familles en lavis. */
+/* Le chrome est celui du Massing (`styles/massing.css`). Ici, le seul DESSIN :
+   un rendu de concours — poché noir, cloisons à l'échelle, mobilier au trait
+   fin, familles en lavis. Sa palette est à lui, et suit le mode du site. */
 :root{
   --paper:#FBFAF7; --paper-2:#F1EFEA; --panel:#FFFFFF; --ink:#1D1F1E; --ink-soft:#5E6662;
-  --line:#DAD7D0; --hatch:#B9B5AC; --accent:#2F5D50; --warn:#B4541F; --ok:#2E7D4F;
-  --f-cla:#DB5494; --f-adm:#DD5A02; --f-eau:#3278D7; --f-tec:#79867F; --f-spo:#3F9336;
-  --f-uap:#BF830C; --f-pis:#0D95A9; --f-ext:#196B39;
-  --wash:20%;
-  --font-sans:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --line:#DAD7D0; --hatch:#B9B5AC; --plan-accent:#2F5D50; --wash:20%;
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
+  :root:not([data-mode="light"]){
     --paper:#171918; --paper-2:#202322; --panel:#1C1F1E; --ink:#ECEAE4; --ink-soft:#A3A9A5;
-    --line:#343836; --hatch:#4A4F4C; --accent:#8CC5B2; --warn:#E8945E; --ok:#78C596;
-    --f-cla:#D363A6; --f-adm:#DA6022; --f-eau:#4086DF; --f-tec:#8D9891; --f-spo:#51A349;
-    --f-uap:#BF8900; --f-pis:#21A3BA; --f-ext:#46854A; --wash:30%; color-scheme:dark;
+    --line:#343836; --hatch:#4A4F4C; --plan-accent:#8CC5B2; --wash:30%;
   }
 }
-:root[data-theme="dark"]{
+:root[data-mode="dark"]{
   --paper:#171918; --paper-2:#202322; --panel:#1C1F1E; --ink:#ECEAE4; --ink-soft:#A3A9A5;
-  --line:#343836; --hatch:#4A4F4C; --accent:#8CC5B2; --warn:#E8945E; --ok:#78C596;
-  --f-cla:#D363A6; --f-adm:#DA6022; --f-eau:#4086DF; --f-tec:#8D9891; --f-spo:#51A349;
-  --f-uap:#BF8900; --f-pis:#21A3BA; --f-ext:#46854A; --wash:30%; color-scheme:dark;
+  --line:#343836; --hatch:#4A4F4C; --plan-accent:#8CC5B2; --wash:30%;
 }
-*{box-sizing:border-box}
-body{background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:14px;line-height:1.45}
-.app{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0;min-height:100vh}
-@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.main{order:-1}.stage{height:62vh;min-height:360px}}
-[hidden]{display:none!important}
-.rail{border-right:1px solid var(--line);background:var(--panel);padding:20px 18px;display:flex;flex-direction:column;gap:22px}
-@media (max-width:860px){.rail{border-right:0;border-bottom:1px solid var(--line);padding:16px}}
-.brand{display:flex;flex-direction:column;gap:2px}
-.brand .num{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);letter-spacing:.06em}
-.brand h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em}
-.brand p{margin:4px 0 0;color:var(--ink-soft);font-size:13px;text-wrap:balance}
-.grp{display:flex;flex-direction:column;gap:8px}
-.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:600}
-select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);width:100%}
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.seg button{font:inherit;font-size:13px;padding:7px 4px;border:0;background:var(--paper);color:var(--ink);cursor:pointer;border-right:1px solid var(--line)}
-.seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:600}
-.tg{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
-.tg input{accent-color:var(--accent);width:15px;height:15px}
-button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.bilan{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
-.bilan .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
-.bilan .sep{grid-column:1/-1;border-top:1px solid var(--line);margin:4px 0}
-.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;font-family:var(--font-mono)}
-.pill.ok{background:color-mix(in oklab,var(--ok) 16%,transparent);color:var(--ok)}
-.pill.warn{background:color-mix(in oklab,var(--warn) 16%,transparent);color:var(--warn)}
-.non{margin:0;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
-.non li{display:flex;justify-content:space-between;gap:8px}
-.non li span:last-child{font-family:var(--font-mono);color:var(--warn)}
-.ctl{margin:0;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:5px}
-.ctl li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}
-.ctl li small{grid-column:2;color:var(--ink-soft);font-size:11.5px}
-.legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:12px}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid var(--ink-soft)}
-.note{font-size:12px;color:var(--ink-soft);margin:0}
-.main{display:flex;flex-direction:column;min-width:0}
-.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line)}
-@media (max-width:860px){.bar{padding:12px 16px}}
-.bar h2{margin:0;font-size:16px;font-weight:600}
-.bar h2 small{font-weight:400;color:var(--ink-soft);margin-left:6px;font-size:13px}
-.tools{display:flex;gap:6px;flex-wrap:wrap}
-.btn{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer}
-.btn:hover{border-color:var(--ink-soft)}
-.stage{position:relative;height:min(74vh,820px);min-height:420px;background:var(--paper);overflow:hidden;touch-action:none;cursor:grab}
-.stage.drag{cursor:grabbing}
-.stage svg{width:100%;height:100%;display:block}
-.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);padding:7px 10px;border-radius:6px;font-size:12.5px;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
-.tip b{display:block;font-weight:600}
-.tip span{font-family:var(--font-mono);font-size:11.5px;opacity:.85}
-.cartouche{position:absolute;right:14px;bottom:14px;background:var(--panel);border:1px solid var(--ink);font-size:11px;display:grid;grid-template-columns:auto auto;pointer-events:none}
-.cartouche div{padding:4px 8px;border-bottom:1px solid var(--line)}
-.cartouche div:nth-child(odd){color:var(--ink-soft);border-right:1px solid var(--line)}
-.cartouche div:nth-last-child(-n+2){border-bottom:0}
-@media (max-width:560px){.cartouche{display:none}}
-.table-wrap{padding:18px 20px 28px;overflow-x:auto}
-@media (max-width:860px){.table-wrap{padding:16px}}
-table{border-collapse:collapse;width:100%;min-width:540px;font-size:13px}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
-th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);font-weight:600}
-td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
-th.n{text-align:right}
-td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px}
-.st-ok{color:var(--ok)} .st-warn{color:var(--warn)}
+body{ padding-inline:var(--s-4); }
+.mass-rail{ max-height:calc(100vh - 2 * var(--s-4)); }
+/* la planche : le cadre du plan du Massing, la hauteur d'un dessin d'étage */
+.stage{ position:relative; height:min(72vh, 780px); min-height:420px; background:var(--paper);
+  border:1px solid var(--border); border-radius:var(--radius-md);
+  overflow:hidden; touch-action:none; cursor:grab; }
+.stage.drag{ cursor:grabbing; }
+.stage svg{ width:100%; height:100%; display:block; }
+.ptip{ position:absolute; pointer-events:none; background:var(--primary); color:var(--primary-foreground);
+  padding:var(--s-2) var(--s-3); border-radius:var(--radius-md); max-width:260px;
+  font-size:var(--t-xs); box-shadow:var(--shadow-md); }
+.ptip b{ display:block; font-weight:600; }
+.ptip span{ font-family:var(--font-mono); font-size:var(--t-2xs); opacity:.85; }
+.cartouche{ position:absolute; right:var(--s-3); bottom:var(--s-3); background:var(--panel);
+  border:1px solid var(--ink); font-size:var(--t-3xs); display:grid; grid-template-columns:auto auto; pointer-events:none; }
+.cartouche div{ padding:3px var(--s-2); border-bottom:1px solid var(--line); }
+.cartouche div:nth-child(odd){ color:var(--ink-soft); border-right:1px solid var(--line); }
+.cartouche div:nth-last-child(-n+2){ border-bottom:0; }
+@media (max-width:560px){ .cartouche{ display:none; } }
+/* la carte de la pièce choisie descend du coin bas-gauche : la cartouche tient le bas-droit */
+.mass-carte input{ inline-size:6em; min-block-size:var(--ctl-h); padding:0 var(--s-2); font:inherit; font-size:var(--t-xs);
+  color:var(--foreground); background:var(--card); border:1px solid var(--input); border-radius:var(--radius-md); text-align:right; }
+/* le bilan du niveau, le contrôle, la légende */
+.typo-bil{ display:grid; grid-template-columns:1fr auto; gap:2px var(--s-3); font-size:var(--t-2xs); color:var(--soft-foreground); }
+.typo-bil .v{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; text-align:right; color:var(--foreground); }
+.typo-bil .sep{ grid-column:1/-1; border-top:1px solid var(--border-soft); margin:2px 0; }
+.typo-non{ margin:0; padding:0; list-style:none; font-size:var(--t-2xs); display:flex; flex-direction:column; gap:2px; }
+.typo-non li{ display:flex; justify-content:space-between; gap:var(--s-2); color:var(--soft-foreground); }
+.typo-non li span:last-child{ font-family:var(--font-mono); color:var(--warn); }
+.typo-ctl{ margin:0; padding:0; list-style:none; font-size:var(--t-2xs); display:flex; flex-direction:column; gap:var(--s-2); }
+.typo-ctl li{ display:grid; grid-template-columns:auto 1fr; gap:var(--s-2); align-items:start; color:var(--soft-foreground); }
+.typo-ctl li .chip{ margin-top:2px; }
+.typo-ctl li small{ grid-column:2; color:var(--muted-foreground); font-size:var(--t-3xs); line-height:var(--lh-base); }
+.typo-legend{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-1) var(--s-3); font-size:var(--t-2xs); color:var(--soft-foreground); }
+.typo-legend i{ display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:var(--s-2); vertical-align:-1px; border:1px solid var(--muted-foreground); }
+/* les postes du niveau, sous la planche */
+.typo-tab{ overflow-x:auto; }
+.typo-tab table{ border-collapse:collapse; width:100%; min-width:540px; font-size:var(--t-xs); }
+.typo-tab th, .typo-tab td{ text-align:left; padding:var(--s-1) var(--s-2); border-bottom:1px solid var(--border-soft); }
+.typo-tab th{ font-size:var(--t-3xs); text-transform:uppercase; letter-spacing:var(--track-caps); color:var(--muted-foreground); font-weight:600; border-bottom-color:var(--border); }
+.typo-tab td.n{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; text-align:right; }
+.typo-tab th.n{ text-align:right; }
+.typo-tab td .dot{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:var(--s-2); }
+.st-ok{ color:var(--ok); } .st-warn{ color:var(--warn); } .st-hors{ color:var(--muted-foreground); }
 /* ---- le dessin ---- */
 .mur{fill:var(--ink)}
 .circ{fill:var(--paper-2)}
@@ -108,7 +95,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right
 .fam-pis{fill:color-mix(in oklab,var(--f-pis) var(--wash),var(--paper))}
 .fam-ext{fill:color-mix(in oklab,var(--f-ext) var(--wash),var(--paper))}
 .mono .room,.mono .cell{fill:var(--paper)}
-.room:hover,.cell:hover{fill:color-mix(in oklab,var(--accent) 22%,var(--paper))}
+.room:hover,.cell:hover{fill:color-mix(in oklab,var(--plan-accent) 22%,var(--paper))}
 .cagef{fill:var(--paper);stroke:var(--ink);stroke-width:.10}
 .part{stroke:var(--ink);stroke-width:.10;fill:none}
 /* on coupe dans les murs : ils sont pochés, plein noir — 50 cm dehors, 10 cm dedans */
@@ -140,93 +127,90 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right
 .lab .m2{font-family:var(--font-mono);font-weight:400;fill:var(--ink-soft)}
 .dim{stroke:var(--ink-soft);stroke-width:.6;vector-effect:non-scaling-stroke}
 .dimt{font-family:var(--font-mono);fill:var(--ink-soft);pointer-events:none}
-.entree{fill:var(--accent)}
+.entree{fill:var(--plan-accent)}
 .nord{fill:var(--ink)}
 .hideF .mbg{display:none}
 .hideD .dimg{display:none}
 .hideS .siteg{display:none}
 @media (prefers-reduced-motion:no-preference){.stage svg g.vue{transition:opacity .2s}}
-</style>
+</style></head><body>
 
-<div class="app">
-  <aside class="rail" aria-label="Commandes">
-    <div class="brand">
-      <span class="num">05 · TYPOLOGIES</span>
-      <h1>Plans par niveau</h1>
-      <p>Centre scolaire de Saxon. Chaque plan est tiré de la répartition du mixer et des volumes du massing.</p>
-    </div>
-    <div class="grp">
-      <label class="lbl" for="parti">Parti du massing</label>
-      <select id="parti"></select>
-    </div>
-    <div class="grp">
-      <span class="lbl" id="niv-l">Niveau</span>
-      <div class="seg" id="niv" role="group" aria-labelledby="niv-l"></div>
-    </div>
-    <div class="grp">
-      <span class="lbl">Affichage</span>
-      <label class="tg"><input type="checkbox" id="t-meubles" checked> Mobilier</label>
-      <label class="tg"><input type="checkbox" id="t-couleurs" checked> Couleurs du programme</label>
-      <label class="tg"><input type="checkbox" id="t-cotes" checked> Cotes</label>
-      <label class="tg"><input type="checkbox" id="t-site" checked> Périmètre et existant</label>
-    </div>
-    <div class="grp">
-      <span class="lbl">Bilan du niveau</span>
-      <div class="bilan" id="bilan"></div>
-    </div>
-    <div class="grp" id="ed-g" hidden>
-      <span class="lbl">Pièce choisie</span>
-      <div id="ed"></div>
-    </div>
-    <div class="grp">
-      <span class="lbl">Contrôle — toute la pile</span>
-      <ul class="ctl" id="ctl"></ul>
-    </div>
-    <div class="grp" id="non-g">
-      <span class="lbl">Non posé à ce niveau</span>
-      <ul class="non" id="non"></ul>
-    </div>
-    <div class="grp">
-      <span class="lbl">Familles</span>
-      <div class="legend" id="legend"></div>
-    </div>
-    <p class="note">Surfaces à l'axe des cloisons, au m² du règlement : une pièce change de proportions, jamais de surface. Chaque corps est mesuré à ses pièces : le Massing est remis à ces cotes. Clique une pièce pour régler sa largeur au module. Données : la répartition du mixer et la volumétrie à l'écran, relues à chaque ouverture de l'onglet.</p>
+<section class="mass">
+<div class="mass-grid">
+  <!-- Le rail, en chaîne comme celui du Massing : ce qui PROPOSE en tête,
+       toujours visible ; puis les étapes, chacune repliable et portant son état ;
+       Emporter au pied. -->
+  <aside class="mass-rail" aria-label="Commandes des typologies">
+    <section class="mass-prop">
+      <h2 class="mass-prop__h">Proposer</h2>
+      <button class="btn btn--primary mass-tir" type="button" id="shuffle"
+              title="Réordonne les pièces : l'ordre des familles, celui des postes, le bout du noyau. Les volumes, leurs cotes et la répartition ne bougent pas.">
+        <span id="ic-shuffle"></span>
+        <span class="mass-tir__t"><b>Shuffle typologie</b><span>autre plan, mêmes volumes</span></span>
+      </button>
+      <div class="mass-nav">
+        <span class="mass-nav__r" id="cadre-l"></span>
+        <div class="mass-seed">
+          <span class="segcap">Seed</span>
+          <input type="text" id="seed" class="mono" size="7" spellcheck="false" autocomplete="off"
+                 aria-label="Seed du tirage typologie — retape-la pour rejouer le même plan"
+                 title="Retape une seed et rejoue le plan à l'identique, dans les mêmes volumes">
+        </div>
+      </div>
+    </section>
+    <ol class="mass-etapes" id="etapes"></ol>
+    <section class="mass-emporter" aria-label="Emporter">
+      <button class="btn" type="button" id="copy">Copier le SVG</button>
+    </section>
   </aside>
 
-  <main class="main">
-    <div class="bar">
-      <h2 id="titre">Plan</h2>
-      <div class="tools">
-        <button class="btn" id="z-in" aria-label="Zoomer">+</button>
-        <button class="btn" id="z-out" aria-label="Dézoomer">−</button>
-        <button class="btn" id="z-fit">Cadrer</button>
-        <button class="btn" id="copy">Copier le SVG</button>
+  <div class="mass-main">
+    <!-- Ce qu'on REGARDE : le niveau, les couleurs, ce qui se dessine, le cadrage. -->
+    <div class="mass-barre" role="toolbar" aria-label="Affichage du plan">
+      <div class="mass-barre__et"><span class="mass-barre__l">Niveau</span><div class="btn-group" id="niv" role="group" aria-label="Niveau montré"></div></div>
+      <div class="btn-group" id="couleurs" role="group" aria-label="Couleurs"></div>
+      <div class="btn-group" id="montre" role="group" aria-label="Ce qui se dessine"></div>
+      <span class="spacer"></span>
+      <div class="btn-group" role="group" aria-label="Cadrage">
+        <button class="btn btn--icon" type="button" id="z-out" aria-label="Dézoomer" title="Dézoomer">−</button>
+        <button class="btn btn--icon" type="button" id="z-in" aria-label="Zoomer" title="Zoomer">+</button>
+        <button class="btn" type="button" id="z-fit">Cadrer</button>
       </div>
     </div>
-    <div class="stage" id="stage">
-      <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan d'étage">
-        <defs>
-          <pattern id="hach" width="0.8" height="0.8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="0.8" height="0.8" fill="var(--paper)"/>
-            <line x1="0" y1="0" x2="0" y2="0.8" stroke="var(--hatch)" stroke-width="0.12"/>
-          </pattern>
-          <marker id="fl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/>
-          </marker>
-        </defs>
-        <g id="vue" class="vue"></g>
-      </svg>
-      <div class="tip" id="tip" hidden></div>
-      <div class="cartouche" id="cartouche"></div>
+    <div class="mass-vue">
+      <div class="mass-vue__h"><h3 class="label" id="titre">Plan</h3><span class="spacer"></span><span class="mass-cam mono" id="sous"></span></div>
+      <div class="mass-vue__cadre">
+        <div class="stage" id="stage">
+          <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan d'étage">
+            <defs>
+              <pattern id="hach" width="0.8" height="0.8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="0.8" height="0.8" fill="var(--paper)"/>
+                <line x1="0" y1="0" x2="0" y2="0.8" stroke="var(--hatch)" stroke-width="0.12"/>
+              </pattern>
+              <marker id="fl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/>
+              </marker>
+            </defs>
+            <g id="vue" class="vue"></g>
+          </svg>
+          <div class="ptip" id="ptip" hidden></div>
+          <div class="cartouche" id="cartouche"></div>
+        </div>
+        <div class="mass-carte" id="carte" hidden></div>
+      </div>
     </div>
-    <div class="table-wrap">
-      <table id="tab">
-        <thead><tr><th>Poste</th><th class="n">Nb</th><th class="n">Demandé m²</th><th class="n">Dessiné m²</th><th>État</th></tr></thead>
-        <tbody></tbody>
-      </table>
+    <div class="mass-vue">
+      <div class="mass-vue__h"><h3 class="label">Postes du niveau</h3></div>
+      <div class="typo-tab">
+        <table id="tab">
+          <thead><tr><th>Poste</th><th class="n">Nb</th><th class="n">Demandé m²</th><th class="n">Dessiné m²</th><th>État</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
-  </main>
+  </div>
 </div>
+</section>
 
 <script>
 /* Les données vivent dans le projet : l'onglet Typologies les donne à
@@ -238,9 +222,11 @@ try { DATA = parent !== window && parent.typoDonnees ? parent.typoDonnees() : nu
 /* ===== Générateur de plans : lit la pile du mixer et les volumes du massing =====
    Règles tenues :
    - une surface de programme ne change pas : largeur = surface ÷ profondeur de bande ;
-   - chaque corps est MESURÉ à ce qu'il porte : sa longueur, niveau par niveau,
-     est celle de ses pièces, de ses halls et de son noyau — rien ne manque,
-     rien ne reste ; l'onglet remet le Massing à ces cotes ;
+   - chaque corps garde les cotes que le Massing lui a données : le plan se
+     dessine DEDANS, et ce qui n'y tient pas est dit non posé — jamais le
+     volume ne s'allonge ;
+   - la seed (`DATA.graine`) ne change que l'ordonnance : l'ordre des
+     familles, celui des postes dans une famille, le bout du noyau ;
    - le couloir se place là où les deux bandes finissent ensemble ;
    - un noyau escalier + ascenseur par bâtiment et par niveau, aux mêmes cotes
      et au même endroit à tous les niveaux ;
@@ -260,6 +246,16 @@ var PG = (function(){
   var FAMS_O = ["cla", "eau", "uap", "adm", "spo", "tec", "pis", "ext"];
   var WC = 2 * NOY.volee + 0.10 + NOY.asc[0] + CLOISON;     /* largeur du noyau */
   var FL = [];                                               /* les niveaux */
+  /* LA SEED : un tirage PUR de la seed et d'un nom — le même à chaque appel, si
+     bien que le contrôle, l'écran et le Rendu voient le même plan. */
+  var GR = 1;
+  function alea(nom){
+    var h = (GR ^ 0x9E3779B9) >>> 0;
+    for(var i = 0; i < nom.length; i++) h = Math.imul(h ^ nom.charCodeAt(i), 16777619) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 0x2C1B3C6D) >>> 0;
+    return ((h ^ (h >>> 12)) >>> 0) / 4294967296;
+  }
+  var FAMS0 = FAMS_O.slice();
 
   function chapOf(key){ return key.split("|")[0]; }
   function local(cx, cy, a, x, y){
@@ -379,6 +375,8 @@ var PG = (function(){
       var pg = local(v.x, v.y, v.a, lo, 0), pd = local(v.x, v.y, v.a, hi, 0);
       var loin = Math.hypot(pg[0] - h.cx, pg[1] - h.cy) >= Math.hypot(pd[0] - h.cx, pd[1] - h.cy);
       gauche = h.seul ? !loin : loin;
+      /* un bâtiment à un seul noyau : la seed choisit à quel bout il se tient */
+      if(h.seul && alea("noyau " + v.id) < 0.5) gauche = !gauche;
     } else {
       var voisin = function(x, d){
         var p = local(v.x, v.y, v.a, x + d * 1.0, e.dy || 0);
@@ -429,7 +427,7 @@ var PG = (function(){
     }
     function piece(u){ return Object.assign({ kind:"band", src:u }, u); }
     var chef = gr.concat(pe).filter(function(u){ return !u.prin && !u.salle; })
-      .sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); });
+      .sort(function(p, q){ return (famO(p) - famO(q)) || (alea(p.key) - alea(q.key)) || (q.a - p.a); });
     var items = [], attente = [], n2 = 0;
     function vider(){ blocsDe(attente.sort(function(p, q){ return famO(p) - famO(q); })).forEach(function(b){ items.push(b); }); attente = []; n2 = 0; }
     var seuls = [];
@@ -580,9 +578,12 @@ var PG = (function(){
   }
 
   /* ---------- un niveau ---------- */
-  var FORCE = {};
   function genNiveau(D0, parti, i){
     FL = D0.floors;
+    /* l'ordre des familles, tiré de la seed : il décide quelle famille va à
+       quel corps, et dans quel ordre elles se suivent le long du couloir */
+    GR = D0.graine || 1;
+    FAMS_O = FAMS0.slice().sort(function(p, q){ return alea("fam " + p) - alea("fam " + q); });
     var fl = D0.floors[i], vols = D0.partis[parti].vols;
     var F = [], fixes = [], non = [];
     vols.forEach(function(v){
@@ -602,78 +603,11 @@ var PG = (function(){
     var U = unites(fl.rooms.filter(function(r){
       return !fixes.some(function(f){ return f.e.keys.indexOf(r.key) >= 0; });
     }));
-    /* L'ANNEXE DE LA SALLE DE SPORT. Ses locaux — vestiaires, rangement, scène,
-       nettoyage, foyer — lui sont liés : ils sont à elle, pas à l'école. Ils se
-       posent dans une bande le long de son grand côté, derrière un couloir qui
-       dessert la salle, du côté qui ne touche pas l'école. La salle garde ses
-       cotes ; c'est son volume qui s'épaissit, et le Massing le suit. */
-    var lie0 = {}, D0s = D0;
-    (D0.liens || []).forEach(function(l){ (lie0[l.a] = lie0[l.a] || []).push(l.b); (lie0[l.b] = lie0[l.b] || []).push(l.a); });
-    fixes.forEach(function(g){
-      if(g.v.ph || !g.e.keys.some(function(k){ return /^sport\|/.test(k); })) return;
-      /* ce qui est lié à la salle, puis ce qui n'est lié qu'à cela (les
-         vestiaires des maîtres, liés aux vestiaires des élèves) */
-      var A = U.filter(function(u){ return (lie0[u.key] || []).some(function(k){ return g.e.keys.indexOf(k) >= 0; }); });
-      for(var t2 = 0; t2 < 3; t2++){
-        var cles2 = g.e.keys.concat(A.map(function(u){ return u.key; }));
-        U.forEach(function(u){
-          if(A.indexOf(u) >= 0 || !lie0[u.key]) return;
-          if(lie0[u.key].every(function(k){ return cles2.indexOf(k) >= 0; })) A.push(u);
-        });
-      }
-      if(!A.length) return;
-      U = U.filter(function(u){ return A.indexOf(u) < 0; });
-      /* ce qui est lié directement à la salle au milieu, le long d'elle ; le
-         reste de part et d'autre */
-      var dir = A.filter(function(u){ return (lie0[u.key] || []).some(function(k){ return g.e.keys.indexOf(k) >= 0; }); });
-      var sec = A.filter(function(u){ return dir.indexOf(u) < 0; });
-      dir.sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); });
-      A = sec.slice(0, Math.ceil(sec.length / 2)).concat(dir, sec.slice(Math.ceil(sec.length / 2)));
-      /* les cotes de la salle elle-même, celles d'avant toute annexe */
-      var c = COULOIR, L0 = g.e.w0 || g.e.w, D0 = g.e.d0 || g.e.d, dy0 = g.e.dy0 != null ? g.e.dy0 : (g.e.dy || 0), tot = 0;
-      A.forEach(function(u){ tot += u.a; });
-      /* une bande de 5 à 12 m ; plus longue que la salle s'il le faut */
-      var b = Math.max(5, Math.min(12, tot / L0)), L = Math.max(L0, tot / b);
-      var J = vols.filter(function(v){ return v.id === g.v.joint || v.joint === g.v.id; })[0];
-      /* le côté : celui qui reste dans le périmètre, et de préférence celui qui
-         ne touche pas l'école */
-      function dedansPer(x, y){
-        var P = D0s.site.per, ok = false;
-        for(var i2 = 0, j2 = P.length - 1; i2 < P.length; j2 = i2++)
-          if((P[i2][1] > y) !== (P[j2][1] > y) && x < (P[j2][0] - P[i2][0]) * (y - P[i2][1]) / (P[j2][1] - P[i2][1]) + P[i2][0]) ok = !ok;
-        return ok;
-      }
-      function hors(sg2){
-        var dy2 = dy0 + sg2 * (c + b) / 2, n = 0, dx2 = g.e.dx0 != null ? g.e.dx0 : (g.e.dx || 0);
-        [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function(q){
-          var p2 = local(g.v.x, g.v.y, g.v.a, dx2 + q[0] * (L / 2 + MUR), dy2 + q[1] * ((D0 + c + b) / 2 + MUR));
-          if(!dedansPer(p2[0], p2[1])) n++;
-        });
-        return n;
-      }
-      var pref = 1;
-      if(J){ var py = -(J.x - g.cx) * Math.sin(g.a) + (J.y - g.cy) * Math.cos(g.a); pref = py > 0 ? -1 : 1; }
-      var sg = hors(pref) <= hors(-pref) ? pref : -pref;
-      g.D = D0 + c + b; g.L = L; g.dyNew = dy0 + sg * (c + b) / 2;
-      g.dxNew = g.e.dx0 != null ? g.e.dx0 : (g.e.dx || 0);
-      var p = local(g.v.x, g.v.y, g.v.a, g.dxNew, g.dyNew); g.cx = p[0]; g.cy = p[1];
-      var vHall = sg > 0 ? 0 : c + b, vAnn = sg > 0 ? D0 + c : 0;
-      g.rooms[0].v0 = vHall; g.rooms[0].H = D0; g.rooms[0].x0 = -L0 / 2; g.rooms[0].W = L0;
-      g.yc0 = -g.D / 2 + (sg > 0 ? D0 : b); g.yc1 = g.yc0 + c; g.zl = -L / 2; g.zr = L / 2;
-      var x = -L / 2;
-      A.forEach(function(u){
-        var W = u.a / b;
-        g.rooms.push(Object.assign({}, u, { kind:"band", frame:"full", x0:x, W:W, H:b, v0:vAnn,
-          porteV:sg > 0 ? vAnn : vAnn + b, fac:sg }));
-        x += W;
-      });
-      g.annexe = true;
-    });
     if(!F.length){ U.forEach(function(u){ non.push(u); }); return { F:fixes, non:non, fl:fl }; }
 
     /* LA RÉPARTITION entre les corps du niveau : le sport près de la salle,
        l'UAPE loin d'elle, le reste famille par famille, au prorata de ce que
-       le Massing avait prévu pour chaque corps (sa cote d'origine, `w0`). */
+       le Massing a prévu pour chaque corps (son emprise à ce niveau). */
     var hall = null;
     vols.forEach(function(v){ if(v.lv.some(function(e){ return e.keys && e.keys.join().indexOf("sport|") >= 0; })) hall = v; });
     /* au centre du VOLUME, pas de l'étage : l'ordre ne bouge pas quand un corps s'allonge */
@@ -682,7 +616,7 @@ var PG = (function(){
        celles du sport d'abord, celles de l'UAPE en dernier, le reste famille
        par famille entre les deux */
     F.sort(function(p, q){ return (d(p) - d(q)) || String(p.v.id).localeCompare(String(q.v.id)); });
-    var cap = F.map(function(f){ return (f.e.w0 || f.e.w) * f.e.d; }), capT = 0, tot = 0;
+    var cap = F.map(function(f){ return f.e.w * f.e.d; }), capT = 0, tot = 0;
     cap.forEach(function(x){ capT += x; });
     U.forEach(function(u){ tot += u.a; });
     /* un très grand local (l'abri PC) se partage entre les corps du niveau
@@ -799,16 +733,14 @@ var PG = (function(){
     /* chaque corps : son ancre, ses noyaux, ses passages, sa composition */
     F.forEach(function(f){
       var an = ancre(f.v, vols), v = f.v, e = f.e;
-      /* le noyau s'empile : un niveau d'une autre profondeur que la pile ne le
-         porte pas (le contrôle dit s'il reste desservi) */
-      /* un sous-sol d'un corps à noyau prend la profondeur de la pile : le
-         noyau descend sans se décaler (sa surface reste la sienne : la
-         longueur suit) */
+      /* le corps garde ses cotes : la profondeur du niveau, et sa longueur,
+         mesurée depuis le bout de l'ancre À CE NIVEAU — un retrait ou un
+         porte-à-faux reste celui du Massing. Le noyau s'empile là où les
+         niveaux le permettent ; le contrôle dit s'il reste desservi. */
       f.dyNew = e.dy || 0;
-      if(an.h && lvlDe(e.i) < 0){ f.D = an.d; f.deux = f.D >= 14; f.dyNew = an.dy; }
       var fa = facadeN(v, { d:f.D, dy:f.dyNew }, an.N);
       var nc = an.h && fa.N === an.fac.N && Math.abs(fa.y - an.fac.y) < 0.01 ? an.h.n : 0;
-      var deb = an.x, fin = an.x + an.s * e.w;
+      var deb = (e.dx || 0) - an.s * e.w / 2, fin = deb + an.s * e.w;
       function passe(x, dir){
         var p = local(v.x, v.y, v.a, x + dir * 1.0, (e.dy || 0));
         return F.some(function(g){ return g !== f && g.v.bat && g.v.bat === v.bat && dansCorps({ x:g.v.x, y:g.v.y, a:g.v.a, lv:[g.e] }, p); });
@@ -822,38 +754,29 @@ var PG = (function(){
         var pr = (sal.salle.cx - f.cx) * Math.cos(f.a) + (sal.salle.cy - f.cy) * Math.sin(f.a);
         debut = pr * an.s < 0;
       }
-      composer(f, { s:an.s, N:an.N, noyaux:nc, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:FORCE[v.id] || 0, regles:reg });
-      var dx = an.x + an.s * f.L / 2;
+      function comp(){
+        composer(f, { s:an.s, N:an.N, noyaux:nc, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:e.w, regles:reg });
+      }
+      comp();
+      /* CE QUI NE TIENT PAS dans le volume reste au bac du niveau : la pièce
+         qui couvre le débord au plus juste, sinon la plus grande, jusqu'à ce
+         que le plan tienne. C'est au Massing ou au mixer d'y répondre. */
+      while(f.L > e.w + 0.05 && f.U.length){
+        /* un hall reste : c'est par lui qu'on entre */
+        var ex = (f.L - e.w) * f.D, par = f.U.filter(function(u){ return !/^Hall|foyer/i.test(u.n); });
+        par = (par.length ? par : f.U).slice().sort(function(p, q){ return p.a - q.a; });
+        var pris = par.filter(function(u){ return u.a >= ex; })[0] || par[par.length - 1];
+        f.U.splice(f.U.indexOf(pris), 1);
+        non.push(pris);
+        comp();
+      }
+      var dx = deb + an.s * f.L / 2;
       f.dxNew = dx;
       var p = local(v.x, v.y, v.a, dx, f.dyNew); f.cx = p[0]; f.cy = p[1];
     });
     return { F:F.concat(fixes), non:non, fl:fl };
   }
 
-  /* LE DIMENSIONNEMENT : la longueur de chaque corps à chaque niveau, telle que
-     ses pièces la remplissent. Un corps à deux noyaux garde une seule longueur
-     sur toute sa pile, pour que son second noyau s'empile aussi. */
-  function dimensionner(D0, parti){
-    FORCE = {};
-    var res = D0.floors.map(function(_, i){ return genNiveau(D0, parti, i); });
-    var H = hotes(D0.partis[parti].vols), relance = false;
-    res.forEach(function(r){ r.F.forEach(function(f){
-      if(f.fixe || !H[f.v.id] || H[f.v.id].n < 2) return;
-      FORCE[f.v.id] = Math.max(FORCE[f.v.id] || 0, f.L); relance = true;
-    }); });
-    if(relance) res = D0.floors.map(function(_, i){ return genNiveau(D0, parti, i); });
-    var maj = [];
-    res.forEach(function(r){ r.F.forEach(function(f){
-      if(f.fixe){
-        if(f.annexe && (Math.abs(f.D - f.e.d) > 0.01 || Math.abs(f.L - f.e.w) > 0.01 || Math.abs(f.dyNew - (f.e.dy || 0)) > 0.01))
-          maj.push({ id:f.v.id, i:f.e.i, w:f.L, dx:f.dxNew, d:f.D, dy:f.dyNew });
-        return;
-      }
-      if(Math.abs(f.L - f.e.w) > 0.01 || Math.abs(f.dxNew - (f.e.dx || 0)) > 0.01 || Math.abs(f.D - f.e.d) > 0.01 || Math.abs(f.dyNew - (f.e.dy || 0)) > 0.01)
-        maj.push({ id:f.v.id, i:f.e.i, w:f.L, dx:f.dxNew, d:f.D, dy:f.dyNew });
-    }); });
-    return maj;
-  }
   function oublier(){ HOTES = null; ANC = {}; }
 
   /* treemap binaire : chaque cellule garde sa surface exacte */
@@ -883,7 +806,7 @@ var PG = (function(){
   }
   function versMonde(f, x, y){ return local(f.cx, f.cy, f.a, x, y); }
 
-  return { ancre:ancre, genNiveau:genNiveau, dimensionner:dimensionner, oublier:oublier, hotes:hotes,
+  return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes,
            local:local, versEtage:versEtage, versMonde:versMonde,
            COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE };
 })();
@@ -1187,63 +1110,95 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 (function(){
   var FAMS = [["cla","Classes"],["adm","Personnel"],["eau","Eau, sanitaires"],["tec","Technique"],
               ["spo","Sport"],["uap","UAPE"],["pis","Piscine"]];
-  function rien(t){ document.body.innerHTML = '<p style="padding:24px;max-width:60ch">' + t + '</p>'; }
+  function rien(t){ document.body.innerHTML = '<section class="mass"><p class="mass-note" style="max-width:60ch">' + t + '</p></section>'; }
   if(!DATA){ rien("Ouvre cette page depuis l\u2019onglet Typologies du projet."); return; }
   if(!DATA.partis.courant.vols.length){ rien("Aucune volumétrie à dessiner : répartis d\u2019abord le programme dans le Programme mixer, puis pose les volumes dans le Massing. Les plans se dessinent ensuite ici, dans ces volumes."); return; }
-  var st = { parti:"courant", niv:1, meubles:true, couleurs:true, cotes:true, site:true };
+  /* ce qu'on REGARDE seulement — niveau, couleurs, calques : une préférence de
+     cet appareil. La seed, elle, est au projet (`typo/etat.js`). */
+  var st = { niv:1, meubles:true, couleurs:true, cotes:true, site:true };
   try { var s0 = JSON.parse(localStorage.getItem("typo-saxon") || "null"); if(s0) Object.assign(st, s0); } catch(e){}
   st.parti = "courant";
-  /* LES CORPS À LA MESURE DE LEURS PIÈCES : la longueur de chaque corps, niveau
-     par niveau, puis le Massing remis à ces cotes. Deux passes : une cote
-     changée peut changer l'ancre ou les noyaux d'un voisin. */
-  var allonges = [];
-  function mesurer(){
-    for(var t = 0; t < 4; t++){
-      PG.oublier();
-      var maj = PG.dimensionner(DATA, "courant");
-      if(!maj.length || !parent.typoEcrire) break;
-      maj.forEach(function(m){ allonges.push(m); });
-      parent.typoEcrire(maj);
-      DATA = parent.typoDonnees();
-    }
-    PG.oublier();
-  }
-  mesurer();
   if(!(st.niv < DATA.floors.length)) st.niv = Math.max(0, DATA.floors.findIndex(function(f){ return f.lvl === 0; }));
-  function save(){ try { localStorage.setItem("typo-saxon", JSON.stringify(st)); } catch(e){} }
+  function save(){ try { localStorage.setItem("typo-saxon", JSON.stringify({ niv:st.niv, meubles:st.meubles, couleurs:st.couleurs, cotes:st.cotes, site:st.site })); } catch(e){} }
 
   var $ = function(id){ return document.getElementById(id); };
-  var svg = $("svg"), vue = $("vue"), stage = $("stage"), tip = $("tip");
+  var svg = $("svg"), vue = $("vue"), stage = $("stage"), tip = $("ptip");
   var INFO = [];
   var fmt = function(x, d){ return x.toLocaleString("fr-CH", { minimumFractionDigits:d == null ? 1 : d, maximumFractionDigits:d == null ? 1 : d }); };
+  function ic(n, t){ try { return parent.typoIcone ? parent.typoIcone(n, t) : ""; } catch(e){ return ""; } }
 
-  /* ---------- commandes ---------- */
-  var sel = $("parti");
-  Object.keys(DATA.partis).forEach(function(k){
-    if(k === "auto") return;
-    var o = document.createElement("option"); o.value = k; o.textContent = DATA.partis[k].n; sel.appendChild(o);
+  /* ---------- proposer : Shuffle typologie et sa seed ----------
+     Le geste de l'onglet. Il ne touche ni au programme ni aux volumes : seule
+     l'ordonnance des pièces change. Le bouton et le champ passent par un seul
+     chemin, `rejouer()` : une seed retapée rend ce que le tirage avait montré. */
+  $("ic-shuffle").outerHTML = ic("shuffle", 18);
+  var seedIn = $("seed");
+  function seedTxt(){ return (DATA.graine >>> 0).toString(36); }
+  function suivante(g){ return (g * 1103515245 + 12345) >>> 8 || 1; }
+  function rejouer(g){
+    if(parent.typoGraine) parent.typoGraine(g);
+    DATA = parent.typoDonnees();
+    PG.oublier(); CTL = null; choisir(null); dessiner(false);
+  }
+  $("shuffle").addEventListener("click", function(){ rejouer(suivante(DATA.graine)); });
+  seedIn.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); seedIn.blur(); } });
+  seedIn.addEventListener("change", function(){
+    var g = parseInt(String(seedIn.value).trim().replace(/^\s*seed[\s:]+/i, ""), 36);
+    if(!(g > 0)){ seedIn.value = seedTxt(); return; }
+    rejouer(g >>> 0);
   });
-  sel.value = st.parti;
-  sel.addEventListener("change", function(){ st.parti = sel.value; save(); dessiner(true); });
+  var vols0 = DATA.partis.courant.vols, corps = vols0.filter(function(v){ return !v.ph; }).length;
+  $("cadre-l").innerHTML = '<b class="mono">' + corps + '</b> volume' + (corps > 1 ? "s" : "") + " du Massing";
+  $("cadre-l").title = DATA.partis.courant.n + " — les volumes, leurs cotes et la répartition viennent des onglets précédents ; le Shuffle ne les touche pas.";
+
+  /* ---------- la barre : ce qu'on regarde ---------- */
+  function bouton(txt, titre, presse, fn){
+    var b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = txt;
+    if(titre) b.title = titre;
+    b.setAttribute("aria-pressed", presse ? "true" : "false");
+    b.addEventListener("click", fn);
+    return b;
+  }
   var seg = $("niv");
   DATA.floors.forEach(function(fl, i){
-    var b = document.createElement("button"); b.type = "button"; b.textContent = fl.short.replace("ᵉʳ","er").replace("ᵉ","e");
-    b.title = fl.name; b.addEventListener("click", function(){ st.niv = i; save(); dessiner(false); });
-    seg.appendChild(b);
+    seg.appendChild(bouton(fl.short.replace("ᵉʳ","er").replace("ᵉ","e"), fl.name, false, function(){ st.niv = i; save(); choisir(null); dessiner(false); }));
   });
-  [["t-meubles","meubles","hideF"],["t-cotes","cotes","hideD"],["t-site","site","hideS"]].forEach(function(p){
-    var el = $(p[0]); el.checked = st[p[1]];
-    el.addEventListener("change", function(){ st[p[1]] = el.checked; save(); classes(); });
-  });
-  var tc = $("t-couleurs"); tc.checked = st.couleurs;
-  tc.addEventListener("change", function(){ st.couleurs = tc.checked; save(); classes(); });
+  function barre(){
+    var c = $("couleurs"), m = $("montre");
+    c.innerHTML = ""; m.innerHTML = "";
+    [["Programme", true, "Couleurs du programme, famille par famille"], ["Monochrome", false, "Le plan seul, au trait et au poché"]].forEach(function(o){
+      c.appendChild(bouton(o[0], o[2], st.couleurs === o[1], function(){ st.couleurs = o[1]; save(); classes(); barre(); }));
+    });
+    [["meubles", "Mobilier"], ["cotes", "Cotes"], ["site", "Site"]].forEach(function(o){
+      m.appendChild(bouton(o[1], o[1] === "Site" ? "Périmètre, existant et volumes absents du niveau" : null, st[o[0]], function(){ st[o[0]] = !st[o[0]]; save(); classes(); barre(); }));
+    });
+  }
+  barre();
   function classes(){
     svg.classList.toggle("hideF", !st.meubles); svg.classList.toggle("hideD", !st.cotes);
     svg.classList.toggle("hideS", !st.site); svg.classList.toggle("mono", !st.couleurs);
   }
-  $("legend").innerHTML = FAMS.map(function(f){
+
+  /* ---------- le rail : les étapes ----------
+     Chacune son numéro, son nom, une ligne qui dit ce qu'elle porte, et son
+     ÉTAT à droite — la seule chose qu'on lise sans l'ouvrir. */
+  var OUVERT = {};
+  function etape(id, num, titre, sous, etat, corps, ouvrir){
+    var li = document.createElement("li"); li.className = "mass-etape";
+    var d = document.createElement("details");
+    d.open = OUVERT[id] != null ? OUVERT[id] : !!ouvrir;
+    d.innerHTML = '<summary class="mass-etape__s"><span class="mass-etape__num mono">' + num + '</span>' +
+      '<span class="mass-etape__t"><b>' + titre + '</b>' + (sous ? '<span>' + sous + '</span>' : "") + '</span>' +
+      '<span class="mass-etape__e">' + (etat || "") + '</span>' + ic("chevron", 14) + '</summary>' +
+      '<div class="mass-etape__b">' + corps + '</div>';
+    d.addEventListener("toggle", function(){ OUVERT[id] = d.open; });
+    li.appendChild(d);
+    return li;
+  }
+  function puce(txt, cls, titre){ return '<i class="chip chip--' + cls + '"' + (titre ? ' title="' + esc(titre) + '"' : "") + '>' + txt + '</i>'; }
+  var LEGENDE = '<div class="typo-legend">' + FAMS.map(function(f){
     return '<span><i style="background:color-mix(in oklab,var(--f-' + f[0] + ') var(--wash),var(--paper))"></i>' + f[1] + '</span>';
-  }).join("");
+  }).join("") + '</div>';
 
   /* ---------- géométrie ---------- */
   function P(f, x, y){ var w = PG.versMonde(f, x, y); return [w[0], -w[1]]; }
@@ -1526,37 +1481,43 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       '<g class="mbg">' + out.mb.join("") + '</g>' + out.lab.join("") + '<g class="dimg">' + out.dim.join("") + '</g>';
     classes();
 
-    /* commandes, bilan, tableau */
+    /* la barre, le titre, le tableau, puis le rail */
     Array.prototype.forEach.call(seg.children, function(b, i){ b.setAttribute("aria-pressed", i === st.niv ? "true" : "false"); });
     var P0 = DATA.partis[st.parti];
-    $("titre").innerHTML = esc(fl.name) + '<small>' + esc(P0.n) + ' · ' + res.F.length + ' corps</small>';
+    $("titre").textContent = "Plan · " + fl.name;
+    $("sous").textContent = res.F.length + " corps · h " + fmt(fl.h, 2) + " m";
+    seedIn.value = seedTxt();
     $("cartouche").innerHTML = '<div>Projet</div><div>Centre scolaire de Saxon</div><div>Étape</div><div>05 Typologies</div>' +
-      '<div>Parti</div><div>' + esc(P0.n) + '</div><div>Niveau</div><div>' + esc(fl.name) + ' · h ' + fmt(fl.h, 2) + ' m</div>';
+      '<div>Parti</div><div>' + esc(P0.n) + '</div><div>Niveau</div><div>' + esc(fl.name) + ' · h ' + fmt(fl.h, 2) + ' m</div>' +
+      '<div>Seed</div><div>' + seedTxt() + '</div>';
 
-    var demande = 0, posé = 0, rows = [], nonA = 0;
-    res.non.forEach(function(u){ nonA += u.a; });
+    var demande = 0, posé = 0, rows = [];
     fl.rooms.forEach(function(r){
       var d = r.q * r.u, p = pose[r.key] || 0, horsVol = r.hors && !p;
       if(!horsVol){ demande += d; posé += Math.min(p, d); }
-      var etat = horsVol ? '<span style="color:var(--ink-soft)">hors volume</span>' :
+      var etat = horsVol ? '<span class="st-hors">hors volume</span>' :
         Math.abs(d - p) < 0.5 ? '<span class="st-ok">posé</span>' : '<span class="st-warn">manque ' + fmt(d - p) + ' m²</span>';
       rows.push('<tr><td><span class="dot" style="background:var(--f-' + r.f + ')"></span>' + esc(r.n) + '</td><td class="n">' + r.q + '</td><td class="n">' + fmt(d) + '</td><td class="n">' + (horsVol ? "—" : fmt(p)) + '</td><td>' + etat + '</td></tr>');
     });
     $("tab").querySelector("tbody").innerHTML = rows.join("");
     var mix = fl.circ ? fl.circ.couloir + fl.circ.cages : 0;
-    var taux = demande ? posé / demande : 1;
-    $("bilan").innerHTML =
+    var taux = demande ? posé / demande : 1, plein = taux > 0.995;
+    var bil = '<div class="typo-bil">' +
       '<span>Programme demandé</span><span class="v">' + fmt(demande, 0) + ' m²</span>' +
       '<span>Posé dans le plan</span><span class="v">' + fmt(posé, 0) + ' m²</span>' +
-      '<span>Part posée</span><span class="v"><span class="pill ' + (taux > 0.995 ? "ok" : "warn") + '">' + fmt(100 * taux, 0) + ' %</span></span>' +
       '<span class="sep"></span>' +
       '<span>Circulation : couloirs et paliers</span><span class="v">' + fmt(circDessinee, 0) + ' m²</span>' +
       '<span>Noyaux (escalier + ascenseur)</span><span class="v">' + fmt(cagesA, 0) + ' m²</span>' +
-      '<span>Circulation estimée au mixer</span><span class="v">' + fmt(mix, 0) + ' m²</span>' +
-      ''
-    $("non-g").hidden = !res.non.length;
-    $("non").innerHTML = res.non.map(function(u){ return '<li><span>' + esc(u.lab) + '</span><span>' + fmt(u.a) + ' m²</span></li>'; }).join("");
-    $("ctl").innerHTML = controle();
+      '<span>Circulation estimée au mixer</span><span class="v">' + fmt(mix, 0) + ' m²</span></div>';
+    if(res.non.length) bil += '<p class="mass-sous">Ne tient pas dans le volume</p><ul class="typo-non">' +
+      res.non.map(function(u){ return '<li><span>' + esc(u.lab) + '</span><span>' + fmt(u.a) + ' m²</span></li>'; }).join("") + '</ul>' +
+      '<p class="mass-note">Les volumes gardent les cotes du Massing : l\u2019agrandir là-bas, ou alléger le niveau au Programme mixer.</p>';
+    var C = controle(), ol = $("etapes");
+    ol.innerHTML = "";
+    ol.appendChild(etape("bilan", 1, "Bilan du niveau", fl.name, puce(fmt(100 * taux, 0) + " %", plein ? "ok" : "warn", "Part du programme du niveau posée dans le plan"), bil, !plein));
+    ol.appendChild(etape("ctl", 2, "Contrôle", "toute la pile",
+      (C.bad ? puce(C.bad + " à revoir", "warn") : "") + puce(C.ok + " ok", "ok"), '<ul class="typo-ctl">' + C.html + '</ul>', C.bad > 0));
+    ol.appendChild(etape("fam", 3, "Familles", "les lavis du plan", "", LEGENDE, false));
     if(recadrer || !vb) cadrer();
   }
 
@@ -1568,7 +1529,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     var vols = DATA.partis[st.parti].vols, F0 = PG.FEU;
     function nom(v){ return v.nom || String(v.id).toUpperCase(); }
     function niv(i){ return DATA.floors[i].name; }
-    function dit(ok, t, d){ L.push('<li><span class="pill ' + (ok ? "ok" : "warn") + '">' + (ok ? "ok" : "à revoir") + '</span><span>' + t + '</span>' + (d ? '<small>' + d + '</small>' : "") + '</li>'); }
+    var nOk = 0, nBad = 0;
+    function dit(ok, t, d){ if(ok) nOk++; else nBad++; L.push('<li>' + puce(ok ? "ok" : "à revoir", ok ? "ok" : "warn") + '<span>' + t + '</span>' + (d ? '<small>' + d + '</small>' : "") + '</li>'); }
     /* le programme */
     var nm = 0, am = 0, ou = [];
     tous.forEach(function(r, i){
@@ -1660,14 +1622,12 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     });
     dit(!rompus.length, rompus.length ? rompus.length + " lien" + (rompus.length > 1 ? "s" : "") + " du schéma non tenu" + (rompus.length > 1 ? "s" : "") + " : " + rompus.slice(0, 6).join(" ; ") + (rompus.length > 6 ? "…" : "")
         : "Toutes les adjacences du schéma sont tenues", "Chaque pièce à moins de " + fmt(PG.LIEN, 0) + " m de bord à bord de celle qui lui est liée, au même niveau. Les liens éteints au mixer ne comptent pas."
-          + (parent.typoAccordes && parent.typoAccordes.length ? " Pour cela, au mixer : " + parent.typoAccordes.join(" ; ") + "." : "")
-          + (parent.typoSalle ? " Au Massing : " + parent.typoSalle + "." : "")
-          + (rompus.some(function(t){ return /Salle de sport double/.test(t); }) ? " Les liens à la salle de sport ne se tiennent que si elle touche l’école : levier « Salle de sport accolée » au Massing." : ""));
-    dit(true, allonges.length ? "Corps mis à la mesure de leurs pièces : " + allonges.length + " niveau" + (allonges.length > 1 ? "x" : "") + " recoté" + (allonges.length > 1 ? "s" : "") + " au Massing"
-        : "Les corps ont la longueur de leurs pièces", "Rien ne manque, rien ne reste : le Massing suit, et signale ce que les nouvelles cotes y changent.");
+          + (rompus.some(function(t){ return /pas au même niveau/.test(t); }) ? " Deux postes à deux niveaux : c\u2019est au Programme mixer qu\u2019ils se rapprochent." : "")
+          + (rompus.some(function(t){ return /Salle de sport double/.test(t); }) ? " Les liens à la salle de sport ne se tiennent que si elle touche l\u2019école : levier « Salle de sport accolée » au Massing." : ""));
+    dit(true, "Les plans tiennent dans les volumes du Massing", "Chaque corps garde ses cotes, niveau par niveau ; le Shuffle ne change que l\u2019ordonnance des pièces.");
     dit(true, "Couloir de " + fmt(PG.COULOIR, 2) + " m, réglé au cahier des charges", "Il finit toujours sur un noyau, un hall, un passage ou la porte de la pièce qui le ferme.");
     dit(true, "Murs extérieurs et porteurs " + fmt(PG.MUR * 100, 0) + " cm, cloisons " + fmt(PG.CLOISON * 100, 0) + " cm", "Pochés en plein : on coupe dans les murs.");
-    return (CTL = L.join(""));
+    return (CTL = { html:L.join(""), ok:nOk, bad:nBad });
   }
 
   /* ---------- vue : cadrage, zoom, déplacement ---------- */
@@ -1729,21 +1689,32 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     if(!p0 || Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > 4) return;
     /* la pièce sous le pointeur, sous le mobilier et les étiquettes */
     var el = document.elementsFromPoint(e.clientX, e.clientY).filter(function(x){ return x.hasAttribute && x.hasAttribute("data-k"); })[0];
-    choisir(el ? INFO[+el.getAttribute("data-k")] : null);
+    choisir(el ? INFO[+el.getAttribute("data-k")] : null, e);
   });
-  function choisir(I){
-    var g = $("ed-g"), ed = $("ed");
-    if(!I || !I.regle){ g.hidden = true; return; }
+  /* LA PIÈCE CHOISIE : une carte posée sur le plan, comme le volume choisi au
+     Massing — dans le coin opposé au clic, pour ne pas cacher ce qu'elle décrit
+     (en haut quand elle passe à droite : la cartouche tient le bas). */
+  function choisir(I, e){
+    var c = $("carte");
+    if(!I || !I.regle){ c.hidden = true; c.innerHTML = ""; return; }
     var R = I.regle, m = PG.MODULE;
-    g.hidden = false;
-    ed.innerHTML = '<p style="margin:0 0 6px;font-weight:600">' + esc(I.lab) + '</p>' +
-      '<p class="note" style="margin:0 0 8px">' + fmt(I.a) + ' m² — la surface ne change pas : la largeur se règle au module de ' + fmt(m, 2) + ' m, la profondeur suit, et avec elle le couloir et les pièces de la bande. La cote vaut pour toutes les pièces du poste, ici et au mixer.</p>' +
-      '<label class="tg" style="justify-content:space-between">Largeur <input id="ed-w" type="number" step="' + m + '" min="' + (2 * m) + '" value="' + (Math.round(I.W / m) * m) + '" style="width:6em;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)"> m</label>' +
-      '<p class="note" style="margin:6px 0">Aujourd\u2019hui ' + fmt(I.W, 2) + ' × ' + fmt(I.H, 2) + ' m</p>' +
-      '<button class="btn" id="ed-0" type="button">Rendre au calcul</button>';
+    c.hidden = false;
+    if(e){
+      var r = stage.getBoundingClientRect(), droite = e.clientX - r.left < r.width / 2;
+      c.classList.toggle("is-droite", droite);
+      c.classList.toggle("is-haut", droite || e.clientY - r.top > r.height / 2);
+    }
+    c.innerHTML = '<section class="mass-carte__c" aria-label="Pièce choisie">' +
+      '<div class="mass-carte__h"><b class="mass-carte__id">' + esc(I.lab) + '</b>' +
+      '<button class="btn btn--quiet btn--icon" type="button" id="ed-x" aria-label="Ne plus choisir cette pièce" title="Ne plus choisir cette pièce">' + (ic("croix", 15) || "×") + '</button></div>' +
+      '<p class="mass-note" title="La surface ne change pas : la largeur se règle au module de ' + fmt(m, 2) + ' m, la profondeur suit, et avec elle le couloir et les pièces de la bande. La cote vaut pour toutes les pièces du poste, aux Typologies seulement : le Massing ne bouge pas.">' +
+        fmt(I.a) + ' m² · aujourd\u2019hui ' + fmt(I.W, 2) + ' × ' + fmt(I.H, 2) + ' m</p>' +
+      '<label class="mass-par"><span class="mass-par__n">Largeur, au module de ' + fmt(m, 2) + ' m</span>' +
+        '<input id="ed-w" type="number" step="' + m + '" min="' + (2 * m) + '" value="' + (Math.round(I.W / m) * m) + '"><span class="mass-par__u">m</span></label>' +
+      '<button class="btn btn--quiet mass-renvoi" id="ed-0" type="button">Rendre au calcul</button></section>';
     function appliquer(w){
       parent.typoRegle(R.key, w);
-      DATA = parent.typoDonnees(); mesurer(); CTL = null; dessiner(false);
+      DATA = parent.typoDonnees(); PG.oublier(); CTL = null; dessiner(false);
       choisir(null);
     }
     $("ed-w").addEventListener("change", function(){
@@ -1751,6 +1722,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       if(isFinite(w) && w > 0) appliquer(w);
     });
     $("ed-0").addEventListener("click", function(){ appliquer(null); });
+    $("ed-x").addEventListener("click", function(){ choisir(null); });
   }
   stage.addEventListener("pointerleave", function(){ tip.hidden = true; });
   $("z-in").addEventListener("click", function(){ zoom(0.7); });
@@ -1838,15 +1810,15 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     return R;
   }
   window.typoPlanches = function(){
-    var st0 = Object.assign({}, st), th = document.documentElement.getAttribute("data-theme");
-    document.documentElement.setAttribute("data-theme", "light");
+    var st0 = Object.assign({}, st), th = document.documentElement.getAttribute("data-mode");
+    document.documentElement.setAttribute("data-mode", "light");
     Object.assign(st, { meubles:true, cotes:true, site:true, couleurs:true }); classes();
     var out = DATA.floors.map(function(fl, i){
       st.niv = i; dessiner(false);
       return { i:i, name:fl.name, lvl:fl.lvl, h:fl.h, prims:recolter() };
     });
     Object.assign(st, st0);
-    if(th) document.documentElement.setAttribute("data-theme", th); else document.documentElement.removeAttribute("data-theme");
+    if(th) document.documentElement.setAttribute("data-mode", th); else document.documentElement.removeAttribute("data-mode");
     classes(); dessiner(false);
     return out;
   };

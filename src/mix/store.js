@@ -32,6 +32,7 @@ import "../data/jugement.js";
 import "../data/donnees.js";
 import "../data/recherche.js";
 import { massOf, setMass } from "../mass/etat.js";
+import { setTypo, typoOf } from "../typo/etat.js";
 import { BLOCKS, FLOORS, TRAY, nextUid, resetBlocks, setStack } from "./floors.js";
 import { PMAP, qOf } from "./prog.js";
 
@@ -86,6 +87,9 @@ export function snapshot(){
        parti et les réglages. Aller au mixer et revenir ne doit pas défaire
        une implantation qu'on a passé un quart d'heure à régler. */
     mass: massOf(),
+    /* Les TYPOLOGIES : leur seed et leurs cotes de pièces — jamais les
+       volumes, qui sont au massing. */
+    typo: typoOf(),
     /* LES LIGNES DE LA RECHERCHE, et seulement ce qui s'écarte du défaut.
        Enregistrer l'objet entier figerait dans ce navigateur les valeurs du
        jour, et une valeur corrigée dans le code ne parviendrait jamais à qui a
@@ -107,6 +111,7 @@ export function restore(o){
   try{ setAccepts(o.accepts); }catch(_){ lost.push("écarts assumés"); }
   try{ setOpts(o.opts); }catch(_){ lost.push("options"); }
   try{ setMass(o.mass); }catch(_){ lost.push("massing"); }
+  try{ setTypo(o.typo); }catch(_){ lost.push("typologies"); }
   /* Les lignes d'un instantané sont ce qui s'écarte du DÉFAUT : on repart du
      défaut avant de les poser. Sans cela, une valeur réglée avant le
      chargement survivait à une variante qui ne la touchait pas, et la variante

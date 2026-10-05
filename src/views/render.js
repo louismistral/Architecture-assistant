@@ -8,7 +8,8 @@ import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../cor
 import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
 import { renduVue } from "./rendu.js";
-import { donneesTypo, typoAccorder, typoEcrire, typoRegle, typoSalleAccolee } from "../typo/donnees.js";
+import { donneesTypo, typoGraine, typoRegle } from "../typo/donnees.js";
+import { icone } from "./icons.js";
 
 /* Ce que chaque onglet à construire viendra faire, dans l'ordre du concours. */
 var A_CONSTRUIRE = {
@@ -171,14 +172,15 @@ function sectHead(n, titre, sous){
   return h;
 }
 
-/* Ce que la page des plans (`src/typo/plans.html`) lit chez son hôte : les
-   liens accordés, le massing préparé, et les fonctions qui le lisent et
-   l'écrivent. L'onglet Typologies et le Rendu l'appellent avant de la charger. */
+/* Ce que la page des plans (`src/typo/plans.html`) lit chez son hôte : le
+   massing préparé — le même que l'onglet Massing aurait posé —, et les
+   fonctions qui le lisent. Elle ne réécrit ni la pile ni les volumes : seules
+   sa seed et ses cotes de pièces lui appartiennent. L'onglet Typologies et le
+   Rendu l'appellent avant de la charger. */
 export function typoHote(){
-  window.typoAccordes = typoAccorder();
   massPrepare();
-  window.typoSalle = typoSalleAccolee();
-  window.typoDonnees = donneesTypo; window.typoEcrire = typoEcrire; window.typoRegle = typoRegle;
+  window.typoDonnees = donneesTypo; window.typoGraine = typoGraine; window.typoRegle = typoRegle;
+  window.typoIcone = function(n, t){ return icone(n, t).outerHTML; };
 }
 
 export function render(){
@@ -220,15 +222,10 @@ export function render(){
      (`src/typo/plans.html`), montré dans l'onglet. Il lit la pile du mixer et
      le massing à l'écran (`typo/donnees.js`), et porte le mode du site. */
   if(view.tab === "typologie"){
-    /* les liens d'abord (ils peuvent changer la pile), puis le massing qui la suit */
     typoHote();
     var fr = el("iframe", "typo-cadre");
     fr.src = "src/typo/plans.html";
     fr.title = "Typologies — plans par niveau";
-    fr.addEventListener("load", function(){
-      var m = document.documentElement.getAttribute("data-mode");
-      try { if(m) fr.contentDocument.documentElement.setAttribute("data-theme", m); } catch(e){}
-    });
     panelsEl.appendChild(fr);
     return;
   }
