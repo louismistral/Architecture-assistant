@@ -154,6 +154,11 @@ export var CADRE_MASS = [
     n:"Salle de sport double", val:"28 × 32 m, 7,00 m libres, rien au-dessus",
     lu:"src/mass/gen.js — corpsImpose() · src/mass/mesures.js — ecarts()",
     d:"Ses cotes et sa hauteur sont obligatoires, et aucun étage ne la surmonte." },
+  { id:"scene-sport", sujet:"Salle de sport", tag:"intangible", src:r("2.10"), qui:"code",
+    n:"Scène collée à la salle de sport", val:"sur un de ses côtés, mur contre mur",
+    lu:"src/mass/gen.js — placerSport() · src/mass/mesures.js — ecarts() · src/typo/plans.html — contrôle",
+    d:"Le programme la veut attenante à la salle de sport : la salle est toujours accolée à "
+      + "l'école, et les Typologies posent la scène contre l'un de ses murs." },
   { id:"abri", sujet:"Sous-sol", tag:"intangible", src:r("2.10"), qui:"code",
     n:"Abri PC au moins partiellement enterré", val:"au sous-sol, ou au rez d'un corps posé sur la pente",
     lu:"src/mass/mesures.js — ecarts()",
@@ -189,12 +194,26 @@ export var CADRE_MASS = [
     d:"Toutes les cotes des corps sont des multiples du module, comme les proportions des "
       + "pièces." },
   { id:"second", sujet:"Second temps", tag:"intangible", src:r("2.2"), qui:"code",
-    n:"L'école fonctionne avec et sans piscine", val:"piscine et local CAD sont des bâtiments à part",
-    lu:"src/mass/gen.js — poserSecond()",
+    n:"L'école fonctionne avec et sans piscine", val:"piscine et local CAD à part — et dessinés dans toute variante",
+    lu:"src/mass/gen.js — poserSecond(), secondPose() · src/mass/checks.js — second",
     d:"Indépendants des bâtiments scolaires et réalisés plus tard : ils ne sont jamais accolés "
-      + "à l'école, et ne comptent dans aucun niveau." }
+      + "à l'école, et ne comptent dans aucun niveau. Mais ils sont pensés dès maintenant : "
+      + "toute variante les pose et les dessine." }
 ];
 CADRE_MASS.forEach(function(x){ x.role = "cadre"; x.onglet = "massing"; });
+
+/* ---------- les typologies ------------------------------------------------------ */
+export var CADRE_TYPO = [
+  { id:"trame", sujet:"Trame", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Une trame pour placer les pièces", k:"trame", def:1.2, min:0.3, max:9, pas:0.1, unite:"m",
+    lu:"à construire — src/typo/plans.html",
+    d:"Un quadrillage commun sur lequel se posent les pièces, leurs cloisons et leurs portes." },
+  { id:"couloir-acces", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Toutes les pièces ont accès à un couloir", val:"une porte sur la circulation, pour chaque pièce",
+    lu:"src/typo/plans.html — composer(), contrôle",
+    d:"Aucune pièce ne se traverse pour en atteindre une autre." }
+];
+CADRE_TYPO.forEach(function(x){ x.role = "cadre"; x.onglet = "typologie"; });
 
 /* ---------- ce que le massing ne sait pas encore lire ------------------------------
    Opposable, mais sans mesure ici : la typologie, le rendu le vérifieront. Ils
@@ -217,7 +236,7 @@ CADRE_APRES.forEach(function(x){
   x.role = "cadre"; x.tag = "intangible"; x.qui = "code"; x.lu = "à vérifier — onglet " + x.onglet;
 });
 
-export var CADRE = NIV.concat(CADRE_MIX, CADRE_MASS, CADRE_APRES);
+export var CADRE = NIV.concat(CADRE_MIX, CADRE_MASS, CADRE_TYPO, CADRE_APRES);
 declarer(CADRE);
 
 /* La règle de niveau d'un id. */

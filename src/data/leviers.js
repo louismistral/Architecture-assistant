@@ -55,8 +55,8 @@ export var LEVIERS = [
   { id:"lev-sport", sujet:"Salle de sport", onglet:"massing", src:G,
     n:"Salle de sport accolée ou à part", val:"accolée au corps principal · à part, sur le bas du site",
     etat:"au rail · libre : une chance sur deux", lu:"src/mass/gen.js — placerSport()",
-    d:"Accolée, elle fait partie du bâtiment ; à part, elle se pose sur le bas du terrain, à "
-      + "la distance incendie." },
+    d:"Accolée, elle fait partie du bâtiment ; à part, elle se pose sur le bas du terrain. "
+      + "Tant que la scène doit lui être collée (le cadre), elle est toujours accolée." },
   { id:"lev-ponts", sujet:"Connexions", onglet:"massing", src:G,
     n:"Passerelles", k:"passMax", def:24, min:6, max:60, pas:1, unite:"m au plus",
     etat:"au rail · libre : une chance sur deux", lu:"src/mass/gen.js — relier()",
@@ -69,7 +69,7 @@ export var LEVIERS = [
   { id:"lev-toit", sujet:"Architecture", onglet:"massing", src:G,
     n:"Toiture", val:"plate · végétalisée · un pan · deux pans · sheds",
     etat:"au rail · libre : une des cinq", lu:"src/mass/archi.js — architecturer()",
-    d:"La salle de sport garde ses sheds ; les ouvrages du second temps restent plats." },
+    d:"La salle de sport et les ouvrages du second temps restent plats." },
   { id:"lev-pf", sujet:"Architecture", onglet:"massing", src:G,
     n:"Porte-à-faux", val:"avec · sans",
     etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
@@ -96,10 +96,10 @@ export var LEVIERS = [
     etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
     d:"Le rez des corps de plus de 24 m est traversé de part en part." },
   { id:"lev-second", sujet:"Second temps", onglet:"massing", src:{ t:"reglement", a:"2.2" },
-    n:"Piscine et local CAD", val:"réunis en un volume · séparés · non représentés",
+    n:"Piscine et local CAD", val:"réunis en un volume · séparés",
     etat:"au rail · libre : réunis ou séparés", lu:"src/mass/gen.js — poserSecond()",
     d:"Indépendants de l'école et bâtis plus tard. Libre, le générateur essaie les deux façons "
-      + "de les poser ; « non représentés » ne se tire jamais : il se choisit." }
+      + "de les poser. Ils sont toujours dessinés (le cadre, ligne « second »)." }
 ];
 /* L'état fixe ou libre est à chacun ; un levier qui a un domaine chiffré le
    tient du groupe. */
