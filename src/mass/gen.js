@@ -802,8 +802,17 @@ export function chevauche(v, vols, x, y, a){
    Deux corps qui se touchent autrement (en équerre, ou l'un plus haut que
    l'autre, ou la salle de sport aux cotes imposées) deviennent un même
    BÂTIMENT : ils partagent leurs couloirs, aucune distance ne leur est due.
-   Rend le nombre de fusions. */
-function touchent(a, b){ var e = ecartVols(a, b, null, 1); return e >= -CONTACT && e <= CONTACT; }
+   Rend le nombre de fusions. `etage` : se toucher à UN étage suffit, même si
+   les deux corps se recouvrent à d'autres — les morceaux d'un même corps
+   qu'un solide importé a découpés (`import.js`). */
+function touchent(a, b, etage){
+  var e = ecartVols(a, b, null, 1);
+  if(e >= -CONTACT && e <= CONTACT) return true;
+  return !!etage && a.lv.some(function(x){
+    var y = volEtage(b, x.i), d = y && ecart(volRect(a, x), volRect(b, y));
+    return !!y && d >= -CONTACT && d <= CONTACT;
+  });
+}
 function dansRepere(a, r){
   var c = Math.cos(a.a), s = Math.sin(a.a), dx = r.x - a.x, dy = r.y - a.y;
   return { u: dx * c + dy * s, v: -dx * s + dy * c };
@@ -830,13 +839,13 @@ function alignes(a, b){
   }
   return bout ? plan : null;
 }
-export function fusionner(vols, ponts){
+export function fusionner(vols, ponts, etage){
   var m = 2 * RULES.haut.mur, faits = 0, encore = true;
   while(encore){
     encore = false;
     for(var i = 0; i < vols.length && !encore; i++) for(var j = i + 1; j < vols.length && !encore; j++){
       var a = vols[i], b = vols[j];
-      if(a.ph || b.ph || a.fix || b.fix || !touchent(a, b)) continue;
+      if(a.ph || b.ph || a.fix || b.fix || !touchent(a, b, etage)) continue;
       var pl = alignes(a, b);
       if(!pl) continue;
       pl.forEach(function(p){
@@ -859,7 +868,7 @@ export function fusionner(vols, ponts){
   var grp = vols.map(function(v, k){ return k; });
   function chef(k){ while(grp[k] !== k) k = grp[k]; return k; }
   for(var x = 0; x < vols.length; x++) for(var y = x + 1; y < vols.length; y++){
-    if(vols[x].ph || vols[y].ph || !touchent(vols[x], vols[y])) continue;
+    if(vols[x].ph || vols[y].ph || !touchent(vols[x], vols[y], etage)) continue;
     grp[chef(y)] = chef(x);
   }
   vols.forEach(function(v, k){

@@ -35,7 +35,9 @@ import { accept, unaccept } from "../mix/accept.js";
 import { requilibre } from "../mass/fix.js";
 import { dansPerimetre, genMass, poser, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
-import { objMassing } from "../mass/export.js";
+import { dm3Massing } from "../mass/export.js";
+import { solides3dm, volsDe3dm } from "../mass/import.js";
+import { RHINO } from "../data/site.js";
 import { evaluationCourante } from "../mass/mesures.js";
 import { V, reculVise } from "../data/cadre.js";
 import { OPTIONS } from "../data/leviers.js";
@@ -921,35 +923,82 @@ function alPanneau(x, assume){
   return box;
 }
 
-/* --- ce qu'on emporte ---
-   Le massing se poursuit dans Rhino, sur le relevé du géomètre. Le fichier est
-   écrit par `mass/export.js` ; ici, on ne fait que le donner. La ligne sous le
-   bouton dit les deux cases de l'import qui décident de tout : une case mal
-   cochée, et le projet se couche sur le flanc ou arrive sur un seul calque. */
+/* --- ce qu'on emporte, ce qu'on rapporte ---
+   Le massing se poursuit dans Rhino, sur le relevé du géomètre, et peut en
+   revenir. Le fichier est écrit par `mass/export.js` et relu par
+   `mass/import.js` ; ici, on ne fait que le donner et le prendre. rhino3dm —
+   la bibliothèque de McNeel qui lit et écrit le .3dm — ne se charge qu'au
+   premier clic : 3 Mo de WebAssembly que personne d'autre ne demande. */
+var RHINO3DM = "https://cdn.jsdelivr.net/npm/rhino3dm@8.35.0/rhino3dm.module.min.js";
+var rh3dm = null, statutRhino = "";
+function rhino(){
+  if(!rh3dm) rh3dm = import(RHINO3DM).then(function(m){ return m.default(); })
+    .catch(function(e){ rh3dm = null; throw new Error("rhino3dm ne se charge pas (" + (e.message || e) + ")."); });
+  return rh3dm;
+}
 function blocExport(){
-  var b = bloc("Exporter");
-  var t = el("button", "btn", "Exporter pour Rhino (.obj)");
+  var b = bloc("Rhino"), r = el("div", "mass-deux");
+  var t = el("button", "btn", "Exporter pour Rhino (.3dm)");
   t.type = "button";
-  t.addEventListener("click", telecharger);
-  b.appendChild(t);
+  t.addEventListener("click", function(){
+    t.disabled = true;
+    rhino().then(function(rh){ telecharger(dm3Massing(rh)); statutRhino = ""; })
+      .catch(function(e){ console.error(e); statutRhino = e.message || String(e); })
+      .then(function(){ t.disabled = false; dessineRail(); });
+  });
+  r.appendChild(t);
+  var f = el("input");
+  f.type = "file"; f.accept = ".3dm"; f.hidden = true;
+  f.addEventListener("change", function(){ if(f.files[0]) importer(f.files[0]); });
+  var i = el("button", "btn", "Importer depuis Rhino (.3dm)");
+  i.type = "button";
+  i.addEventListener("click", function(){ f.click(); });
+  r.appendChild(i);
+  b.appendChild(r);
+  b.appendChild(f);
   b.appendChild(el("p", "mass-note", "Coordonnées du relevé DOC/site_plan.3dm, en "
-    + "centimètres, Z vers le haut : le fichier s’y pose en place. À l’import, ne coche "
-    + "pas « Map OBJ Y to Rhino Z » et coche « Import OBJ groups as layers » — un calque "
+    + "centimètres, Z = 0 à " + dec(RHINO.z0, 0) + " m : le fichier s’y pose en place. Un calque "
     + "par niveau, plus le périmètre et le recul de " + dec(reculVise(), 0)
-    + " m, drapés sur le terrain."));
+    + " m, drapés sur le terrain. L’import remplace la volumétrie : des boîtes par étage "
+    + "se relisent telles quelles, un solide unifié se découpe par ses toits."));
+  if(statutRhino) b.appendChild(el("p", "mass-note", statutRhino));
   return b;
 }
-function telecharger(){
-  var url = URL.createObjectURL(new Blob([objMassing()], { type:"text/plain" }));
+function telecharger(octets){
+  var url = URL.createObjectURL(new Blob([octets], { type:"application/octet-stream" }));
   var a = document.createElement("a");
   a.href = url;
-  a.download = "saxon-massing-" + seedMass() + ".obj";
+  a.download = "saxon-massing-" + seedMass() + ".3dm";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   /* Révoquer dans la foulée du clic coupe le téléchargement dans certains
      navigateurs : on lui laisse le temps de partir. */
   setTimeout(function(){ URL.revokeObjectURL(url); }, 40000);
+}
+/* L'import REMPLACE la volumétrie : on dit ce qui arrive avant de le poser. */
+function importer(fichier){
+  Promise.all([rhino(), fichier.arrayBuffer()]).then(function(x){
+    var r = volsDe3dm(solides3dm(x[0], new Uint8Array(x[1])));
+    var n = r.vols.filter(function(v){ return !v.ph; }).length;
+    if(MASS.vol.length && !window.confirm("Remplacer la volumétrie actuelle ("
+      + MASS.vol.length + " volumes) par celle de « " + fichier.name + " » ("
+      + n + " volume" + (n > 1 ? "s" : "") + ") ? Elle sera perdue si elle n’est pas "
+      + "enregistrée dans une variante.")) return;
+    massVols(r.vols);
+    MASS.pile = empreintePile();
+    statutRhino = "« " + fichier.name + " » : " + n + " volume" + (n > 1 ? "s" : "")
+      + (r.mode === "boites" ? ", lus boîte par boîte" : ", découpés par leurs toits"
+         + (r.mode === "classe" ? " — étages comptés à " + dec(RULES.haut.libre.cla + RULES.haut.dalle) + " m" : ""))
+      + (r.horsPile ? " ; " + r.horsPile + " étage(s) hors de la pile du mixer, ignorés" : "") + ".";
+    camFit();
+    planFit();
+    redessine();
+  }).catch(function(e){
+    console.error(e);
+    statutRhino = "Import impossible : " + (e.message || e);
+    dessineRail();
+  });
 }
 
 /* ---------- le volet « Contraintes » ----------------------------------------
