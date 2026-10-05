@@ -11,6 +11,10 @@ import { renduVue } from "./rendu.js";
 import { donneesTypo, typoGraine, typoRegle } from "../typo/donnees.js";
 import { creerPG } from "../typo/gen.js";
 import { lirePlans } from "../typo/mesures.js";
+import { evaluationCourante } from "../mass/mesures.js";
+import { CRITERES, noter, scoreTypo } from "../data/jugement.js";
+import { MESURES } from "../data/donnees.js";
+import { moyennesMain } from "../net/variantes.js";
 import { icone } from "./icons.js";
 import { VERROU, fige, figePar, setVerrou } from "../core/verrou.js";
 
@@ -178,6 +182,22 @@ function sectHead(n, titre, sous){
   return h;
 }
 
+/* Ce que vaut le bâtiment à l'écran, plans compris, à la seed typologie du
+   moment : la note, la part Typologie, et chaque critère que le plan mesure,
+   avec sa mesure lisible — l'étape Évaluation de la page des plans. La même
+   évaluation que le Massing et les variantes (`evaluer()`). */
+function typoEvaluation(){
+  var ev = evaluationCourante();
+  if(!ev) return null;
+  var j = noter(ev.mes, null, moyennesMain()), M = {};
+  MESURES.forEach(function(m){ if(m.de === "typo") M[m.m] = m; });
+  return { total:j.total, couv:j.couv, invalide:ev.invalide, typo:scoreTypo(j),
+    crit:CRITERES.filter(function(x){ return M[x.mesure]; }).map(function(x){
+      var v = ev.mes[x.mesure], u = M[x.mesure].unite;
+      return { n:x.n, s:j.crit[x.id].s, val:v == null ? "—" : String(v).replace(".", ",") + (u ? " " + u : "") };
+    }) };
+}
+
 /* Ce que la page des plans (`src/typo/plans.html`) lit chez son hôte : le
    massing préparé — le même que l'onglet Massing aurait posé —, et les
    fonctions qui le lisent : le générateur de plans (`typo/gen.js`) et son
@@ -188,7 +208,7 @@ function sectHead(n, titre, sous){
 export function typoHote(){
   massPrepare();
   window.typoDonnees = donneesTypo; window.typoGraine = typoGraine; window.typoRegle = typoRegle;
-  window.typoPG = creerPG; window.typoLecture = lirePlans;
+  window.typoPG = creerPG; window.typoLecture = lirePlans; window.typoEvaluation = typoEvaluation;
   window.typoIcone = function(n, t){ return icone(n, t).outerHTML; };
 }
 

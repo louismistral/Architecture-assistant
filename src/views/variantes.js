@@ -36,7 +36,7 @@ import { REG, tirerReglages } from "../net/reglages.js";
 import { VARIANTES, aJour, charger, chargerVariantes, enregistrer, invalide, jugementDe,
          moyennesMain, nomPropose, notifiee, noteDe, noterMain, onVariantes, poserTrouvees,
          rejouerTout, renommer, supprimer } from "../net/variantes.js";
-import { AXES, scoreAxe } from "../data/jugement.js";
+import { AXES, scoreAxe, scoreTypo } from "../data/jugement.js";
 import { PREFS, onPrefs, setPref } from "../net/prefs.js";
 import { icone } from "./icons.js";
 import { deroulant, item, titre } from "./menu.js";
@@ -576,6 +576,8 @@ var TRIS = [
   return { k:"ax:" + a.id, n:"Axe — " + a.n.split(",")[0].toLowerCase(),
            asc:"la moins bonne d'abord", desc:"la meilleure d'abord" };
 })).concat([
+  /* la part du plan des Typologies : pour un même volume, la bonne typologie d'abord */
+  { k:"typo",   n:"Typologie",       asc:"la moins bonne d'abord", desc:"la meilleure d'abord" },
   { k:"date",   n:"Date",            asc:"la plus ancienne d'abord", desc:"la plus récente d'abord" },
   { k:"name",   n:"Nom",             asc:"A → Z", desc:"Z → A" },
   { k:"author", n:"Auteur",          asc:"A → Z", desc:"Z → A" },
@@ -591,6 +593,7 @@ function triDe(k){ for(var i = 0; i < TRIS.length; i++) if(TRIS[i].k === k) retu
 function cleTri(v, k){
   if(k === "score"){ var n = noteDe(v, MOY); return n == null ? -Infinity : n; }
   if(k.indexOf("ax:") === 0){ var a = scoreAxe(jugementDe(v, MOY), k.slice(3)); return a == null ? -Infinity : a; }
+  if(k === "typo"){ var t = scoreTypo(jugementDe(v, MOY)); return t == null ? -Infinity : t; }
   if(k === "date") return v.created_at || "";
   if(k === "name") return (v.name || "").toLowerCase();
   if(k === "author") return nomDe(v.author_id).toLowerCase();
@@ -1272,6 +1275,9 @@ export function ouvrirModal(v){
   s2.appendChild(el("h4", null, "Ce qui rejoue la variante"));
   s2.appendChild(ligne("Seed du programme", (v.seed_program >>> 0).toString(36)));
   s2.appendChild(ligne("Seed du massing", (v.seed_massing >>> 0).toString(36)));
+  /* gardée dans la miniature ; une variante d'avant revient à la seed 1 */
+  var gt = v.thumbnail && v.thumbnail.typo;
+  s2.appendChild(ligne("Seed des typologies", gt ? (gt >>> 0).toString(36) : "1 (par défaut)"));
   s2.appendChild(ligne("Parti", v.parti || "—"));
   body.appendChild(s2);
 
@@ -1292,6 +1298,9 @@ export function ouvrirModal(v){
   if(vm.w) s4.appendChild(el("p", "vm-v is-warn", vm.w + " à vérifier, " + (vm.i || 0) + " informations"));
   if(vx.e) s4.appendChild(el("p", "vm-v is-err", vx.e + " erreur" + (vx.e > 1 ? "s" : "") + " au mixer"));
   if(vx.w) s4.appendChild(el("p", "vm-v is-warn", "Mixer : " + vx.w + " écart" + (vx.w > 1 ? "s" : "")));
+  var vt = v.verdict && v.verdict.typo;
+  if(vt && vt.e) s4.appendChild(el("p", "vm-v is-err", vt.e + " erreur" + (vt.e > 1 ? "s" : "") + " aux typologies"));
+  if(vt && vt.w) s4.appendChild(el("p", "vm-v is-warn", "Typologies : " + vt.w + " écart" + (vt.w > 1 ? "s" : "")));
   body.appendChild(s4);
 
   var s5 = el("section", "vm-sec vm-sec--plan");

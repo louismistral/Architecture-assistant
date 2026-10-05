@@ -69,6 +69,8 @@ body{ padding-inline:var(--s-4); }
 .typo-ctl{ margin:0; padding:0; list-style:none; font-size:var(--t-2xs); display:flex; flex-direction:column; gap:var(--s-2); }
 .typo-ctl li{ display:grid; grid-template-columns:auto 1fr; gap:var(--s-2); align-items:start; color:var(--soft-foreground); }
 .typo-ctl li .chip{ margin-top:2px; }
+/* la mesure d'un critère, sous son nom : le nom se tronque, la mesure reste lisible */
+.typo-mes{ display:block; font-size:var(--t-2xs); color:var(--muted-foreground); }
 .typo-ctl li small{ grid-column:2; color:var(--muted-foreground); font-size:var(--t-3xs); line-height:var(--lh-base); }
 .typo-legend{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-1) var(--s-3); font-size:var(--t-2xs); color:var(--soft-foreground); }
 .typo-legend i{ display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:var(--s-2); vertical-align:-1px; border:1px solid var(--muted-foreground); }
@@ -629,7 +631,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     if(fige()){ seedIn.value = seedTxt(); return; }
     if(parent.typoGraine) parent.typoGraine(g);
     DATA = parent.typoDonnees();
-    PG = parent.typoPG(DATA); CTL = null; choisir(null); dessiner(false);
+    PG = parent.typoPG(DATA); CTL = null; EV = null; choisir(null); dessiner(false);
   }
   $("shuffle").addEventListener("click", function(){ rejouer(suivante(DATA.graine)); });
   seedIn.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); seedIn.blur(); } });
@@ -1165,13 +1167,41 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     if(res.non.length) bil += '<p class="mass-sous">Ne tient pas dans le volume</p><ul class="typo-non">' +
       res.non.map(function(u){ return '<li><span>' + esc(u.lab) + '</span><span>' + fmt(u.a) + ' m²</span></li>'; }).join("") + '</ul>' +
       '<p class="mass-note">Les volumes gardent les cotes du Massing : l\u2019agrandir là-bas, ou alléger le niveau au Programme mixer.</p>';
-    var C = controle(), ol = $("etapes");
+    var C = controle(), E = evaluation(), ol = $("etapes");
     ol.innerHTML = "";
     ol.appendChild(etape("bilan", 1, "Bilan du niveau", fl.name, puce(fmt(100 * taux, 0) + " %", plein ? "ok" : "warn", "Part du programme du niveau posée dans le plan"), bil, !plein));
-    ol.appendChild(etape("ctl", 2, "Contrôle", "toute la pile",
+    ol.appendChild(etape("eval", 2, "Évaluation", E ? fmt(100 * E.couv, 0) + " % du poids lu" : "aucune composition",
+      E && E.total != null ? '<b class="mass-etape__note mono' + (E.invalide ? " is-bas" : "") + '" title="Moyenne géométrique des axes, pondérée — le bâtiment entier, plans compris">' + E.total + '/100</b>' : "",
+      evaluationHtml(E), false));
+    ol.appendChild(etape("ctl", 3, "Contrôle", "toute la pile",
       (C.bad ? puce(C.bad + " à revoir", "warn") : "") + puce(C.ok + " ok", "ok"), '<ul class="typo-ctl">' + C.html + '</ul>', C.bad > 0));
-    ol.appendChild(etape("fam", 3, "Familles", "les lavis du plan", "", LEGENDE, false));
+    ol.appendChild(etape("fam", 4, "Familles", "les lavis du plan", "", LEGENDE, false));
     if(recadrer || !vb) cadrer(); else echelle();
+  }
+
+  /* ---------- l'évaluation : ce que vaut le bâtiment, plans compris ----------
+     La note du jury pour le bâtiment entier à cette seed, la part Typologie, et
+     chaque critère que le plan mesure. Le projet la calcule
+     (`views/render.js — typoEvaluation()`) : la même que le Massing et les
+     variantes. Un Shuffle typologie la refait. */
+  var EV = null;
+  function evaluation(){
+    if(EV === null) EV = parent.typoEvaluation ? parent.typoEvaluation() : undefined;
+    return EV;
+  }
+  function barre(s){
+    return '<span class="mass-axe__b"><i style="inline-size:' + (s == null ? 0 : Math.round(100 * s)) + '%"></i></span>' +
+      '<span class="mass-axe__s mono">' + (s == null ? "—" : Math.round(100 * s) + " %") + '</span>';
+  }
+  function evaluationHtml(E){
+    if(!E) return '<p class="mass-note">Aucune composition posée.</p>';
+    var h = '<div class="mass-axe" title="La moyenne, au poids de chacun, des critères que le plan mesure : pour un même volume, la bonne et la mauvaise typologie.">' +
+      '<span class="mass-axe__n"><b>Typologie</b></span>' + barre(E.typo) + '</div>';
+    E.crit.forEach(function(c){
+      h += '<div class="mass-axe" title="' + esc(c.n) + ' — ' + esc(c.val) + '"><span class="mass-axe__n">' + esc(c.n) +
+        '<small class="mono typo-mes">' + esc(c.val) + '</small></span>' + barre(c.s) + '</div>';
+    });
+    return h + '<p class="mass-note">Les critères que le plan mesure, notés par le jury ; la note générale lit aussi le programme et la volumétrie. Poids et seuils : Paramètres &amp; contraintes, rubrique Évaluation.</p>';
   }
 
   /* ---------- le contrôle : toute la pile, pas seulement le niveau montré ---------- */
@@ -1354,7 +1384,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     function appliquer(w){
       if(fige()) return;
       parent.typoRegle(R.key, w);
-      DATA = parent.typoDonnees(); PG = parent.typoPG(DATA); CTL = null; dessiner(false);
+      DATA = parent.typoDonnees(); PG = parent.typoPG(DATA); CTL = null; EV = null; dessiner(false);
       choisir(null);
     }
     $("ed-w").addEventListener("change", function(){
