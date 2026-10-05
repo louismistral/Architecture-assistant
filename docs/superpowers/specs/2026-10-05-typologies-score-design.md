@@ -53,7 +53,8 @@ src/views/render.js    typoHote() expose typoPG, typoLecture, typoEvaluation à 
   typologie sans être touché : le rail du Massing, la page Paramètres, `resumeCourant()`
   (variantes, Reload), l'import Rhino — et `genMass()`, qui classe ses candidates par
   `evaluer(c.vols)` : d'où les volumes en argument, pour que chaque candidate soit planifiée dans
-  SES volumes, à la seed typologie courante.
+  SES volumes — à la seed typologie PAR DÉFAUT (revue finale : à la seed courante, la seed du
+  massing ne rejouait plus le massing).
 - Pour la recherche, `renoterTypo(ev, vols)` refait la seule part typologie d'une évaluation
   (mesures, écarts, note) sans remesurer le massing.
 - Pas de cache : 2 à 8 ms par plan. On en ajoutera un si une mesure le montre lent.
@@ -127,7 +128,9 @@ noyaux pour tenir les 35 m — même principe que `typo-pose`.
 Un écart typologie ne jette aucun volume : `genMass()` garde sa garde du massing seul. Il entre
 dans `ev.ecarts`, donc dans `invalide` / `notifie`, et dans `verdict.typo` `{ e, w }` d'une
 variante. Une note qui passe en rouge au Massing parce que les plans enfreignent une ligne
-Intangible le dit dans son titre.
+Intangible le dit dans son titre. (Revue finale : les ambres des plans ne vont pas dans
+`criteria.cadre.notif`, et l'étape Contraintes du Massing ne lit que le massing — sans quoi
+toute variante se disait « hors cadre ».)
 
 ### Reporté, chacun une décision à part
 

@@ -105,7 +105,8 @@ bouton. On nomme, puis on pose ; vide, la variante prend le nom proposé.
   surfaces, les contrôles.
 
 Les **étiquettes** se cumulent : `new`, `périmée`, `algo`, `invalide` (hors du cadre
-opposable), `hors cadre` (hors du cadre choisi). Une variante hors cadre n'est jamais
+opposable, plans des Typologies compris), `hors cadre` (hors du cadre choisi — les ambres des
+plans se comptent à part, dans « Les contrôles » du modal). Une variante hors cadre n'est jamais
 supprimée : elle est notée comme les autres, et le dit.
 
 ## La note se refait ici

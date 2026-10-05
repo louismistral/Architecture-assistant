@@ -32,7 +32,15 @@ Pour un même volume, il y a une bonne et une mauvaise typologie. Les plans donn
 (`donnees.js — MESURES`, `de:"typo"`), et le jury les note comme celles du mixer et du massing :
 elles entrent par `mass/mesures.js — evaluer()`, le seul point de jonction. Le rail du Massing, la
 page Paramètres, les variantes et le classement de `genMass()` les reçoivent de là — chaque
-candidate du générateur est planifiée dans SES volumes, à la seed typologie du moment.
+candidate du générateur est planifiée dans SES volumes, à la seed typologie PAR DÉFAUT
+(`typo/etat.js — GRAINE0`) : la seed du massing seule décide du massing, quelle que soit la
+typologie à l'écran. La recherche essaie ensuite les typologies du volume retenu.
+
+Les écarts des plans se comptent À PART : ils rougissent la note (étape Évaluation du Massing,
+dont le titre dit alors quelle ligne les plans enfreignent — `rougesTypo()`), mais l'étape
+Contraintes du Massing ne lit que le massing, et l'étiquette « hors cadre » d'une variante
+ignore les ambres des plans — `typo-pose`, `noyaux-empiles`, `fuites`, `sia500` s'allument
+aujourd'hui sur presque toute composition ; ils se lisent dans `verdict.typo`.
 
 | mesure | ce qu'elle lit | critère |
 |---|---|---|

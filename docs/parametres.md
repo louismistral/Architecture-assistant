@@ -267,6 +267,11 @@ jour de l'enregistrement, pour le premier tri de la base. Une variante d'avant n
 — sa note est en italique, « Reload » la mesure et la renote, et garde ses notes manuelles. Une v3
 a ses mesures mais pas celles du plan : notée sur ce qu'elle a, en italique aussi, jusqu'au Reload.
 
+La **clé d'une borne change avec son sens** (`jugement.js — cleBorne()`, `kb`) : d33 se mesurait
+en degrés, calme en niveaux ; leurs bornes se lisent désormais sous `jb:d33-plan`,
+`jn:calme-plan`… Une borne réglée avant, sous l'ancienne clé, est ignorée à la lecture plutôt
+que relue en part ou en mètres.
+
 Aucune migration : les mesures et les notes manuelles vont dans `criteria` (jsonb), les lignes
 du groupe dans `team_settings.doctrine` (jsonb, le nom de la colonne est resté).
 
