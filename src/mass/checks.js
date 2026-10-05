@@ -31,7 +31,7 @@ import { lvlOf } from "../mix/floors.js";
    valeurs vivantes s'appellent donc `VAL`. */
 import { V as VAL, courExigee, lu } from "../data/cadre.js";
 import "../data/orientation.js";
-import { assiseVol, ecartSols, lies } from "./gen.js";
+import { ecartSols, lies } from "./gen.js";
 import { courProgramme, courUtile, ecarts, terrainLibre } from "./mesures.js";
 import { isAccepted } from "../mix/accept.js";
 import { adjRompues } from "../mix/checks.js";
@@ -39,7 +39,7 @@ import {
   fixAire, fixAuto, fixCarrer, fixEcarter, fixPile, fixProfondeur,
   fixRecaler, fixRelancer, fixRelier, fixReposerSecond, fixSecond, fixSousSol
 } from "./fix.js";
-import { MASS, aireEtage, niveaux, pontRect, profBornes, secondTemps, solRects,
+import { MASS, aireEtage, assiseEff, niveaux, pontRect, profBornes, secondTemps, solRects,
   volHaut, volTitre as nom } from "./model.js";
 
 var COUR = courProgramme();
@@ -178,7 +178,7 @@ export function massCheck(){
     }
 
     /* --- le terrain -------------------------------------------------------- */
-    var as = assiseVol(v);
+    var as = assiseEff(v);
     if(!lu("pente")){ /* éteinte : rien à dire du terrassement */ }
     else if(as.d > VAL.penteMax){
       dit("w", "pente:" + v.id, nm + " est posé sur " + dec(as.d) + " m de dénivelé : "
@@ -191,7 +191,7 @@ export function massCheck(){
 
     /* --- le sous-sol, quand il tient --------------------------------------- */
     if(lu("nappe") && v.lv.some(function(x){ return lvlOf(x.i) < 0; })){
-      var couv = as.z - NAPPE;
+      var couv = as.terrain - NAPPE;
       if(couv >= RULES.dist.couverture - .005)
         dit("i", "nappe:" + v.id, "Sous " + nm.toLowerCase() + ", "
           + dec(couv) + " m de terrain au-dessus de la nappe : le sous-sol tient.",

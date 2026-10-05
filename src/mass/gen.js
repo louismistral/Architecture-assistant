@@ -37,7 +37,7 @@ import {
   ecart, ecartAngle, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
 import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
-  profPieces, sousSol, volEtage, volRect, volRects, solRects, assiseDe, contourDe } from "./model.js";
+  profPieces, sousSol, volEtage, volRect, volRects, solRects, assiseDe, contourDe, hauteurEtage } from "./model.js";
 export { lies };
 import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
   from "./mesures.js";
@@ -354,10 +354,10 @@ function reparer(vols){
      incendie. */
   var cible = Math.max(feuVise(), distVisee()) + .35;
   var N = horsSol(), HN = {};
-  N.forEach(function(n){ HN[n.i] = n.h; });
+  N.forEach(function(n){ HN[n.i] = n; });
   var HV = vols.map(function(v){
     var h = 0;
-    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += HN[e.i]; });
+    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += hauteurEtage(e, HN[e.i]); });
     return h;
   });
   var DOUX = .45, MARGE_JOUR = .4;

@@ -86,7 +86,10 @@ export function dessinVolume(t, c, niveaux){
   var N = niveaux.filter(function(n){ return n.lvl >= 0; }).sort(function(a, b){ return a.lvl - b.lvl; });
   var z = 0, C = [], pts = PER.slice(), H = 1;
   N.forEach(function(n){
-    n.z = z; z += n.h; H = Math.max(H, z);
+    /* les niveaux s'empilent à la hauteur de leur plus haute pièce : l'éclaté
+       sépare les niveaux, il ne dit pas la hauteur de chaque volume */
+    var hn = n.hs || n.h;
+    n.z = z; z += hn; H = Math.max(H, z);
     var P = n.prims, pieces = P.filter(function(p){ return p.k === "p" && p.ferme && !p.ctx && famDe(p); });
     P.forEach(function(p, i){
       if(p.cl !== "mur") return;
@@ -95,8 +98,8 @@ export function dessinVolume(t, c, niveaux){
       var R = pieces.filter(function(r){ return dedans(dans.pts, centre(r.pts)); });
       pts = pts.concat(p.pts);
       var c = centre(p.pts);
-      C.push({ x:c[0], y:c[1], q:p.pts, z0:n.z, z1:n.z + n.h, c:NOIR, o:{ stroke:BLANC_T, lw:.6 },
-               apres:function(t){ habiller(t, A, p.pts, dans.pts, R, n.z, n.h); } });
+      C.push({ x:c[0], y:c[1], q:p.pts, z0:n.z, z1:n.z + hn, c:NOIR, o:{ stroke:BLANC_T, lw:.6 },
+               apres:function(t){ habiller(t, A, p.pts, dans.pts, R, n.z, hn); } });
     });
   });
   existants().forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:AXO.existant, o:{ stroke:false } }); });

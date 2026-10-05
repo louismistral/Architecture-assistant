@@ -31,7 +31,7 @@ import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, aireEtage, bilan, etagesDe, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
+import { CONTACT, MASS, aireEtage, assiseEff, bilan, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
 import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
@@ -203,7 +203,7 @@ export function ecarts(vols, vite, Q){
         + "enterré. C'est au mixer qu'il se descend.", 1);
     else if(ab >= 0 && lvlOf(ab) === 0){
       var pente = ecole(vols).some(function(v){
-        return !v.fix && assiseVol(v).d >= 1; });
+        return !v.fix && assiseEff(v, vols).d >= 1; });
       if(!pente) dit("abri", -1, "L'abri PC est au rez, et aucun corps ne s'enterre d'un "
         + "mètre dans la pente : il doit être au moins partiellement enterré.");
     }
@@ -283,10 +283,10 @@ export function angleSoleilVue(x, y){
 
 function lire(vols){
   var E = ecole(vols), N = horsSol(), HN = {};
-  N.forEach(function(n){ HN[n.i] = n.h; });
+  N.forEach(function(n){ HN[n.i] = n; });
   function haut(v){
     var h = 0;
-    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += e.h || HN[e.i]; });
+    v.lv.forEach(function(e){ if(HN[e.i] !== undefined) h += hauteurEtage(e, HN[e.i]); });
     return h + RULES.haut.acrotere;
   }
   var CL = E.filter(portClasses);
@@ -326,20 +326,20 @@ function lire(vols){
   E.forEach(function(v){
     var es = empSol(v);
     emp += es;
-    etagesDe(v).forEach(function(x){
+    etagesDe(v, vols).forEach(function(x){
       var e = x.e, a = aireEtage(e);
       vol += x.contour.aire * x.h;
       tot += a;
       if(lvlOf(e.i) < 0) sous += a;
       if(HN[e.i] === undefined) return;
-      fac += x.contour.perim * (e.h || HN[e.i]);
+      fac += x.contour.perim * x.h;
       bat += a;
     });
     vol += es * RULES.haut.acrotere;
   });
 
   /* les cotes des corps d'école : dans les domaines des leviers, et au plus */
-  var dn = 0, dok = 0, pmax = 0, el = 0, pt = 0, rang = 0, niv = 0, dirs = [];
+  var dn = 0, dok = 0, pmax = 0, el = 0, pt = 0, rang = 0, niv = 0, dirs = [], zlo = Infinity, zhi = -Infinity;
   var atts = attracteurs();
   E.forEach(function(v){
     niv = Math.max(niv, volNiv(v));
@@ -356,7 +356,9 @@ function lire(vols){
     });
     dn++;
     if(dedansD) dok++;
-    pt = Math.max(pt, assiseVol(v).d);
+    var asv = assiseEff(v, vols);
+    pt = Math.max(pt, asv.d);
+    zlo = Math.min(zlo, asv.z); zhi = Math.max(zhi, asv.z);
     v.lv.forEach(function(e){
       if(lvlOf(e.i) >= 0) partsDe(e).forEach(function(p){
         el = Math.max(el, Math.max(p.w, p.d) / Math.max(1, Math.min(p.w, p.d))); });
@@ -397,7 +399,7 @@ function lire(vols){
   return {
     E:E, CL:CL, sud:sud, vue:vue, ratio:ratio, compa: bat ? fac / bat : 0,
     cour: courUtile(vols), emprise:emp, volume:vol, sousPart: tot ? sous / tot : 0,
-    dn:dn, dok:dok, pmax:pmax, el:el, pente:pt, rang:rang, niv:niv, dirs:dirs.length,
+    dn:dn, dok:dok, pmax:pmax, el:el, pente:pt, ecartRez:zhi > zlo ? zhi - zlo : 0, rang:rang, niv:niv, dirs:dirs.length,
     pn:pn, pok:pok, pfeu:pfeu, dmin:dmin, dex:dex, marge:marge, PF:PF, fmax:fmax,
     terrain: terrainLibre(vols), terrain0: terrainLibre(vols, 0), nappe: couverture(vols),
     ensembles: ensembles(E.filter(function(v){ return !v.fix; }), vols.ponts || []),
@@ -453,8 +455,11 @@ export function qualites(vols, L){
     dec(Math.round(L.compa * 100) / 100) + " m² de façade par m² de plancher");
   q("align", "Des corps alignés", E.length && L.rang / E.length >= .5 ? 2 : 1,
     E.length ? L.rang / E.length : 0, L.rang + " corps sur " + E.length + " rangés sur le site ou un voisin");
+  q("nivalign", "Des niveaux alignés", L.ecartRez <= .05 ? 2 : L.ecartRez <= 1 ? 1 : 0, lin(L.ecartRez, 0, 1),
+    L.ecartRez <= .05 ? "tous les rez de l'école à la même altitude"
+      : "jusqu'à " + dec(L.ecartRez) + " m d'écart entre les rez de l'école");
   q("pente", "Peu de terrassement", palier(L.pente, V.penteMax / 2, V.penteMax),
-    lin(L.pente, V.penteMax / 2, V.penteMax), "jusqu'à " + dec(L.pente) + " m de dénivelé sous une emprise");
+    lin(L.pente, V.penteMax / 2, V.penteMax), "jusqu'à " + dec(L.pente) + " m entre le rez et le terrain sous une emprise");
   q("elan", "Des corps pas trop élancés", L.el <= V.elanceMax ? 2 : 0,
     L.el <= V.elanceMax ? 1 : -borne((L.el - V.elanceMax) / V.elanceMax),
     "jusqu'à " + dec(Math.round(L.el * 10) / 10) + " fois plus long que large");

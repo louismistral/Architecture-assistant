@@ -44,7 +44,7 @@ import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { PMAP } from "../mix/prog.js";
 import { V } from "../data/cadre.js";
 import { assise, dansRect, ecart, terrain } from "./geom.js";
-import { CONTACT, etagesDe, niveaux, secondTemps, volRect } from "./model.js";
+import { CONTACT, etagesDe, hauteurEtage, niveaux, secondTemps, volRect } from "./model.js";
 import { ecartVols, fusionner } from "./gen.js";
 
 var TOL = .05;        /* m : deux altitudes plus proches sont la même */
@@ -182,7 +182,7 @@ function sport(vols){
   vols.forEach(function(v){
     var e = v.lv[0], H = 0;
     if(v.fix || imp.v || Math.abs(Math.min(e.w, e.d) - imp.lo) > 1.1 || Math.abs(Math.max(e.w, e.d) - imp.hi) > 1.1) return;
-    v.lv.forEach(function(x){ H += x.h || niveaux()[x.i].h; });
+    v.lv.forEach(function(x){ H += hauteurEtage(x, niveaux()[x.i]); });
     imp.v = v;
     v.fix = 1; v.key = imp.key; v.id = "vsport";
     v.lv = [{ i:imp.i, w:e.w, d:e.d, dx:0, dy:0, h:H, keys:[imp.key] }];
@@ -431,7 +431,8 @@ function parToits(T){
        prend les niveaux les plus proches ;
        sinon, des étages de classe (`hEt`), chacun à la hauteur mesurée. */
   var mur = 2 * RULES.haut.mur, horsPile = 0, vols = [], pile = [], z = 0, i;
-  for(i = 0; i < FLOORS.length; i++) pile.push({ i:i, lvl:lvlOf(i), h:niveaux()[i].h });
+  /* la pile d'un corps d'école : chaque niveau à la hauteur de ses classes */
+  for(i = 0; i < FLOORS.length; i++) pile.push({ i:i, lvl:lvlOf(i), h:niveaux()[i].hc });
   pile.sort(function(p, q){ return p.lvl - q.lvl; });
   pile.forEach(function(p){ if(p.lvl < 0) z -= p.h; });
   pile.forEach(function(p){ p.z = z; z += p.h; });
@@ -516,7 +517,7 @@ function parBoites(B){
       var tourne = Math.abs(Math.sin(b.a - R.a)) > .5, h = b.z1 - b.z0;
       lv.push({ i:i, w:(tourne ? b.d : b.w) - mur, d:(tourne ? b.w : b.d) - mur,
                 dx:(b.x - R.x) * c + (b.y - R.y) * s, dy:-(b.x - R.x) * s + (b.y - R.y) * c,
-                h:Math.abs(h - N[i].h) <= TOL ? 0 : h });
+                h:Math.abs(h - N[i].hc) <= TOL ? 0 : h });
     });
     if(!lv.length) return;
     var v = { id:"b" + (k + 1), x:R.x, y:R.y, a:R.a, fix:0, lv:lv };

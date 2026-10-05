@@ -438,21 +438,16 @@ export function vue3dPick(px, py){
   if(!G || !cv) return null;
   var r = cv.getBoundingClientRect();
   var mvp = orbitMVP(CAM, r.width, r.height), eye = orbitEye(CAM);
-  var N = niveaux(), best = null, bd = Infinity;
+  var best = null, bd = Infinity;
   MASS.vol.forEach(function(v){
-    var as = assiseDe(solRects(v)).z - ZBAS, z = as, sous = 0;
-    var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
-    lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
-    z = as - sous;
-    lv.forEach(function(e){
-      var n = N[e.i];
-      if(!n) return;
-      var z0 = z; z += n.h;
+    /* l'altitude de chaque étage, celle que la 3D dessine (`etagesDe`) */
+    etagesDe(v).forEach(function(s){
+      var e = s.e, z0 = s.z0 - ZBAS;
       if(!vu(e.i)) return;
       /* chaque part d'un volume fusionné a son toit */
-      var touche = volRects(v, e).some(function(rc){
+      var touche = s.rcs.some(function(rc){
         var q = coins(rc).map(function(p){
-          return m4project(mvp, [p[0], p[1], z0 + n.h], r.width, r.height);
+          return m4project(mvp, [p[0], p[1], s.z1 - ZBAS], r.width, r.height);
         });
         return !q.some(function(p){ return !p; }) && dansPoly(q, px, py);
       });

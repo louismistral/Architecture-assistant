@@ -1828,7 +1828,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     Object.assign(st, { meubles:true, cotes:true, site:true, couleurs:true }); classes();
     var out = DATA.floors.map(function(fl, i){
       st.niv = i; dessiner(false);
-      return { i:i, name:fl.name, lvl:fl.lvl, h:fl.h, prims:recolter() };
+      return { i:i, name:fl.name, lvl:fl.lvl, h:fl.h, hs:fl.hs, prims:recolter() };
     });
     Object.assign(st, st0);
     if(th) document.documentElement.setAttribute("data-mode", th); else document.documentElement.removeAttribute("data-mode");

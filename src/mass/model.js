@@ -27,6 +27,7 @@ import { COULOIR, FMAP, ITEMS } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
 import { V } from "../data/leviers.js";
 import { enVigueur } from "../data/cadre.js";
+import { vise } from "../data/orientation.js";
 import "../data/donnees.js";
 import { RULES } from "../data/rules.js";
 import { BLOCKS, FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
@@ -148,7 +149,8 @@ export function niveaux(){
       nom: flName(i),
       utile: flNet(i),
       A: flBuilt(i),          /* surface BÂTIE : locaux + circulation */
-      h: flHeight(i),
+      h: flHeight(i),         /* la plus haute pièce du niveau — le mixer */
+      hc: hauteurCourante(i), /* celle d'un corps d'école (`hauteurEtage`) */
       hors: horsAt(i)
     });
   }
@@ -513,53 +515,79 @@ export function volHaut(v){
   });
   return h > 0 ? h + (v.ph ? 0 : RULES.haut.acrotere) : 0;
 }
-/* La hauteur d'un étage est celle du NIVEAU que le mixer a déduit du programme
-   qu'il porte — sauf pour un ouvrage du second temps, qui n'est pas dans la
-   pile : une piscine indépendante ne prend pas les 7,45 m que la salle de sport
-   impose au rez de l'école. Elle porte donc sa propre hauteur. */
+/* LA HAUTEUR D'UN ÉTAGE EST CELLE DU VOLUME, pas celle du niveau. Le mixer
+   donne au niveau la hauteur de sa plus haute pièce : le rez prenait donc
+   partout les 7,40 m de la salle de sport, et un corps de classes posé à côté
+   d'elle montait d'autant. Chaque volume porte la hauteur de ce qu'IL porte :
+   - un ouvrage du second temps, ou un corps importé, sa hauteur mesurée (`e.h`) ;
+   - un volume aux postes nommés (`e.keys`, la salle de sport), la leur ;
+   - un corps d'école, celle de son niveau SANS les postes aux cotes imposées,
+     qui ont leur propre volume (`n.hc`). */
 export function hauteurEtage(e, n){
-  return (e && e.h) ? e.h : (n ? n.h : 0);
+  if(e && e.h) return e.h;
+  if(e && e.keys && e.keys.length) return hauteurDe(e.keys);
+  return n ? (n.hc != null ? n.hc : n.h) : 0;
+}
+function hauteurDe(keys){
+  var hl = RULES.haut.libre.def;
+  keys.forEach(function(k){ var p = PMAP[k]; if(p && p.hlibre > hl) hl = p.hlibre; });
+  return Math.round((hl + RULES.haut.dalle) * 100) / 100;
+}
+/* La hauteur d'un niveau pour les corps d'école : celle de ses pièces, hors
+   des postes aux cotes imposées — ceux-là ont leur volume (`placerSport`). */
+function hauteurCourante(i){
+  var keys = [];
+  BLOCKS.forEach(function(b){ if(b.fl === i && !PMAP[b.key].solid && keys.indexOf(b.key) < 0) keys.push(b.key); });
+  return hauteurDe(keys);
 }
 export function volNiv(v){
   var n = 0;
   v.lv.forEach(function(e){ if(lvlOf(e.i) >= 0) n++; });
   return n;
 }
-/* Le pied d'un étage, en mètres au-dessus de l'assise du volume : les niveaux
-   du dessous s'empilent, les sous-sols descendent. */
-export function etageZ(v, e){
-  var N = niveaux(), z = 0, k;
-  for(k = 0; k < v.lv.length; k++){
-    var x = v.lv[k], n = N[x.i];
-    if(!n) continue;
-    if(n.lvl >= 0 && x.i < e.i) z += n.h;
-    if(n.lvl < 0 && x.i > e.i) z -= 0;
+/* LES NIVEAUX ALIGNÉS : tous les bâtiments d'école posent leur rez à la même
+   altitude — la moyenne du terrain sous leurs emprises, pondérée par elles —,
+   pour que leurs planchers se rejoignent. Une préférence plus forte que la
+   mise au terrain (`orientation.js — nivalign`, Prioritaire ; « Peu de
+   terrassement » est Souhaitée) : le terrain ne décide plus de l'altitude, il
+   se lit dans le terrassement que cette altitude demande. Éteinte, chaque
+   volume se pose sur le terrain sous son emprise. Le second temps garde la
+   sienne : il n'est pas de l'école. */
+function aligne(){ return vise("nivalign"); }
+export function datumEcole(vols){
+  var z = 0, A = 0;
+  vols.forEach(function(v){
+    if(v.ph) return;
+    solRects(v).forEach(function(r){ var a = r.w * r.d; z += assise(r).z * a; A += a; });
+  });
+  return A ? z / A : null;
+}
+/* L'ASSISE D'UN VOLUME, celle où se pose son rez : son terrain, ou l'altitude
+   commune de l'école. `d` est le terrassement : l'écart entre le plus haut et
+   le plus bas de son terrain ET de son rez — le dénivelé sous l'emprise quand
+   le rez suit le terrain, davantage quand l'altitude commune l'en écarte. */
+export function assiseEff(v, vols){
+  var t = assiseDe(solRects(v)), z = t.z;
+  if(!v.ph && aligne()){
+    var d0 = datumEcole(vols || (MASS.vol.indexOf(v) >= 0 ? MASS.vol : [v]));
+    if(d0 != null) z = d0;
   }
-  if(N[e.i] && N[e.i].lvl < 0){
-    /* Un sous-sol se compte vers le bas, depuis le rez. */
-    z = 0;
-    for(k = 0; k < N.length; k++){
-      if(N[k].lvl < 0 && N[k].lvl >= N[e.i].lvl) z -= N[k].h;
-    }
-  }
-  return z;
+  return { z:z, lo:t.lo, hi:t.hi, d:Math.max(t.hi, z) - Math.min(t.lo, z), terrain:t.z };
 }
 /* LES ÉTAGES D'UN VOLUME, À LEUR ALTITUDE : l'emprise de chacun, murs compris,
-   son pied et sa tête en mètres ABSOLUS. Le rez se pose sur l'assise — la
-   moyenne du terrain sous l'emprise du plus bas étage hors sol —, les étages
-   montent depuis elle, les sous-sols descendent sous elle. La 3D et l'export
-   la lisent ici : deux calculs auraient fini par poser le même bâtiment à deux
-   altitudes. */
-export function etagesDe(v){
+   son pied et sa tête en mètres ABSOLUS. Le rez se pose sur l'assise
+   (`assiseEff`), les étages montent depuis elle, chacun de SA hauteur
+   (`hauteurEtage`), les sous-sols descendent sous elle. La 3D et l'export la
+   lisent ici : deux calculs auraient fini par poser le même bâtiment à deux
+   altitudes. `vols` : la volumétrie dont il fait partie — l'écran par défaut. */
+export function etagesDe(v, vols){
   var N = niveaux(), out = [], sous = 0;
   var lv = v.lv.slice().sort(function(a, b){ return a.i - b.i; });
-  lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += N[e.i].h; });
-  var z = assiseDe(solRects(v)).z - sous;
+  lv.forEach(function(e){ if(lvlOf(e.i) < 0 && N[e.i]) sous += hauteurEtage(e, N[e.i]); });
+  var z = assiseEff(v, vols).z - sous;
   lv.forEach(function(e){
     var n = N[e.i];
     if(!n) return;
-    /* Un ouvrage du second temps porte SA hauteur : une piscine indépendante
-       ne prend pas les 7,45 m que la salle de sport impose au rez de l'école. */
     var h = hauteurEtage(e, n);
     /* `rc` la part 0, `rcs` toutes, `contour` leur union */
     out.push({ e:e, n:n, rc:volRect(v, e), rcs:volRects(v, e), contour:contourDe(v, e), z0:z, z1:z + h, h:h });
@@ -575,7 +603,7 @@ export function pontEtage(p){
   if(!r || !A || !N[p.i]) return null;
   etagesDe(A).forEach(function(x){ if(x.e.i === p.i) s = x; });
   if(!s) return null;
-  return { rc:r, z0:s.z0, z1:s.z0 + N[p.i].h, h:N[p.i].h };
+  return { rc:r, z0:s.z0, z1:s.z1, h:s.h };
 }
 /* Le nom d'un volume, tel que le plan l'écrit : le sien s'il en a un, « Sport »
    pour la salle aux cotes imposées, sinon son rang. L'export le reprend, pour

@@ -18,11 +18,12 @@ import { PMAP, PROX, uOf } from "../mix/prog.js";
 import { adjActive, coteDe } from "../mix/opts.js";
 import { nearestDims } from "../core/geometry.js";
 import { saveSoon } from "../mix/store.js";
-import { MASS, partiOf } from "../mass/model.js";
+import { MASS, niveaux, partiOf } from "../mass/model.js";
 import { massOf } from "../mass/etat.js";
 import { TYPO } from "./etat.js";
 
 export function donneesTypo(){
+  var NV = niveaux();
   var floors = FLOORS.map(function(F, i){
     var q = {}, ordre = [];
     BLOCKS.forEach(function(b){
@@ -30,7 +31,9 @@ export function donneesTypo(){
       if(!q[b.key]){ q[b.key] = 0; ordre.push(b.key); }
       q[b.key] += b.q;
     });
-    return { i:i, name:flName(i), short:flShort(i), lvl:lvlOf(i), h:flHeight(i),
+    /* `h` la hauteur d'un corps d'école à ce niveau, `hs` celle de sa plus
+       haute pièce (la salle de sport) : chaque volume a la sienne */
+    return { i:i, name:flName(i), short:flShort(i), lvl:lvlOf(i), h:NV[i].hc, hs:flHeight(i),
       circ:flCircDe(i), net:Math.round(flNet(i)),
       rooms:ordre.map(function(k){
         var p = PMAP[k];
