@@ -12,7 +12,7 @@
    — les locaux qu'il coupe restent comptés, à reloger.
    ========================================================================= */
 import { RULES } from "../data/rules.js";
-import { etagesDe } from "./model.js";
+import { etagesDe, jonctions, partsDe, volAire, volFusionne } from "./model.js";
 
 var R = RULES.archi;
 
@@ -80,53 +80,74 @@ export function archiDe(v){
   var ar = arDe(v), out = [];
   var E = etagesDe(v).filter(function(s){ return s.n.lvl >= 0; });
   if(!E.length) return out;
-  var haut = E[E.length - 1], rez = E[0], rc = haut.rc, z = haut.z1, F, n, k, r;
-
-  if(ar.toit === "vert"){
-    F = long(rc);
-    out.push(coin("toit", "--f-ext", F, -F.hw, F.hw, -F.hd, F.hd, z, z + R.vert, z + R.vert, haut.e.i));
-  } else if(ar.toit === "pan"){
-    F = court(rc); r = R.pente * 2 * F.hw;
-    out.push(coin("toit", null, F, -F.hw, F.hw, -F.hd, F.hd, z, z, z + r, haut.e.i));
-  } else if(ar.toit === "deux"){
-    F = court(rc); r = R.pente * F.hw;
-    out.push(coin("toit", null, F, -F.hw, 0, -F.hd, F.hd, z, z, z + r, haut.e.i));
-    out.push(coin("toit", null, F, 0, F.hw, -F.hd, F.hd, z, z + r, z, haut.e.i));
-  } else if(ar.toit === "shed"){
-    F = long(rc); n = Math.max(1, Math.round(2 * F.hw / R.shed.pas));
-    for(k = 0; k < n; k++){
-      var a0 = -F.hw + k * 2 * F.hw / n;
-      out.push(coin("toit", null, F, a0, a0 + 2 * F.hw / n, -F.hd, F.hd, z, z, z + R.shed.h, haut.e.i));
+  var haut = E[E.length - 1], rez = E[0], z = haut.z1, F, n, k, r;
+  /* un volume fusionné reste plat pour l'instant : un toit en pente par aile
+     se croiserait à la jonction (à dessiner : une noue) */
+  var toit = volFusionne(v) ? "plat" : ar.toit;
+  /* le toit, aile par aile : chaque part du dernier niveau porte le sien */
+  haut.rcs.forEach(function(rc){
+    if(toit === "vert"){
+      F = long(rc);
+      out.push(coin("toit", "--f-ext", F, -F.hw, F.hw, -F.hd, F.hd, z, z + R.vert, z + R.vert, haut.e.i));
+    } else if(toit === "pan"){
+      F = court(rc); r = R.pente * 2 * F.hw;
+      out.push(coin("toit", null, F, -F.hw, F.hw, -F.hd, F.hd, z, z, z + r, haut.e.i));
+    } else if(toit === "deux"){
+      F = court(rc); r = R.pente * F.hw;
+      out.push(coin("toit", null, F, -F.hw, 0, -F.hd, F.hd, z, z, z + r, haut.e.i));
+      out.push(coin("toit", null, F, 0, F.hw, -F.hd, F.hd, z, z + r, z, haut.e.i));
+    } else if(toit === "shed"){
+      F = long(rc); n = Math.max(1, Math.round(2 * F.hw / R.shed.pas));
+      for(k = 0; k < n; k++){
+        var a0 = -F.hw + k * 2 * F.hw / n;
+        out.push(coin("toit", null, F, a0, a0 + 2 * F.hw / n, -F.hd, F.hd, z, z, z + R.shed.h, haut.e.i));
+      }
     }
-  }
-  /* Les lanterneaux s'alignent sur le grand axe, au faîte du toit. */
-  if(ar.puits > 0){
-    F = long(rc);
-    var zp = z + (ar.toit === "pan" ? R.pente * 2 * court(rc).hw : ar.toit === "deux" ? R.pente * court(rc).hw
-            : ar.toit === "shed" ? R.shed.h : ar.toit === "vert" ? R.vert : 0);
-    var c2 = Math.min(R.puits.cote, F.hd) / 2;
-    for(k = 0; k < ar.puits; k++){
-      var u = -F.hw + (k + .5) * 2 * F.hw / ar.puits;
-      out.push(coin("puits", "--f-eau", F, u - c2, u + c2, -c2, c2, z, zp + R.puits.h, zp + R.puits.h, haut.e.i));
+    /* Les lanterneaux s'alignent sur le grand axe, au faîte du toit. */
+    if(ar.puits > 0){
+      F = long(rc);
+      var zp = z + (toit === "pan" ? R.pente * 2 * court(rc).hw : toit === "deux" ? R.pente * court(rc).hw
+              : toit === "shed" ? R.shed.h : toit === "vert" ? R.vert : 0);
+      var c2 = Math.min(R.puits.cote, F.hd) / 2;
+      /* un volume fusionné : le nombre au prorata de la longueur de l'aile */
+      var np = haut.rcs.length > 1 ? Math.max(1, Math.round(2 * F.hw / 12)) : ar.puits;
+      for(k = 0; k < np; k++){
+        var u = -F.hw + (k + .5) * 2 * F.hw / np;
+        out.push(coin("puits", "--f-eau", F, u - c2, u + c2, -c2, c2, z, zp + R.puits.h, zp + R.puits.h, haut.e.i));
+      }
     }
-  }
+  });
   if(ar.entree >= 0){
-    F = cote(rez.rc, ar.entree);
+    F = cote(rez.rc, libre(v, rez.e, ar.entree));
     var L = Math.min(R.auvent.larg, F.hw * 1.2) / 2, za = rez.z0 + R.auvent.h;
     out.push(coin("entree", null, F, -L, L, F.hd, F.hd + R.auvent.prof, za, za + R.auvent.ep, za + R.auvent.ep, rez.e.i));
   }
   if(ar.rampe >= 0){
-    F = cote(rez.rc, ar.rampe);
+    F = cote(rez.rc, libre(v, rez.e, ar.rampe));
     var hr = Math.min(rez.h, 2 * F.hw * R.rampe.pente);
     out.push(coin("rampe", null, F, -F.hw, F.hw, F.hd, F.hd + R.rampe.larg, rez.z0, rez.z0, rez.z0 + hr, rez.e.i));
   }
-  if(ar.sous){
+  /* le sous-passage traverse la part 0 de part en part : sur un volume
+     fusionné, il déboucherait dans une autre aile */
+  if(ar.sous && !volFusionne(v)){
     F = court(rez.rc);
     var ls = Math.min(R.sous.larg, F.hd) / 2;
     out.push(coin("sous", "--foreground", F, -F.hw - .05, F.hw + .05, -ls, ls,
       rez.z0, rez.z0 + Math.min(rez.h - .2, R.sous.h), rez.z0 + Math.min(rez.h - .2, R.sous.h), rez.e.i));
   }
   return out;
+}
+
+/* Le côté `s` de la part 0, ou le suivant quand une autre aile s'y joint :
+   une entrée ne donne pas dans le volume lui-même. */
+function libre(v, e, s){
+  var p = partsDe(e)[0], J = jonctions(v, e).filter(function(j){ return j.i === 0; });
+  function pris(k){
+    var x = k === 0 ? p.dx + p.w / 2 : k === 2 ? p.dx - p.w / 2 : null, y = k === 1 ? p.dy + p.d / 2 : k === 3 ? p.dy - p.d / 2 : null;
+    return J.some(function(j){ return x != null ? j.u0 === j.u1 && Math.abs(j.u0 - x) < .1 : j.v0 === j.v1 && Math.abs(j.v0 - y) < .1; });
+  }
+  for(var k = 0; k < 4; k++) if(!pris((s + k) % 4)) return (s + k) % 4;
+  return s;
 }
 
 /* Le jeu de niveaux : les étages au-dessus du rez glissent tour à tour de ±j
@@ -156,7 +177,7 @@ export function architecturer(vols, lev, graine, tient){
   if(!ecole.length) return;
   var cx = 0, cy = 0;
   ecole.forEach(function(v){ cx += v.x / ecole.length; cy += v.y / ecole.length; });
-  var grand = ecole.slice().sort(function(p, q){ return q.lv.length * q.lv[0].w * q.lv[0].d - p.lv.length * p.lv[0].w * p.lv[0].d; })[0];
+  var grand = ecole.slice().sort(function(p, q){ return volAire(q) - volAire(p); })[0];
   function face(v){
     var best = 0, m = -Infinity;
     for(var k = 0; k < 4; k++){ var a = v.a + k * Math.PI / 2, d = Math.cos(a) * (cx - v.x) + Math.sin(a) * (cy - v.y); if(d > m){ m = d; best = k; } }
@@ -168,7 +189,7 @@ export function architecturer(vols, lev, graine, tient){
     var E = etagesDe(v).filter(function(e){ return e.n.lvl >= 0; });
     if(!E.length) return;
     var rc = E[0].rc, lg = Math.max(rc.w, rc.d), pr = Math.min(rc.w, rc.d), f = face(v);
-    v.ar = { toit:toit, puits:puits && pr >= 14 ? Math.max(1, Math.round(lg / 12)) : 0,
+    v.ar = { toit:volFusionne(v) ? "plat" : toit, puits:puits && pr >= 14 ? Math.max(1, Math.round(lg / 12)) : 0,
              entree:entree ? f : -1, rampe:rampe && v === grand ? (f + 1) % 4 : -1, sous:sous && lg >= 24 ? 1 : 0 };
     if(E.length < 2) return;
     function essai(fn){

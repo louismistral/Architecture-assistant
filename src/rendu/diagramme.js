@@ -100,6 +100,16 @@ function cote(t, a, b, txt){
 export function sol(t, A){ t.poly(PER.map(function(p){ return A(p[0], p[1], 0); }), { fill:E.sol, stroke:GRIS, lw:.5 }); }
 
 /* ---------- lire le volume final ---------- */
+/* Les polygones d'un étage : son contour quand il est d'un seul tenant —
+   un L, un U se dessinent sans mur commun —, sinon une boîte par part. */
+function formes(e){
+  return e.contour.loops.length === 1 ? [e.contour.loops[0]] : e.rcs.map(coins);
+}
+function centreDe(q){
+  var x = 0, y = 0;
+  q.forEach(function(p){ x += p[0] / q.length; y += p[1] / q.length; });
+  return [x, y];
+}
 function lire(vols){
   var C = [], z00 = Infinity;
   vols.forEach(function(v){ etagesDe(v).forEach(function(e){ if(lvlOf(e.e.i) >= 0) z00 = Math.min(z00, e.z0); }); });
@@ -107,32 +117,38 @@ function lire(vols){
   vols.forEach(function(v){
     var et = etagesDe(v).filter(function(e){ return lvlOf(e.e.i) >= 0; });
     if(!et.length) return;
-    C.push({ v:v, et:et, sol:et[0].rc, base:Math.max(0, et[0].z0 - z00), top:et[et.length - 1].z1 - z00,
+    var q = formes(et[0]), a = et[0].contour.aire, g = centreDe([].concat.apply([], q));
+    C.push({ v:v, et:et, sol:q, aire:a, x:g[0], y:g[1], base:Math.max(0, et[0].z0 - z00), top:et[et.length - 1].z1 - z00,
              z:function(e){ return [Math.max(0, e.z0 - z00), e.z1 - z00]; } });
   });
   var ecole = C.filter(function(c){ return !c.v.ph; });
-  /* les m³ du projet : chaque étage hors sol, emprise × hauteur */
+  /* les m³ du projet : chaque étage hors sol, emprise × hauteur — l'emprise
+     d'un volume fusionné est celle de son contour */
   var V = 0, emprise = 0;
   ecole.forEach(function(c){
-    c.et.forEach(function(e){ V += e.rc.w * e.rc.d * (e.z1 - e.z0); });
-    emprise += c.sol.w * c.sol.d;
+    c.et.forEach(function(e){ V += e.contour.aire * (e.z1 - e.z0); });
+    emprise += c.aire;
   });
   /* l'angle de la figure et son centre : `vols.T` s'il est là, sinon le corps principal */
-  var maj = ecole.slice().sort(function(a, b){ return b.sol.w * b.sol.d - a.sol.w * a.sol.d; })[0];
-  var th = vols.T ? vols.T.a : maj ? maj.sol.a : 0;
+  var maj = ecole.slice().sort(function(a, b){ return b.aire - a.aire; })[0];
+  var th = vols.T ? vols.T.a : maj ? maj.et[0].rc.a : 0;
   var cx = 0, cy = 0;
-  ecole.forEach(function(c){ cx += c.sol.x * c.sol.w * c.sol.d; cy += c.sol.y * c.sol.w * c.sol.d; });
+  ecole.forEach(function(c){ cx += c.x * c.aire; cy += c.y * c.aire; });
   cx /= emprise || 1; cy /= emprise || 1;
   /* un corps tourné en arrière de l'angle de la figure, autour de son centre */
-  function arriere(rc){
-    var x = rc.x - cx, y = rc.y - cy, c = Math.cos(-th), s = Math.sin(-th);
-    return { x:cx + x * c - y * s, y:cy + x * s + y * c, w:rc.w, d:rc.d, a:rc.a - th };
+  function arriere(q){
+    var c = Math.cos(-th), s = Math.sin(-th);
+    return q.map(function(p){ var x = p[0] - cx, y = p[1] - cy; return [cx + x * c - y * s, cy + x * s + y * c]; });
   }
   var H = Math.max.apply(null, ecole.map(function(c){ return c.top; }).concat([1]));
   /* la hauteur PROPRE de chaque corps, sans la pente du terrain sous lui */
   var hs = ecole.map(function(c){ return c.top - c.base; });
   var hmin = Math.min.apply(null, hs.concat([H])), hmaxC = Math.max.apply(null, hs.concat([0]));
   return { C:C, ecole:ecole, V:V, emprise:emprise, hU:V / Math.max(1, emprise), th:th, cx:cx, cy:cy, arriere:arriere, H:H, hmin:hmin, hmaxC:hmaxC };
+}
+/* un prisme par polygone, son centre pour l'ordre de peinture */
+function prismes(Q, z0, z1, c, o){
+  return Q.map(function(q){ var g = centreDe(q); return { x:g[0], y:g[1], q:q, z0:z0, z1:z1, c:c, o:o }; });
 }
 
 /* ---------- les quatre temps ---------- */
@@ -155,7 +171,7 @@ function temps(vols){
     f:function(t, A){
       sol(t, A);
       prisme(t, A, cube, 0, cote3, null, TIRETS);
-      var C = X.ecole.map(function(c){ var r = X.arriere(c.sol); return { x:r.x, y:r.y, q:coins(r), z0:0, z1:X.hU, c:ACC }; });
+      var C = [].concat.apply([], X.ecole.map(function(c){ return prismes(c.sol.map(X.arriere), 0, X.hU, ACC); }));
       peindre(t, A, C);
       C.slice(0, 7).forEach(function(k){
         var dx = k.x - X.cx, dy = k.y - X.cy, l = Math.hypot(dx, dy);
@@ -168,8 +184,8 @@ function temps(vols){
       : "La figure tourne de " + ang + "°" + (CAP[T.cap] ? ", " + CAP[T.cap] : "") + ", et se pose sur la parcelle, à la place où tout tient.",
     f:function(t, A){
       sol(t, A);
-      X.ecole.forEach(function(c){ t.poly(coins(X.arriere(c.sol)).map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.5, dash:[2.5, 1.8] }); });
-      peindre(t, A, X.ecole.map(function(c){ return { x:c.sol.x, y:c.sol.y, q:coins(c.sol), z0:c.base, z1:c.base + X.hU, c:ACC }; }));
+      X.ecole.forEach(function(c){ c.sol.forEach(function(q){ t.poly(X.arriere(q).map(function(p){ return A(p[0], p[1], 0); }), { stroke:E.noir, lw:.5, dash:[2.5, 1.8] }); }); });
+      peindre(t, A, [].concat.apply([], X.ecole.map(function(c){ return prismes(c.sol, c.base, c.base + X.hU, ACC); })));
       if(Math.abs(ang) >= 2){
         var P = [], r0 = Math.sqrt(X.emprise) * .9;
         for(var i = 0; i <= 16; i++){ var a = X.th * i / 16; P.push(A(X.cx + Math.cos(a) * r0, X.cy + Math.sin(a) * r0, X.hU + 5)); }
@@ -193,11 +209,11 @@ function temps(vols){
       var C = [];
       X.C.forEach(function(c){ c.et.forEach(function(e){
         var z = c.z(e);
-        C.push({ x:e.rc.x, y:e.rc.y, q:coins(e.rc), z0:z[0], z1:z[1], c:c.v.ph ? null : couleur(familleDom(e.e.i)), o:c.v.ph ? TIRETS : null });
+        C = C.concat(prismes(formes(e), z[0], z[1], c.v.ph ? null : couleur(familleDom(e.e.i)), c.v.ph ? TIRETS : null));
       }); });
       peindre(t, A, C);
-      if(haut){ var q = coins(haut.sol)[1]; cote(t, A(q[0], q[1], haut.base), A(q[0], q[1], haut.top), nb(haut.top - haut.base) + " m"); }
-      if(bas && bas !== haut){ var q2 = coins(bas.sol)[1]; cote(t, A(q2[0], q2[1], bas.base), A(q2[0], q2[1], bas.top), nb(bas.top - bas.base) + " m"); }
+      if(haut){ var q = haut.sol[0][1]; cote(t, A(q[0], q[1], haut.base), A(q[0], q[1], haut.top), nb(haut.top - haut.base) + " m"); }
+      if(bas && bas !== haut){ var q2 = bas.sol[0][1]; cote(t, A(q2[0], q2[1], bas.base), A(q2[0], q2[1], bas.top), nb(bas.top - bas.base) + " m"); }
     } });
   S.X = X;
   S.cube = cote3;
@@ -221,7 +237,7 @@ export function diagrammes(t, vols, cadre, cols){
   var g = 40, S = temps(vols), n = S.length, X = S.X, rows = Math.ceil(n / cols);
   /* le même cadrage partout : la parcelle, le cube, les corps */
   var pts = PER.slice();
-  X.C.forEach(function(c){ pts = pts.concat(coins(c.sol)).concat(coins(X.arriere(c.sol))); });
+  X.C.forEach(function(c){ c.sol.forEach(function(q){ pts = pts.concat(q).concat(X.arriere(q)); }); });
   var hm = Math.max(S.cube, X.H) * 1.2;
   var top = cadre[1] + cadre[3], cw = (cadre[2] - (cols - 1) * g) / cols, ch = (cadre[3] - (rows - 1) * g) / rows;
   S.forEach(function(s, i){

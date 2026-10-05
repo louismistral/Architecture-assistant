@@ -34,14 +34,24 @@ export function situation(t, vols, cal){
     var et = etagesDe(v), z0 = et.length ? et[0].z0 : 0;
     et.forEach(function(e){ corps.push({ v:v, e:e, h:e.z1 - z0 }); });
   });
+  /* l'ombre d'un volume fusionné : celle de chacune de ses ailes */
   corps.forEach(function(c){
     if(c.v.ph) return;
-    var q = coins(c.e.rc), d = [E.ombreParM[0] * c.h, E.ombreParM[1] * c.h];
-    t.poly(enveloppe(q.concat(q.map(function(p){ return [p[0] + d[0], p[1] + d[1]]; }))).map(P), { fill:E.ombre });
+    var d = [E.ombreParM[0] * c.h, E.ombreParM[1] * c.h];
+    c.e.rcs.forEach(function(rc){
+      var q = coins(rc);
+      t.poly(enveloppe(q.concat(q.map(function(p){ return [p[0] + d[0], p[1] + d[1]]; }))).map(P), { fill:E.ombre });
+    });
   });
   (vols.ponts || []).forEach(function(p){ var r = pontRect(p, vols); if(r) t.poly(rect(r), { fill:E.blanc, stroke:E.fin, lw:.3 }); });
+  /* la toiture sur le contour : un volume fusionné n'a pas de mur commun.
+     ponytail: la trace ne sait pas trouer un polygone — la cour d'un anneau
+     se peint à l'ombre par-dessus ; un vrai trou si l'anneau devient courant */
   corps.sort(function(a, b){ return a.h - b.h; }).forEach(function(c){
-    t.poly(rect(c.e.rc), c.v.ph ? { stroke:E.noir, lw:.5, dash:[3, 2] } : { fill:E.blanc, stroke:E.fin, lw:.3 });
+    c.e.contour.loops.forEach(function(L, k){
+      t.poly(L.map(P), c.v.ph ? { stroke:E.noir, lw:.5, dash:[3, 2] }
+                       : { fill:k ? E.ombre : E.blanc, stroke:E.fin, lw:.3 });
+    });
   });
   vols.forEach(function(v){
     if(!v.ph) return;

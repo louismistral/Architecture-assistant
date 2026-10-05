@@ -44,7 +44,7 @@ import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { PMAP } from "../mix/prog.js";
 import { V } from "../data/cadre.js";
 import { assise, dansRect, ecart, terrain } from "./geom.js";
-import { CONTACT, etagesDe, hauteurEtage, niveaux, secondTemps, volRect } from "./model.js";
+import { CONTACT, etagesDe, fusionne, hauteurEtage, niveaux, secondTemps, volRect } from "./model.js";
 import { ecartVols, fusionner } from "./gen.js";
 
 var TOL = .05;        /* m : deux altitudes plus proches sont la même */
@@ -104,8 +104,10 @@ export function solides3dm(rh, octets){
    exactement. Sinon (une union booléenne, des formes libres), on lit le
    solide par ses toits. */
 export function volsDe3dm(solides){
-  var B = solides.map(boite);
-  if(B.every(Boolean)) return parBoites(B);
+  /* un étage fusionné exporté d'ici (un L, un U) est un prisme droit : il se
+     relit en boîtes, que `fusionner()` recolle */
+  var B = solides.map(function(T){ var b = boite(T); return b ? [b] : prismes(T); });
+  if(B.every(Boolean)) return parBoites([].concat.apply([], B));
   return parToits([].concat.apply([], solides));
 }
 
@@ -142,6 +144,71 @@ function boite(T){
   var ang = Math.atan2(H[1][1] - H[0][1], H[1][0] - H[0][0]);
   if(d > w){ var t2 = w; w = d; d = t2; ang += Math.PI / 2; }
   return { x:cx, y:cy, w:w, d:d, a:ang, z0:z0, z1:z1 };
+}
+/* Un PRISME DROIT à angles droits — deux altitudes, des faces horizontales ou
+   verticales — découpé en boîtes : la grille de ses sommets dans l'axe de ses
+   murs, ses cellules couvertes par le dessus, puis le plus grand rectangle
+   plein d'abord. Hors tout, comme `boite()`.
+   ponytail: découpe par niveau, indépendante d'un niveau à l'autre ; deux
+   niveaux découpés autrement font deux piles, que `fusionner()` recolle. */
+function prismes(T){
+  var z0 = Infinity, z1 = -Infinity, ang = null, k;
+  for(k = 0; k < T.length; k++){
+    var c = normale(T[k]), m = Math.hypot(c[0], c[1], c[2]);
+    if(m < 1e-9) continue;
+    if(Math.abs(c[2]) / m > .001 && Math.abs(c[2]) / m < .999) return null;
+    if(Math.abs(c[2]) / m <= .001 && ang == null) ang = Math.atan2(c[1], c[0]) + Math.PI / 2;
+    T[k].forEach(function(p){ z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); });
+  }
+  if(ang == null || z1 - z0 < .5) return null;
+  var co = Math.cos(ang), si = Math.sin(ang), haut = [], X = [], Y = [];
+  function loc(p){ return [p[0] * co + p[1] * si, -p[0] * si + p[1] * co]; }
+  function uniq(A){
+    A.sort(function(a, b){ return a - b; });
+    return A.filter(function(x, i){ return !i || x - A[i - 1] > .01; });
+  }
+  for(k = 0; k < T.length; k++){
+    if(!T[k].every(function(p){ return Math.abs(p[2] - z1) < .01; })) {
+      if(!T[k].every(function(p){ return Math.abs(p[2] - z1) < .01 || Math.abs(p[2] - z0) < .01; })) return null;
+      continue;
+    }
+    var q = T[k].map(loc);
+    haut.push(q);
+    q.forEach(function(p){ X.push(p[0]); Y.push(p[1]); });
+  }
+  X = uniq(X); Y = uniq(Y);
+  var nx = X.length - 1, ny = Y.length - 1, plein = [], i, j;
+  if(nx < 1 || ny < 1) return null;
+  for(i = 0; i < nx; i++){
+    plein.push([]);
+    for(j = 0; j < ny; j++){
+      var cx = (X[i] + X[i + 1]) / 2, cy = (Y[j] + Y[j + 1]) / 2;
+      plein[i].push(haut.some(function(t){ return surTri(t, cx, cy); }));
+    }
+  }
+  function libre(i0, i1, j0, j1){
+    for(var a = i0; a < i1; a++) for(var b = j0; b < j1; b++) if(!plein[a][b]) return false;
+    return true;
+  }
+  var out = [];
+  for(;;){
+    var best = null, A = 0;
+    for(var i0 = 0; i0 < nx; i0++) for(var j0 = 0; j0 < ny; j0++){
+      if(!plein[i0][j0]) continue;
+      for(var i1 = i0 + 1; i1 <= nx && plein[i1 - 1][j0]; i1++) for(var j1 = j0 + 1; j1 <= ny; j1++){
+        if(!libre(i0, i1, j0, j1)) break;
+        var a = (X[i1] - X[i0]) * (Y[j1] - Y[j0]);
+        if(a > A + 1e-6){ A = a; best = [i0, i1, j0, j1]; }
+      }
+    }
+    if(!best) break;
+    for(i = best[0]; i < best[1]; i++) for(j = best[2]; j < best[3]; j++) plein[i][j] = false;
+    var u = (X[best[0]] + X[best[1]]) / 2, v = (Y[best[2]] + Y[best[3]]) / 2;
+    var w = X[best[1]] - X[best[0]], d = Y[best[3]] - Y[best[2]], an = ang;
+    if(d > w){ var t2 = w; w = d; d = t2; an += Math.PI / 2; }
+    out.push({ x:u * co - v * si, y:u * si + v * co, w:w, d:d, a:an, z0:z0, z1:z1 });
+  }
+  return out.length ? out : null;
 }
 function normale(t){
   var ux = t[1][0] - t[0][0], uy = t[1][1] - t[0][1], uz = t[1][2] - t[0][2];
@@ -211,7 +278,7 @@ function second(vols){
     var a = 0, h = 0;
     lot.forEach(function(x){ a += x.a; h = Math.max(h, x.h); });
     var v = vols.filter(function(v){
-      return !v.fix && !v.ph && !v.bat && !v.joint && v.lv.length === 1
+      return !v.fix && !v.ph && !v.bat && !v.joint && v.lv.length === 1 && !fusionne(v.lv[0])
         && !vols.some(function(o){ return o.joint === v.id; })
         && Math.abs(v.lv[0].w * v.lv[0].d - a) <= .05 * a;
     })[0];
@@ -222,13 +289,15 @@ function second(vols){
   });
 }
 
-/* Le même volume, son repère tourné d'un quart de tour. */
+/* Le même volume, son repère tourné d'un quart de tour — les autres parts
+   d'un volume fusionné aussi, leurs décalages tournent avec le repère. */
+function tourne(p){
+  var w = p.w, dx = p.dx || 0;
+  p.w = p.d; p.d = w; p.dx = p.dy || 0; p.dy = -dx;
+}
 function quart(v){
   v.a += Math.PI / 2;
-  v.lv.forEach(function(e){
-    var w = e.w, dx = e.dx || 0;
-    e.w = e.d; e.d = w; e.dx = e.dy || 0; e.dy = -dx;
-  });
+  v.lv.forEach(function(e){ tourne(e); (e.ext || []).forEach(tourne); });
 }
 
 function parToits(T){
@@ -483,7 +552,9 @@ function droit(vols){
     if(e.d > e.w) quart(v);
     while(v.a > Math.PI / 2 || v.a <= -Math.PI / 2){
       v.a += v.a > 0 ? -Math.PI : Math.PI;
-      v.lv.forEach(function(x){ x.dx = -(x.dx || 0); x.dy = -(x.dy || 0); });
+      v.lv.forEach(function(x){
+        [x].concat(x.ext || []).forEach(function(p){ p.dx = -(p.dx || 0); p.dy = -(p.dy || 0); });
+      });
     }
   });
 }

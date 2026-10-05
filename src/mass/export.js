@@ -47,8 +47,8 @@ import { dec } from "../core/format.js";
 import { reculVise } from "../data/cadre.js";
 import { RULES } from "../data/rules.js";
 import { PER, RHINO, SITE } from "../data/site.js";
-import { coins, ligneRecul, terrain } from "./geom.js";
-import { MASS, etagesDe, niveaux, partiOf, pontEtage, volNom } from "./model.js";
+import { coins, ligneRecul, terrain, unionRects } from "./geom.js";
+import { MASS, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, volNom } from "./model.js";
 import { archiDe, faces } from "./archi.js";
 
 /* Un nom sans accent ni espace : Rhino en fait un nom de calque ou d'objet.
@@ -106,6 +106,32 @@ export function piecesMassing(o){
       obj.f.push([i, j, 4 + j, 4 + i]);
     }
   }
+  /* Un niveau FUSIONNÉ : un seul maillage fermé sur le contour de l'union —
+     le mur commun n'y est pas. Dessus et dessous pavés des cellules de la
+     grille de l'union, côtés sur ses bords : tous les sommets sont des nœuds
+     de la grille, le maillage reste étanche, sans sommet en T. */
+  function prisme(nom, groupe, v, e, z0, z1){
+    var m = RULES.haut.mur, c = Math.cos(v.a), sn = Math.sin(v.a), id = {};
+    var U = unionRects(partsDe(e).map(function(p){
+      return { x0:p.dx - p.w / 2 - m, x1:p.dx + p.w / 2 + m, y0:p.dy - p.d / 2 - m, y1:p.dy + p.d / 2 + m }; }));
+    objet(nom, groupe, { v:[], f:[] });
+    function k(x, y, z){
+      var cle = x + "," + y + "," + z;
+      if(id[cle] == null){ id[cle] = obj.v.length; sommet(v.x + x * c - y * sn, v.y + x * sn + y * c, z); }
+      return id[cle];
+    }
+    var G = U.grille, i, j;
+    for(i = 0; i < G.xs.length - 1; i++) for(j = 0; j < G.ys.length - 1; j++){
+      if(!G.en(i, j)) continue;
+      var x0 = G.xs[i], x1 = G.xs[i + 1], y0 = G.ys[j], y1 = G.ys[j + 1];
+      obj.f.push([k(x0, y1, z0), k(x1, y1, z0), k(x1, y0, z0), k(x0, y0, z0)]);
+      obj.f.push([k(x0, y0, z1), k(x1, y0, z1), k(x1, y1, z1), k(x0, y1, z1)]);
+    }
+    /* un bord a l'intérieur à sa gauche : sa face regarde à droite, dehors */
+    U.bords.forEach(function(b){
+      obj.f.push([k(b[0][0], b[0][1], z0), k(b[1][0], b[1][1], z0), k(b[1][0], b[1][1], z1), k(b[0][0], b[0][1], z1)]);
+    });
+  }
   /* Une polyligne FERMÉE, drapée : chaque côté recoupé au pas de la grille,
      chaque sommet à l'altitude du terrain. */
   function ligne(nom, groupe, P){
@@ -132,7 +158,9 @@ export function piecesMassing(o){
       etagesDe(v).forEach(function(s){
         if(s.e.i !== n.i) return;
         corps.push(function(){
-          boite(nomObj(volNom(v, k)) + "_" + nomNiveau(n), g, s.rc, s.z0, s.z1);
+          var nom = nomObj(volNom(v, k)) + "_" + nomNiveau(n);
+          if(fusionne(s.e)) prisme(nom, g, v, s.e, s.z0, s.z1);
+          else boite(nom, g, s.rc, s.z0, s.z1);
         });
         nEt++;
       });
@@ -191,6 +219,7 @@ export function piecesMassing(o){
     "Contenu :",
     "  Niveau_*      un maillage ferme par etage de chaque volume - 8 sommets, 6 faces,",
     "                normales vers l'exterieur -, de plancher a plancher, murs compris ;",
+    "                un volume fusionne (L, U, cour) : un maillage ferme sur son contour ;",
     "                passerelles comprises, au niveau qu'elles desservent",
     "  Second_temps  piscine et local CAD, s'ils sont poses",
     "  Perimetre     perimetre du concours, polyligne fermee drapee sur le terrain",
