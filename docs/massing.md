@@ -85,20 +85,23 @@ Le rail suit l'ordre du générateur, et chaque chose de même nature a un seul 
   Elles portent les noms des rubriques de Paramètres & contraintes, lus dans `ROLES`
   (`roleNom()`) : le rail et le volet disent les mêmes mots.
   1 · **Parti** — une tuile par parti, sa figure en plein (`p-*` dans `views/icons.js`) ; en Auto,
-  un point marque celui qui a été retenu. 2 · **Programme** — « Shuffle programme », qui rebat le
-  programme et vit donc ici, et le bilan par niveau ; l'état est l'écart. 3 · **Leviers** — ce que
-  Shuffle massing tire, en deux groupes, Composition et Architecture. 4 · **Contraintes** — le
-  contrôle : ce qui est enfreint, avec ses gestes ; les infos se replient ; une erreur ouvre l'étape
-  d'elle-même. 5 · **Préférences** — chaque ligne, défavorables en tête, et ce qu'elle lit.
-  6 · **Évaluation** — la note, écrite ici seulement, et les axes. **Emporter** — l'export et
-  l'import Rhino, et le diagramme du rendu.
-- Le corps d'une étape ne se construit que si elle est OUVERTE : le rail se refait à chaque geste,
-  et le diagramme prend une seconde.
+  un point marque celui qui a été retenu. 2 · **Évaluation** — la note, écrite ici seulement, et
+  les axes : juste après le parti, parce que c'est ce qu'on regarde à chaque tirage.
+  3 · **Programme** — « Shuffle programme », qui rebat le programme et vit donc ici, et le bilan
+  par niveau ; l'état est l'écart. 4 · **Leviers** — ce que Shuffle massing tire, en deux groupes,
+  Composition et Architecture. 5 · **Contraintes** — le contrôle : ce qui est enfreint, avec ses
+  gestes ; les infos se replient ; une erreur ouvre l'étape d'elle-même. 6 · **Préférences** —
+  chaque ligne, défavorables en tête, et ce qu'elle lit.
+- **Emporter**, au pied du rail, n'est pas une étape : deux boutons, exporter et importer le .3dm.
+  Le repère se lit au survol ; un message de l'export ou de l'import s'écrit dessous. Le diagramme
+  du rendu n'est plus au rail : il est dans l'onglet Rendu.
+- Le corps d'une étape ne se construit que si elle est OUVERTE : le rail se refait à chaque geste.
 - Le volet **Contraintes** reste à côté : on y règle chaque ligne, sa valeur et son tag. Les étapes
   Leviers, Contraintes, Préférences et Évaluation y renvoient.
 
-Ce qu'on REGARDE se règle dans une barre posée sur les deux vues — couleurs, étages montrés,
-recadrage du plan et du volume. Le volume CLIQUÉ s'édite dans une carte posée sur le plan, dans le
+Ce qu'on REGARDE se règle dans une barre posée sur les deux vues — Plan, 3D ou Plan + 3D (la vue
+seule prend toute la largeur ; une préférence de regard, non enregistrée), couleurs, étages
+montrés, recadrage. Le volume CLIQUÉ s'édite dans une carte posée sur le plan, dans le
 coin opposé au volume pour ne pas cacher ce qu'elle décrit ; rien de choisi, pas de carte. Les
 paragraphes qui restaient affichés en permanence sont devenus des infobulles.
 
@@ -332,7 +335,7 @@ soit pas plus petit que celui du dessus : `mesures.js — qualites()` compare ch
 
 ## L'export vers Rhino, et l'import
 
-Deux boutons en fin de rail, à l'étape Emporter. **rhino3dm** — la bibliothèque de McNeel qui lit
+Deux boutons au pied du rail, sous « Emporter ». **rhino3dm** — la bibliothèque de McNeel qui lit
 et écrit le .3dm — se charge depuis jsDelivr au premier clic, et seulement là : 3 Mo de
 WebAssembly que le reste du site ne demande pas. C'est la seule dépendance du projet, et elle
 ne sert qu'à ces deux gestes.
