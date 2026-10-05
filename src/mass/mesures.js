@@ -29,6 +29,7 @@ import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
+import { evaluerTypo } from "../typo/mesures.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
 import { CONTACT, MASS, aireEtage, assiseEff, bilan, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
@@ -632,18 +633,36 @@ export function mesuresMass(vols, L){
 }
 
 /* ---------- le bâtiment entier ---------------------------------------------------
-   Le programme réparti ET la volumétrie : ce que le jury voit. `main` : les
-   notes posées à la main sur une variante enregistrée. */
+   Le programme réparti, la volumétrie ET le plan des Typologies tiré dedans, à
+   la seed typologie du moment : ce que le jury voit. `main` : les notes posées
+   à la main sur une variante enregistrée. C'est le seul endroit où les plans
+   rejoignent la note — le rail du Massing, la page Paramètres, les variantes
+   et le classement de `genMass()` les reçoivent d'ici. */
 export function evaluer(vols, main){
   if(!vols || !vols.length) return null;
   oublier();
   var L = lire(vols), Q = qualites(vols, L), E = ecarts(vols, false, Q);
   var mes = Object.assign({}, mesuresMix(), mesuresMass(vols, L));
-  return { mes:mes, qualites:Q, ecarts:E,
+  return joindre({ mes:mes, qualites:Q, ecarts:E }, typoDe(vols), main);
+}
+/* Un plan qui ne se tire pas — un bâtiment importé aux volumes inattendus —
+   ne casse pas la note : ses critères sont sans objet, le reste est noté. */
+function typoDe(vols){
+  try { return evaluerTypo(vols, vols.ponts || []); }
+  catch(e){ console.error(e); return { mes:{}, ecarts:[] }; }
+}
+function joindre(ev, T, main, moy){
+  var mes = Object.assign({}, ev.mes, T.mes);
+  var E = ev.ecarts.filter(function(x){ return x.c !== "typo"; }).concat(T.ecarts);
+  return { mes:mes, qualites:ev.qualites, ecarts:E,
            invalide: E.some(function(x){ return x.sev === "e" && !x.pile; }),
            notifie: E.some(function(x){ return x.sev !== "e"; }),
-           jugement: noter(mes, main) };
+           jugement: noter(mes, main, moy) };
 }
+/* Une autre typologie dans les MÊMES volumes : seule la part du plan est
+   refaite — la recherche en essaie plusieurs par volume sans remesurer le
+   massing. `moy` : la moyenne des notes manuelles, comme `resumeCourant()`. */
+export function renoterTypo(ev, vols, moy){ return joindre(ev, typoDe(vols), null, moy); }
 export function evaluationCourante(main){
   if(!MASS.vol.length) return null;
   var v = MASS.vol;

@@ -252,6 +252,14 @@ function ecartsDe(L, D){
   return out;
 }
 
+/* Les écarts typo d'une évaluation, comptés comme ceux du mixer et du massing
+   (`verdict.typo` d'une variante) : rouges (`e`), ambre (`w`). */
+export function typoVerdict(E){
+  var o = { e:0, w:0 };
+  (E || []).forEach(function(x){ if(x.c === "typo") o[x.sev === "e" ? "e" : "w"]++; });
+  return o;
+}
+
 /* Les mesures et les écarts d'un bâtiment, d'un seul plan. */
 export function evaluerTypo(vols, ponts){
   var D = donneesTypo(vols, ponts), L = lirePlans(D);

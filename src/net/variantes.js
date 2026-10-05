@@ -22,8 +22,10 @@
      le panneau sans rejouer un générateur par carte.
 
    `criteria` était une liste de critères notés par l'ancien juge ; c'est
-   maintenant `{ v:3, mes, cadre, main }`. Une variante d'avant n'a pas de
-   mesures : « Reload » les lui calcule, et la renote.
+   maintenant `{ v:4, mes, cadre, main }`. Une variante d'avant n'a pas de
+   mesures : « Reload » les lui calcule, et la renote. Une v3 a les siennes,
+   mais pas celles du plan des Typologies : notée sur ce qu'elle a, en
+   italique, jusqu'au Reload.
 
    Plus l'EMPREINTE des fichiers du dépôt : voir `core/empreinte.js`.
    ========================================================================= */
@@ -39,6 +41,8 @@ import { restore, saveSoon, snapshot } from "../mix/store.js";
 import { MASS, bilanTotal, massVols, partiOf, volCoins } from "../mass/model.js";
 import { massCheck, massVerdict } from "../mass/checks.js";
 import { evaluationCourante } from "../mass/mesures.js";
+import { TYPO } from "../typo/etat.js";
+import { typoVerdict } from "../typo/mesures.js";
 import { CPT } from "./compte.js";
 import { deleteApi, insertApi, patchApi, selectApi } from "./supa.js";
 
@@ -57,9 +61,10 @@ function signale(){ abonnes.forEach(function(f){ try{ f(VARIANTES); }catch(_){} 
    le relevé du jour. */
 /* Elle porte aussi le parti RÉEL : en « Auto », `MASS.parti` vaut `auto` et ne
    dit pas quelle figure a été tirée — c'est la composition qui le sait. Le
-   filtre par type de massing le lit ici. */
+   filtre par type de massing le lit ici. Et la seed des TYPOLOGIES : l'état
+   complet n'est tiré qu'au chargement, le modal la lit donc ici. */
 export function vignetteCourante(){
-  return { parti: (MASS.vol && MASS.vol.parti) || null, vol: (MASS.vol || []).map(function(v){
+  return { parti: (MASS.vol && MASS.vol.parti) || null, typo: TYPO.graine, vol: (MASS.vol || []).map(function(v){
     var c = volCoins(v) || [];
     return { p: c.map(function(p){ return [ +p[0].toFixed(1), +p[1].toFixed(1) ]; }),
              s: v.fix ? 1 : 0 };
@@ -73,15 +78,16 @@ export function resumeCourant(){
   /* Les MESURES BRUTES du bâtiment, et ses écarts au cadre : de quoi le
      renoter demain avec d'autres poids, sans le regénérer. La note du jour,
      à côté, pour le premier tri de la base. */
+  var ev = null;
   try{
-    var ev = evaluationCourante();
+    ev = evaluationCourante();
     if(ev){
       note = noter(ev.mes, null, moyennesMain()).total;
-      crit = { v:3, mes:ev.mes,
+      crit = { v:4, mes:ev.mes,
                cadre:{ ko: idsDe(ev.ecarts, "e"), notif: idsDe(ev.ecarts, "w") } };
     }
   }catch(_){}
-  var vm = {}, vx = {};
+  var vm = {}, vx = {}, vt = ev ? typoVerdict(ev.ecarts) : {};
   try{ vm = massVerdict(massCheck()) || {}; }catch(_){}
   try{ vx = mixVerdict(mixCheck()) || {}; }catch(_){}
   return {
@@ -94,7 +100,7 @@ export function resumeCourant(){
     area_required: Math.round(b.demande || 0),
     area_placed: Math.round(b.pose || 0),
     area_gross: Math.round(BUILTG || 0),
-    verdict: { mass:vm, mix:vx },
+    verdict: { mass:vm, mix:vx, typo:vt },
     criteria: crit,
     thumbnail: vignetteCourante(),
     fingerprint: empreinte()
@@ -110,7 +116,7 @@ function idsDe(E, sev){
 /* ---------- la note d'une variante, refaite ici ----------
    Les mesures qu'elle a gardées, ses notes manuelles, et — pour les critères
    qu'on ne lui a pas notés — la moyenne de celles des autres. */
-function mesDe(v){ var c = v && v.criteria; return c && c.v === 3 ? c : null; }
+function mesDe(v){ var c = v && v.criteria; return c && c.v >= 3 ? c : null; }
 export function moyennesMain(){
   return moyennes(VARIANTES.map(function(v){ var c = mesDe(v); return c && c.main; }));
 }
@@ -125,7 +131,8 @@ export function noteDe(v, moy){
   var j = jugementDe(v, moy);
   return j ? j.total : v.score;
 }
-export function aJour(v){ return !!mesDe(v); }
+/* À jour : mesurée par le code d'aujourd'hui, plans des Typologies compris. */
+export function aJour(v){ var c = mesDe(v); return !!(c && c.v >= 4); }
 /* Invalide : un écart au cadre OPPOSABLE. Elle reste chargeable et notée. */
 export function invalide(v){ var c = mesDe(v); return !!(c && c.cadre && c.cadre.ko && c.cadre.ko.length); }
 export function notifiee(v){ var c = mesDe(v); return c && c.cadre ? (c.cadre.notif || []) : []; }
