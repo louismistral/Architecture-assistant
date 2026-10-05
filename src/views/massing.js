@@ -39,7 +39,7 @@ import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { dm3Massing } from "../mass/export.js";
 import { solides3dm, volsDe3dm } from "../mass/import.js";
 import { RHINO } from "../data/site.js";
-import { evaluationCourante } from "../mass/mesures.js";
+import { evaluationCourante, rougesTypo } from "../mass/mesures.js";
 import { V, reculVise } from "../data/cadre.js";
 import { OPTIONS } from "../data/leviers.js";
 import { noter } from "../data/jugement.js";
@@ -932,9 +932,12 @@ function blocBilan(){
    se replient : elles n'attendent rien. Une erreur ouvre l'étape d'elle-même. */
 function etapeCadre(ev){
   var list = massCheck(), v = massVerdict(list);
+  /* le cadre du MASSING : ce que les plans des Typologies enfreignent se lit à
+     leur onglet, et rougit la note (étape Évaluation) */
+  var em = ev ? ev.ecarts.filter(function(x){ return x.c !== "typo"; }) : [];
   var sous = !MASS.vol.length ? "rien n’est posé"
-    : ev && ev.invalide ? "une contrainte enfreinte : invalide"
-    : ev && ev.notifie ? "une préférence ferme enfreinte" : "valide";
+    : em.some(function(x){ return x.sev === "e" && !x.pile; }) ? "une contrainte enfreinte : invalide"
+    : em.some(function(x){ return x.sev !== "e"; }) ? "une préférence ferme enfreinte" : "valide";
   return etape("cadre", "5", roleNom("cadre"), sous,
     puce(v.e ? v.e + " erreur" + (v.e > 1 ? "s" : "") : v.w ? v.w + " à vérifier" : "tenu",
       v.e ? "danger" : v.w ? "warn" : "ok",
@@ -1019,7 +1022,10 @@ function etapeJugement(ev){
   var J = null;
   try { J = ev ? noter(ev.mes, null, moyennesMain()) : null; } catch(e){ console.error(e); }
   var etat = J && J.total != null ? el("b", "mass-etape__note mono" + (ev.invalide ? " is-bas" : ""), J.total + "/100") : null;
-  if(etat) etat.title = "Moyenne géométrique des axes, pondérée — " + Math.round(J.couv * 100) + " % du poids lu";
+  if(etat) etat.title = "Moyenne géométrique des axes, pondérée — " + Math.round(J.couv * 100) + " % du poids lu"
+    /* rouge à cause des plans : le dire, le contrôle du massing n'en sait rien */
+    + (rougesTypo(ev).length ? ". Invalide par les plans des Typologies : "
+       + rougesTypo(ev).map(function(k){ return (ligne(k) || { n:k }).n.toLowerCase(); }).join(", ") : "");
   return etape("jugement", "2", roleNom("jugement"), J ? Math.round(J.couv * 100) + " % du poids lu" : "aucune composition", etat, function(b){
     if(!J){ b.appendChild(el("p", "mass-note", "Aucune composition posée.")); return; }
     J.axes.forEach(function(a){

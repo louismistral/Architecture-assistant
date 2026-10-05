@@ -664,6 +664,13 @@ function joindre(ev, T, main, moy){
    refaite — la recherche en essaie plusieurs par volume sans remesurer le
    massing. `moy` : la moyenne des notes manuelles, comme `resumeCourant()`. */
 export function renoterTypo(ev, vols, moy){ return joindre(ev, typoDe(vols), null, moy); }
+/* Les lignes que les PLANS enfreignent en rouge — une fois chacune : ce qui rend
+   la note invalide sans que le contrôle du massing en dise rien. */
+export function rougesTypo(ev){
+  var o = [];
+  ((ev && ev.ecarts) || []).forEach(function(x){ if(x.c === "typo" && x.sev === "e" && o.indexOf(x.k) < 0) o.push(x.k); });
+  return o;
+}
 export function evaluationCourante(main){
   if(!MASS.vol.length) return null;
   var v = MASS.vol;

@@ -84,7 +84,11 @@ export function resumeCourant(){
     if(ev){
       note = noter(ev.mes, null, moyennesMain()).total;
       crit = { v:4, mes:ev.mes,
-               cadre:{ ko: idsDe(ev.ecarts, "e"), notif: idsDe(ev.ecarts, "w") } };
+               /* les ambres des plans ne sont pas un écart à NOTRE cadre : ils
+                  se comptent à part (`verdict.typo`) — sans quoi toute variante
+                  se dirait « hors cadre » */
+               cadre:{ ko: idsDe(ev.ecarts, "e"),
+                       notif: idsDe(ev.ecarts.filter(function(x){ return x.c !== "typo"; }), "w") } };
     }
   }catch(_){}
   var vm = {}, vx = {}, vt = ev ? typoVerdict(ev.ecarts) : {};
