@@ -51,13 +51,14 @@ import {
 import { moyennesMain } from "../net/variantes.js";
 import { deBtn } from "./mixer.js";
 import { icone } from "./icons.js";
-import { apercu } from "./rendu.js";
-import { planDiagrammes } from "../rendu/diagramme.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
   vue3dPick } from "./vue3d.js";
 
-var railEl = null, planEl = null, troisEl = null, camEl = null, barEl = null, selEl = null, monte = false;
+var railEl = null, planEl = null, troisEl = null, camEl = null, barEl = null, selEl = null, vuesEl = null, monte = false;
+/* Ce qu'on montre : le plan, la 3D, ou les deux. Une préférence de regard, pas
+   une décision de projet : elle ne s'enregistre pas. */
+var MONTRE = "deux";
 /* L'alerte ouverte, s'il y en a une. Une seule à la fois : deux panneaux
    ouverts, et l'on ne sait plus lequel désigne le volume sélectionné. */
 var openAl = null;
@@ -79,7 +80,7 @@ export function massPanel(){
   barEl.setAttribute("role", "toolbar");
   barEl.setAttribute("aria-label", "Affichage du plan et du volume");
   col.appendChild(barEl);
-  var vues = el("div", "mass-vues");
+  var vues = vuesEl = el("div", "mass-vues mass-vues--" + MONTRE);
   var cP = el("div", "mass-vue");
   var hP = el("div", "mass-vue__h");
   hP.appendChild(el("h3", "label", "Plan"));
@@ -200,7 +201,7 @@ function seedMass(){ return (MASS.graine >>> 0).toString(36); }
    pour tout régler ligne à ligne ; les étapes y renvoient.
 
    Le corps d'une étape ne se construit que si elle est ouverte : le rail se refait
-   à chaque geste, et le diagramme prend une seconde. */
+   à chaque geste. */
 var OUVERT = { parti:true };
 function dessineRail(){
   if(!railEl) return;
@@ -210,13 +211,13 @@ function dessineRail(){
   try { ev = MASS.vol.length ? evaluationCourante() : null; } catch(e){ console.error(e); }
   var ol = el("ol", "mass-etapes");
   ol.appendChild(etapeParti());
+  ol.appendChild(etapeJugement(ev));
   ol.appendChild(etapeProgramme());
   ol.appendChild(etapeLeviers());
   ol.appendChild(etapeCadre(ev));
   ol.appendChild(etapeOrientation(ev));
-  ol.appendChild(etapeJugement(ev));
-  ol.appendChild(etapeEmporter());
   railEl.appendChild(ol);
+  railEl.appendChild(blocEmporter());
   dessineBarre();
   dessineCarte();
 }
@@ -275,28 +276,6 @@ function tirBtn(ic, titre, sous, plein, fn){
   return b;
 }
 
-/* --- le diagramme de la composition ---
-   La planche de diagrammes du rendu : le raisonnement qui mène à ce volume. Elle
-   se calcule après l'affichage (la mobilité prend une seconde), une fois par
-   volumétrie, et seulement quand l'étape Emporter est ouverte. */
-var DIAG = { vol:null, el:null };
-function diagramme(b){
-  if(!MASS.vol.length) return;
-  if(DIAG.vol === MASS.vol && DIAG.el){ b.appendChild(DIAG.el); return; }
-  var at = el("p", "mass-note", "Calcul du diagramme…");
-  b.appendChild(at);
-  var v = MASS.vol;
-  setTimeout(function(){
-    if(v !== MASS.vol) return;
-    v.ponts = MASS.pont;
-    var d = apercu(planDiagrammes(v));
-    d.title = "Le raisonnement, du site au volume — ouvrir les planches A2 du rendu";
-    d.addEventListener("click", function(){ location.hash = "#rendu/massing"; });
-    DIAG = { vol:v, el:d };
-    if(at.parentNode) at.replaceWith(d);
-  }, 60);
-}
-
 /* --- proposer ---
    Shuffle MASSING en tête : c'est le geste de l'onglet. Il montre la PROPOSITION
    SUIVANTE du classement, et au bout du classement tire une nouvelle seed — la
@@ -342,7 +321,7 @@ function blocProposer(){
 
   if(aPoser() <= 0){
     b.appendChild(el("p", "mass-note", "Le mixer n’a encore rien posé : tout le programme est au "
-      + "bac. « Shuffle programme », à l’étape 2, en propose une répartition, et la volumétrie suivra."));
+      + "bac. « Shuffle programme », à l’étape 3, en propose une répartition, et la volumétrie suivra."));
   } else if(!MASS.vol.length && (MASS.vol.impossible || MASS.vol.erreur)){
     /* RIEN À L'ÉCRAN : on le dit ici, là où l'on vient de cliquer ; l'étape Contraintes
        en donne les causes et les remèdes. */
@@ -428,7 +407,7 @@ function etapeLeviers(){
   var n = 0, t = 0;
   LEV_COMPO.concat(LEV_ARCHI, ["prof"]).forEach(function(k){ n++; if(MASS.lev[k] == null) t++; });
   n++; if(MASS.second === "auto") t++;
-  return etape("leviers", "3", roleNom("levier"), "ce que Shuffle massing tire",
+  return etape("leviers", "4", roleNom("levier"), "ce que Shuffle massing tire",
     puce(t === n ? "tous tirés" : t + " tirés · " + (n - t) + " figés", t === n ? "soft" : "warn"),
     leviersCorps);
 }
@@ -503,6 +482,26 @@ function leviersCorps(b){
 function dessineBarre(){
   if(!barEl) return;
   while(barEl.firstChild) barEl.removeChild(barEl.firstChild);
+  var gv = el("div", "btn-group");
+  gv.setAttribute("role", "group");
+  gv.setAttribute("aria-label", "Vues montrées");
+  [["plan", "Plan"], ["trois", "3D"], ["deux", "Plan + 3D"]].forEach(function(o){
+    var t = el("button", "btn", o[1]);
+    t.type = "button";
+    t.setAttribute("aria-pressed", String(MONTRE === o[0]));
+    t.addEventListener("click", function(){
+      if(MONTRE === o[0]) return;
+      MONTRE = o[0];
+      if(vuesEl) vuesEl.className = "mass-vues mass-vues--" + MONTRE;
+      dessineBarre();
+      /* la vue qui reste change de largeur : elle se remesure et se recadre */
+      resizeMass();
+      if(MONTRE !== "trois") planFit();
+      if(MONTRE !== "plan"){ camFit(); vue3dDraw(); }
+    });
+    gv.appendChild(t);
+  });
+  barEl.appendChild(gv);
   var g = el("div", "btn-group");
   g.setAttribute("role", "group");
   g.setAttribute("aria-label", "Couleurs");
@@ -857,7 +856,7 @@ function etage(v, d){
 function etapeProgramme(){
   var T = bilanTotal(), vide = aPoser() <= 0;
   var pile = niveaux().map(function(n){ return court(n.lvl); }).join(" · ");
-  return etape("programme", "2", "Programme", vide ? "rien de posé au mixer" : pile,
+  return etape("programme", "3", "Programme", vide ? "rien de posé au mixer" : pile,
     vide ? puce("au bac", "warn") : puce((T.ecart >= 0 ? "+" : "−") + fmt(Math.round(Math.abs(T.ecart))) + " m²",
       Math.abs(T.ecart) > Math.max(20, T.demande * .02) ? "warn" : "ok", "Écart entre le posé et le demandé, tous niveaux"),
     programmeCorps, vide);
@@ -919,7 +918,7 @@ function etapeCadre(ev){
   var sous = !MASS.vol.length ? "rien n’est posé"
     : ev && ev.invalide ? "une contrainte enfreinte : invalide"
     : ev && ev.notifie ? "une préférence ferme enfreinte" : "valide";
-  return etape("cadre", "4", roleNom("cadre"), sous,
+  return etape("cadre", "5", roleNom("cadre"), sous,
     puce(v.e ? v.e + " erreur" + (v.e > 1 ? "s" : "") : v.w ? v.w + " à vérifier" : "tenu",
       v.e ? "danger" : v.w ? "warn" : "ok",
       "Une erreur est une règle écrite — le règlement, l’AEAI — ou une géométrie impossible ; "
@@ -977,7 +976,7 @@ function etapeOrientation(ev){
   var etat = L.length ? [2, 1, 0].filter(function(i){ return c[i]; }).map(function(i){
     return puce(String(c[i]), NIV[i][0], c[i] + " " + NIV[i][1] + (c[i] > 1 ? "s" : ""));
   }) : null;
-  return etape("orientation", "5", roleNom("orientation"), "ce qui guide le moteur", etat, function(b){
+  return etape("orientation", "6", roleNom("orientation"), "ce qui guide le moteur", etat, function(b){
     if(!L.length){ b.appendChild(el("p", "mass-note", "Aucune composition posée.")); return; }
     var ul = el("ul", "mass-ori");
     L.forEach(function(x){
@@ -1004,7 +1003,7 @@ function etapeJugement(ev){
   try { J = ev ? noter(ev.mes, null, moyennesMain()) : null; } catch(e){ console.error(e); }
   var etat = J && J.total != null ? el("b", "mass-etape__note mono" + (ev.invalide ? " is-bas" : ""), J.total + "/100") : null;
   if(etat) etat.title = "Moyenne géométrique des axes, pondérée — " + Math.round(J.couv * 100) + " % du poids lu";
-  return etape("jugement", "6", roleNom("jugement"), J ? Math.round(J.couv * 100) + " % du poids lu" : "aucune composition", etat, function(b){
+  return etape("jugement", "2", roleNom("jugement"), J ? Math.round(J.couv * 100) + " % du poids lu" : "aucune composition", etat, function(b){
     if(!J){ b.appendChild(el("p", "mass-note", "Aucune composition posée.")); return; }
     J.axes.forEach(function(a){
       var r = el("div", "mass-axe");
@@ -1114,11 +1113,12 @@ function rhino(){
     .catch(function(e){ rh3dm = null; throw new Error("rhino3dm ne se charge pas (" + (e.message || e) + ")."); });
   return rh3dm;
 }
-/* L'étape Emporter : Rhino dans les deux sens, et le diagramme du rendu. Un
-   message de l'export ou de l'import l'ouvre, pour qu'on le lise. */
-function etapeEmporter(){
-  return etape("emporter", "→", "Emporter", "Rhino, aller et retour · le diagramme", null, function(b){
-    b.classList.add("mass-diag");
+/* Emporter : deux boutons au pied du rail, Rhino dans les deux sens. Le repère
+   se lit au survol ; un message de l'export ou de l'import s'écrit dessous. */
+function blocEmporter(){
+  var b = el("section", "mass-emporter");
+  b.setAttribute("aria-label", "Rhino");
+  (function(){
     var r = el("div", "mass-deux");
     var t = el("button", "btn", "Exporter (.3dm)");
     t.type = "button";
@@ -1138,18 +1138,16 @@ function etapeEmporter(){
     i.type = "button";
     i.title = "Remplace la volumétrie : des boîtes par étage se relisent telles quelles, un solide "
       + "unifié se découpe par ses toits.";
+    t.title = "Repère du relevé DOC/site_plan.3dm, en centimètres, Z = 0 à " + dec(RHINO.z0, 0)
+      + " m : le fichier s’y pose en place. Un calque par niveau, plus le périmètre et le recul de "
+      + dec(reculVise(), 0) + " m, drapés sur le terrain.";
     i.addEventListener("click", function(){ f.click(); });
     r.appendChild(i);
     b.appendChild(r);
     b.appendChild(f);
-    var n = el("p", "mass-note", "Repère du relevé, en centimètres, Z = 0 à " + dec(RHINO.z0, 0)
-      + " m : le fichier s’y pose en place. L’import remplace la volumétrie.");
-    n.title = "Coordonnées de DOC/site_plan.3dm. Un calque par niveau, plus le périmètre et le recul de "
-      + dec(reculVise(), 0) + " m, drapés sur le terrain.";
-    b.appendChild(n);
     if(statutRhino) b.appendChild(el("p", "mass-note", statutRhino));
-    diagramme(b);
-  }, !!statutRhino);
+  })();
+  return b;
 }
 function telecharger(octets){
   var url = URL.createObjectURL(new Blob([octets], { type:"application/octet-stream" }));
