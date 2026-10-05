@@ -14,10 +14,12 @@ suffit pour s'y superposer. Le dessin de l'application est en MÈTRES, origine
 au coin sud-ouest du périmètre du concours — c'est l'origine qu'avait déjà
 site.js, et elle ne bouge pas.
 
-Cette origine est ÉCRITE dans site.js (`RHINO`) : l'export du massing (.obj) en
-a besoin pour retomber en place sur le relevé, et la conversion ne vit qu'ici.
-Un point (x, y, z) du dessin, en mètres, est dans le fichier en
-(x0 + U·x, y0 + U·y, U·z) — l'altitude n'est pas décalée.
+Cette origine est ÉCRITE dans site.js (`RHINO`) : l'export et l'import du
+massing (.3dm) en ont besoin pour retomber en place sur le relevé, et la
+conversion ne vit qu'ici. Un point (x, y, z) du dessin, en mètres, est dans le
+fichier en (x0 + U·x, y0 + U·y, U·(z − Z0)) : le relevé garde ses altitudes
+absolues, le massing échangé met son zéro à Z0 = 465 m — l'altitude du terrain
+à un mètre près, des cotes lisibles dans Rhino.
 
     python3 tools/extract-site.py
 """
@@ -72,6 +74,7 @@ for p in PERC[1:]:
 X0 = min(p[0] for p in clean)
 Y0 = min(p[1] for p in clean)
 U = 100.0       # unités du fichier par mètre : il compte en centimètres
+Z0 = 465        # mètres : le zéro des altitudes du massing échangé avec Rhino (.3dm)
 
 def L(p):   return (round((p[0]-X0)/U, 1), round((p[1]-Y0)/U, 1))
 def LZ(p):  return round(p[2]/U, 2)
@@ -343,11 +346,11 @@ export var PER = SITE.per, PERAIRE = %d;
 export var VANG = %.5f;   /* axe principal du périmètre : %.1f° */
 
 /* Le repère du fichier Rhino, pour le chemin inverse : un point (x, y, z) du
-   dessin, en mètres, y tombe en (x0 + u·x, y0 + u·y, u·z) — des centimètres,
-   l'altitude sans décalage. C'est ce que lit l'export du massing (.obj) pour
-   se poser en place sur le relevé. */
-export var RHINO = { x0: %.2f, y0: %.2f, u: %d };
-''' % (round(aire), -0.10996, math.degrees(-0.10996), X0, Y0, U))
+   dessin, en mètres, y tombe en (x0 + u·x, y0 + u·y, u·(z − z0)) — des
+   centimètres, le zéro des altitudes à z0 mètres. C'est ce que lisent l'export
+   et l'import du massing (.3dm) pour se poser en place sur le relevé. */
+export var RHINO = { x0: %.2f, y0: %.2f, u: %d, z0: %d };
+''' % (round(aire), -0.10996, math.degrees(-0.10996), X0, Y0, U, Z0))
 
 print("écrit :", OUT)
 print("  périmètre", len(PER), "sommets ·", round(aire), "m²")

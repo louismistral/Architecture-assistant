@@ -41,7 +41,7 @@ export var PER = SITE.per, PERAIRE = 12781;
 export var VANG = -0.10996;   /* axe principal du périmètre : -6.3° */
 
 /* Le repère du fichier Rhino, pour le chemin inverse : un point (x, y, z) du
-   dessin, en mètres, y tombe en (x0 + u·x, y0 + u·y, u·z) — des centimètres,
-   l'altitude sans décalage. C'est ce que lit l'export du massing (.obj) pour
-   se poser en place sur le relevé. */
-export var RHINO = { x0: 2588337.89, y0: 1090758.30, u: 100 };
+   dessin, en mètres, y tombe en (x0 + u·x, y0 + u·y, u·(z − z0)) — des
+   centimètres, le zéro des altitudes à z0 mètres. C'est ce que lisent l'export
+   et l'import du massing (.3dm) pour se poser en place sur le relevé. */
+export var RHINO = { x0: 2588337.89, y0: 1090758.30, u: 100, z0: 465 };
