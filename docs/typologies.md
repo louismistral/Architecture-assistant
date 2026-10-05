@@ -27,6 +27,12 @@ volumétrie, et l'on retrouve au Massing celle qu'on y avait laissée.
 - **Ce qui ne tient pas reste au bac du niveau** : la pièce qui couvre le débord au plus juste, sinon
   la plus grande, jamais un hall. L'étape Bilan la nomme, le Contrôle la compte ; c'est au Massing
   (agrandir) ou au mixer (alléger) d'y répondre.
+- **Puis ce qui est sorti revient là où il reste de la place**, dans n'importe quel corps du niveau,
+  le sien compris. L'abri PC (750 m²) se compartimente en parts de 300 m² au plus, et une part se
+  recoupe pour remplir le sol qui reste. Sans cela, un débord de quelques mètres sortait l'abri entier
+  et laissait vide la moitié d'un corps — le Massing l'avait dimensionné pour lui.
+- **Le sol qu'un rang laisse libre est un dégagement**, nommé au plan, ouvert sur le couloir. Au-delà
+  de `sol-vide` (cadre, 100 m² par corps et par niveau), le Contrôle le signale.
 - L'annexe que les plans adossaient à la salle de sport, et le sous-sol mis à la profondeur de la
   pile, ont disparu avec la mesure : ils épaississaient le volume. Les liens à la salle se tiennent
   quand le Massing l'accole (levier « Salle de sport accolée »).
@@ -74,7 +80,7 @@ l'hôte, et en reprend les composants :
 La palette du DESSIN (poché, papier, lavis) reste celle de la page — un rendu de concours — et suit
 `data-mode` ; `typoPlanches()` la force en clair pour le Rendu.
 
-**Au contrôle, deux lignes du cadre** : la scène collée à la salle de sport (mur contre mur, au
-même niveau — `scene-sport`) et toutes les pièces ouvertes sur un couloir (`couloir-acces`, tenu
-par construction de `composer()`). La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
+**Au contrôle, trois lignes du cadre** : la scène collée à la salle de sport (mur contre mur, au
+même niveau — `scene-sport`), toutes les pièces ouvertes sur un couloir (`couloir-acces`, tenu
+par construction de `composer()`) et pas de sol inutilisé dans un corps (`sol-vide`). La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
 est déclarée au cadre mais pas encore lue : à construire.
