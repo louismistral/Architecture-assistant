@@ -169,6 +169,8 @@ function mesuresDe(L, D){
   var nCl = 0, sol = 0, circ = 0, bati = 0, bruit = 0, nG = 0, sG = 0, bouts = 0, jour = 0;
   L.tous.forEach(function(r){
     r.F.forEach(function(f){
+      /* un corps sans pièce à ce niveau n'est ni du bâti servi ni un couloir */
+      if(!f.fixe && !f.rooms.length) return;
       bati += f.L * f.D;
       if(f.fixe) return;
       var occ = 0;
