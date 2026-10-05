@@ -17,6 +17,7 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | ce qui influe sur une variante : leviers, cadre, orientation, jugement — le système | `docs/parametres.md` |
 | l'onglet Programme mixer | `docs/mixer.md` |
 | l'onglet Massing | `docs/massing.md` |
+| l'onglet Typologies | `docs/typologies.md` |
 | les variantes partagées, le compte, le groupe, la base | `docs/variantes.md` |
 | le relevé du géomètre et sa regénération | `docs/releve.md` |
 | l'onglet Forensics, sa table et son stockage | `docs/forensics.md` |

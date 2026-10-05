@@ -91,7 +91,8 @@ mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est rede
   `ETAGES.clair[0]` à `ETAGES.clair[1]`.
 - Un texte reste lisible : jamais tête en bas. Les traits d'écran (« non-scaling ») gardent une
   épaisseur fixe en points.
-- Comme l'onglet Typologies, ouvrir le volet met le massing aux cotes des pièces.
+- Comme l'onglet Typologies, le volet lit le massing tel qu'il est : les plans se dessinent dans ses
+  volumes, sans les recoter.
 
 ### Les deux axonométries (`src/rendu/axo.js`)
 

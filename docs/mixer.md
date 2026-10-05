@@ -232,5 +232,6 @@ Une source pour trois onglets :
   profonde deux fois, plus le couloir), et changer une cote recompose la volumétrie (elle entre
   dans `empreintePile()`) ; à l'inverse, sans cote, ce sont les corps qui donnent leur profondeur
   aux pièces ;
-- **les Typologies** — elles lisent la cote de chaque poste pour la largeur de ses pièces, et leur
-  éditeur l'écrit (`typoRegle(key, w)`), si bien qu'un réglage fait d'un côté se voit de l'autre.
+- **les Typologies** — elles lisent la cote de chaque poste pour la largeur de ses pièces. Leur
+  éditeur (`typoRegle(key, w)`) en garde une à elles (`typo/etat.js`), qui ne remonte JAMAIS ici :
+  sans quoi un réglage au plan recomposait la volumétrie (`docs/typologies.md`).

@@ -290,7 +290,7 @@ RIEN NE SE SUPERPOSE (`chevauche`) — la main avance jusqu'au voisin, pas au-de
 aux autres bâtiments et à l'existant ne la bloque pas, le contrôle la signale. CE QUI SE TOUCHE NE
 FAIT QU'UN (`fusionner`) : bout à bout, même angle, mêmes niveaux, même profondeur, deux corps
 deviennent un volume ; autrement, un même bâtiment (`bat`, `joint`). La règle joue en fin de geste,
-après un tirage et après les cotes des Typologies. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
+après un tirage. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.
 
@@ -327,8 +327,8 @@ Ces choix sont aussi des **leviers** de la composition (`lev-toit`, `lev-pf`, `l
 le dé tire UNE valeur pour toute la composition, à la graine du massing ; `architecturer()` la pose
 sur chaque corps d'école — la salle garde ses sheds, le second temps reste plat. Porte-à-faux (3 m,
 dernier étage, vers l'entrée) et jeu de niveaux (1,5 m) ne sont pris que si le corps reste dans la
-parcelle et ne recouvre personne. Toute volumétrie — tirage, proposition suivante, remède,
-Typologies — passe par `gen.js — poser()` : poser, dégager, fusionner, architecturer.
+parcelle et ne recouvre personne. Toute volumétrie — tirage, proposition suivante, remède
+— passe par `gen.js — poser()` : poser, dégager, fusionner, architecturer.
 
 L'orientation **socle** (`orientation.js`, valeur `socleMin`, 80 % par défaut) veut qu'un étage ne
 soit pas plus petit que celui du dessus : `mesures.js — qualites()` compare chaque niveau au suivant.
