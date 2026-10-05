@@ -82,6 +82,10 @@
   padding-inline:var(--s-3) var(--s-2);white-space:nowrap;
 }
 
+/* Une étiquette posée devant son groupe, hors du cadre des boutons. */
+.btn-field{display:flex;align-items:center;gap:var(--s-2)}
+.btn-field>.segcap{padding-inline:0}
+
 .controls{
   display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-3) var(--s-5);
   padding-block:var(--s-4);border-bottom:1px solid var(--border);

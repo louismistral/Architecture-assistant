@@ -75,11 +75,14 @@ setMassNav(allerAuVolet);
 function programmeBar(){
   var bar = el("div","viewbar");
 
+  /* L'étiquette est DEVANT le groupe, hors de son cadre : posée dedans, elle
+     avait la boîte des boutons et se lisait comme un bouton de plus. */
   function group(caption, label, pairs, key, onPick){
-    var g = el("div","btn-group");
+    var w = el("div","btn-field"), g = el("div","btn-group");
     g.setAttribute("role","group");
     g.setAttribute("aria-label", label);
-    g.appendChild(el("span","segcap", caption));
+    w.appendChild(el("span","segcap", caption));
+    w.appendChild(g);
     pairs.forEach(function(pr){
       var b = el("button","btn", pr[1]);
       b.type = "button";
@@ -91,7 +94,7 @@ function programmeBar(){
       });
       g.appendChild(b);
     });
-    return g;
+    return w;
   }
 
   bar.appendChild(group("Grouper par", "Regroupement du programme",
