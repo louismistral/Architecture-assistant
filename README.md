@@ -116,14 +116,14 @@ Il prend les surfaces et les organise sur des niveaux. Rien d'autre.
   plateau dit ce qui tient ; la bande qui la dépasse dit ce qui ne tient pas.
 - Ce qui ne pèse pas sur le plateau — cour, piscine, chauffage à distance — a sa propre
   bande, sous un filet, hors du compte.
-- **Shuffle** tire une répartition ; une **seed** la rend rejouable à l'identique. Chaque
-  réglage a sa valeur et son **dé** : allumé, le Shuffle décide ; éteint, la valeur est
-  la nôtre. Le nombre de niveaux se règle sur la pile, le plateau sur son niveau, le lien
-  d'un poste sur son bloc, les adjacences au flanc — avec un dé maître par famille.
+- **Shuffle** tire une répartition ; une **seed** la rend rejouable à l'identique.
+  Le nombre de niveaux a son **dé**, sur la pile : allumé, le Shuffle décide ; éteint,
+  la valeur est la nôtre. Le plateau se déduit de la pile ; le lien d'un poste se règle
+  sur son bloc.
 - Un poste est **lié** — un bloc, ses pièces ensemble à un seul niveau — ou **délié** —
-  ses pièces indépendantes, dessinées séparées. Une **adjacence active** met ses deux
-  postes au même niveau et les déplace ensemble ; éteinte, ils sont indépendants.
-- On glisse un bloc d'un niveau à l'autre, et avec lui ce que ses adjacences actives lui
+  ses pièces indépendantes, dessinées séparées. Une **adjacence exigée** met ses deux
+  postes au même niveau — c'est du cadre : rompue, le massing ne propose aucun volume.
+- On glisse un bloc d'un niveau à l'autre, et avec lui ce que ses adjacences exigées lui
   tiennent au même niveau ; on tire une pièce d'un poste délié pour la scinder. Deux parts
   d'un même poste qui se retrouvent au même niveau se refondent. Au clavier, sur le bloc au
   foyer : flèches haut et bas pour changer de niveau, Maj pour n'emmener qu'une pièce,
@@ -185,8 +185,8 @@ src/
     checks.js         contrôle d'une répartition → écarts, avec leur code et leurs remèdes
     fix.js            les remèdes : déplacer, vider, agrandir un plateau, poser un WC
     accept.js         les écarts qu'on assume — « laisser comme ça »
-    opts.js           les réglages et leur dé : la pile, les plateaux, le lien des
-                      postes, les adjacences actives
+    opts.js           les réglages : la pile et son dé, le lien des postes, les
+                      cotes ; les adjacences exigées, toujours actives
     store.js          persistance : surfaces précisées, circulation, pile, répartition,
                       écarts assumés
   mass/               poser le programme en volumes, sur le terrain relevé
@@ -297,8 +297,8 @@ programme ; il ne les réécrit pas.
 **Une proposition hors règles est autorisée, jamais silencieuse.** `src/mix/checks.js` la
 dit : rouge pour une règle écrite au règlement ou à l'AEAI, ambre pour une règle de projet
 ou une marge qui se discute. Le plateau, le nombre de niveaux et la circulation sont des
-choix de projet : leur dépassement est ambre. Une adjacence active qui ne tient pas est
-rouge : c'est une exigence du règlement que nous avons choisi de tenir. Rien n'est
+choix de projet : leur dépassement est ambre. Une adjacence exigée qui ne tient pas est
+rouge : c'est une exigence du règlement. Rien n'est
 empêché.
 
 **Un écart dit aussi ce qui le réparerait.** On le clique, il propose le geste — `fix.js`

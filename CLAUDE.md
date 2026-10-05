@@ -249,8 +249,8 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
   voisin, à côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js`, engendré — voir `docs/releve.md`.
-- **Un réglage du mixer et son dé** (la pile, un plateau, le lien d'un poste, une adjacence
-  active) : `src/mix/opts.js` seul ; `shuffle.js` le lit, la vue le montre là où il se voit.
+- **Un réglage du mixer et son dé** (la pile et son dé, le lien d'un poste, les cotes ; les
+  adjacences exigées, toujours actives) : `src/mix/opts.js` seul ; `shuffle.js` le lit, la vue le montre là où il se voit.
   Toucher une valeur la fige : son dé s'éteint.
 - **L'état qui survit à un rechargement** : `snapshot()` / `restore()` dans
   `src/mix/store.js` seuls. Un seul objet dit ce qu'est « l'état du projet », et

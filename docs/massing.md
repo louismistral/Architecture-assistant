@@ -118,10 +118,11 @@ Le massing ne juge plus : il MESURE (`mesures.js`), et trois moteurs lisent ces 
 
 Le cadre du massing : le périmètre (opposable) et notre **recul** de 5 m (choisi) à tous les
 étages, passerelles comprises · la **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 →
-AEAI 15-15), entre bâtiments et jusqu'à l'existant · rien sur l'existant · la salle de sport
+AEAI 15-15), entre bâtiments — une préférence Prioritaire, bloquante seulement Imposée
+(`feuVise()`, `feuExige()`) · deux volumes qui se touchent n'en font qu'un · la salle de sport
 28 × 32 m, rien au-dessus · l'abri PC au moins partiellement enterré · chaque niveau loge sa
 surface · la cour du programme, et notre cour utile de 620 m² · les classes en façade
-(`profFacade()`, deux salles et leur couloir : 19,5 m) · le module de 0,50 m. Chaque ligne a
+(`profFacade()`, deux salles de 9 m et leur couloir : 20,5 m) · le module de 0,50 m. Chaque ligne a
 son tag ; celles de notre choix se désactivent ou s'assouplissent en orientation.
 
 L'orientation du massing : dimensions dans les domaines, distance souhaitée, soleil, vue, jour

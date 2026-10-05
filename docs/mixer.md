@@ -11,8 +11,8 @@ src/mix/checks.js     contrôle d'une répartition → écarts, avec code et rem
 src/mix/mesures.js    les mesures brutes d'une répartition, pour le jugement
 src/mix/fix.js        les remèdes : déplacer, vider, agrandir un plateau, poser un WC
 src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
-src/mix/opts.js       les réglages et leur dé : la pile, les plateaux, le lien des postes,
-                      les adjacences actives
+src/mix/opts.js       les réglages : la pile et son dé, le lien des postes, les cotes ;
+                      les adjacences exigées, toujours actives
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
 src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le glisser
 ```
@@ -79,19 +79,6 @@ n'a ni couloir ni cage. Le plateau, les cages et les pourcentages comparent ce b
 seule la PRÉVISION de capacité pendant la pose (`usable()`) prend la part que le programme
 entier donne, faute de mieux avant que les pièces soient posées.
 
-## L'unité pédagogique
-
-`V.clsParNiveau` (11, cadre choisi) plafonne les salles de classe d'un **niveau**, pas d'un poste : les
-salles standard et celles de réserve sont deux postes, et chacun respectait le sien, ce qui
-faisait quatorze salles sur un plateau qui n'en admet que onze.
-
-Elle ne compte que les VRAIES salles de classe (`UNITE` dans `niv.js`) : y ajouter le
-dédoublement, l'ACM et l'appui portait le contingent à vingt-neuf, donc à quatre niveaux de
-classes là où le règlement n'en admet que trois.
-
-Elle décide aussi du nombre minimum d'étages : vingt et une salles à onze par niveau en
-demandent deux, le rez non compris — il porte déjà tout ce que le règlement y cloue.
-
 **Un dernier étage vide, ou qui ne porte que ses sanitaires, n'est pas un étage** :
 `tasserSommet()` redescend ce qu'il porte et le retire. On ne rogne que la pile qu'on vient
 de proposer — celle que l'utilisateur a composée à la main lui appartient, même vide.
@@ -123,14 +110,15 @@ l'écart, les pièces en cause le portent (`issFocus` dans la vue, `keys` sur l'
 conflit et devoir ensuite chercher les pièces à la main, c'était tout le travail laissé à
 faire.
 
-**Une adjacence active est une règle, une adjacence éteinte n'est rien.** Chaque lien du
-schéma fonctionnel s'allume ou s'éteint au flanc du mixer. Active, elle met ses deux postes
-au même niveau — c'est la ligne `adj` du cadre choisi : le tirage la note d'un poids qui écrase
-toute autre raison (`IMPOSE`, débordement compris) — et le contrôle la marque en ambre quand
-elle ne tient pas, avec trois
-remèdes : déplacer l'un, déplacer l'autre, ou l'éteindre. Éteinte, elle ne pèse rien et le
-contrôle n'en dit rien : les deux postes sont indépendants. Par défaut, les adjacences
-exigées sont actives et les mutualisations éteintes.
+**Une adjacence exigée est du cadre opposable.** C'est la contrainte première du mixer : le
+schéma fonctionnel et les remarques du programme (ligne `adj`, Intangible). Chaque lien exigé
+met ses deux postes au même niveau — le tirage le note d'un poids qui écrase toute autre raison
+(`IMPOSE`) — et le contrôle le marque en rouge quand il ne tient pas, avec deux remèdes :
+déplacer l'un ou l'autre. Une seule rompue, et le massing ne propose aucun volume
+(`checks.js — adjRompues()`, lu par `mass/gen.js — genMass()`). Les mutualisations ne lient
+rien. Il n'y a plus ni interrupteur ni dé par lien, ni dé de plateau ni dé de lien de poste :
+le plateau se déduit de la pile, et la pile se choisit assez haute pour qu'aucun étage ne
+surmonte la salle de sport (`pilesAdmissibles()`).
 
 > Avant : toutes les adjacences étaient des préférences pondérées (`adjPoids` 26, `adjOpt`
 > 0,35), et le tirage y renonçait dès qu'un niveau était plein.

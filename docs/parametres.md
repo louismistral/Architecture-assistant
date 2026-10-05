@@ -132,13 +132,15 @@ parts égales.
 
 | onglet | leviers | où vit l'état |
 |---|---|---|
-| mixer | nombre de niveaux · plateau de chaque niveau · lien des postes · adjacences actives | `mix/opts.js` |
-| massing | parti · figure · profondeur · largeur · orientation · position · salle de sport · passerelles · second temps | `MASS.parti`, `MASS.second`, `MASS.lev` |
+| mixer | nombre de niveaux | `mix/opts.js` |
+| massing | parti · figure · profondeur · largeur · salle de sport · passerelles · architecture · second temps | `MASS.parti`, `MASS.second`, `MASS.lev` |
 
 L'**état** fixe ou libre suit chacun — il est dans l'instantané, comme les dés du mixer. Le
-**domaine** (fourchettes de cotes, longueur d'une passerelle) est au groupe. Au rail du massing,
-les leviers portent le dé du mixer ; les toucher rejoue la volumétrie. La figure, la position et
-la largeur sont toujours libres : la seed les fige.
+**domaine** (le minimum des cotes, 11 m, longueur d'une passerelle) est au groupe. Profondeur et
+largeur n'ont plus de maximum réglé : la profondeur s'arrête à celle de façade des classes, la
+largeur à l'élancement souhaité. Au rail du massing, les leviers portent le dé du mixer ; les
+toucher rejoue la volumétrie. La figure et la largeur sont toujours libres : la seed les fige.
+L'orientation de la figure est passée aux préférences (`cap`).
 
 Le parti fixé veut dire que la figure a **la structure de son parti** (`signature()`,
 `intact()`) : c'est le sens de l'option, pas une contrainte sur le bâtiment. « Respect du parti »
@@ -146,11 +148,16 @@ n'est donc plus ni orientation ni jugement — il lisait la signature du génér
 
 ## Le cadre
 
-Le cadre ne note pas. Opposable (Intangible) : les règles de niveau du règlement, la distance
-incendie, le périmètre, l'existant, la salle de sport, l'abri, **les surfaces posées**, la cour
-du programme… Choisi (Imposé) : le recul de 5 m, notre cour de 620 m², les classes en façade, le
-module, l'emprise d'un plateau, les étages au plus, le seuil d'un sous-sol, l'unité pédagogique,
-l'adjacence active, les sanitaires par niveau. Il y a aussi, au cadre, ce que le massing ne sait
+Le cadre ne note pas. Opposable (Intangible) : **les adjacences exigées** — la contrainte
+première du mixer —, les règles de niveau qui restent opposables (abri, CAD, cour, scène), le
+périmètre — aucun étage n'en dépasse —, la salle de sport, l'abri, **les surfaces posées**, la
+cour du programme, le module… Choisi (Imposé) : le recul de 5 m, notre cour de 620 m², les
+classes en façade, la salle de classe de 8 × 9 m, la fusion de deux volumes qui se touchent,
+l'emprise d'un plateau, le seuil d'un sous-sol, les sanitaires par niveau. Passés en
+préférences (Prioritaire) : la salle de sport, la piscine, l'UAPE et l'administration au rez,
+chaque hall comme entrée de sa famille, les classes au plus au 2ᵉ étage, la distance incendie
+entre bâtiments. Retirés : le niveau vide sous un niveau chargé, l'existant, les étages au plus,
+l'unité pédagogique, le nettoyage et la conciergerie. Il y a aussi, au cadre, ce que le massing ne sait
 pas encore lire (voies d'évacuation, SIA 500, séisme, Minergie, rendu) : leur onglet est celui
 qui les vérifiera.
 
@@ -175,9 +182,9 @@ Nos intentions. Deux formes :
   deux orientations prioritaires du mixer ont une valeur de base (9 et 4) qui, fois 5, redonne les
   45 et 20 points d'avant : la répartition n'a pas bougé.
 
-L'adjacence active est du cadre (Imposé) : le mixer lui donne un poids qui écrase le reste
-(`IMPOSE`, 400 points — le sens du tag dans la langue de la note, pas un réglage). Assouplie en
-orientation, elle ne pèse plus que ses points (`pts:adj`). De même, une règle de niveau Imposée
+L'adjacence exigée est du cadre opposable : le mixer lui donne un poids qui écrase le reste
+(`IMPOSE`, 400 points — le sens du tag dans la langue de la note, pas un réglage), et une seule
+rompue suffit à ce que le massing ne propose aucun volume. Une règle de niveau Imposée
 assouplie ne ferme plus aucun niveau : elle ajoute `pts:<id>` au niveau qu'elle voudrait
 (`niv.js — prefereNiveau()`).
 
