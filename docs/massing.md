@@ -325,7 +325,10 @@ signale en rouge. Déplacer et tourner ne tiennent que le PÉRIMÈTRE (`gen.js �
 RIEN NE SE SUPERPOSE (`chevauche`) — la main avance jusqu'au voisin, pas au-delà ; la distance
 aux autres bâtiments et à l'existant ne la bloque pas, le contrôle la signale. CE QUI SE TOUCHE NE
 FAIT QU'UN (`fusionner`) : à moins d'un mètre, deux corps se recollent et s'assemblent en un
-volume de plusieurs rectangles ; la salle de sport devient un même bâtiment (`bat`, `joint`). La règle joue en fin de geste,
+volume de plusieurs rectangles ; la salle de sport devient un même bâtiment (`bat`, `joint`). En aval, un volume
+fusionné se lit partie par partie : toit plat (une noue serait à dessiner), un maillage fermé par
+niveau sur le contour à l'export Rhino, recoupé en boîtes à l'import, ombre et emprise par partie au
+plan de situation et aux diagrammes (`archi.js`, `export.js`, `import.js`, `siteplan.js`, `diagramme.js`). La règle joue en fin de geste,
 après un tirage. Pas de tirettes sur la salle de sport, dont les cotes sont imposées. La 3D montre le terrain MAILLÉ
 depuis `SITE.grid`, les courbes drapées, les bâtiments existants à leur vraie hauteur, et les volumes
 du projet. Le fichier Rhino n'a pas de calque d'arbres : il n'y en a donc pas au dessin.
