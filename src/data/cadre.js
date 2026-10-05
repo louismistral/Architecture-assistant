@@ -100,7 +100,8 @@ export var CADRE_MIX = [
   { id:"gabarit", sujet:"Salle de sport", tag:"intangible", src:r("2.10"), qui:"code",
     n:"Rien au-dessus d'une grande hauteur libre", val:"hors ce que le niveau laisse à côté d'elle",
     lu:"src/mix/checks.js — gab:",
-    d:"7 m libres sous la salle de sport : le plateau du dessus ne peut couvrir que le reste du rez." },
+    d:"7 m libres sous la salle de sport : le plateau du dessus ne peut couvrir que le reste du rez. "
+      + "La grande portée est donc en tête de son corps — jamais au milieu de la pile." },
   { id:"plateau", sujet:"Plateau", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Emprise d'un plateau", k:"plateauPart", def:0.40, min:0.15, max:0.85, pas:0.01, pct:1,
     unite:"de l'aire posable", lu:"src/mix/shuffle.js — pilesAdmissibles(), ajusterPlateaux()",

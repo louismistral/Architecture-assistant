@@ -49,17 +49,18 @@ export var ORIENT_MIX = [
     n:"Une famille d'usage par niveau", k:"famPoids", def:10, min:0, max:60, pas:1,
     unite:"points, au prorata de la famille déjà là",
     d:"À défaut d'exigence écrite, ce qui se ressemble s'assemble. Un départage." },
-  { id:"cla-haut", sujet:"Classes", tag:"souhaite", src:USAGE,
+  { id:"cla-haut", sujet:"Classes", tag:"prioritaire", src:USAGE,
     n:"Les classes à l'étage", k:"classeEtage", def:8, min:0, max:60, pas:1,
     unite:"points par étage au-dessus du rez",
-    d:"Le rez reçoit le public, les parents, les livraisons et les usages hors horaire. "
-      + "Les classes montent, comme dans toute école qui existe." },
+    d:"La coupe suit le poids et l'ouverture : en bas le public, le bruit et les petits — "
+      + "UAPE, réfectoire, halls et foyer, que leurs règles de niveau mettent au rez —, en "
+      + "haut le calme. Les classes montent, comme dans toute école qui existe." },
   { id:"tec-bas", sujet:"Sous-sol", tag:"souhaite", src:USAGE,
     n:"Le technique au sous-sol", k:"techSousSol", def:10, min:0, max:60, pas:1,
     unite:"points au sous-sol",
     d:"Le seul programme qui se passe de jour, et il libère du rez — sauf s'il dessert un "
       + "local précis par une adjacence active." },
-  { id:"bruit-calme", sujet:"Bruit", tag:"souhaite", src:USAGE,
+  { id:"bruit-calme", sujet:"Bruit", tag:"prioritaire", src:USAGE,
     n:"Le bruyant loin du calme", k:"bruitCalme", def:12, min:0, max:60, pas:1,
     unite:"points retirés au niveau mixte",
     d:"Sport, scène, cuisine, réfectoire et foyer ne partagent pas volontiers un niveau avec "
@@ -91,6 +92,41 @@ export var ORIENT_MASS = [
     k2:"orientMax", def2:60, min2:10, max2:90, unite2:"° — défavorable au-delà",
     d:"La vue la plus intéressante du site — le terrain de football du relevé —, jugée sur la "
       + "façade longue de chaque corps qui porte des classes." },
+  /* L'orientation par l'usage : chaque local vers ce qui lui convient. */
+  { id:"cla-soleil", sujet:"Lumière", tag:"prioritaire", src:USAGE,
+    n:"Les classes à l'est, jamais au couchant", k:"claEst", def:45, min:10, max:90, pas:2.5,
+    unite:"° de l'est — favorable (nord-est à sud-est)",
+    k2:"claOuest", def2:22.5, min2:0, max2:67.5, unite2:"° de l'ouest-sud-ouest — défavorable",
+    d:"Chaque façade longue d'un corps de classes, côté par côté : deux salles et leur couloir, "
+      + "les deux façades portent des classes. À l'est — du nord-est au sud-est —, une lumière "
+      + "stable et le soleil du matin : favorable. Au sud, acceptable avec une protection "
+      + "solaire : comptée à moitié. Au sud-ouest et à l'ouest, le soleil rasant de l'après-midi "
+      + "sur les pupitres : défavorable. Le nord ne compte ni pour ni contre." },
+  { id:"sport-nord", sujet:"Salle de sport", tag:"prioritaire", src:USAGE,
+    n:"La salle de sport ouverte au nord", k:"sportNordBon", def:20, min:0, max:60, pas:5,
+    unite:"° du nord — favorable", k2:"sportNordMax", def2:45, min2:10, max2:90,
+    unite2:"° — défavorable au-delà",
+    d:"Une de ses façades longues regarde le nord : une lumière égale, sans éblouissement sur "
+      + "le terrain de jeu. L'écart se lit sur l'axe de la façade longue." },
+  { id:"cour-sud", sujet:"Cour", tag:"prioritaire", src:USAGE,
+    n:"La cour et l'UAPE au soleil", k:"courSudBon", def:45, min:0, max:90, pas:5,
+    unite:"° du sud — favorable", k2:"courSudMax", def2:90, min2:10, max2:180,
+    unite2:"° — défavorable au-delà",
+    d:"La meilleure cour s'ouvre devant une façade d'école : elle doit regarder le sud, la cour "
+      + "au soleil et le bâti qui l'abrite au nord. L'UAPE, au rez, ouvre sur elle. Le massing "
+      + "ne sait pas quel corps porte l'UAPE : le mixer la met au rez, la typologie la posera "
+      + "sur la cour." },
+  { id:"cour-route", sujet:"Cour", tag:"prioritaire", src:USAGE,
+    n:"La cour à l'abri de la route", k:"courRoute", def:20, min:0, max:60, pas:1,
+    unite:"m de la rue au moins",
+    d:"Du centre de la meilleure cour à la rue la plus proche du relevé. À moitié de la "
+      + "distance : neutre ; en deçà : défavorable. Le vent n'est pas au relevé : l'abri du "
+      + "vent ne se mesure pas ici." },
+  { id:"collectif-vue", sujet:"Vue", tag:"prioritaire", src:USAGE,
+    n:"Hall, réfectoire et foyer vers la vue", val:"une façade libre du rez face au terrain de football — seuils de la vue",
+    d:"Les espaces collectifs sont au rez (leurs règles de niveau) : il faut au rez d'un corps "
+      + "d'école une façade que rien ne masque, tournée vers le terrain de football. Le massing "
+      + "ne sait pas quel corps porte le hall : il garantit que la façade existe." },
   { id:"cap", sujet:"Orientation générale", tag:"souhaite", admet:MOUS,
     n:"Orientation de la figure", val:"l'optimum soleil-vue, plutôt que l'axe du périmètre ou un angle libre",
     lu:"src/mass/gen.js — orientation()",
