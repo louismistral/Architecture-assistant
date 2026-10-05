@@ -36,6 +36,30 @@ entre deux candidats ; les propositions rendues sont **classées par le jugement
 classe par la note du jury. Au mixer, la note de chaque niveau candidat est l'orientation, et
 le bruit de Gumbel (`V.temperature`) le hasard.
 
+## La page : cinq rubriques, qui se déplient
+
+La page range les lignes en **cinq rubriques**, chacune dépliable, et chaque niveau à son tour
+(`<details>` imbriqués, `groupe()` dans `views/parametres.js`). Le dépliage se retient d'un
+rendu à l'autre ; le filtre ouvre ce qui répond et compte les lignes de chaque niveau.
+
+| rubrique | rôles (`id`) | ce qu'elle dit | sous-niveaux |
+|---|---|---|---|
+| **Contraintes** | `cadre`, tag Intangible | valide ou non, fixé de l'extérieur — site, règlement, AEAI, cahier | par onglet |
+| **Leviers** | `levier`, `recherche`, et le couloir + les huit surfaces à préciser | ce que nous décidons pour borner la recherche ; aucun effet propre sur la note | le bâtiment (par onglet) · les surfaces du cahier · le moteur de recherche (par onglet) |
+| **Préférences** | `cadre` et `orientation` hors Intangible | ce qui guide le moteur sans définir ce qu'il a le droit de chercher | par tag — Imposé · Prioritaire · Souhaité · Indicatif — puis par onglet |
+| **Évaluation** | les mesures, `jugement`, le prix au m³ | mesurer, puis noter ; rien n'y sert à générer | les mesures (par onglet) · le jugement : axe › sous-axe › critère |
+| **Données** | `donnee`, le reste | le contexte que tout lit | hypothèses de construction · sujets · règlement par thème |
+
+Une ligne suit son **tag vivant** (`rubrique()`) : un Imposé passé en Souhaité change de
+sous-niveau. Les `id` des rôles sont restés — seuls les noms de `ROLES` (`data/lignes.js`) ont
+changé : le cadre se lit « Contraintes », l'orientation « Préférences », le jugement
+« Évaluation », le générateur « Moteur de recherche ». L'Imposé reste du cadre pour la
+mécanique (`enVigueur()`) : rangé aux préférences parce que c'est un choix à nous, il élimine
+toujours.
+
+Le prix au m³ est rangé avec le critère de coût. Dans un volet, le découpage par onglet saute
+(il est déjà filtré), les deux premiers niveaux sont ouverts, et le jugement se résume à ses axes.
+
 ## Quatre rôles, et deux hors rôles
 
 | rôle | moteur | question | ce qui se règle |
@@ -236,8 +260,8 @@ Chaque contrôle de la page lit et écrit la case même que les moteurs lisent :
 ## Les volets « Contraintes » des outils
 
 Ils sont la page, filtrée sur l'onglet (`parametresVue(render, { onglet })`), coiffée d'un bouton
-qui rejoue le tirage ; le jugement s'y résume à ses axes, et le mixer y ajoute les piles que le
-site admet. Un seul dessin des lignes, où qu'on les lise.
+qui rejoue le tirage ; mêmes rubriques, sans le sous-niveau par onglet ; le jugement s'y résume à
+ses axes, et le mixer y ajoute les piles que le site admet. Un seul dessin des lignes, où qu'on les lise.
 
 ## Ajouter une ligne
 
