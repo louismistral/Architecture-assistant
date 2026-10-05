@@ -44,13 +44,50 @@ export function donneesTypo(){
   var pid = MASS.vol.parti || MASS.parti;
   return { floors:floors, graine:TYPO.graine,
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
-                       vols:massOf().vol, ponts:MASS.pont || [] } },
+                       vols:ailes(massOf().vol), ponts:MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
     liens:PROX.filter(function(l){ return adjActive(l.id); }).map(function(l){ return { a:l.a, b:l.b, q:l.q }; }),
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
        des charges, le noyau, le feu, les murs, le module, la distance d'un lien */
-    regles:{ couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
+    regles:{ fusion:V.fusionDist == null ? 1 : V.fusionDist, couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
              mur:RULES.haut.mur, cloison:RULES.haut.cloison, module:V.module, lien:RULES.circ.proche } };
+}
+
+/* LES AILES D'UN VOLUME FUSIONNÉ. Le Massing assemble les corps qui se
+   touchent en un volume de plusieurs rectangles (`model.js — partsDe`) ; les
+   plans se composent rectangle par rectangle. Chaque aile devient donc un corps
+   à part, du même bâtiment (`bat`) que les autres : elles se partagent leurs
+   noyaux, et leurs intérieurs se touchent — pas de mur entre elles. Une aile
+   se suit d'un niveau à l'autre par ce qu'elle recouvre en plan, pour que son
+   noyau s'empile. */
+export function ailes(vols){
+  var out = [];
+  vols.forEach(function(v){
+    if(!v.lv.some(function(e){ return e.ext && e.ext.length; })){ out.push(v); return; }
+    var A = [];
+    v.lv.slice().sort(function(p, q){ return p.i - q.i; }).forEach(function(e){
+      [{ w:e.w, d:e.d, dx:e.dx || 0, dy:e.dy || 0 }].concat((e.ext || []).map(function(p){
+        return { w:p.w, d:p.d, dx:(e.dx || 0) + (p.dx || 0), dy:(e.dy || 0) + (p.dy || 0) };
+      })).forEach(function(p, k){
+        var lv = Object.assign({}, e, p, { ext:null });
+        if(k) delete lv.keys;
+        /* l'aile qu'elle recouvre le plus, et qui n'a pas encore ce niveau */
+        var best = null, ba = .5;
+        A.forEach(function(a){
+          if(a.lv.some(function(x){ return x.i === e.i; })) return;
+          var r = a.lv[a.lv.length - 1];
+          var ox = Math.min(r.dx + r.w / 2, p.dx + p.w / 2) - Math.max(r.dx - r.w / 2, p.dx - p.w / 2);
+          var oy = Math.min(r.dy + r.d / 2, p.dy + p.d / 2) - Math.max(r.dy - r.d / 2, p.dy - p.d / 2);
+          if(ox > 0 && oy > 0 && ox * oy > ba){ ba = ox * oy; best = a; }
+        });
+        if(best) best.lv.push(lv);
+        else A.push(Object.assign({}, v, { id:v.id + (A.length ? "-" + (A.length + 1) : ""),
+                                           bat:v.bat || "b" + v.id, aile:v.id, lv:[lv] }));
+      });
+    });
+    A.forEach(function(a){ out.push(a); });
+  });
+  return out;
 }
 
 /* LA SEED des Typologies : celle que rejoue « Shuffle typologie ». Elle ne

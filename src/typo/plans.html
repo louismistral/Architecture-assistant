@@ -1218,7 +1218,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   function dessiner(recadrer){
     var res = PG.genNiveau(DATA, st.parti, st.niv), fl = res.fl;
     INFO = []; bounds = [Infinity, Infinity, -Infinity, -Infinity];
-    var out = { site:[], ombre:[], fond:[], rooms:[], part:[], ouv:[], mb:[], lab:[], dim:[] };
+    var out = { site:[], ombre:[], fond:[], sol:[], rooms:[], part:[], ouv:[], mb:[], lab:[], dim:[] };
     var rects = res.F.map(function(f){ return { f:f }; });
     function dansAutre(f, x, y){
       var w = PG.versMonde(f, x, y);
@@ -1249,7 +1249,10 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var L = f.L, D = f.D, m = PG.MUR;
       rectL(f, -L / 2 - m, -D / 2 - m, L / 2 + m, D / 2 + m).forEach(function(p){ var q = P(f, p[0], p[1]); grow(q[0], q[1]); });
       out.fond.push('<polygon class="mur" points="' + pts(f, rectL(f, -L / 2 - m, -D / 2 - m, L / 2 + m, D / 2 + m)) + '"/>');
-      out.fond.push('<polygon class="circ" points="' + pts(f, rectL(f, -L / 2, -D / 2, L / 2, D / 2)) + '"/>');
+      /* les sols APRÈS tous les murs : là où deux ailes d'un même volume se
+         touchent, le sol de l'une recouvre le mur de l'autre — pas de mur
+         entre elles */
+      out.sol.push('<polygon class="circ" points="' + pts(f, rectL(f, -L / 2, -D / 2, L / 2, D / 2)) + '"/>');
       /* la circulation : ce que le corps a de plus que ses pièces et ses noyaux */
       if(!f.fixe){
         var occ = 0; f.rooms.forEach(function(r){ occ += r.a; }); f.cages.forEach(function(c){ occ += c.W * c.H; });
@@ -1387,6 +1390,49 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         out.ouv.push('<polygon class="circ" points="' + pts(f, rectL(f, x0, ym - 0.9, x1, ym + 0.9)) + '"/>');
       });
     });
+    /* DEUX VOLUMES QUI SE TOUCHENT, un seul mur entre eux. Les ailes d'un
+       volume fusionné n'en ont aucun (leurs sols recouvrent leurs murs) ; deux
+       volumes accolés — la salle de sport et l'école, deux corps que le
+       Massing n'a pas pu assembler — gardent le mur de l'un : celui de l'autre,
+       et ce qui les sépare encore (moins de `fusion` m), deviennent un
+       dégagement, et une porte les relie. Côtés parallèles ou en équerre. */
+    var FUS = (DATA.regles && DATA.regles.fusion != null) ? DATA.regles.fusion : 1, MU = PG.MUR;
+    function boiteDans(f, g){
+      var c = Math.cos(f.a), s2 = Math.sin(f.a), dx = g.cx - f.cx, dy = g.cy - f.cy;
+      var u = dx * c + dy * s2, w = -dx * s2 + dy * c, tr = Math.abs(Math.sin(g.a - f.a)) > .5;
+      var hw = (tr ? g.D : g.L) / 2, hd = (tr ? g.L : g.D) / 2;
+      return { x0:u - hw, x1:u + hw, y0:w - hd, y1:w + hd };
+    }
+    res.F.forEach(function(f, i){
+      res.F.forEach(function(g, j){
+        if(j <= i || Math.abs(Math.sin(2 * (f.a - g.a))) > .05) return;
+        /* le dégagement va du côté de celui qui n'a pas de cotes imposées ;
+           tout se lit dans son repère */
+        var dg = f.fixe && !g.fixe ? g : f, autre = dg === f ? g : f;
+        var B = boiteDans(dg, autre), A = { x0:-dg.L / 2, x1:dg.L / 2, y0:-dg.D / 2, y1:dg.D / 2 };
+        /* [écart entre intérieurs, axe du recouvrement, côté où est l'autre] */
+        [[B.x0 - A.x1, "y", 1], [A.x0 - B.x1, "y", -1], [B.y0 - A.y1, "x", 1], [A.y0 - B.y1, "x", -1]].forEach(function(k){
+          var t = k[0], ax = k[1], sg = k[2];
+          if(t < .05 || t > 2 * MU + FUS + .05) return;
+          var l0 = Math.max(A[ax + "0"], B[ax + "0"]), l1 = Math.min(A[ax + "1"], B[ax + "1"]);
+          if(l1 - l0 < 1) return;
+          var mi = (l0 + l1) / 2, lp = Math.min(2.4, l1 - l0 - .6), r;
+          if(ax === "y"){
+            var x0 = sg > 0 ? A.x1 : B.x1 + MU, x1 = sg > 0 ? B.x0 - MU : A.x0;
+            r = [rectL(dg, x0, l0, x1, l1),
+                 sg > 0 ? rectL(dg, x0 - .02, mi - lp / 2, x1 + MU + .02, mi + lp / 2)
+                        : rectL(dg, x0 - MU - .02, mi - lp / 2, x1 + .02, mi + lp / 2)];
+          } else {
+            var y0 = sg > 0 ? A.y1 : B.y1 + MU, y1 = sg > 0 ? B.y0 - MU : A.y0;
+            r = [rectL(dg, l0, y0, l1, y1),
+                 sg > 0 ? rectL(dg, mi - lp / 2, y0 - .02, mi + lp / 2, y1 + MU + .02)
+                        : rectL(dg, mi - lp / 2, y0 - MU - .02, mi + lp / 2, y1 + .02)];
+          }
+          out.sol.push('<polygon class="circ" points="' + pts(dg, r[0]) + '"/>');
+          if(lp >= .9) out.ouv.push('<polygon class="circ" points="' + pts(dg, r[1]) + '"/>');
+        });
+      });
+    });
     function porte(f, frame, x0, uh, v, dw){
       if(dw < 0.5) return;
       var g = rectF(f, frame, x0, uh - dw, v - 0.09, dw, 0.18);
@@ -1477,7 +1523,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 
     vue.innerHTML =
       '<g class="siteg">' + out.site.join("") + '</g>' + out.ombre.join("") +
-      out.fond.join("") + out.rooms.join("") + out.part.join("") + out.ouv.join("") +
+      out.fond.join("") + out.sol.join("") + out.rooms.join("") + out.part.join("") + out.ouv.join("") +
       '<g class="mbg">' + out.mb.join("") + '</g>' + out.lab.join("") + '<g class="dimg">' + out.dim.join("") + '</g>';
     classes();
 
