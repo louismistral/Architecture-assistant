@@ -137,22 +137,29 @@ trouvée).
 ce qui est fixé reste. La grille « Les partis essayés » disparaît (et `RECH.partis`).
 
 ```
-RECH = { programme, massing, typologies, parVolume: 20, essais: 30, garder: 3,
+RECH = { programme, massing, typologies, parVolume: 5, essais: 30, garder: 3,
          sansErreur: true, distincts: true }
 BORNES.parVolume = [1, 100]
 ```
 
 - **Ce qu'on rebat** — trois cases : le programme, le massing, les typologies.
-- **Typologies cochées avec le programme ou le massing** : chaque volume tiré essaie `parVolume`
-  seeds de typologie (`renoterTypo`) et garde la meilleure, AVANT d'être comparé aux autres
-  volumes. Une variante trouvée garde la seed retenue.
+- **Typologies cochées avec le massing** (ou le programme : le volume suit la pile) : une case
+  nombre apparaît, « Typologies essayées par volume », 5 par défaut. Chaque volume tiré essaie ce
+  nombre de seeds de typologie (`renoterTypo`) et garde la meilleure, AVANT d'être comparé aux
+  autres volumes. Une variante trouvée garde la seed retenue.
 - **Typologies cochées seules** : les essais sont des seeds de typologie sur le massing à l'écran,
   sans `genMass()` ; « Un seul par parti » et « par volume » se masquent.
 - Les seeds de typologie se tirent par `rng()`, comme celle du massing ; tout est remis à la fin,
   `TYPO.graine` comprise.
-- **Le résumé des dés**, en lecture seule, sous les cases : la pile (`dePile`), le parti et le
-  second temps (`MASS.parti`, `MASS.second`), les leviers du massing (k libres sur n), la seed
-  typologie — « fixé » ou « libre », et où ils se règlent (mixer, massing).
+- **Le résumé**, en lecture seule, sous chaque case cochée — l'essentiel de CE Shuffle, et où il
+  se règle :
+  - programme : la pile (`dePile` — libre, ou fixée à n niveaux), les postes liés, les cotes
+    fixées, la part du hasard (`V.temperature`), la seed d'où l'on part ;
+  - massing : le parti (libre, ou fixé — lequel), le second temps, les leviers (k libres sur n,
+    et lesquels sont fixés), les compositions essayées (`V.essais`), la part du hasard
+    (`V.hasardMass`) ;
+  - typologies : ce que la seed change (ordre des familles, bout du noyau), les cotes de pièces
+    réglées aux Typologies, la seed d'où l'on part.
 - **Sans erreur rouge** : ni au mixer, ni au massing, ni aux typologies (`verdict.typo.e`).
 - **La durée annoncée** : 0,8 s par essai qui rebat le programme ou le massing, plus 0,01 s par
   typologie essayée.
