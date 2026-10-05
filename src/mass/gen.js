@@ -638,6 +638,9 @@ export function genMass(graine){
       /* la figure doit rester celle de son parti : c'est ce que veut dire
          l'option du levier, pas une contrainte sur le bâtiment */
       if(!intact(vols)){ rates.push({ pid:pid, k:"parti" }); return false; }
+      /* CE QUI SE TOUCHE NE FAIT QU'UN avant d'être jugé : le cadre, l'orientation
+         et la note lisent le L, pas ses deux barres — comme à l'écran */
+      fusionner(vols, vols.ponts);
     }
     vols.parti = pid; vols.prof = prof;
     /* des pièces plus profondes que le cadre ne laisse de corps : bornées */
