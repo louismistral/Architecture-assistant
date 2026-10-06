@@ -330,12 +330,30 @@ la même tolérance que `touchent` et `chevaucheMain`. Hors tout, les parts d'un
 comptent par inclusion–exclusion, et deux façades à fleur ne valent qu'une façade. Les ailes d'un
 même volume fusionné ne se cèdent rien aux plans.
 
-Restent à faire : le dessin (un seul contour et des murs qui ne se croisent pas au plan, la 3D,
-l'export Rhino en un solide), la relecture de `bat` à l'import de nos boîtes, une zone commune à
-trois corps (comptée paire par paire), l'emprise commune lue au seul rez (deux corps dont le plus
-bas étage hors sol est ailleurs n'en retranchent rien), un corps presque tout entier posé sur un
-autre (aux plans, il garde une aile d'un mètre), et `recoller`, qui ne recolle plus à un tiers un
-corps posé sur un autre. Spec : `docs/superpowers/specs/2026-10-06-recouvrement-design.md`.
+LE DESSIN est celui de l'union, et c'est `model.js — dessinDe(v, e, vols)` qui le dit, étage par
+étage : `null` sans recouvrement (on dessine comme avant), sinon ce qu'il faut dessiner du corps —
+son emprise privée de celle du corps qui garde, ses cellules privées de l'intérieur de celui-ci, ses
+murs privés des intérieurs des autres, ses bords privés de leur emprise (`geom.js — moins`,
+`horsDe` : des morceaux convexes, disjoints). Le plan trace un seul contour, sans mur dans la zone
+commune, peinte une fois ; la 3D pose des prismes qui ne se recouvrent pas, sans arête à travers.
+L'export Rhino sort le corps qui cède en UN maillage fermé qui touche l'autre sans le recouper, et
+écrit sur chaque objet son corps, son bâtiment et — pour le corps découpé — sa boîte d'origine
+(`Saxon corps`, `Saxon bat`, `Saxon boites`) : l'import les relit, la paire revient liée. Un objet
+déplacé ou retaillé dans Rhino ne tient plus dans sa boîte : il se relit par sa géométrie. Seuls les
+corps posés sur un corps de leur bâtiment portent ces chaînes : tout autre export revient comme
+avant. Retombent sur l'ancien dessin — une boîte, un prisme — un corps tout entier dans l'autre, un
+volume fusionné qui cède, et deux étages liés à deux altitudes (une hauteur propre, une assise à part).
+
+L'emprise commune se lit corps par corps, à son plus bas étage hors sol (`recouvrementSol`) : un
+corps qui ne commence qu'au R+1 au-dessus d'un autre la partage aussi. Aux plans, un étage presque
+tout entier posé sur un autre (il ne lui resterait pas un mètre) sort des plans. `recoller` ignore
+ce qu'un corps recouvrait déjà de son bâtiment ; tout recouvrement nouveau reste refusé.
+
+Restent à faire : une zone commune à trois corps (comptée paire par paire), le dessin d'union de
+deux étages à deux altitudes et d'un volume fusionné qui cède (ils retombent sur deux boîtes qui se
+recoupent), le lien `joint` de la salle de sport posée sur un corps (l'import ne relit que `bat`),
+et le PNG `plan` de `tools/claude.mjs`, qui peint encore chaque corps entier. Specs :
+`docs/superpowers/specs/2026-10-06-recouvrement-design.md`, `…-recouvrement-dessin-design.md`.
 
 ## Le second temps occupe du terrain, donc il se dessine
 

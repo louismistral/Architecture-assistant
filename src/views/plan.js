@@ -20,7 +20,7 @@ import { dec, fmt } from "../core/format.js";
 import { s as svg } from "../core/svg.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { MASS, aireEtage, contourDe, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volFusionne,
+import { MASS, aireEtage, contourDe, dessinDe, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volFusionne,
   volHaut, volInts, volNom, volRect, volRects, vu } from "../mass/model.js";
 import { chevaucheMain, dansPerimetre, fusionner } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
@@ -44,6 +44,11 @@ function chemin(P, close){
 function contour(v, e){
   return contourDe(v, e).loops.map(function(L){ return chemin(L, true); }).join(" ");
 }
+/* Posé sur un corps du même bâtiment (`dessinDe`), un étage ne trace que ses bords
+   hors de l'autre : réunis, ils font le contour d'union. Ses morceaux se peignent en
+   UN chemin : deux formes voisines laisseraient une couture à l'anticrénelage. */
+function segments(S){ return S.map(function(b){ return chemin(b, false); }).join(" "); }
+function morceaux(L){ return L.map(function(P){ return chemin(P, true); }).join(" "); }
 
 /* ---------- montage ---------------------------------------------------------
    Le SVG est recréé à chaque rendu de panneau — `render()` vide `#panels` —,
@@ -160,14 +165,19 @@ function dessineVol(g, v, k){
   var plein = bas(montres);
   montres.forEach(function(e){
     if(e === plein) return;
-    gv.appendChild(svg("path", { d: contour(v, e), "class":"plan-vol__et", "fill-rule":"evenodd" }));
+    var De = dessinDe(v, e, MASS.vol);
+    gv.appendChild(svg("path", { d: De ? segments(De.bords) : contour(v, e), "class":"plan-vol__et", "fill-rule":"evenodd" }));
   });
   if(plein){
     /* L'emprise MURS COMPRIS pour le contour ; l'intérieur — la surface utile —
        pour le programme ; les murs en poché entre les deux. */
     var rc = volRect(v, plein), fu = volFusionne(v);
-    var q = contour(v, plein);
-    if(MASS.mono){
+    var q = contour(v, plein), D = dessinDe(v, plein, MASS.vol);
+    if(MASS.mono && D){
+      /* l'aplat hors de ce que l'autre garde, puis le seul contour d'union */
+      gv.appendChild(svg("path", { d: morceaux(D.emprise), "class":"plan-vol__p is-morceau" }));
+      gv.appendChild(svg("path", { d: segments(D.bords), "class":"plan-vol__c" }));
+    } else if(MASS.mono){
       gv.appendChild(svg("path", { d: q, "class":"plan-vol__p", "fill-rule":"evenodd" }));
     } else {
       /* Le programme, pavé dans le rectangle : on lit OÙ sont les classes, pas
@@ -179,17 +189,23 @@ function dessineVol(g, v, k){
         var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
                     y: ri.y + cx * Math.sin(ri.a) + cy * Math.cos(ri.a),
                     w: c.w, d: c.d, a: ri.a };
-        var p = svg("path", { d: chemin(coins(sub), true), "class":"plan-cel" });
+        /* la zone commune n'est peinte qu'une fois : chez celui qui la garde — une
+           cellule entamée se peint sans trait, et l'on trace ce qui reste de son bord */
+        var Pc = coins(sub), L = D ? D.cel(Pc) : [Pc], entame = L.length !== 1 || L[0] !== Pc;
+        if(!L.length) return;
+        var p = svg("path", { d: morceaux(L), "class":"plan-cel" + (entame ? " is-morceau" : "") });
         p.style.fill = famCol(c.f);
         p.appendChild(svg("title", null));
         p.lastChild.textContent = c.n + " · " + fmt(Math.round(c.a)) + " m²";
         gv.appendChild(p);
+        if(entame) gv.appendChild(svg("path", { d: segments(D.celBords(Pc)), "class":"plan-cel__b" }));
       });
       });
-      mursDe(v, plein).forEach(function(m){
+      if(D) gv.appendChild(svg("path", { d: morceaux(D.murs), "class":"plan-mur" }));
+      else mursDe(v, plein).forEach(function(m){
         gv.appendChild(svg("path", { d: chemin(coins(m), true), "class":"plan-mur" }));
       });
-      gv.appendChild(svg("path", { d: q, "class":"plan-vol__c", "fill-rule":"evenodd" }));
+      gv.appendChild(svg("path", { d: D ? segments(D.bords) : q, "class":"plan-vol__c", "fill-rule":"evenodd" }));
     }
     /* Le nom et la cote, au centre, dans le sens du bâtiment. */
     var nv = 0;

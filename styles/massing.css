@@ -391,6 +391,11 @@ details[open] > .mass-etape__s > .ic--chevron{ transform:rotate(180deg); }
 .plan-vol.is-ph .plan-vol__c,
 .plan-vol.is-ph .plan-vol__p{ stroke-dasharray:2.4 1.8; }
 .plan-vol.is-ph .plan-cel{ fill-opacity:calc(var(--fill-op) * .55); }
+/* Un corps posé sur un corps du même bâtiment se peint en morceaux (`dessinDe`) :
+   sans trait — le bord qui reste est tracé à part. */
+.plan-vol .plan-vol__p.is-morceau,
+.plan-cel.is-morceau{ stroke:none; }
+.plan-cel__b{ fill:none; stroke:var(--background); stroke-width:.12; }
 .plan-vol__n{
   font-size:2.6px; fill:var(--foreground); font-weight:600; paint-order:stroke;
   stroke:var(--card); stroke-width:.7; stroke-linejoin:round;

@@ -61,7 +61,7 @@ import { reculVise } from "../data/cadre.js";
 import { RULES } from "../data/rules.js";
 import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain, unionRects } from "./geom.js";
-import { MASS, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, postesDe, volNom } from "./model.js";
+import { MASS, dessinDe, recouvreLie, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, postesDe, volNom } from "./model.js";
 import { PMAP } from "../mix/prog.js";
 import { CALQUE, SEP, chemin, couleur } from "../data/calques.js";
 import { archiDe, faces } from "./archi.js";
@@ -158,6 +158,43 @@ export function piecesMassing(o){
       obj.f.push([k(b[0][0], b[0][1], z0), k(b[1][0], b[1][1], z0), k(b[1][0], b[1][1], z1), k(b[0][0], b[0][1], z1)]);
     });
   }
+  /* UN CORPS POSÉ SUR UN CORPS DU MÊME BÂTIMENT, qui lui cède la part commune : son
+     emprise privée de celle de l'autre (`dessinDe`), des morceaux convexes, en UN
+     maillage fermé qui touche l'autre sans le recouper. Chaque morceau se recoupe aux
+     sommets des autres posés sur ses côtés — pas de sommet en T, le maillage reste
+     étanche ; dessus et dessous en éventail depuis son centre ; côtés le long des
+     seuls côtés qu'aucun autre morceau ne longe en sens contraire. */
+  function massif(nom, groupe, L, z0, z1){
+    var id = {}, pts = [];
+    function cle(p){ return Math.round(p[0] * 1e4) + "," + Math.round(p[1] * 1e4); }
+    L.forEach(function(P){ P.forEach(function(p){ var k = cle(p); if(id[k] == null){ id[k] = pts.length; pts.push(p); } }); });
+    var N = pts.length, A = [], dir = {};
+    objet(nom, groupe, { v:[], f:[] });
+    pts.forEach(function(p){ sommet(p[0], p[1], z0); });
+    pts.forEach(function(p){ sommet(p[0], p[1], z1); });
+    L.forEach(function(P){
+      var R = [], cx = 0, cy = 0, i;
+      P.forEach(function(a, k){
+        var b = P[(k + 1) % P.length], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy), sur = [];
+        R.push(id[cle(a)]);
+        pts.forEach(function(p, j){
+          var t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (l * l);
+          if(t > 1e-6 && t < 1 - 1e-6 && Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / l < 1e-4) sur.push([t, j]);
+        });
+        sur.sort(function(x, y){ return x[0] - y[0]; }).forEach(function(x){ R.push(x[1]); });
+      });
+      R = R.filter(function(k, j){ return k !== R[(j + 1) % R.length]; });
+      R.forEach(function(k){ cx += pts[k][0] / R.length; cy += pts[k][1] / R.length; });
+      var c0 = obj.v.length;
+      sommet(cx, cy, z0); sommet(cx, cy, z1);
+      for(i = 0; i < R.length; i++){
+        var a = R[i], b = R[(i + 1) % R.length];
+        obj.f.push([c0 + 1, N + a, N + b, N + b], [c0, b, a, a]);
+        dir[a + ">" + b] = 1; A.push([a, b]);
+      }
+    });
+    A.forEach(function(x){ if(!dir[x[1] + ">" + x[0]]) obj.f.push([x[0], x[1], N + x[1], N + x[0]]); });
+  }
   /* Une polyligne FERMÉE, drapée : chaque côté recoupé au pas de la grille,
      chaque sommet à l'altitude du terrain. */
   function ligne(nom, groupe, P){
@@ -183,12 +220,26 @@ export function piecesMassing(o){
     function g(keys){ return chemin(CALQUE.volume, chapDe(keys, n.i), "Niveau_" + nomNiveau(n)); }
     MASS.vol.forEach(function(v, k){
       if(v.ph) return;
+      var pose = recouvreLie(v, MASS.vol);
       etagesDe(v).forEach(function(s){
         if(s.e.i !== n.i) return;
         corps.push(de(v, N.length > 1 ? N.indexOf(n) / (N.length - 1) : 0, function(){
-          var nom = nomObj(volNom(v, k)) + "_" + nomNiveau(n);
-          if(fusionne(s.e)) prisme(nom, g(s.e.keys), v, s.e, s.z0, s.z1);
+          var nom = nomObj(volNom(v, k)) + "_" + nomNiveau(n), D = dessinDe(v, s.e, MASS.vol);
+          /* découpé : un corps simple qui cède, et à qui il reste quelque chose — tout
+             entier dans l'autre, ou fusionné (ses parts se recouvrent de leur mur
+             commun, l'import ne les recollerait pas), il garde sa boîte, son prisme */
+          var coupe = D && D.garde.length && D.emprise.length && !fusionne(s.e);
+          if(coupe) massif(nom, g(s.e.keys), D.emprise, s.z0, s.z1);
+          else if(fusionne(s.e)) prisme(nom, g(s.e.keys), v, s.e, s.z0, s.z1);
           else boite(nom, g(s.e.keys), s.rc, s.z0, s.z1);
+          /* ce que la géométrie ne dit pas, et que l'import relit — pour les seuls corps
+             posés sur un corps de leur bâtiment : le corps, son bâtiment, et la boîte
+             d'origine de celui qu'on a découpé. Les autres reviennent comme avant. */
+          if(!pose) return;
+          obj.us = { "Saxon corps":v.id };
+          if(v.bat) obj.us["Saxon bat"] = v.bat;
+          if(coupe) obj.us["Saxon boites"] = JSON.stringify(s.rcs.map(function(r){
+            return { x:r.x, y:r.y, w:r.w, d:r.d, a:r.a, z0:s.z0, z1:s.z1 }; }));
         }));
         nEt++;
       });
@@ -298,6 +349,7 @@ export function dm3Massing(rh, o){
     var att = new rh.ObjectAttributes(), g;
     att.name = x.nom;
     att.layerIndex = idx[x.calque];
+    for(var u in x.us || {}) att.setUserString(u, x.us[u]);
     if(x.par !== "humain"){
       var c = couleur(x.par, x.k);
       att.colorSource = rh.ObjectColorSource.ColorFromObject;
@@ -307,7 +359,7 @@ export function dm3Massing(rh, o){
     else {
       g = new rh.Mesh();
       x.v.forEach(function(p){ g.vertices().add(p[0], p[1], p[2]); });
-      x.f.forEach(function(f){ g.faces().addQuadFace(f[0], f[1], f[2], f[3]); });
+      x.f.forEach(function(f){ if(f[2] === f[3]) g.faces().addTriFace(f[0], f[1], f[2]); else g.faces().addQuadFace(f[0], f[1], f[2], f[3]); });
       g.normals().computeNormals();
       g.compact();
     }

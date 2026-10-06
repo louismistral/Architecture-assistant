@@ -1194,6 +1194,184 @@ const TESTS = {
     assert.ok(Math.abs(r.aire - 10.8 * 10.8) < 1e-6, "aire " + r.aire);
     assert.ok(Math.abs(r.enfouie - 4 * 10.8) < 1e-6, "façade enfouie " + r.enfouie);
   },
+  /* ---- le recouvrement, phase 2 : le dessin ---- */
+  async rec_moins(){
+    const { geom } = await modules();
+    const somme = (L) => L.reduce((s, P) => s + geom.airePoly(P), 0);
+    const P = geom.coins({ x:0, y:0, w:20, d:20, a:0 });
+    for(const Q of [geom.coins({ x:15, y:3, w:20, d:20, a:0 }), geom.coins({ x:4, y:-2, w:12, d:12, a:Math.PI / 4 })]){
+      const L = geom.moins(P, [Q]);
+      assert.ok(Math.abs(somme(L) - (400 - geom.airePoly(geom.interConvexe(P, Q)))) < 1e-6, "aire " + somme(L));
+      L.forEach((A, i) => { assert.equal(geom.interConvexe(A, Q).length, 0, "dans Q");
+        L.forEach((B, j) => { if(j > i) assert.equal(geom.interConvexe(A, B).length, 0, "morceaux disjoints"); }); });
+    }
+    assert.equal(geom.moins(geom.coins({ x:5, y:0, w:4, d:4, a:0 }), [P]).length, 0, "tout dedans : rien");
+    assert.equal(geom.moins(P, []).length, 1, "rien à ôter : P");
+  },
+  async rec_bords(){
+    const { geom } = await modules();
+    const L = (S) => S.reduce((s, x) => s + Math.hypot(x[1][0] - x[0][0], x[1][1] - x[0][1]), 0);
+    /* [-10, 10]² et [5, 25] × [-7, 13] : le contour de leur union fait 2 × (35 + 23) */
+    const A = geom.coins({ x:0, y:0, w:20, d:20, a:0 }), B = geom.coins({ x:15, y:3, w:20, d:20, a:0 });
+    assert.ok(Math.abs(L(geom.horsDe(A, [B])) - 58) < 1e-6 && Math.abs(L(geom.horsDe(B, [A])) - 58) < 1e-6);
+    assert.ok(Math.abs(L(geom.horsDe(A, [])) - 80) < 1e-6);
+  },
+  async rec_dessin(ref){
+    const { M, geom } = await modules();
+    const somme = (L) => L.reduce((s, P) => s + geom.airePoly(P), 0);
+    const pose = (B) => {
+      const e = structuredClone(ref);
+      /* c, 16 × 16, posé en biais sur le bout de a, 30 × 16 */
+      e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                    Object.assign({ id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }] }, B || {})];
+      e.mass.pont = [];
+      charger(null, e);
+      return M.MASS.vol;
+    };
+    const [a, c] = pose(), ea = a.lv[0], ec = c.lv[0], Da = M.dessinDe(a, ea, M.MASS.vol), Dc = M.dessinDe(c, ec, M.MASS.vol);
+    assert.ok(Da && Dc, "les deux se recouvrent");
+    assert.deepEqual([Da.garde.length, Dc.garde.length], [0, 1], "le petit cède au grand");
+    const Ra = M.volRect(a, ea), Rc = M.volRect(c, ec), co = geom.airePoly(geom.interConvexe(geom.coins(Ra), geom.coins(Rc)));
+    const union = Ra.w * Ra.d + Rc.w * Rc.d - co;
+    assert.ok(Math.abs(somme(Da.emprise) + somme(Dc.emprise) - union) < 1e-6, "emprise = union");
+    /* le cédé pavé hors de l'intérieur du grand ; les murs et les intérieurs couvrent l'union, une fois */
+    const ia = geom.coins(M.volInt(a, ea)), ic = geom.coins(M.volInt(c, ec));
+    const intC = somme(Dc.cel(ic)), murs = somme(Da.murs) + somme(Dc.murs);
+    assert.ok(Math.abs(intC - (16 * 16 - geom.airePoly(geom.interConvexe(ia, ic)))) < 1e-6, "cellules du cédé");
+    assert.ok(Math.abs(murs + 30 * 16 + intC - union) < 1e-6, "murs + intérieurs = union : " + (murs + 30 * 16 + intC) + " / " + union);
+    const per = (S) => S.reduce((s, x) => s + Math.hypot(x[1][0] - x[0][0], x[1][1] - x[0][1]), 0);
+    assert.ok(per(Da.bords) + per(Dc.bords) < 2 * (Ra.w + Ra.d + Rc.w + Rc.d), "le contour d'union est plus court");
+    const [, c3] = pose({ bat:"autre" });
+    assert.equal(M.dessinDe(c3, c3.lv[0], M.MASS.vol), null, "non liés : comme avant");
+    const [, c2] = pose({ x:90 + 15.4 + 8.4, y:60, a:0 });
+    assert.equal(M.dessinDe(c2, c2.lv[0], M.MASS.vol), null, "au contact : comme avant");
+  },
+  async rec_export(ref){
+    const { M, geom } = await modules();
+    const X = await import(new URL("mass/export.js", SRC));
+    const e = structuredClone(ref);
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const O = X.piecesMassing({ date:new Date(0) }).objets.filter((o) => o.us && o.us["Saxon corps"]);
+    const A = O.find((o) => o.us["Saxon corps"] === "a"), C = O.find((o) => o.us["Saxon corps"] === "c");
+    assert.ok(A && C, "un objet par corps, nommé par sa chaîne");
+    assert.equal(A.us["Saxon bat"], "b"); assert.equal(C.us["Saxon bat"], "b");
+    assert.equal(A.us["Saxon boites"], undefined, "le grand reste une boîte");
+    assert.equal(JSON.parse(C.us["Saxon boites"]).length, 1, "le petit garde sa boîte d'origine");
+    /* fermé : chaque côté orienté a son inverse ; triangles en [a, b, c, c] */
+    const T = (o) => [].concat(...o.f.map((f) => f[2] === f[3] ? [[f[0], f[1], f[2]]] : [[f[0], f[1], f[2]], [f[0], f[2], f[3]]]));
+    const cotes = new Set(); T(C).forEach((t) => t.forEach((p, i) => cotes.add(p + ">" + t[(i + 1) % 3])));
+    cotes.forEach((k) => { const [p, q] = k.split(">"); assert.ok(cotes.has(q + ">" + p), "côté sans inverse " + k); });
+    /* son volume : (emprise − commune) × h, dans le rapport de la boîte entière ; normales dehors */
+    const vol = (o) => T(o).reduce((s, t) => { const [p, q, r] = t.map((k) => o.v[k]);
+      return s + (p[0] * (q[1] * r[2] - q[2] * r[1]) - p[1] * (q[0] * r[2] - q[2] * r[0]) + p[2] * (q[0] * r[1] - q[1] * r[0])) / 6; }, 0);
+    const [a, c] = M.MASS.vol, Ra = M.volRect(a, a.lv[0]), Rc = M.volRect(c, c.lv[0]);
+    const co = geom.airePoly(geom.interConvexe(geom.coins(Ra), geom.coins(Rc)));
+    assert.ok(vol(A) > 0 && vol(C) > 0, "normales dehors");
+    assert.ok(Math.abs(vol(C) / vol(A) - (Rc.w * Rc.d - co) / (Ra.w * Ra.d)) < 1e-3, "volume " + vol(C) / vol(A));
+    /* il ne recoupe pas le grand : aucun dessus du petit dans l'emprise du grand */
+    const haut = Math.max(...A.v.map((p) => p[2])), pa = A.v.filter((p) => p[2] === haut);
+    assert.ok(T(C).some((t) => t.every((i) => C.v[i][2] === haut)), "le petit a un dessus");
+    T(C).filter((t) => t.every((i) => C.v[i][2] === haut)).forEach((t) => { const g = [0, 1].map((k) => t.reduce((s, i) => s + C.v[i][k] / 3, 0));
+      assert.equal(geom.interConvexe([[g[0] - .1, g[1] - .1], [g[0] + .1, g[1] - .1], [g[0] + .1, g[1] + .1], [g[0] - .1, g[1] + .1]], geom.enveloppe(pa)).length, 0, "dans le grand"); });
+  },
+  /* la relecture de la phase 2 : ce qui retombe sur l'ancien chemin */
+  async rec_export_replis(ref){
+    const { M } = await modules();
+    const X = await import(new URL("mass/export.js", SRC));
+    const objets = (vol) => {
+      const e = structuredClone(ref);
+      if(vol){ e.mass.vol = vol; e.mass.pont = []; }
+      charger(null, e);
+      return X.piecesMassing({ date:new Date(0) }).objets;
+    };
+    /* sans recouvrement : aucune chaîne d'objet, l'aller-retour reste celui d'avant */
+    assert.ok(objets(null).every((o) => !o.us), "une composition sans recouvrement ne porte aucune chaîne");
+    /* tout entier dans l'autre : sa boîte, pas un maillage vide */
+    const O = objets([{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                      { id:"c", x:90, y:60, a:0.3, bat:"b", lv:[{ i:1, w:8, d:8 }] }]);
+    const C = O.find((o) => o.us && o.us["Saxon corps"] === "c");
+    assert.ok(C && C.v.length === 8 && !C.us["Saxon boites"], "le corps englouti garde sa boîte");
+    /* fusionné : son prisme, comme avant */
+    const F = objets([{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                      { id:"c", x:111, y:62, a:0.3, bat:"b", lv:[{ i:1, w:10, d:10, ext:[{ w:10, d:10, dx:10, dy:0 }] }] }]);
+    assert.ok(!F.find((o) => o.us && o.us["Saxon corps"] === "c").us["Saxon boites"], "un volume fusionné ne se découpe pas");
+    /* deux étages liés à deux altitudes : chacun se dessine comme avant */
+    objets([{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16, h:9 }] },
+            { id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }] }]);
+    const [a, c] = M.MASS.vol;
+    assert.equal(M.dessinDe(c, c.lv[0], M.MASS.vol), null, "hauteurs différentes : pas de découpe");
+    assert.equal(M.dessinDe(a, a.lv[0], M.MASS.vol), null);
+  },
+  async rec_rhino_lien(ref){
+    let rh;
+    try{ rh = await rhino3dm(); }catch(_){ return; }
+    const { M } = await modules();
+    const X = await import(new URL("mass/export.js", SRC)), I = await import(new URL("mass/import.js", SRC));
+    const e = structuredClone(ref);
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }, { i:2, w:16, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const r0 = M.recouvrement(M.MASS.vol, 1, true).aire;
+    const r = I.volsDe3dm(I.solides3dm(rh, X.dm3Massing(rh, {})));
+    assert.equal(r.mode, "boites");
+    assert.equal(r.vols.length, 2, r.vols.map((v) => v.id).join(" "));
+    assert.ok(M.lies(r.vols[0], r.vols[1]), "le lien revient");
+    assert.ok(Math.abs(M.recouvrement(r.vols, 1, true).aire - r0) < 1, "même recouvrement " + r0);
+    assert.deepEqual(r.vols.map((v) => v.lv.length).sort(), [1, 2], "chaque corps garde ses étages");
+  },
+  async rec_sol(ref){
+    const { M, E, geom } = await modules();
+    /* c commence au R+1 (niveau 2), posé en biais au-dessus du bout de a, qui ne porte que le rez */
+    const lire = (bat) => {
+      const e = structuredClone(ref);
+      e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                    { id:"c", x:106, y:63, a:0.4, bat, lv:[{ i:2, w:16, d:16 }] }];
+      e.mass.pont = [];
+      charger(null, e);
+      return E.terrainLibre(M.MASS.vol).libre;
+    };
+    const brut = lire("autre"), lie = lire("b"), [a, c] = M.MASS.vol;
+    const co = geom.airePoly(geom.interConvexe(geom.coins(M.volRect(a, a.lv[0])), geom.coins(M.volRect(c, c.lv[0]))));
+    assert.ok(co > 50, "le cas recouvre vu du ciel : " + co);
+    assert.ok(Math.abs(lie - brut - co) < 1e-6, "terrain libre " + brut + " → " + lie);
+  },
+  async rec_typo_entier(ref){
+    const im = (p) => import(new URL(p, SRC));
+    const { donneesTypo } = await im("typo/donnees.js");
+    const e = structuredClone(ref);
+    /* c, 10 × 16, posé sur a à 9,5 m sur 10 : raccourci, il ne lui resterait que 0,5 m */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:100.5, y:60, a:0, bat:"b", lv:[{ i:1, w:10, d:16 }, { i:2, w:10, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const C = donneesTypo().partis.courant.vols.find((v) => v.id === "c");
+    assert.ok(C, "c garde son étage du dessus");
+    assert.deepEqual(C.lv.map((x) => x.i), [2], "son rez, tout entier sur a, sort des plans");
+    e.mass.vol[1].lv = [{ i:1, w:10, d:16 }];
+    charger(null, e);
+    assert.equal(donneesTypo().partis.courant.vols.some((v) => v.id === "c"), false, "un corps sans étage aussi");
+  },
+  async rec_recoller(ref){
+    const { M, G } = await modules();
+    const e = structuredClone(ref), t = 0.3, u = [Math.cos(t), Math.sin(t)], P0 = [106, 62], L = 16.8 + 0.5;
+    /* p posé sur a, z posé sur w ; p et z, dans le même axe, à 0,50 m l'un de l'autre */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"p", x:P0[0], y:P0[1], a:t, bat:"b", lv:[{ i:1, w:16, d:16 }] },
+                  { id:"z", x:P0[0] + u[0] * L, y:P0[1] + u[1] * L, a:t, bat:"z", lv:[{ i:1, w:16, d:16 }] },
+                  { id:"w", x:P0[0] + u[0] * (L + 12), y:P0[1] + u[1] * (L + 12) - 2, a:t + 0.5, bat:"z", lv:[{ i:1, w:12, d:12 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const [, p, z, w] = M.MASS.vol;
+    assert.ok(M.recouvrement(M.MASS.vol, 1, true).aire > 40 && G.dansPerimetre(z) && G.dansPerimetre(w), "le cas tient");
+    G.fusionner(M.MASS.vol, M.MASS.pont);
+    const V = M.MASS.vol, reste = V.includes(p) && V.includes(z);
+    assert.ok(!reste || Math.abs(G.ecartVols(p, z)) <= M.CONTACT, "recollés : " + (reste ? G.ecartVols(p, z) : "soudés"));
+    assert.ok(V.every((v) => !G.chevaucheMain(v, V)), "rien ne se superpose sans lien");
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));

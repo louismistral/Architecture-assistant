@@ -369,31 +369,72 @@ export function ecart(r1, r2){
 var EPS = 1e-7;
 function sensDe(Q){ var a = 0, i; for(i = 0; i < Q.length; i++){ var p = Q[i], q = Q[(i + 1) % Q.length]; a += p[0] * q[1] - q[0] * p[1]; } return a >= 0 ? 1 : -1; }
 function cote(a, b, p, s){ return s * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])); }
-export function interConvexe(P, Q){
-  var s = sensDe(Q), R = P.slice(), i, k;
-  for(i = 0; i < Q.length && R.length; i++){
-    var a = Q[i], b = Q[(i + 1) % Q.length], S = R; R = [];
-    for(k = 0; k < S.length; k++){
-      var p = S[k], q = S[(k + 1) % S.length], fp = cote(a, b, p, s), fq = cote(a, b, q, s);
-      if(fp >= 0) R.push(p);
-      if((fp >= 0) !== (fq >= 0)){ var t = fp / (fp - fq); R.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
-    }
+/* le demi-plan à gauche de a→b (s = sensDe de Q ; −s : à droite) */
+function coupe(P, a, b, s){
+  var R = [], k;
+  for(k = 0; k < P.length; k++){
+    var p = P[k], q = P[(k + 1) % P.length], fp = cote(a, b, p, s), fq = cote(a, b, q, s);
+    if(fp >= 0) R.push(p);
+    if((fp >= 0) !== (fq >= 0)){ var t = fp / (fp - fq); R.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
   }
+  return R;
+}
+export function interConvexe(P, Q){
+  var s = sensDe(Q), R = P.slice(), i;
+  for(i = 0; i < Q.length && R.length; i++) R = coupe(R, Q[i], Q[(i + 1) % Q.length], s);
   return R.length >= 3 && airePoly(R) > EPS ? R : [];
 }
+/* la part `[t0, t1]` du segment p0→p1 STRICTEMENT dans le convexe Q, ou null */
+function dansSeg(p0, p1, Q, s){
+  var t0 = 0, t1 = 1, k;
+  for(k = 0; k < Q.length && t0 < t1; k++){
+    var a = Q[k], b = Q[(k + 1) % Q.length], f0 = cote(a, b, p0, s), f1 = cote(a, b, p1, s);
+    if(f0 <= EPS && f1 <= EPS) return null;
+    if(f0 <= EPS) t0 = Math.max(t0, (EPS - f0) / (f1 - f0));
+    else if(f1 <= EPS) t1 = Math.min(t1, (EPS - f0) / (f1 - f0));
+  }
+  return t1 > t0 ? [t0, t1] : null;
+}
 export function longueurDans(P, Q){
-  var s = sensDe(Q), L = 0, i, k;
+  var s = sensDe(Q), L = 0, i;
   for(i = 0; i < P.length; i++){
-    var p0 = P[i], p1 = P[(i + 1) % P.length], t0 = 0, t1 = 1;
-    for(k = 0; k < Q.length && t0 < t1; k++){
-      var a = Q[k], b = Q[(k + 1) % Q.length], f0 = cote(a, b, p0, s), f1 = cote(a, b, p1, s);
-      if(f0 <= EPS && f1 <= EPS){ t1 = t0; break; }
-      if(f0 <= EPS) t0 = Math.max(t0, (EPS - f0) / (f1 - f0));
-      else if(f1 <= EPS) t1 = Math.min(t1, (EPS - f0) / (f1 - f0));
-    }
-    if(t1 > t0) L += (t1 - t0) * Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    var p0 = P[i], p1 = P[(i + 1) % P.length], t = dansSeg(p0, p1, Q, s);
+    if(t) L += (t[1] - t[0]) * Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
   }
   return L;
+}
+/* LE DESSIN DE L'UNION. `moins(P, L)` : le convexe P privé de chaque convexe de
+   L, en morceaux CONVEXES et disjoints — côté par côté de Q, ce qui tombe dehors
+   est un morceau, le reste continue. `horsDe(P, L)` : les côtés de P qui ne sont
+   STRICTEMENT dans aucun convexe de L, en segments `[a, b]` — un côté à fleur
+   d'un bord reste. */
+export function moins(P, L){
+  var R = [P];
+  L.forEach(function(Q){
+    var s = sensDe(Q), S = [];
+    R.forEach(function(A){
+      if(!interConvexe(A, Q).length){ S.push(A); return; }
+      for(var i = 0; i < Q.length && A.length; i++){
+        var a = Q[i], b = Q[(i + 1) % Q.length], D = coupe(A, a, b, -s);
+        if(D.length >= 3 && airePoly(D) > EPS) S.push(D);
+        A = coupe(A, a, b, s);
+      }
+    });
+    R = S;
+  });
+  return R;
+}
+export function horsDe(P, L){
+  var out = [], i;
+  for(i = 0; i < P.length; i++){
+    var p0 = P[i], p1 = P[(i + 1) % P.length], T = [], t = 0;
+    L.forEach(function(Q){ var x = dansSeg(p0, p1, Q, sensDe(Q)); if(x) T.push(x); });
+    T.sort(function(x, y){ return x[0] - y[0]; });
+    function pt(u){ return [p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u]; }
+    T.forEach(function(x){ if(x[0] > t + 1e-9) out.push([pt(t), pt(x[0])]); t = Math.max(t, x[1]); });
+    if(t < 1 - 1e-9) out.push([pt(t), p1]);
+  }
+  return out;
 }
 
 /* La longueur des côtés de P et de Q posés sur la même ligne et tournés du même

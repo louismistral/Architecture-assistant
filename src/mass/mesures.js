@@ -27,12 +27,12 @@ import { feuExige, imposees } from "../data/orientation.js";
 import { noter } from "../data/jugement.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
-import { FLOORS, areaOf, grade, lvlOf, onFloor } from "../mix/floors.js";
+import { FLOORS, areaOf, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
 import { airePosable, alignement, assise, attracteurs, bbox, bordDist, cibleVue, coins, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, aireEtage, recouvrement, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
+import { CONTACT, MASS, aireEtage, recouvrement, recouvrementSol, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volEtage, volNiv, volRects, volTitre as nomV } from "./model.js";
 import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
@@ -70,7 +70,7 @@ export function terrainLibre(vols, r){
   var emp = 0;
   vols.forEach(function(v){ emp += empSol(v); });
   /* deux corps du même bâtiment qui se recouvrent n'occupent leur part commune qu'une fois */
-  emp -= recouvrement(vols, grade(), true).aire;
+  emp -= recouvrementSol(vols);
   var posable = airePosable(r == null ? reculVise() : r);
   return { libre: posable - emp, posable: posable,
            besoin: courProgramme() + RULES.ext.voitures * RULES.ext.mPlace };
@@ -449,7 +449,7 @@ function lire(vols){
     fac -= r.facade;
     bat -= ri;
   });
-  var r0 = recouvrement(vols, grade(), true).aire;
+  var r0 = recouvrementSol(vols);
   emp -= r0;
   vol -= r0 * RULES.haut.acrotere;
 

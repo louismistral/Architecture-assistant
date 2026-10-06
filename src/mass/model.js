@@ -34,7 +34,7 @@ import { BLOCKS, FLOORS, areaOf, avecCloisons, flInterieur, flHeight, flName, fl
   from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { coteDe, toutesCotes } from "../mix/opts.js";
-import { aire, airePoly, assise, coins, diffRects, ecart, ecartAngle, interConvexe, local, longueurCommune, longueurDans, unionRects } from "./geom.js";
+import { aire, airePoly, assise, coins, diffRects, ecart, ecartAngle, horsDe, interConvexe, local, longueurCommune, longueurDans, moins, unionRects } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
    Chacun est une FAÇON DE COMPOSER, pas un style : il dit combien de corps, où
@@ -470,13 +470,21 @@ export function lies(a, b){
    n'est pas de l'enveloppe scolaire : il ne compte pas.
    ponytail: paire par paire — une zone commune à TROIS corps serait comptée de
    travers ; une vraie union de polygones le jour où ça arrive. */
+/* UN CONTACT N'EST PAS UN RECOUVREMENT — à `CONTACT` près, comme partout ailleurs
+   (`touchent`, `chevaucheMain`) : deux corps qui se touchaient avant restent à 0. */
+function serecouvrent(a, ea, b, eb){
+  var HA = volRects(a, ea), HB = volRects(b, eb), e = Infinity;
+  HA.forEach(function(r){ HB.forEach(function(q){ e = Math.min(e, ecart(r, q)); }); });
+  return e < -CONTACT;
+}
+/* La part commune est au PLUS GRAND des deux à cet étage ; à égalité, au premier de la liste. */
+function garde(o, eo, v, ev, vols){
+  var ao = aireEtage(eo), av = aireEtage(ev);
+  return ao > av || (ao === av && vols.indexOf(o) < vols.indexOf(v));
+}
 function commun(a, ea, b, eb, murs){
   var HA = volRects(a, ea), HB = volRects(b, eb), rien = { aire:0, enfouie:0, g:null };
-  /* UN CONTACT N'EST PAS UN RECOUVREMENT — à `CONTACT` près, comme partout ailleurs
-     (`touchent`, `chevaucheMain`) : deux corps qui se touchaient avant restent à 0. */
-  var e = Infinity;
-  HA.forEach(function(r){ HB.forEach(function(q){ e = Math.min(e, ecart(r, q)); }); });
-  if(e >= -CONTACT) return rien;
+  if(!serecouvrent(a, ea, b, eb)) return rien;
   if(!murs){
     /* les intérieurs : les parts d'un volume fusionné se touchent sans se recouvrir */
     var aire = 0, gx = 0, gy = 0;
@@ -534,6 +542,25 @@ export function recouvrement(vols, i, murs, haut){
   }
   return { aire:aire, enfouie:enfouie, volume:volume, facade:facade };
 }
+/* `v` est-il posé, à un étage au moins, sur un corps de son bâtiment ? */
+export function recouvreLie(v, vols){
+  return !v.ph && vols.some(function(o){
+    return o !== v && !o.ph && lies(v, o) && v.lv.some(function(e){
+      var eo = volEtage(o, e.i);
+      return !!eo && serecouvrent(v, e, o, eo);
+    });
+  });
+}
+/* L'EMPRISE COMMUNE, vue du ciel : chaque corps par son plus bas étage hors sol
+   (`etageBas`, celui de `volSol`) — un corps qui ne commence qu'au R+1, posé au-dessus
+   du bout d'un autre, la partage aussi. Quand les deux posent au rez, c'est
+   `recouvrement(vols, rez, true).aire`. */
+export function recouvrementSol(vols){
+  var E = (vols || []).filter(function(v){ return !v.ph && etageBas(v); }), s = 0, j, k;
+  for(j = 0; j < E.length; j++) for(k = j + 1; k < E.length; k++)
+    if(lies(E[j], E[k])) s += commun(E[j], etageBas(E[j]), E[k], etageBas(E[k]), true).aire;
+  return s;
+}
 /* Ce que `v` cède à l'étage `i` : la partie commune appartient au PLUS GRAND
    des deux corps à cet étage — la barre garde son programme, le bloc posé
    dessus en cède ; à égalité, le premier de la liste garde. Les parts cédées
@@ -546,14 +573,13 @@ export function partCedee(v, vols, i){ return cedeeDe(v, vols, i).aire; }
 export function cedeeDe(v, vols, i){
   var ev = volEtage(v, i);
   if(!ev || v.ph) return { aire:0, u:0, v:0 };
-  var av = aireEtage(ev), iv = vols.indexOf(v), c = 0, u = 0, w = 0;
+  var c = 0, u = 0, w = 0;
   var p = local({ x:v.x, y:v.y, w:0, d:0, a:v.a }, ev.dx || 0, ev.dy || 0), ux = Math.cos(v.a), uy = Math.sin(v.a);
-  vols.forEach(function(o, k){
+  vols.forEach(function(o){
     if(o === v || o.ph || !lies(v, o)) return;
     var eo = volEtage(o, i);
     if(!eo) return;
-    var ao = aireEtage(eo);
-    if(!(ao > av || (ao === av && k < iv))) return;
+    if(!garde(o, eo, v, ev, vols)) return;
     var x = commun(v, ev, o, eo, false);
     if(!x.aire) return;
     c += x.aire;
@@ -561,6 +587,42 @@ export function cedeeDe(v, vols, i){
     w += x.aire * (-(x.g[0] - p.x) * uy + (x.g[1] - p.y) * ux);
   });
   return { aire:c, u: c ? u / c : 0, v: c ? w / c : 0 };
+}
+
+/* LE DESSIN DE L'UNION : ce qu'il faut dessiner de l'étage `e` de `v` pour que deux
+   corps liés posés l'un sur l'autre se lisent comme UN bâtiment — le plan, la 3D,
+   l'export le lisent. `null` s'il ne recouvre personne : on dessine comme avant.
+   `garde` : ceux à qui il cède la part commune (`cedeeDe`) ; `emprise` : son emprise
+   hors tout privée de la leur ; `cel(P)` : une cellule de son programme privée de
+   leurs intérieurs, `celBords(P)` ce qui reste de son contour ; `murs` : ses murs privés des intérieurs de TOUS les autres et
+   de l'emprise de ceux qui gardent ; `bords` : son contour privé de l'emprise des
+   autres. Morceaux convexes et disjoints : réunis, ceux de la paire font l'union.
+   Deux étages à deux altitudes (une hauteur propre, une assise à part) ne font pas
+   un prisme d'union : ils gardent chacun leur boîte. */
+export function dessinDe(v, e, vols){
+  if(!e || v.ph) return null;
+  var G = [], A = [], zv = null;
+  function z(o, eo){ var s = etagesDe(o, vols).filter(function(x){ return x.e === eo; })[0]; return s ? [s.z0, s.z1] : [NaN, NaN]; }
+  vols.forEach(function(o){
+    if(o === v || o.ph || !lies(v, o)) return;
+    var eo = volEtage(o, e.i);
+    if(!eo || !serecouvrent(v, e, o, eo)) return;
+    var zo = z(o, eo);
+    zv = zv || z(v, e);
+    if(!(Math.abs(zo[0] - zv[0]) <= .05 && Math.abs(zo[1] - zv[1]) <= .05)) return;
+    A.push([o, eo]);
+    if(garde(o, eo, v, e, vols)) G.push([o, eo]);
+  });
+  if(!A.length) return null;
+  function de(L, f){ return [].concat.apply([], L.map(function(x){ return f(x[0], x[1]).map(coins); })); }
+  var gI = de(G, volInts), gO = de(G, volRects), aI = de(A, volInts), aO = de(A, volRects);
+  var R = volRects(v, e).map(coins), emp = [], murs = [], bords = [];
+  /* les parts d'un volume fusionné se recouvrent de l'épaisseur du mur commun disparu */
+  R.forEach(function(P, k){ emp = emp.concat(moins(P, R.slice(0, k).concat(gO))); });
+  mursDe(v, e).forEach(function(m){ murs = murs.concat(moins(coins(m), aI.concat(gO))); });
+  contourDe(v, e).loops.forEach(function(L){ bords = bords.concat(horsDe(L, aO)); });
+  return { garde:G.map(function(x){ return x[0]; }), emprise:emp, murs:murs, bords:bords,
+           cel:function(P){ return moins(P, gI); }, celBords:function(P){ return horsDe(P, gI); } };
 }
 
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
@@ -628,23 +690,23 @@ export function volAire(v){
   v.lv.forEach(function(e){ a += aireEtage(e); });
   return a;
 }
-/* L'emprise au sol : le plus bas étage hors sol, celui qui touche le terrain. */
-export function volSol(v){
+/* Le plus bas étage hors sol, celui qui touche le terrain — null s'il n'y en a pas. */
+function etageBas(v){
   var best = null;
   v.lv.forEach(function(e){
     if(lvlOf(e.i) < 0) return;
     if(!best || e.i < best.i) best = e;
   });
+  return best;
+}
+/* L'emprise au sol : celle du plus bas étage hors sol. */
+export function volSol(v){
+  var best = etageBas(v);
   return best ? volRect(v, best) : null;
 }
 /* Toutes les emprises du plus bas étage hors sol — une par part. */
 export function solRects(v){
-  var best = null;
-  v.lv.forEach(function(e){
-    if(lvlOf(e.i) < 0) return;
-    if(!best || e.i < best.i) best = e;
-  });
-  return volRects(v, best || v.lv[0]);
+  return volRects(v, etageBas(v) || v.lv[0]);
 }
 export function volCoins(v){
   var r = volSol(v);

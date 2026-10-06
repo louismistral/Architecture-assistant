@@ -989,6 +989,14 @@ function jeu(a, b){
   });
   return best;
 }
+/* Un corps posé à la main sur un corps de son bâtiment (`recouvre`) peut encore se
+   recoller à un tiers : ce qu'il recouvrait DÉJÀ ne l'en empêche pas, tout
+   recouvrement nouveau oui. Le générateur ne recouvre rien : il n'y voit aucune
+   différence. */
+function sansDeja(m, vols){
+  var deja = vols.filter(function(o){ return o !== m && recouvre(m, o); });
+  return deja.length ? vols.filter(function(o){ return deja.indexOf(o) < 0; }) : vols;
+}
 function recoller(vols){
   var D = V.fusionDist == null ? 1 : V.fusionDist;
   for(var i = 0; i < vols.length; i++) for(var j = i + 1; j < vols.length; j++){
@@ -997,7 +1005,7 @@ function recoller(vols){
     if(ecartVols(a, b, null, D + 1) > D) continue;
     /* celui qui bouge : le second, sinon le premier, à l'angle de l'autre */
     [[b, a], [a, b]].some(function(x){
-      var m = x[0], f = x[1], g0 = { x:m.x, y:m.y, a:m.a };
+      var m = x[0], f = x[1], g0 = { x:m.x, y:m.y, a:m.a }, libres = sansDeja(m, vols);
       m.a = f.a + Math.round((m.a - f.a) / (Math.PI / 2)) * Math.PI / 2;
       var J = jeu(f, m);
       if(J && Math.abs(J.g) > 1e-3 && J.g <= D){
@@ -1005,7 +1013,7 @@ function recoller(vols){
         /* `J` dit de combien m doit avancer vers f, dans le repère de f */
         m.x = m.x + J.u * c - J.v * s; m.y = m.y + J.u * s + J.v * c;
       }
-      if(J && J.g <= D && dansPerimetre(m) && !chevauche(m, vols)){ aligner(f, m, J, vols); return true; }
+      if(J && J.g <= D && dansPerimetre(m) && !chevauche(m, libres)){ aligner(f, m, J, libres); return true; }
       m.x = g0.x; m.y = g0.y; m.a = g0.a;
       return false;
     });
