@@ -13,7 +13,7 @@
    ========================================================================= */
 import { trace } from "../core/pdf.js";
 import { PER, SITE } from "../data/site.js";
-import { AXO, ENCRE, FORMATS, NUIT } from "../data/planches.js";
+import { AXO, ENCRE, FORMATS, NUIT, TRAITS } from "../data/planches.js";
 import { trait } from "./etages.js";
 import { VUE, axo, peindre, prisme } from "./diagramme.js";
 
@@ -44,7 +44,7 @@ function existants(){
    grande pièce ; sur les façades vues, le long des pièces qui les touchent.
    Une face cachée par un volume peint plus tard l'est avec son texte. */
 /* l'éclatée est dessinée plus petit que le 1:200 : ses traits s'y réduisent */
-var ECH = 0.75;
+var ECH = 0.75, MM = 72 / 25.4;   /* `TRAITS` est en mm, la planche en pt */
 var NOIR = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], BLANC_T = [1, 1, 1];
 /* le nom d'une pièce sur l'axonométrie : son chapitre (`AXO.noms`) */
 function famDe(p){
@@ -198,10 +198,10 @@ export function dessinEclatee(t, c, niveaux){
   N.forEach(function(n, k){
     if(n === R) par.forEach(function(p){
       t[p.ferme ? "poly" : "ligne"](p.pts.map(function(r){ return A(r[0], r[1], n.z - AXO.dalle); }),
-        { stroke:NUIT.encre, lw:NUIT.lw.min * 2 * ECH, dash:[6, 3] });
+        { stroke:NUIT.encre, lw:TRAITS.menuiserie * MM * ECH, dash:[6, 3] });
     });
     /* la dalle : le poché extérieur de chaque corps, épaissi */
-    n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:NUIT.lw.structure * ECH }); });
+    n.prims.forEach(function(p){ if(p.cl === "mur") prisme(t, A, p.pts, n.z - AXO.dalle, n.z, NOIR, { stroke:NUIT.trait, lw:TRAITS.coupe * MM * ECH }); });
     n.prims.forEach(function(p){
       if(p.ctx || p.g || p.k !== "p") return;
       trait(t, p, function(r){ return A(r[0], r[1], n.z); }, 1.2, 0, ECH);
@@ -212,7 +212,7 @@ export function dessinEclatee(t, c, niveaux){
     var sup = N[k + 1];
     if(sup) noyaux(n).forEach(function(c){
       var d = noyaux(sup).filter(function(e){ return Math.hypot(e.c[0] - c.c[0], e.c[1] - c.c[1]) < 1.5; })[0];
-      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.encre, lw:NUIT.lw.min * 2 * ECH, dash:[3, 2] }); });
+      if(d) c.q.forEach(function(r){ t.ligne([A(r[0], r[1], n.z + AXO.murs), A(r[0], r[1], sup.z - AXO.dalle)], { stroke:NUIT.encre, lw:TRAITS.menuiserie * MM * ECH, dash:[3, 2] }); });
     });
     /* le nom du niveau, à gauche de sa dalle */
     var bas = pts.reduce(function(m, r){ var a = A(r[0], r[1], n.z); return a[0] < m[0] ? a : m; }, [Infinity, 0]);
@@ -229,11 +229,14 @@ function murs(prims, z){
   var C = [], vu = {}, e = AXO.cloison / 2;
   function pose(q){
     var x = 0, y = 0; q.forEach(function(r){ x += r[0] / q.length; y += r[1] / q.length; });
-    C.push({ x:x, y:y, q:q, z0:z, z1:z + AXO.murs, c:NOIR, o:{ stroke:NUIT.trait, lw:NUIT.lw.structure * ECH * .6 } });
+    C.push({ x:x, y:y, q:q, z0:z, z1:z + AXO.murs, c:NOIR, o:{ stroke:NUIT.trait, lw:TRAITS.coupe * MM * ECH * .6 } });
   }
-  prims.forEach(function(p, i){
+  /* le k-ième poché et le k-ième sol sont ceux du même corps : tous les
+     pochés se dessinent avant tous les sols */
+  var sols = prims.filter(function(q){ return q.cl === "circ" && !q.ctx && !q.g; }), km = 0;
+  prims.forEach(function(p){
     if(p.cl !== "mur") return;
-    var dans = prims.slice(i + 1).filter(function(q){ return q.cl === "circ"; })[0];
+    var dans = sols[km++];
     if(!dans || dans.pts.length !== 4 || p.pts.length !== 4) return;
     for(var k = 0; k < 4; k++) pose([p.pts[k], p.pts[(k + 1) % 4], dans.pts[(k + 1) % 4], dans.pts[k]]);
   });

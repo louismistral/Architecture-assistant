@@ -270,7 +270,7 @@ export function postesDe(i, avecHors){
    son indice. Les cotes sont celles de CE niveau : un étage plus petit que
    celui d'en dessous est un retrait, un étage décalé est un porte-à-faux. */
 /* LES MURS. `e.w × e.d` est la surface UTILE intérieure, celle que le programme
-   demande et que le bilan compte ; le mur extérieur (`RULES.haut.mur`, 0,50 m)
+   demande et que le bilan compte ; le mur extérieur (`RULES.haut.mur`, 0,40 m)
    s'ajoute AUTOUR. `volRect` rend l'emprise ARCHITECTURALE, murs compris — c'est
    elle que mesurent le périmètre, les distances, la cour et le dessin —, et
    `volInt` l'intérieur, où l'on pave le programme. */

@@ -18,7 +18,8 @@ import { PMAP, PROX, uOf } from "../mix/prog.js";
 import { adjActive, coteDe } from "../mix/opts.js";
 import { nearestDims } from "../core/geometry.js";
 import { saveSoon } from "../mix/store.js";
-import { MASS, niveaux, partiOf } from "../mass/model.js";
+import { MASS, datumEcole, etagesDe, niveaux, partiOf } from "../mass/model.js";
+import { ETAGES, TRAITS } from "../data/planches.js";
 import { massOf } from "../mass/etat.js";
 import { TYPO } from "./etat.js";
 import { fige } from "../core/verrou.js";
@@ -43,15 +44,25 @@ export function donneesTypo(){
       }) };
   });
   var pid = MASS.vol.parti || MASS.parti;
+  /* LES COTES DE NIVEAU : le pied de chaque étage de chaque volume, depuis le
+     ±0.00 du rez de l'école, et sa hauteur — chaque volume a la sienne
+     (`etagesDe`) */
+  var vols = massOf().vol, z0 = datumEcole(MASS.vol), alt = {};
+  MASS.vol.forEach(function(v){
+    etagesDe(v).forEach(function(s, k, S){
+      var r = z0 != null ? z0 : S[0].z0;
+      alt[v.id + "|" + s.e.i] = { z:Math.round((s.z0 - r) * 100) / 100, h:s.h };
+    });
+  });
   return { floors:floors, graine:TYPO.graine, verrou:fige("typologie"),
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
-                       vols:ailes(massOf().vol), ponts:MASS.pont || [] } },
+                       vols:ailes(vols), ponts:MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
     liens:PROX.filter(function(l){ return adjActive(l.id); }).map(function(l){ return { a:l.a, b:l.b, q:l.q }; }),
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
        des charges, le noyau, le feu, les murs, le module, la distance d'un lien */
     regles:{ fusion:V.fusionDist == null ? 1 : V.fusionDist, couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
-             mur:RULES.haut.mur, cloison:RULES.haut.cloison, module:V.module, lien:RULES.circ.proche,
+             mur:RULES.haut.mur, cloison:RULES.haut.cloison, plan:RULES.plan, traits:TRAITS, alt:alt, echelle:ETAGES.echelle, module:V.module, lien:RULES.circ.proche,
              /* le sol libre toléré dans un corps ; null, la ligne est éteinte */
              vide:enVigueur("sol-vide") ? V.solVide : null } };
 }

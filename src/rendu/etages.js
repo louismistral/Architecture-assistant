@@ -10,10 +10,10 @@
    cadrage : les planches se superposent.
    ========================================================================= */
 import { trace } from "../core/pdf.js";
-import { ETAGES, FORMATS, NUIT } from "../data/planches.js";
+import { ETAGES, FORMATS, NUIT, TRAITS } from "../data/planches.js";
 
 var MM = 72 / 25.4, K = 1000 / ETAGES.echelle * MM;   /* pt par mètre */
-var PX = 0.35;                                         /* un trait d'écran, en pt */
+var PX = 0.75;                                         /* un px d'écran (96 par pouce), en pt */
 var GRIS = [0.4, 0.4, 0.4];
 
 function pointsDe(p){ return p.k === "t" ? [[p.x, p.y]] : p.pts; }
@@ -61,10 +61,9 @@ export function dessinPlan(t, n, cad, z, cx, cy){
   t.decoupe([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]]]);
   /* le bâtiment, et lui seul, sur fond noir : le poché extérieur de chaque corps */
   n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:NUIT.fond }); });
-  /* l'échelle graphique de l'écran n'a rien à faire sur une planche cotée au 1:200 */
-  /* ni cotes ni échelle graphique : la planche est au 1:200 ; le nord reste */
+  /* tout le plan de l'écran : ses cotes, son échelle graphique et le nord
+     — la planche est au 1:200 et le dit dans son titre */
   n.prims.forEach(function(p){
-    if(p.g === "echelle" || p.g === "dim") return;
     if(p.ctx === "exist" && p.ferme){
       t.poly(p.pts.map(P), { fill:ETAGES.existant.map(function(v){ return v + (1 - v) * cl; }) });
       return;
@@ -81,16 +80,18 @@ export function dessinPlan(t, n, cad, z, cx, cy){
   t.fin();
 }
 
-/* UN ÉLÉMENT DU PLAN, EN TRAIT : blanc dans le bâtiment (sur son fond noir),
-   noir dehors ; aucun aplat. Ce qui
-   n'avait qu'un aplat se dessine par son contour s'il compte — le poché
-   (murs), la circulation qu'il entoure, les noyaux — et disparaît sinon (les
-   percements, les hachures). `map` place un point du site sur la feuille, `k`
-   les points par mètre ; `efface` (0 à 1) fond le trait du dehors dans le papier ; `ech`
-   réduit les épaisseurs (`NUIT.lw`) pour un dessin plus petit. */
+/* UN ÉLÉMENT DU PLAN, EN TRAIT, selon sa place dans la hiérarchie : le
+   négatif d'un plan à l'encre. Dans le bâtiment, sur son fond noir : ce que
+   la coupe tranche — murs extérieurs, cloisons, gaine — en POCHÉ gris
+   (`NUIT.poche`), une cloison à son épaisseur réelle ; les sols et les
+   percements rendent le fond ; tout le reste en trait blanc, de l'épaisseur
+   de son rang (`TRAITS`, en mm) — menuiseries moyen, vu fin, au-dessus en
+   tirets, axes en trait mixte, cotes très fin. Dehors (contexte, cotes,
+   échelle, nord), l'encre sur le papier, qui s'efface vers lui. `map` place
+   un point du site sur la feuille, `k` les points par mètre ; `efface` (0 à
+   1) fond le trait du dehors dans le papier ; `ech` réduit les épaisseurs pour
+   un dessin plus petit. */
 export function trait(t, p, map, k, efface, ech){
-  /* dedans, le blanc sur le noir du bâtiment ; dehors (contexte, cotes,
-     échelle, nord), l'encre sur le papier, qui s'efface vers lui */
   var dehors = p.ctx || p.g === "dim" || p.g === "echelle" || p.g === "nord";
   var c = (dehors ? NUIT.encre : NUIT.trait).map(function(v, i){ return v + (NUIT.papier[i] - v) * (dehors ? efface || 0 : 0); });
   if(p.k === "t"){
@@ -99,13 +100,26 @@ export function trait(t, p, map, k, efface, ech){
     t.texte(q[0], q[1], p.s, { size:p.size * k, gras:p.gras, fill:c, ancre:"middle", rot:rot });
     return;
   }
-  var aplat = !p.stroke && p.fill;
-  if(aplat && !/\b(mur|circ|cagef)\b/.test(p.cl || "")) return;
-  if(!p.stroke && !aplat) return;
-  var L = NUIT.lw, e = ech || 1;
-  var lw = aplat ? L.structure : Math.max(L.min, (p.lwPt != null ? p.lwPt * PX : p.lw * k) * L.fois);
-  var o = { stroke:c, lw:lw * e };
-  var d = !aplat && (p.dashPt ? p.dashPt.map(function(v){ return v * PX * 2; }) : p.dash && p.dash.map(function(v){ return v * k; }));
-  if(d) o.dash = d;
-  t[p.ferme ? "poly" : "ligne"](p.pts.map(map), o);
+  var cl = p.cl || "", e = ech || 1, MM = 72 / 25.4, pts = p.pts.map(map);
+  /* l'échelle graphique garde ses cases, noires et blanches */
+  if(p.g === "echelle"){ t.poly(pts, { fill:p.fill, stroke:c, lw:TRAITS.cote * MM * e }); return; }
+  if(!dehors){
+    if(/\b(mur|poche)\b/.test(cl)){ if(p.fill) t.poly(pts, { fill:NUIT.poche }); return; }
+    if(/\b(circ|gap|gapw|vide)\b/.test(cl)){ if(p.fill) t.poly(pts, { fill:NUIT.fond }); return; }
+    if(/\b(room|cell|part|cagef)\b/.test(cl)){
+      if(p.stroke && p.lw) t[p.ferme ? "poly" : "ligne"](pts, { stroke:NUIT.poche, lw:p.lw * k * e });
+      return;
+    }
+  }
+  if(!p.stroke){
+    /* un plein sans trait — le triangle d'un niveau, le point d'une flèche */
+    if(p.fill && /\b(niv|point|nord)\b/.test(cl)) t.poly(pts, { fill:c });
+    return;
+  }
+  var w = TRAITS[p.w] != null ? p.w : "vu";
+  var o = { stroke:c, lw:TRAITS[w] * MM * e };
+  var d = w === "dessus" ? TRAITS.tirets : w === "axe" ? TRAITS.mixte : null;
+  if(d) o.dash = d.map(function(v){ return v * MM * e; });
+  else if(p.dashPx) o.dash = p.dashPx.map(function(v){ return v * PX * e; });
+  t[p.ferme ? "poly" : "ligne"](pts, o);
 }

@@ -92,7 +92,7 @@ export var ETAGES = {
 export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
   /* l'éclatée empile ses niveaux : la feuille est en hauteur */
   eclateePortrait:true,
-  /* les murs, coupés à `murs` m au-dessus de la dalle : 50 cm dehors, 10 cm
+  /* les murs, coupés à `murs` m au-dessus de la dalle : 40 cm dehors, 10 cm
      dedans — l'épaisseur des cloisons ; dessus poché, flancs gris */
   murs:1.0, cloison:0.10,
   /* les noms écrits sur l'axonométrie du volume, et rien d'autre : un par
@@ -103,16 +103,27 @@ export var AXO = { format:"A1", ecart:10, pas:1.15, dalle:0.4,
   noms:{ ecole:"École primaire", sport:"Salle de sport", uape:"UAPE",
          tech:"Locaux techniques", piscine:"Piscine" } };
 
+/* LA HIÉRARCHIE DES TRAITS — SOURCE UNIQUE, en mm sur le papier. Un plan
+   dont tous les traits pèsent pareil ne se lit pas : ce que la coupe tranche
+   (murs, poteaux — pochés, et leur contour) le plus fort ; les menuiseries
+   coupées (cadres de portes et de fenêtres) moyen ; ce qu'on voit sous la
+   coupe (sol, marches, mobilier, allèges) fin ; ce qui est au-dessus ou caché
+   (porte-à-faux, marches au-delà de la coupe) fin en tirets ; les axes fin en
+   trait mixte ; cotes et textes très fin. L'écran les lit à 96 px par pouce
+   (`plans.html`, comme imprimé à 100 %), les planches en points (`trait()`,
+   `etages.js`) : une seule table pour les deux. */
+export var TRAITS = { coupe:0.50, menuiserie:0.25, vu:0.18, dessus:0.18, axe:0.13, cote:0.09,
+  /* les motifs, en mm : tirets (au-dessus, caché), trait mixte (axes) */
+  tirets:[1.5, 1.0], mixte:[4, 1, 0.5, 1] };
+
 /* LE TRAIT BLANC SUR NOIR — les plans d'étage et l'axonométrie éclatée : la
-   feuille est BLANCHE ; seul notre bâtiment est sur fond noir, tout en lignes
-   blanches, sans aplat ni hachure. Ce qui est dehors — le contexte, les cotes,
-   les titres — est à l'encre noire sur le papier ; le contexte s'efface vers
-   le papier. */
+   feuille est BLANCHE ; notre bâtiment est sur fond noir, en lignes blanches,
+   et ce que la coupe tranche — murs, cloisons — en POCHÉ gris : le négatif
+   d'un plan à l'encre, où les murs se lisent d'abord. Ce qui est dehors — le
+   contexte, les cotes, les titres — est à l'encre noire sur le papier ; le
+   contexte s'efface vers le papier. Les épaisseurs : `TRAITS`. */
 export var NUIT = { fond:[0, 0, 0], trait:[1, 1, 1], papier:[1, 1, 1], encre:[0, 0, 0], gris:[0.45, 0.45, 0.45],
-  /* les épaisseurs, en pt sur un plan au 1:200 (l'éclatée les réduit) : chaque
-     trait du plan multiplié par `fois`, jamais sous `min` ; la STRUCTURE — le
-     poché des murs, les noyaux — à `structure` */
-  lw:{ fois:2, min:0.4, structure:2.4 } };
+  poche:[0.62, 0.62, 0.62] };
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */

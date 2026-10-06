@@ -81,11 +81,14 @@ body{ padding-inline:var(--s-4); }
 .typo-tab th.n{ text-align:right; }
 .typo-tab td .dot{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:var(--s-2); }
 .st-ok{ color:var(--ok); } .st-warn{ color:var(--warn); } .st-hors{ color:var(--muted-foreground); }
-/* ---- le dessin ---- */
-.mur{fill:var(--ink)}
+/* ---- le dessin ----
+   Les ÉPAISSEURS ne sont pas ici : elles suivent la hiérarchie des traits
+   (`TRAITS`, `data/planches.js`), posée en classes `w-*` au chargement — la
+   même table que les planches du Rendu. Ici, les couleurs et les remplissages. */
+.mur,.poche{fill:var(--ink);stroke:none}
 .circ{fill:var(--paper-2)}
-.room{stroke:var(--ink);stroke-width:.10}
-.cell{stroke:var(--ink);stroke-width:.10}
+/* une cloison est le trait de sa pièce, à son épaisseur réelle (`--cloison`, en m) */
+.room,.cell,.cagef,.part{stroke:var(--ink);stroke-width:var(--cloison)}
 .fam-cla{fill:color-mix(in oklab,var(--f-cla) var(--wash),var(--paper))}
 .fam-adm{fill:color-mix(in oklab,var(--f-adm) var(--wash),var(--paper))}
 .fam-eau{fill:color-mix(in oklab,var(--f-eau) var(--wash),var(--paper))}
@@ -96,37 +99,36 @@ body{ padding-inline:var(--s-4); }
 .fam-ext{fill:color-mix(in oklab,var(--f-ext) var(--wash),var(--paper))}
 .mono .room,.mono .cell{fill:var(--paper)}
 .room:hover,.cell:hover{fill:color-mix(in oklab,var(--plan-accent) 22%,var(--paper))}
-.cagef{fill:var(--paper);stroke:var(--ink);stroke-width:.10}
-.part{stroke:var(--ink);stroke-width:.10;fill:none}
-/* on coupe dans les murs : ils sont pochés, plein noir — 50 cm dehors, 10 cm dedans */
-.gap{fill:var(--paper-2)}
-.gapw{fill:var(--paper)}
-.porte{stroke:var(--ink);fill:none;stroke-width:.7;vector-effect:non-scaling-stroke}
-.arc{stroke:var(--ink-soft);fill:none;stroke-width:.5;vector-effect:non-scaling-stroke;stroke-dasharray:2 2}
-.vitre{stroke:var(--ink);stroke-width:.5;vector-effect:non-scaling-stroke;fill:none}
-.mb{fill:none;stroke:var(--ink);stroke-width:.55;vector-effect:non-scaling-stroke}
-.mb.ch{stroke:var(--ink-soft)}
+.cagef{fill:var(--paper)}
+.part{fill:none}
+/* on coupe dans les murs : ils sont pochés, plein — 40 cm dehors, 10 cm dedans ;
+   un percement est un vide dans le poché */
+.gap,.vide{fill:var(--paper-2);stroke:none}
+.gapw{fill:var(--paper);stroke:none}
+.porte,.arc,.vitre,.allege,.dessus,.axe,.mb,.esc,.nivl{fill:none;stroke:var(--ink)}
+.axe{stroke:var(--ink-soft)}
 .mb.eq{fill:color-mix(in oklab,var(--ink) 7%,transparent)}
 .mb.tab{fill:var(--ink)}
-.mb.cab{stroke-width:.45}
 .mb.pmr{stroke-dasharray:3 2;stroke:var(--ink-soft)}
 .mb.pat{stroke-dasharray:1.5 1.5}
 .mb.rid{stroke-dasharray:6 3;stroke:var(--ink-soft)}
 .mb.tapis{fill:color-mix(in oklab,var(--f-uap) 18%,transparent);stroke:var(--ink-soft)}
-.mb.terrain{stroke:var(--f-spo);stroke-width:.8}
-.mb.bassin{fill:color-mix(in oklab,var(--f-pis) 30%,transparent);stroke:var(--ink)}
+.mb.terrain{stroke:var(--f-spo)}
+.mb.bassin{fill:color-mix(in oklab,var(--f-pis) 30%,transparent)}
 .mb.ligne{stroke:var(--f-pis);stroke-dasharray:4 3}
-.mb.lit{stroke-width:.45}
-.mb.marche{stroke-width:.45}
 .mb.asc{fill:color-mix(in oklab,var(--ink) 10%,transparent)}
-.mb.fleche{stroke-width:.6;marker-end:url(#fl)}
-.site{fill:none;stroke:var(--ink-soft);stroke-width:.9;vector-effect:non-scaling-stroke;stroke-dasharray:8 4 2 4}
-.exist{fill:var(--hatch);stroke:var(--ink-soft);stroke-width:.5;vector-effect:non-scaling-stroke}
-.ombre{fill:none;stroke:var(--ink-soft);stroke-width:.6;vector-effect:non-scaling-stroke;stroke-dasharray:3 3}
+.esc.point,.niv{fill:var(--ink)}
+.esc.fleche{marker-end:url(#fl)}
+.esct,.nivt{font-family:var(--font-mono);fill:var(--ink);pointer-events:none}
+.esct{font-weight:600}
+.site{fill:none;stroke:var(--ink-soft)}
+.exist{fill:var(--hatch);stroke:var(--ink-soft)}
+.ombre{fill:none;stroke:var(--ink-soft)}
 .lab{font-family:var(--font-sans);fill:var(--ink);font-weight:600;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:.14;stroke-linejoin:round}
 .lab .m2{font-family:var(--font-mono);font-weight:400;fill:var(--ink-soft)}
-.dim{stroke:var(--ink-soft);stroke-width:.6;vector-effect:non-scaling-stroke}
+.dim{stroke:var(--ink-soft);fill:none}
 .dimt{font-family:var(--font-mono);fill:var(--ink-soft);pointer-events:none}
+.bulle{fill:var(--paper);stroke:var(--ink-soft)}
 .entree{fill:var(--plan-accent)}
 .nord{fill:var(--ink)}
 .hideF .mbg{display:none}
@@ -217,6 +219,20 @@ body{ padding-inline:var(--s-4); }
    l'ouverture (`src/typo/donnees.js`). Ouverte seule, la page n'a rien à dessiner. */
 var DATA = null;
 try { DATA = parent !== window && parent.typoDonnees ? parent.typoDonnees() : null; } catch(e){}
+/* LA HIÉRARCHIE DES TRAITS : `TRAITS` (mm, `data/planches.js`) en px d'écran, à
+   96 px par pouce — le plan se lit à l'écran comme imprimé à 100 %, quel que
+   soit le zoom (« non-scaling »). Une classe `w-*` par rang. */
+(function(){
+  var R = DATA && DATA.regles;
+  if(!R || !R.traits) return;
+  var T = R.traits, px = 96 / 25.4, css = ":root{--cloison:" + R.cloison + "}";
+  function m(a){ return a.map(function(v){ return (v * px).toFixed(2); }).join(" "); }
+  ["coupe", "menuiserie", "vu", "dessus", "axe", "cote"].forEach(function(k){
+    css += ".w-" + k + "{stroke-width:" + (T[k] * px).toFixed(2) + "px;vector-effect:non-scaling-stroke}";
+  });
+  css += ".w-dessus{stroke-dasharray:" + m(T.tirets) + "}.w-axe{stroke-dasharray:" + m(T.mixte) + "}";
+  var el = document.createElement("style"); el.textContent = css; document.head.appendChild(el);
+})();
 </script>
 <script>
 /* ===== Générateur de plans : lit la pile du mixer et les volumes du massing =====
@@ -240,7 +256,7 @@ var PG = (function(){
   var COULOIR = R0.couloir || 2.40, MUR = R0.mur || 0.50, CLOISON = R0.cloison || 0.10,
       CAGE_A = R0.cage || 24, NOY = R0.noyau || { prof:5, volee:1.2, asc:[2.1, 2.4] },
       FEU = R0.feu || { cageSeuil:900, fuiteSimple:35, fuiteDouble:50 },
-      LIEN = R0.lien || 15, MODULE = R0.module || 0.5, VIDE = R0.vide,
+      LIEN = R0.lien || 15, MODULE = R0.module || 0.5, VIDE = R0.vide, PLAN = R0.plan || {},
       FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6, PALIER = 1.2;
   /* l'ordre des familles : les pièces d'une famille se posent ensemble */
   var FAMS_O = ["cla", "eau", "uap", "adm", "spo", "tec", "pis", "ext"];
@@ -837,7 +853,7 @@ var PG = (function(){
   return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes,
            local:local, versEtage:versEtage, versMonde:versMonde,
            COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE,
-           PETIT:PETIT, VIDE:VIDE };
+           PETIT:PETIT, VIDE:VIDE, PLAN:PLAN };
 })();
 if(typeof module !== "undefined") module.exports = PG;
 
@@ -851,6 +867,24 @@ var MEUBLES = (function(){
   function R(u, v, w, h, k){ return { t:"r", u:u, v:v, w:w, h:h, k:k || "" }; }
   function C(u, v, r, k){ return { t:"c", u:u, v:v, r:r, k:k || "" }; }
   function L(u1, v1, u2, v2, k){ return { t:"l", u1:u1, v1:v1, u2:u2, v2:v2, k:k || "" }; }
+  function X(u, v, s, h, k){ return { t:"x", u:u, v:v, s:s, h:h, k:k || "" }; }
+  function PL(pts, k){ return { t:"p", pts:pts, k:k || "" }; }
+  /* les appareils aux cotes de `RULES.plan.sanitaire`. Un lavabo l × p adossé
+     à un mur, (u, v) son coin ; `surU` : sa largeur le long de u. */
+  function lavabo(o, u, v, surU){
+    var S = PG.PLAN.sanitaire.lavabo, w = surU ? S[0] : S[1], h = surU ? S[1] : S[0];
+    o.push(R(u, v, w, h, "eq")); o.push({ t:"e", u:u + w / 2, v:v + h / 2, rx:w * 0.32, ry:h * 0.32, k:"" });
+    return o;
+  }
+  /* une cuvette de WC, l × p tout compris : le réservoir contre le mur, la
+     cuvette devant ; (cu, cv) le point du mur sur son axe, `cote` le mur
+     ("u+" : celui des u croissants…) */
+  function cuvette(o, cu, cv, cote){
+    var S = PG.PLAN.sanitaire.wc, l = S[0], p = S[1], r = 0.18, sg = cote[1] === "+" ? -1 : 1, c = r + (p - r) / 2;
+    if(cote[0] === "v"){ o.push(R(cu - l / 2, sg > 0 ? cv : cv - r, l, r)); o.push({ t:"e", u:cu, v:cv + sg * c, rx:l * 0.45, ry:(p - r) / 2, k:"eq" }); }
+    else { o.push(R(sg > 0 ? cu : cu - r, cv - l / 2, r, l)); o.push({ t:"e", u:cu + sg * c, v:cv, rx:(p - r) / 2, ry:l * 0.45, k:"eq" }); }
+    return o;
+  }
 
   function etageres(W, H, out, cotes, p){
     p = p || 0.5;
@@ -866,7 +900,7 @@ var MEUBLES = (function(){
     o.push(R(0.06, H * 0.5 - 2, 0.1, 4, "tab"));                 /* tableau */
     o.push(R(1.0, H * 0.5 - 0.8, 0.7, 1.6));                    /* bureau du maître */
     o.push(R(1.85, H * 0.5 - 0.22, 0.42, 0.44, "ch"));
-    o.push(R(0.4, 0.06, 0.6, 0.45, "eq"));                       /* lavabo */
+    lavabo(o, 0.4, 0.06, true);
     if(W > 5) o.push(R(1.3, 0.06, Math.max(0, W - 2.9), 0.45));  /* armoires côté couloir */
     var u = 2.9, n = 0;
     while(u + 0.55 + 0.45 <= W - 0.4){
@@ -903,7 +937,7 @@ var MEUBLES = (function(){
   }
   function acm(W, H){
     var o = []; etageres(W, H, o, "g", 0.6);
-    o.push(R(0.8, 0.06, W - 1.8, 0.6, "eq"));                    /* plans de travail, éviers */
+    o.push(R(0.8, 0.06, W - 1.8, PG.PLAN.travail, "eq"));         /* plans de travail, éviers */
     for(var u = 1.6; u + 1.2 <= W - 0.6; u += 2.6)
       for(var v = 1.6; v + 2.4 <= H - 0.6; v += 3.3){
         o.push(R(u, v, 1.2, 2.4));
@@ -924,7 +958,7 @@ var MEUBLES = (function(){
   }
   function maitres(W, H){
     var o = [];
-    o.push(R(W - 0.7, 0.9, 0.62, Math.min(3.6, H - 1.2), "eq"));    /* agencement cuisine */
+    o.push(R(W - PG.PLAN.travail - 0.08, 0.9, PG.PLAN.travail, Math.min(3.6, H - 1.2), "eq"));    /* agencement cuisine */
     o.push(R(0.1, H - 0.45, Math.min(W - 0.2, 4), 0.4));            /* casiers */
     return tableReunion(W - 0.8, H, o);
   }
@@ -933,7 +967,7 @@ var MEUBLES = (function(){
     var s = Math.min(2.4, W - 1.2);
     if(s > 1) { o.push(R(0.6, H - 1.5, s, 0.9)); o.push(R(0.6, H - 1.5 - 1.6, 0.9, 1.6)); }
     o.push(C(0.6 + s / 2 + 0.3, H - 2.6, 0.45));
-    if(W > 3.5) o.push(R(W - 0.7, 0.9, 0.62, Math.min(2.4, H - 1.5), "eq"));
+    if(W > 3.5) o.push(R(W - PG.PLAN.travail - 0.08, 0.9, PG.PLAN.travail, Math.min(2.4, H - 1.5), "eq"));
     return o;
   }
   function bureau(W, H){
@@ -952,47 +986,44 @@ var MEUBLES = (function(){
     if(H > 3) o.push(R(0.08, 0.9, 0.6, H - 1.9));
     return o;
   }
-  /* sanitaires : cabines de 0,95 × 1,50 le long du plus grand côté, lavabos en face */
+  /* sanitaires : cabines de 0,95 × 1,50 le long du plus grand côté, lavabos en
+     face, un passage libre devant elles. Le WC PMR : la cuvette à un demi-
+     passage du mur (le transfert latéral), le lavabo, et l'aire de rotation
+     d'un fauteuil (`RULES.plan.rotation`) dessinée, libre. */
   function wc(W, H, n, pmr){
-    var o = [];
+    var o = [], P = PG.PLAN;
     if(pmr || n === 1){
-      var cw = Math.min(W, H);
-      o.push({ t:"e", u:W / 2, v:H - 0.38, rx:0.2, ry:0.3, k:"eq" });
-      o.push(R(0.1, H / 2 - 0.25, 0.45, 0.5, "eq"));
-      if(cw > 1.4) o.push(C(W / 2, H / 2, 0.75, "pmr"));
+      cuvette(o, Math.max(P.sanitaire.wc[0] / 2 + 0.05, W - P.passage / 2), H, "v+");
+      lavabo(o, 0, H / 2 - P.sanitaire.lavabo[0] / 2, false);
+      if(pmr && Math.min(W, H) >= P.rotation) o.push(C(W / 2, H / 2, P.rotation / 2, "pmr"));
       return o;
     }
     var long = H >= W, Lg = long ? H : W, prof = long ? W : H;
-    var cabDepth = Math.min(1.5, prof - 0.9);
+    var cabDepth = Math.min(1.5, prof - P.passage);
     var m = Math.max(1, Math.min(n, Math.floor((Lg - 0.9) / 0.95)));
     for(var k = 0; k < m; k++){
       var s = 0.9 + k * 0.95;
-      if(long){
-        o.push(R(W - cabDepth, s, cabDepth, 0.95, "cab"));
-        o.push({ t:"e", u:W - 0.35, v:s + 0.475, rx:0.28, ry:0.2, k:"eq" });
-      } else {
-        o.push(R(s, H - cabDepth, 0.95, cabDepth, "cab"));
-        o.push({ t:"e", u:s + 0.475, v:H - 0.35, rx:0.2, ry:0.28, k:"eq" });
-      }
+      if(long){ o.push(R(W - cabDepth, s, cabDepth, 0.95, "cab")); cuvette(o, W, s + 0.475, "u+"); }
+      else { o.push(R(s, H - cabDepth, 0.95, cabDepth, "cab")); cuvette(o, s + 0.475, H, "v+"); }
     }
-    var nl = Math.max(1, Math.min(4, Math.round(n / 2)));
+    var nl = Math.max(1, Math.min(4, Math.round(n / 2))), pl = P.sanitaire.lavabo[0] + 0.1;
     for(var j = 0; j < nl; j++){
-      if(long && W - cabDepth > 0.9) o.push(R(0.08, 0.9 + j * 0.7, 0.45, 0.55, "eq"));
-      else if(!long && H - cabDepth > 0.9) o.push(R(0.9 + j * 0.7, 0.08 + 0.0, 0.55, 0.45, "eq"));
+      if(long && W - cabDepth > P.passage) lavabo(o, 0, 0.9 + j * pl, false);
+      else if(!long && H - cabDepth > P.passage) lavabo(o, 0.9 + j * pl, 0, true);
     }
     return o;
   }
   function vestiaire(W, H, douches){
     var o = [];
-    var dz = douches ? Math.min(2.4, W * 0.3) : 0;
+    var dz = douches ? Math.max(PG.PLAN.sanitaire.douche, Math.min(2.4, W * 0.3)) : 0, pd = Math.max(1.0, PG.PLAN.sanitaire.douche);
     o.push(R(0.1, 0.9, 0.4, H - 1.0));                             /* banc + patères */
     o.push(L(0.05, 0.9, 0.05, H - 0.1, "pat"));
     if(W - dz > 2.2){ o.push(R(W - dz - 0.5, 0.9, 0.4, H - 1.0)); o.push(L(W - dz - 0.05, 0.9, W - dz - 0.05, H - 0.1, "pat")); }
     if(W - dz > 3.6) o.push(R(W / 2 - dz / 2 - 0.2, 1.6, 0.4, H - 2.4));
     if(douches){
-      for(var v = 0.9; v + 1.0 <= H - 0.1; v += 1.0){
-        o.push(R(W - dz, v, dz, 1.0, "cab"));
-        o.push(C(W - dz / 2, v + 0.5, 0.12, "eq"));
+      for(var v = 0.9; v + pd <= H - 0.1; v += pd){
+        o.push(R(W - dz, v, dz, pd, "cab"));
+        o.push(C(W - dz / 2, v + pd / 2, 0.12, "eq"));
       }
     }
     return o;
@@ -1005,10 +1036,11 @@ var MEUBLES = (function(){
   }
   function cuisine(W, H){
     var o = [];
-    o.push(R(0.05, H - 0.7, W - 0.1, 0.65, "eq"));
-    o.push(R(0.05, 0.9, 0.65, H - 1.65, "eq"));
-    if(W > 4) o.push(R(W - 0.7, 0.9, 0.65, H - 1.65, "eq"));
-    [0.35, 0.95].forEach(function(du){ [0.2, 0.45].forEach(function(dv){ o.push(C(1.6 + du, H - 0.7 + dv, 0.13)); }); });
+    var T = PG.PLAN.travail;                                     /* plans de travail */
+    o.push(R(0.05, H - T - 0.05, W - 0.1, T, "eq"));
+    o.push(R(0.05, 0.9, T, H - 1.0 - T, "eq"));
+    if(W > 4) o.push(R(W - T - 0.05, 0.9, T, H - 1.0 - T, "eq"));
+    [0.35, 0.95].forEach(function(du){ [0.17, 0.43].forEach(function(dv){ o.push(C(1.6 + du, H - T - 0.05 + dv, 0.13)); }); });
     if(W > 4.5 && H > 4.5) o.push(R(W / 2 - 1.2, H / 2 - 0.6, 2.4, 1.2, "eq"));
     return o;
   }
@@ -1082,28 +1114,71 @@ var MEUBLES = (function(){
     o.push(R(W / 2, 0.06, 0.6, 0.5, "eq"));
     return o;
   }
-  /* le NOYAU : l'escalier à deux volées et, à côté, la gaine d'ascenseur côté
-     façade, le palier commun côté couloir. Ses cotes sont celles du projet
-     (`RULES.circ.noyau`) : elles ne changent pas d'un étage à l'autre. */
-  function cage(W, H){
-    var o = [], A = PG.NOY.asc, c = PG.CLOISON;
+  /* le NOYAU : l'escalier à deux volées (en U) et, à côté, la gaine
+     d'ascenseur côté façade, le palier commun côté couloir. Ses cotes sont
+     celles du projet (`RULES.circ.noyau`) : elles ne changent pas d'un étage
+     à l'autre. L'escalier se DÉDUIT de la hauteur d'étage du volume (`r.h`) :
+     autant de contremarches de `marche.h` qu'il en faut, au plus près, en deux
+     volées au giron `marche.g` (2h + g ≈ 63 cm, Blondel). La coupe
+     (`RULES.plan.coupe`) tranche la volée qui monte : en deçà, ses marches en
+     trait plein, puis la ligne de rupture, au-delà des tirets. La flèche part
+     du bas : « M » monte, « D » descend. */
+  function cage(W, H, r){
+    var o = [], A = PG.NOY.asc, c = PG.CLOISON, P = PG.PLAN, Mh = P.marche.h;
     var wa = Math.min(A[0], W * 0.45), ws = W - wa - c;
-    var fw = Math.min(PG.NOY.volee, (ws - 0.1) / 2), pal = Math.min(1.5, H * 0.3);
-    var v0 = pal, v1 = H - 0.15;
-    o.push(L(fw + 0.05, v0, fw + 0.05, v1, "pat"));
-    for(var v = v0; v <= v1 + 1e-6; v += 0.28){ o.push(L(0, v, fw, v, "marche")); o.push(L(ws - fw, v, ws, v, "marche")); }
-    o.push(L(fw / 2, v0 + 0.2, fw / 2, v1 - 0.2, "fleche"));
-    o.push(R(ws, Math.max(0, H - Math.min(A[1], H - 1.4) - c), c, Math.min(A[1], H - 1.4) + c, "tab"));
-    var ha = Math.min(A[1], H - 1.4);
-    o.push(R(ws + c, H - ha, wa, ha, "asc"));
-    o.push(L(ws + c, H - ha, W, H, "ch")); o.push(L(W, H - ha, ws + c, H, "ch"));
-    o.push(R(ws + c, H - ha - c, wa, c, "tab"));
+    var fw = Math.min(PG.NOY.volee, (ws - 0.1) / 2);
+    var hs = r.h || 3.2, n = Math.max(4, Math.round(hs / Mh)), hm = hs / n;
+    var n1 = Math.ceil(n / 2), g = P.marche.g, L1 = (n1 - 1) * g;
+    /* le palier d'arrivée a la largeur d'une volée ; celui du couloir, le reste —
+       un passage au moins, quitte à resserrer le giron */
+    var v0 = H - fw - L1;
+    if(v0 < P.passage){ v0 = P.passage; L1 = H - fw - v0; g = L1 / (n1 - 1); }
+    var monte = r.haut !== false, desc = !!r.bas, uM = 0, uD = ws - fw, v1 = v0 + L1;
+    /* la coupe passe dans la marche dont le dessus la dépasse */
+    var kc = Math.max(1, Math.floor(P.coupe / hm)), vc = Math.min(v1 - 0.3, v0 + (kc - 0.5) * g), dz = 0.3;
+    function fleche(u, sens, plein){
+      var um = u + fw / 2, cl = plein ? "esc w-vu" : "esc w-dessus";
+      o.push(C(um, v0 + 0.12, 0.05, "esc point w-vu"));
+      if(plein){ o.push(L(um, v0 + 0.12, um, v1 - 0.12, "esc fleche w-vu")); }
+      else { o.push(L(um, v0 + 0.12, um, vc, "esc w-vu")); o.push(L(um, vc, um, v1 - 0.12, "esc fleche w-dessus")); }
+      o.push(X(um, v0 - 0.3, sens, 0.4, "esct"));
+    }
+    for(var k = 0; k < n1; k++){
+      var v = v0 + k * g;
+      /* la volée qui monte : pleine sous la ligne de rupture, en tirets au-delà */
+      if(monte){
+        var t = Math.max(0, Math.min(1, (v - (vc - dz)) / (2 * dz))), ux = uM + t * fw;
+        if(ux < uM + fw - 0.01) o.push(L(ux, v, uM + fw, v, "esc w-vu"));
+        if(ux > uM + 0.01) o.push(L(uM, v, ux, v, "esc w-dessus"));
+      } else o.push(L(uM, v, uM + fw, v, "esc w-vu"));
+      /* l'autre volée : celle qui descend, vue ; sinon la suite de la montée, au-dessus */
+      o.push(L(uD, v, uD + fw, v, desc || !monte ? "esc w-vu" : "esc w-dessus"));
+    }
+    o.push(L(uM + fw, v0, uM + fw, v1, "esc w-vu")); o.push(L(uD, v0, uD, v1, "esc w-vu"));
+    if(monte){
+      var d = function(t){ return [uM + t * fw, vc - dz + 2 * dz * t]; }, a = d(0.44), b = d(0.56);
+      o.push(PL([d(-0.08), a, [a[0] + 0.03, a[1] + 0.22], [b[0] - 0.03, b[1] - 0.22], b, d(1.08)], "esc w-vu"));
+      fleche(uM, "M", false);
+    }
+    if(desc) fleche(uD, "D", true);
+    /* la gaine : ses cloisons coupées, la cabine en croix */
+    var ha = Math.min(A[1], H - 1.4), vl = H - ha;
+    o.push(R(ws, vl - c, c, ha + c, "poche"));
+    o.push(R(ws + c, vl - c, wa, c, "poche"));
+    o.push(R(ws + c, vl, wa, ha, "asc"));
+    o.push(L(ws + c, vl, W, H)); o.push(L(W, vl, ws + c, H));
+    /* sa porte COULISSE : le vide dans la cloison, le vantail décalé
+       parallèlement au mur côté palier, la flèche de son mouvement */
+    var dl = Math.min(P.porte, wa - 0.3), ug = ws + c + (wa - dl) / 2;
+    o.push(R(ug, vl - c - 0.01, dl, c + 0.02, "vide"));
+    o.push(R(ug - dl / 2, vl - c - 0.08, dl, 0.05, "w-menuiserie"));
+    o.push(L(ug + dl * 0.05, vl - c - 0.25, ug + dl * 0.55, vl - c - 0.25, "esc fleche w-vu"));
     return o;
   }
 
   function pour(r, W, H){
     var n = r.n || "";
-    if(r.kind === "cage") return cage(W, H);
+    if(r.kind === "cage") return cage(W, H, r);
     if(/sport double/i.test(n)) return sport(W, H);
     if(/^Piscine/i.test(n)) return piscine(W, H);
     if(/chauffage/i.test(n)) return chauffage(W, H);
@@ -1252,7 +1327,20 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   function dessiner(recadrer){
     var res = PG.genNiveau(DATA, st.parti, st.niv), fl = res.fl;
     INFO = []; bounds = [Infinity, Infinity, -Infinity, -Infinity];
-    var out = { site:[], ombre:[], fond:[], sol:[], rooms:[], part:[], ouv:[], mb:[], lab:[], dim:[] };
+    /* LES CALQUES, dans l'ordre où l'on dessine un plan — le plus lourd vient
+       se poser sur le plus léger : le contexte ; les axes, légers ; les murs
+       extérieurs, pochés, à leur épaisseur ; les sols ; les pièces et leurs
+       cloisons ; les portes et fenêtres, qui les percent ; l'escalier ; ce qui
+       est au-dessus de la coupe ; le mobilier ; puis les noms, les niveaux et
+       les cotes. */
+    var out = { site:[], ombre:[], axe:[], fond:[], sol:[], rooms:[], part:[], ouv:[], esc:[], dessus:[], mb:[], lab:[], niv:[], dim:[] };
+    var cur = fl.lvl;
+    function altDe(f){ return ((DATA.regles || {}).alt || {})[(f.v.aile || f.v.id) + "|" + f.e.i]; }
+    /* le noyau sait la hauteur de son étage et s'il monte, s'il descend */
+    function cageDe(f){
+      var lv = f.v.lv.map(function(e){ return DATA.floors[e.i] ? DATA.floors[e.i].lvl : 0; }), al = altDe(f);
+      return { kind:"cage", h:al ? al.h : fl.h, haut:lv.some(function(l){ return l > cur; }), bas:lv.some(function(l){ return l < cur; }) };
+    }
     var rects = res.F.map(function(f){ return { f:f }; });
     function dansAutre(f, x, y){
       var w = PG.versMonde(f, x, y);
@@ -1266,21 +1354,22 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 
     /* site, existant, et l'emprise des volumes absents de ce niveau */
     var per = DATA.site.per.map(function(p){ return p[0] + "," + (-p[1]); }).join(" ");
-    out.site.push('<polygon class="site" points="' + per + '"/>');
+    out.site.push('<polygon class="site w-axe" points="' + per + '"/>');
     DATA.site.bat.forEach(function(b){
       var ferme = b.length > 3 && b[0][0] === b[b.length - 1][0] && b[0][1] === b[b.length - 1][1];
-      out.site.push('<' + (ferme ? "polygon" : "polyline") + ' class="exist" points="' + b.map(function(p){ return p[0] + "," + (-p[1]); }).join(" ") + '"' + (ferme ? "" : ' style="fill:none"') + '/>');
+      out.site.push('<' + (ferme ? "polygon" : "polyline") + ' class="exist w-vu" points="' + b.map(function(p){ return p[0] + "," + (-p[1]); }).join(" ") + '"' + (ferme ? "" : ' style="fill:none"') + '/>');
     });
     DATA.partis[st.parti].vols.forEach(function(v){
       if(v.lv.some(function(e){ return e.i === st.niv; })) return;
       var e = v.lv[0], f = { cx:0, cy:0, a:v.a };
       var p = PG.local(v.x, v.y, v.a, e.dx || 0, e.dy || 0); f.cx = p[0]; f.cy = p[1];
-      out.ombre.push('<polygon class="ombre" points="' + pts(f, rectL(f, -e.w / 2 - 0.5, -e.d / 2 - 0.5, e.w / 2 + 0.5, e.d / 2 + 0.5)) + '"/>');
+      out.ombre.push('<polygon class="ombre w-dessus" points="' + pts(f, rectL(f, -e.w / 2 - 0.5, -e.d / 2 - 0.5, e.w / 2 + 0.5, e.d / 2 + 0.5)) + '"/>');
     });
 
     var circDessinee = 0, cagesA = 0, libreA = 0, pose = {};
     res.F.forEach(function(f){
       var L = f.L, D = f.D, m = PG.MUR;
+      f.ouvs = { "-1":[], "1":[] };
       rectL(f, -L / 2 - m, -D / 2 - m, L / 2 + m, D / 2 + m).forEach(function(p){ var q = P(f, p[0], p[1]); grow(q[0], q[1]); });
       out.fond.push('<polygon class="mur" points="' + pts(f, rectL(f, -L / 2 - m, -D / 2 - m, L / 2 + m, D / 2 + m)) + '"/>');
       /* les sols APRÈS tous les murs : là où deux ailes d'un même volume se
@@ -1312,36 +1401,12 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         cagesA += c.W * c.H;
         out.rooms.push('<polygon class="cagef" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, c.bande, c.x0, 0, c.v0 || 0, c.W, c.H)) + '"/>');
         INFO.push({ lab:"Noyau · escalier et ascenseur", n:"Noyau de circulation", a:c.W * c.H, W:c.W, H:c.H, f:"" });
-        meubles(f, c.bande, c.x0, { kind:"cage" }, 0, c.v0 || 0, c.W, c.H);
-        porte(f, c.bande, c.x0, c.W - 0.15, c.v0 || 0, 1.2);
-        etiquette(f, c.bande, c.x0, 0, c.v0 || 0, c.W, c.H, "Noyau", c.W * c.H, true);
+        meubles(f, c.bande, c.x0, cageDe(f), 0, c.v0 || 0, c.W, c.H, out.esc);
+        porte(f, c.bande, c.x0, c.W - 0.15, c.v0 || 0, PG.NOY.volee);
+        /* son nom sur le palier, devant la gaine : l'escalier garde sa place */
+        var wl = Math.min(PG.NOY.asc[0], c.W * 0.45) + PG.CLOISON;
+        etiquette(f, c.bande, c.x0, c.W - wl, c.v0 || 0, wl, Math.min(0.9, c.H), "Noyau", c.W * c.H, true);
       });
-
-      /* cotes hors tout, murs compris */
-      if(!f.fixe || true){
-        var o = 2.2, yA = -D / 2 - m - o, xB = L / 2 + m + o;
-        var a1 = P(f, -L / 2 - m, yA), a2 = P(f, L / 2 + m, yA);
-        out.dim.push('<line class="dim" x1="' + a1[0] + '" y1="' + a1[1] + '" x2="' + a2[0] + '" y2="' + a2[1] + '"/>');
-        [-L / 2 - m, L / 2 + m].forEach(function(x){ var t1 = P(f, x - 0.4, yA - 0.4), t2 = P(f, x + 0.4, yA + 0.4); out.dim.push('<line class="dim" x1="' + t1[0] + '" y1="' + t1[1] + '" x2="' + t2[0] + '" y2="' + t2[1] + '"/>'); });
-        var tm = P(f, 0, yA - 0.5);
-        out.dim.push('<text class="dimt" font-size="0.95" text-anchor="middle" transform="translate(' + tm[0] + ',' + tm[1] + ') rotate(' + angDeg(f) + ')">' + fmt(L + 2 * m, 2) + '</text>');
-        var b1 = P(f, xB, -D / 2 - m), b2 = P(f, xB, D / 2 + m);
-        out.dim.push('<line class="dim" x1="' + b1[0] + '" y1="' + b1[1] + '" x2="' + b2[0] + '" y2="' + b2[1] + '"/>');
-        [-D / 2 - m, D / 2 + m].forEach(function(y){ var t1 = P(f, xB - 0.4, y - 0.4), t2 = P(f, xB + 0.4, y + 0.4); out.dim.push('<line class="dim" x1="' + t1[0] + '" y1="' + t1[1] + '" x2="' + t2[0] + '" y2="' + t2[1] + '"/>'); });
-        var tb = P(f, xB + 0.6, 0);
-        out.dim.push('<text class="dimt" font-size="0.95" text-anchor="middle" transform="translate(' + tb[0] + ',' + tb[1] + ') rotate(' + (angDeg(f) - 90) + ')">' + fmt(D + 2 * m, 2) + '</text>');
-        if(f.deux && !f.fixe){
-          /* profondeurs des deux bandes et du couloir */
-          var xs = -L / 2 - m - o, ys = [-D / 2, f.yc0, f.yc1, D / 2];
-          var c1 = P(f, xs, -D / 2), c2 = P(f, xs, D / 2);
-          out.dim.push('<line class="dim" x1="' + c1[0] + '" y1="' + c1[1] + '" x2="' + c2[0] + '" y2="' + c2[1] + '"/>');
-          ys.forEach(function(y){ var t1 = P(f, xs - 0.35, y - 0.35), t2 = P(f, xs + 0.35, y + 0.35); out.dim.push('<line class="dim" x1="' + t1[0] + '" y1="' + t1[1] + '" x2="' + t2[0] + '" y2="' + t2[1] + '"/>'); });
-          for(var k = 0; k < 3; k++){
-            var tt = P(f, xs - 0.6, (ys[k] + ys[k + 1]) / 2);
-            out.dim.push('<text class="dimt" font-size="0.7" text-anchor="middle" transform="translate(' + tt[0] + ',' + tt[1] + ') rotate(' + (angDeg(f) - 90) + ')">' + fmt(ys[k + 1] - ys[k], 2) + '</text>');
-          }
-        }
-      }
 
       /* ---- un local : fond, cloisons, ouvertures, mobilier, étiquette ---- */
       function local1(f, frame, x0, r, u0, v0, W, H, cls, cellule){
@@ -1362,7 +1427,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           [-1, 1].forEach(function(sg){
             var xc = r.x0 + r.W / 2, yw = sg * f.D / 2;
             if(dansAutre(f, xc, sg * (f.D / 2 + 1.2))) return;
-            ouvertureMur(f, xc, sg, 2.2, true);
+            ouvertureMur(f, xc, sg, PG.PLAN.porteDouble, true);
             if((sg < 0) === (Math.cos(f.a) > 0)){
               var t = [P(f, xc, yw + sg * 1.4), P(f, xc - 0.9, yw + sg * 2.6), P(f, xc + 0.9, yw + sg * 2.6)];
               out.ouv.push('<polygon class="entree" points="' + t.map(function(q){ return q.join(","); }).join(" ") + '"/>');
@@ -1372,24 +1437,24 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         /* portes */
         if(r.ext && !cellule){
           /* la pièce qui ferme le couloir : sa porte dans le pignon du couloir */
-          porteX(f, r.ext < 0 ? x0 + W : x0, (f.yc0 + f.yc1) / 2, Math.min(1.2, PG.COULOIR - 0.6), r.ext < 0 ? -1 : 1);
+          porteX(f, r.ext < 0 ? x0 + W : x0, (f.yc0 + f.yc1) / 2, Math.min(PG.PLAN.porte, PG.COULOIR - 0.6), r.ext < 0 ? -1 : 1);
         } else if(r.kind === "band" || (cellule)){
           /* la porte là où le couloir passe */
-          var dw = Math.min(r.f === "cla" ? 1.0 : 0.9, W - 0.4);
+          var dw = Math.min(PG.PLAN.porte, W - 0.4);
           var uh = Math.max(f.zl - x0 + dw + 0.15, Math.min(u0 + W - 0.25, f.zr - x0 - 0.15));
           if(W >= 1.1 && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, r.porteV != null ? r.porteV : Math.max(0, v0), dw);
         } else if(r.kind === "full" && r.x0 > -f.L / 2 + 0.01){
           var ym = f.deux ? (f.yc0 + f.yc1) / 2 : (f.yc0 + f.yc1) / 2;
-          porteX(f, r.x0, ym, Math.min(1.6, PG.COULOIR - 0.5), 1);
+          porteX(f, r.x0, ym, Math.min(PG.PLAN.porteDouble, PG.COULOIR - 0.5), 1);
         } else if(r.kind === "full" && r.x0 + r.W < f.L / 2 - 0.01){
-          porteX(f, r.x0 + r.W, (f.yc0 + f.yc1) / 2, Math.min(1.6, PG.COULOIR - 0.5), -1);
+          porteX(f, r.x0 + r.W, (f.yc0 + f.yc1) / 2, Math.min(PG.PLAN.porteDouble, PG.COULOIR - 0.5), -1);
         } else if(r.kind === "fixe"){
-          [-1, 1].forEach(function(sg){ if(!dansAutre(f, 0, sg * (f.D / 2 + 1.2))) ouvertureMur(f, sg < 0 ? -f.L / 4 : f.L / 4, sg, 2.0, true); });
+          [-1, 1].forEach(function(sg){ if(!dansAutre(f, 0, sg * (f.D / 2 + 1.2))) ouvertureMur(f, sg < 0 ? -f.L / 4 : f.L / 4, sg, PG.PLAN.porteDouble, true); });
         }
         /* un petit hall de bande a sa porte d'entrée sur la façade */
         if(r.kind === "band" && /^Hall/i.test(r.n || "") && (frame === "A" || frame === "B")){
           var sgH = frame === "A" ? -1 : 1, xH = fr(f, frame, x0, u0 + W / 2, 0)[0];
-          if(!dansAutre(f, xH, sgH * (f.D / 2 + 1.2))) ouvertureMur(f, xH, sgH, Math.min(2.0, W - 0.6), true);
+          if(!dansAutre(f, xH, sgH * (f.D / 2 + 1.2))) ouvertureMur(f, xH, sgH, Math.min(PG.PLAN.porteDouble, W - 0.6), true);
         }
         /* fenêtres sur les façades libres */
         var facs = [];
@@ -1397,7 +1462,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         else if(r.fac){ facs.push(r.fac); }
         else if(!trav){ facs.push(-1, 1); }
         facs.forEach(function(sg){
-          var n = Math.max(1, Math.floor((W - 0.6) / 2.6)), lw = Math.min(1.8, W - 0.8);
+          var FE = PG.PLAN.fenetre, n = Math.max(1, Math.floor((W - 0.6) / FE.pas)), lw = Math.min(FE.larg, W - 0.8);
           if(lw < 0.6 || (r.n && /Abri|chauffage|Local technique|Dépôt|rangement|Économat|nettoyage/i.test(r.n))) return;
           for(var k = 0; k < n; k++){
             var uc = u0 + W * (k + 0.5) / n, xc = fr(f, frame === "A" || frame === "B" ? frame : "full", x0, uc, 0)[0];
@@ -1471,57 +1536,75 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         });
       });
     });
+    /* UN VANTAIL, ouvert à 90° : h la paumelle, a le bout du vantail fermé
+       (dans le mur), b ouvert — en coordonnées de l'étage. Le vantail est une
+       menuiserie coupée (trait moyen), le débattement un arc fin. */
+    function vantail(f, h, a, b){
+      var p = P(f, h[0], h[1]), q = P(f, b[0], b[1]), arc = [];
+      out.ouv.push('<line class="porte w-menuiserie" x1="' + p[0] + '" y1="' + p[1] + '" x2="' + q[0] + '" y2="' + q[1] + '"/>');
+      for(var k = 0; k <= 12; k++){
+        var t = k / 12 * Math.PI / 2, c = Math.cos(t), sn = Math.sin(t);
+        arc.push([h[0] + (a[0] - h[0]) * c + (b[0] - h[0]) * sn, h[1] + (a[1] - h[1]) * c + (b[1] - h[1]) * sn]);
+      }
+      out.ouv.push('<polyline class="arc w-vu" points="' + pts(f, arc) + '"/>');
+    }
+    /* la porte d'une pièce dans la cloison du couloir : le vide, un vantail */
     function porte(f, frame, x0, uh, v, dw){
       if(dw < 0.5) return;
       var g = rectF(f, frame, x0, uh - dw, v - 0.09, dw, 0.18);
       out.ouv.push('<polygon class="gap" points="' + pts(f, g) + '"/>');
-      var h = P.apply(null, [f].concat(fr(f, frame, x0, uh, v))), e = P.apply(null, [f].concat(fr(f, frame, x0, uh, v + dw)));
-      out.ouv.push('<line class="porte" x1="' + h[0] + '" y1="' + h[1] + '" x2="' + e[0] + '" y2="' + e[1] + '"/>');
-      var arc = [];
-      for(var k = 0; k <= 10; k++){ var t = k / 10 * Math.PI / 2; arc.push(fr(f, frame, x0, uh - dw * Math.cos(t), v + dw * Math.sin(t))); }
-      out.ouv.push('<polyline class="arc" points="' + pts(f, arc) + '"/>');
+      vantail(f, fr(f, frame, x0, uh, v), fr(f, frame, x0, uh - dw, v), fr(f, frame, x0, uh, v + dw));
     }
+    /* une porte dans une cloison en travers du couloir ; à deux battants dès
+       qu'elle atteint la largeur d'une porte double */
     function porteX(f, x, ym, dw, sens){
       out.ouv.push('<polygon class="gap" points="' + pts(f, rectL(f, x - 0.09, ym - dw / 2, x + 0.09, ym + dw / 2)) + '"/>');
-      var h = P(f, x, ym + dw / 2), e = P(f, x + sens * dw, ym + dw / 2);
-      out.ouv.push('<line class="porte" x1="' + h[0] + '" y1="' + h[1] + '" x2="' + e[0] + '" y2="' + e[1] + '"/>');
-      var arc = [];
-      for(var k = 0; k <= 10; k++){ var t = k / 10 * Math.PI / 2; arc.push([x + sens * dw * Math.sin(t), ym + dw / 2 - dw * Math.cos(t)]); }
-      out.ouv.push('<polyline class="arc" points="' + pts(f, arc) + '"/>');
+      if(dw >= PG.PLAN.porteDouble - 0.01){
+        [-1, 1].forEach(function(k){ var y = ym + k * dw / 2; vantail(f, [x, y], [x, ym], [x + sens * dw / 2, y]); });
+      } else vantail(f, [x, ym + dw / 2], [x, ym - dw / 2], [x + sens * dw, ym + dw / 2]);
     }
+    /* UN PERCEMENT DANS LE MUR EXTÉRIEUR. Le mur s'interrompt. Une porte :
+       deux vantails ouverts vers l'intérieur, leurs arcs. Une fenêtre : son
+       cadre et son verre coupés, deux traits moyens au milieu du mur, et
+       l'allège, sous la coupe, vue en trait fin aux deux nus du mur. */
     function ouvertureMur(f, xc, sg, lw, porteM){
       var y0 = sg * f.D / 2, y1 = sg * (f.D / 2 + PG.MUR);
       out.ouv.push('<polygon class="gapw" points="' + pts(f, rectL(f, xc - lw / 2, Math.min(y0, y1), xc + lw / 2, Math.max(y0, y1))) + '"/>');
+      f.ouvs[sg].push([xc - lw / 2, xc + lw / 2]);
       if(porteM){
-        [-1, 1].forEach(function(s){
-          var h = P(f, xc + s * lw / 2, y0), e = P(f, xc + s * lw / 2, y0 - sg * lw / 2);
-          out.ouv.push('<line class="porte" x1="' + h[0] + '" y1="' + h[1] + '" x2="' + e[0] + '" y2="' + e[1] + '"/>');
-        });
+        [-1, 1].forEach(function(s){ var x = xc + s * lw / 2; vantail(f, [x, y0], [xc, y0], [x, y0 - sg * lw / 2]); });
         return;
       }
-      [0.17, 0.33].forEach(function(t){
+      function trait(t, cls){
         var y = sg * (f.D / 2 + PG.MUR * t), a = P(f, xc - lw / 2, y), b = P(f, xc + lw / 2, y);
-        out.ouv.push('<line class="vitre" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>');
-      });
-      [xc - lw / 2, xc + lw / 2].forEach(function(x){
-        var a = P(f, x, y0), b = P(f, x, y1);
-        out.ouv.push('<line class="vitre" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>');
-      });
+        out.ouv.push('<line class="' + cls + '" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>');
+      }
+      trait(0, "allege w-vu"); trait(1, "allege w-vu");
+      trait(0.42, "vitre w-menuiserie"); trait(0.58, "vitre w-menuiserie");
     }
-    function meubles(f, frame, x0, r, u0, v0, W, H){
-      var lst = MEUBLES.pour(r, W, H);
-      lst.forEach(function(p){
-        var k = "mb " + (p.k || "");
+    /* le mobilier (`out.mb`, au trait fin, qu'on peut masquer) ou le noyau
+       (`out.esc` : son escalier et sa gaine sont de l'architecture) */
+    function meubles(f, frame, x0, r, u0, v0, W, H, dest){
+      dest = dest || out.mb;
+      MEUBLES.pour(r, W, H).forEach(function(p){
+        /* un poché ou un vide se remplit ; le reste est un trait, fin par défaut */
+        var k = p.k || "", plein = /\b(poche|vide)\b/.test(k);
+        k = plein || /^esc/.test(k) ? k : "mb " + k + (/\bw-/.test(k) ? "" : " w-vu");
         if(p.t === "r"){
           if(p.w <= 0 || p.h <= 0) return;
-          out.mb.push('<polygon class="' + k + '" points="' + pts(f, rectF(f, frame, x0, u0 + p.u, v0 + p.v, p.w, p.h)) + '"/>');
+          dest.push('<polygon class="' + k + '" points="' + pts(f, rectF(f, frame, x0, u0 + p.u, v0 + p.v, p.w, p.h)) + '"/>');
         } else if(p.t === "c" || p.t === "e"){
           var c = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u, v0 + p.v)));
-          if(p.t === "c") out.mb.push('<circle class="' + k + '" cx="' + c[0].toFixed(3) + '" cy="' + c[1].toFixed(3) + '" r="' + p.r + '"/>');
-          else out.mb.push('<ellipse class="' + k + '" cx="0" cy="0" rx="' + p.rx + '" ry="' + p.ry + '" transform="translate(' + c[0].toFixed(3) + ',' + c[1].toFixed(3) + ') rotate(' + angDeg(f) + ')"/>');
+          if(p.t === "c") dest.push('<circle class="' + k + '" cx="' + c[0].toFixed(3) + '" cy="' + c[1].toFixed(3) + '" r="' + p.r + '"/>');
+          else dest.push('<ellipse class="' + k + '" cx="0" cy="0" rx="' + p.rx + '" ry="' + p.ry + '" transform="translate(' + c[0].toFixed(3) + ',' + c[1].toFixed(3) + ') rotate(' + angDeg(f) + ')"/>');
         } else if(p.t === "l"){
           var a = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u1, v0 + p.v1))), b = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u2, v0 + p.v2)));
-          out.mb.push('<line class="' + k + '" x1="' + a[0].toFixed(3) + '" y1="' + a[1].toFixed(3) + '" x2="' + b[0].toFixed(3) + '" y2="' + b[1].toFixed(3) + '"/>');
+          dest.push('<line class="' + k + '" x1="' + a[0].toFixed(3) + '" y1="' + a[1].toFixed(3) + '" x2="' + b[0].toFixed(3) + '" y2="' + b[1].toFixed(3) + '"/>');
+        } else if(p.t === "p"){
+          dest.push('<polyline class="' + k + '" points="' + pts(f, p.pts.map(function(q){ return fr(f, frame, x0, u0 + q[0], v0 + q[1]); })) + '"/>');
+        } else if(p.t === "x"){
+          var q = P.apply(null, [f].concat(fr(f, frame, x0, u0 + p.u, v0 + p.v)));
+          dest.push('<text class="' + p.k + '" font-size="' + p.h + '" text-anchor="middle" transform="translate(' + q[0].toFixed(3) + ',' + q[1].toFixed(3) + ') rotate(' + angDeg(f) + ')" y="' + (p.h * 0.35).toFixed(2) + '">' + esc(p.s) + '</text>');
         }
       });
     }
@@ -1529,12 +1612,13 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var nom = String(txt || "").replace(/ \/ .*$/, "");
       var vert = W < 2.2 && H > W * 1.4;
       var len = vert ? H : W;
-      var fs = Math.min(petit ? 0.45 : Math.max(0.62, Math.min(1.5, Math.sqrt(a) * 0.055)), (len * 0.88) / Math.max(4, nom.length * 0.56));
+      /* le nom et la surface tiennent dans la pièce, sur ses deux côtés */
+      var fs = Math.min(petit ? 0.45 : Math.max(0.62, Math.min(1.5, Math.sqrt(a) * 0.055)), (len * 0.88) / Math.max(4, nom.length * 0.56), (vert ? W : H) * 0.4);
       var c = P.apply(null, [f].concat(fr(f, frame, x0, u0 + W / 2, v0 + H / 2)));
       var ang = angDeg(f) + (vert ? -90 : 0);
       var aire = fmt(a) + " m²";
       if(fs < 0.24){
-        var fa = Math.min(0.42, (len * 0.85) / (aire.length * 0.6));
+        var fa = Math.min(0.42, (len * 0.85) / (aire.length * 0.6), (vert ? W : H) * 0.7);
         if(fa < 0.18) return;
         out.lab.push('<text class="lab" text-anchor="middle" transform="translate(' + c[0].toFixed(2) + ',' + c[1].toFixed(2) + ') rotate(' + ang + ')"><tspan class="m2" font-size="' + fa.toFixed(2) + '" y="' + (fa * 0.35).toFixed(2) + '">' + aire + '</tspan></text>');
         return;
@@ -1544,7 +1628,107 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         '<tspan class="m2" x="0" y="' + (fs * 1.05).toFixed(2) + '" font-size="' + (fs * 0.82).toFixed(2) + '">' + aire + '</tspan></text>');
     }
 
-    /* nord et échelle graphique */
+    /* LA COTATION, en centimètres, toujours hors du dessin. Sur une façade
+       libre, trois chaînes : les percements, puis les murs et les cloisons qui
+       la touchent, puis le hors-tout ; sur un pignon libre, deux : les murs,
+       les bandes et le couloir, puis le hors-tout. Une ligne d'attache ne
+       touche jamais le dessin : le blanc `cotes.ecart` l'en sépare. */
+    var CO = PG.PLAN.cotes;
+    function ligne(dest, f, a, b, cls){
+      var p = P(f, a[0], a[1]), q = P(f, b[0], b[1]);
+      dest.push('<line class="' + cls + '" x1="' + p[0].toFixed(3) + '" y1="' + p[1].toFixed(3) + '" x2="' + q[0].toFixed(3) + '" y2="' + q[1].toFixed(3) + '"/>');
+    }
+    function lisible(d){ while(d > 90) d -= 180; while(d <= -90) d += 180; return d; }
+    function chaine(f, vert, pos, c, face){
+      var Q = function(s, t){ return vert ? [t, s] : [s, t]; };
+      pos = pos.slice().sort(function(p, q){ return p - q; }).filter(function(x, k, A){ return !k || x - A[k - 1] > 0.02; });
+      if(pos.length < 2) return;
+      var dir = c > face ? 1 : -1, ang = lisible(angDeg(f) - (vert ? 90 : 0)), vis = false;
+      ligne(out.dim, f, Q(pos[0] - 0.3, c), Q(pos[pos.length - 1] + 0.3, c), "dim w-cote");
+      pos.forEach(function(x, k){
+        ligne(out.dim, f, Q(x, face + dir * CO.ecart), Q(x, c + dir * 0.25), "dim w-cote");
+        ligne(out.dim, f, Q(x - 0.18, c - 0.18), Q(x + 0.18, c + 0.18), "dim w-vu");
+        if(!k) return;
+        /* une cote étroite : son texte se resserre, puis passe de l'autre côté
+           de la ligne une fois sur deux, pour ne pas chevaucher sa voisine */
+        var txt = String(Math.round((x - pos[k - 1]) * 100)), seg = x - pos[k - 1];
+        var fs = Math.max(CO.texte * 0.6, Math.min(CO.texte, seg / (txt.length * 0.62))), serre = fs * txt.length * 0.62 > seg;
+        var cote = serre && (vis = !vis) ? -1 : 1;
+        var t = P.apply(null, [f].concat(Q((pos[k - 1] + x) / 2, c + cote * dir * (0.12 + fs * 0.5))));
+        out.dim.push('<text class="dimt" font-size="' + fs.toFixed(2) + '" text-anchor="middle" y="' + (fs * 0.35).toFixed(2) + '" transform="translate(' + t[0].toFixed(3) + ',' + t[1].toFixed(3) + ') rotate(' + ang + ')">' + txt + '</text>');
+      });
+    }
+    res.F.forEach(function(f){
+      var L = f.L, D = f.D, m = PG.MUR, c0 = D / 2 + m + CO.premier, g0 = L / 2 + m + CO.premier;
+      /* le côté libre : aucune chaîne ne passe sur un corps voisin */
+      var sg = [-1, 1].filter(function(s){ return [-L / 4, 0, L / 4].every(function(x){ return !dansAutre(f, x, s * c0); }); })[0];
+      var sx = [1, -1].filter(function(s){ return [-D / 4, 0, D / 4].every(function(y){ return !dansAutre(f, s * g0, y); }); })[0];
+      if(sg){
+        var face = sg * (D / 2 + m), X0 = -L / 2 - m, X1 = L / 2 + m, ouv = [X0, X1], mur = [X0, -L / 2, L / 2, X1];
+        f.ouvs[sg].forEach(function(o){ ouv.push(o[0], o[1]); });
+        f.rooms.concat(f.cages.map(function(c){ return { frame:c.bande, x0:c.x0, W:c.W }; })).forEach(function(r){
+          if(r.frame !== "full" && (r.frame === "A") !== (sg < 0)) return;
+          [r.x0, r.x0 + r.W].forEach(function(x){ if(x > -L / 2 + 0.05 && x < L / 2 - 0.05) mur.push(x); });
+        });
+        chaine(f, false, ouv, sg * c0, face);
+        chaine(f, false, mur, sg * (c0 + CO.pas), face);
+        chaine(f, false, [X0, X1], sg * (c0 + 2 * CO.pas), face);
+      }
+      if(sx){
+        var Y0 = -D / 2 - m, Y1 = D / 2 + m, ys = [Y0, -D / 2, D / 2, Y1];
+        if(!f.fixe && f.yc1 - f.yc0 > 0.1) ys.push(f.yc0, f.yc1);
+        chaine(f, true, ys, sx * g0, sx * (L / 2 + m));
+        chaine(f, true, [Y0, Y1], sx * (g0 + CO.pas), sx * (L / 2 + m));
+      }
+      /* LES AXES, en trait mixte fin : ceux des murs porteurs le long du corps
+         (les façades, le couloir), repérés d'une lettre au bout libre */
+      if(!f.fixe){
+        var ax = [-(D / 2 + m / 2), D / 2 + m / 2];
+        if(f.deux) ax.push(f.yc0, f.yc1);
+        ax.sort(function(p, q){ return p - q; });
+        var xb = -(sx || 1) * (L / 2 + m + 1.2), rb = 0.55;
+        ax.forEach(function(y, k){
+          ligne(out.axe, f, [-L / 2 - m - 1.2, y], [L / 2 + m + 1.2, y], "axe w-axe");
+          /* le repère au bout libre seulement : jamais sur un corps voisin */
+          if(dansAutre(f, xb - (sx || 1) * rb, y)) return;
+          var b = P(f, xb - (sx || 1) * rb, y);
+          out.dim.push('<circle class="bulle w-vu" cx="' + b[0].toFixed(3) + '" cy="' + b[1].toFixed(3) + '" r="' + rb + '"/>' +
+            '<text class="dimt" font-size="' + (rb * 1.1).toFixed(2) + '" text-anchor="middle" x="' + b[0].toFixed(3) + '" y="' + (b[1] + rb * 0.38).toFixed(3) + '">' + "ABCDEF"[k] + '</text>');
+        });
+      }
+    });
+
+    /* LES NIVEAUX : un triangle sur le sol de chaque bâtiment, sa cote depuis
+       le ±0.00 du rez de l'école — la hauteur de CHAQUE volume (`DATA.regles.alt`) */
+    var nivVu = {};
+    res.F.forEach(function(f){
+      var al = altDe(f);
+      if(!al) return;
+      var cle = (f.v.bat || f.v.id) + "|" + al.z;
+      if(nivVu[cle]) return;
+      nivVu[cle] = 1;
+      var x = f.fixe ? -f.L / 2 + 2.5 : (f.zl != null ? f.zl : -f.L / 2) + 2.2, y = f.fixe ? -f.D / 2 + 1.6 : (f.yc0 + f.yc1) / 2;
+      var a = P(f, x, y), s3 = 0.45, z = al.z;
+      var txt = Math.abs(z) < 0.005 ? "±0.00" : (z > 0 ? "+" : "−") + Math.abs(z).toFixed(2);
+      out.niv.push('<polygon class="niv" points="' + a[0] + ',' + a[1] + ' ' + (a[0] - s3 * 0.6) + ',' + (a[1] - s3) + ' ' + (a[0] + s3 * 0.6) + ',' + (a[1] - s3) + '"/>' +
+        '<line class="nivl w-vu" x1="' + (a[0] - s3) + '" y1="' + a[1] + '" x2="' + (a[0] + s3 * 5) + '" y2="' + a[1] + '"/>' +
+        '<text class="nivt" font-size="' + CO.texte + '" x="' + (a[0] + s3 * 0.9) + '" y="' + (a[1] - 0.15) + '">' + txt + '</text>');
+    });
+
+    /* AU-DESSUS DE LA COUPE : l'étage du dessus, là où il déborde de celui-ci
+       (un porte-à-faux), en tirets fins — son nu extérieur */
+    res.F.forEach(function(f){
+      var e = f.e, m = PG.MUR;
+      f.v.lv.forEach(function(e2){
+        if(!DATA.floors[e2.i] || DATA.floors[e2.i].lvl !== cur + 1) return;
+        var dx = (e2.dx || 0) - (e.dx || 0), dy = (e2.dy || 0) - (e.dy || 0);
+        if(dx - e2.w / 2 >= -e.w / 2 - 0.05 && dx + e2.w / 2 <= e.w / 2 + 0.05 && dy - e2.d / 2 >= -e.d / 2 - 0.05 && dy + e2.d / 2 <= e.d / 2 + 0.05) return;
+        out.dessus.push('<polygon class="dessus w-dessus" points="' + pts(f, rectL(f, dx - e2.w / 2 - m, dy - e2.d / 2 - m, dx + e2.w / 2 + m, dy + e2.d / 2 + m)) + '"/>');
+      });
+    });
+
+    /* nord et échelle graphique ; l'échelle du dessin à l'écran se lit à côté,
+       et dans la cartouche (`applique`) */
     if(isFinite(bounds[0])){
       var bx = bounds[0], by = bounds[3] + 8;
       var sc = '<g class="dimg echelle">';
@@ -1552,7 +1736,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         if(k < arr.length - 1) sc += '<rect x="' + (bx + d) + '" y="' + by + '" width="' + (arr[k + 1] - d) + '" height="0.6" fill="' + (k % 2 ? "var(--paper)" : "var(--ink)") + '" stroke="var(--ink)" stroke-width="0.08"/>';
         sc += '<text class="dimt" font-size="1.1" x="' + (bx + d) + '" y="' + (by + 2.1) + '" text-anchor="middle">' + d + '</text>';
       });
-      sc += '<text class="dimt" font-size="1.1" x="' + (bx + 21.5) + '" y="' + (by + 0.7) + '">m</text></g>';
+      sc += '<text class="dimt" font-size="1.1" x="' + (bx + 21.5) + '" y="' + (by + 0.7) + '">m</text></g>' +
+            '<text class="dimt ecran" id="ech-t" font-size="1.1" x="' + bx + '" y="' + (by - 0.8) + '"></text>';
       var nx = bounds[2] + 4, ny = bounds[1] + 2;
       sc += '<g class="nordg"><polygon class="nord" points="' + nx + ',' + ny + ' ' + (nx - 1.3) + ',' + (ny + 4) + ' ' + nx + ',' + (ny + 3) + ' ' + (nx + 1.3) + ',' + (ny + 4) + '"/>' +
             '<text class="lab" font-size="1.4" x="' + nx + '" y="' + (ny - 0.6) + '" text-anchor="middle">N</text></g>';
@@ -1561,8 +1746,9 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 
     vue.innerHTML =
       '<g class="siteg">' + out.site.join("") + '</g>' + out.ombre.join("") +
-      out.fond.join("") + out.sol.join("") + out.rooms.join("") + out.part.join("") + out.ouv.join("") +
-      '<g class="mbg">' + out.mb.join("") + '</g>' + out.lab.join("") + '<g class="dimg">' + out.dim.join("") + '</g>';
+      '<g class="dimg">' + out.axe.join("") + '</g>' +
+      out.fond.join("") + out.sol.join("") + out.rooms.join("") + out.part.join("") + out.ouv.join("") + out.esc.join("") + out.dessus.join("") +
+      '<g class="mbg">' + out.mb.join("") + '</g>' + out.lab.join("") + out.niv.join("") + '<g class="dimg">' + out.dim.join("") + '</g>';
     classes();
 
     /* la barre, le titre, le tableau, puis le rail */
@@ -1573,6 +1759,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     seedIn.value = seedTxt();
     $("cartouche").innerHTML = '<div>Projet</div><div>Centre scolaire de Saxon</div><div>Étape</div><div>05 Typologies</div>' +
       '<div>Parti</div><div>' + esc(P0.n) + '</div><div>Niveau</div><div>' + esc(fl.name) + ' · h ' + fmt(fl.h, 2) + ' m</div>' +
+      '<div>Échelle</div><div id="c-ech"></div><div>Coupe</div><div>à ' + fmt(PG.PLAN.coupe, 2) + ' m du sol</div>' +
       '<div>Seed</div><div>' + seedTxt() + '</div>';
 
     var demande = 0, posé = 0, rows = [];
@@ -1602,7 +1789,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     ol.appendChild(etape("ctl", 2, "Contrôle", "toute la pile",
       (C.bad ? puce(C.bad + " à revoir", "warn") : "") + puce(C.ok + " ok", "ok"), '<ul class="typo-ctl">' + C.html + '</ul>', C.bad > 0));
     ol.appendChild(etape("fam", 3, "Familles", "les lavis du plan", "", LEGENDE, false));
-    if(recadrer || !vb) cadrer();
+    if(recadrer || !vb) cadrer(); else echelle();
   }
 
   /* ---------- le contrôle : toute la pile, pas seulement le niveau montré ---------- */
@@ -1720,6 +1907,18 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           : "La scène n\u2019est pas collée à la salle de sport" + (isFinite(dSc) ? " (" + fmt(dSc, 1) + " m)" : " (pas au même niveau)"),
         "Sur un de ses côtés, mur contre mur — une contrainte du concours.");
     }
+    /* le WC PMR : l'aire de rotation d'un fauteuil (`RULES.plan.rotation`) y
+       tient-elle ? Sa surface est fixe, ses proportions viennent du pavage */
+    var pmr = [], nPmr = 0, ROT = PG.PLAN.rotation;
+    tous.forEach(function(r, i){ r.F.forEach(function(f){ f.rooms.forEach(function(rm){
+      (rm.kind === "bloc" ? rm.cel : [rm]).forEach(function(c){
+        if(!/PMR/.test(c.n || "")) return;
+        nPmr++;
+        if(Math.min(c.W, c.H) < ROT - 0.01) pmr.push((c.lab || c.n) + " au " + niv(i).toLowerCase() + " (" + fmt(c.W, 2) + " × " + fmt(c.H, 2) + " m)");
+      });
+    }); }); });
+    if(nPmr) dit(!pmr.length, pmr.length ? "WC PMR sans aire de rotation : " + pmr.slice(0, 4).join(" ; ")
+        : "Chaque WC PMR tient l\u2019aire de rotation d\u2019un fauteuil", "Un cercle libre de " + fmt(ROT * 100, 0) + " cm (SIA 500), dessiné dans la pièce. La surface ne change pas : ce sont ses proportions qui doivent le permettre.");
     /* le sol libre : ce que les rangs laissent quand leurs pièces sont posées */
     if(PG.VIDE != null){
       var vides = [];
@@ -1740,7 +1939,18 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 
   /* ---------- vue : cadrage, zoom, déplacement ---------- */
   var vb = null;
-  function applique(){ svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); }
+  function applique(){ svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); echelle(); }
+  /* L'ÉCHELLE EST DITE : celle du dessin à l'écran, comme imprimé à 96 px par
+     pouce, arrondie à deux chiffres ; celle des planches du Rendu à côté. */
+  function echelle(){
+    var r = svg.getBoundingClientRect();
+    if(!r.width || !vb) return;
+    var n = Math.max(vb.w / r.width, vb.h / r.height) * 1000 * 96 / 25.4, k = Math.pow(10, Math.floor(Math.log10(n)) - 1);
+    var t = "1:" + Math.round(n / k) * k + " à l\u2019écran" + (DATA.regles.echelle ? " · 1:" + DATA.regles.echelle + " au Rendu" : "");
+    var a = $("ech-t"), b = $("c-ech");
+    if(a) a.textContent = "Échelle " + t;
+    if(b) b.textContent = t;
+  }
   function cadrer(){
     var m = 10, w = bounds[2] - bounds[0] + 2 * m, h = bounds[3] - bounds[1] + 2 * m + 8;
     var r = stage.clientWidth / Math.max(1, stage.clientHeight);
@@ -1843,11 +2053,10 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   /* ---------- copier le SVG, couleurs résolues ---------- */
   $("copy").addEventListener("click", function(){
     var btn = this, clone = svg.cloneNode(true), src = svg.querySelectorAll("*"), dst = clone.querySelectorAll("*");
-    ["fill","stroke","stroke-width","stroke-dasharray","font-family","font-size","font-weight","display","opacity"].forEach(function(){});
     for(var i = 0; i < src.length; i++){
       var cs = getComputedStyle(src[i]), s = "";
       ["fill","stroke","stroke-width","stroke-dasharray","font-family","font-weight","display"].forEach(function(p){ s += p + ":" + cs.getPropertyValue(p) + ";"; });
-      if(src[i].classList && (src[i].classList.contains("porte") || src[i].classList.contains("mb") || src[i].classList.contains("arc") || src[i].classList.contains("vitre") || src[i].classList.contains("dim") || src[i].classList.contains("site") || src[i].classList.contains("exist") || src[i].classList.contains("ombre"))) s += "vector-effect:non-scaling-stroke;";
+      if(/\bw-/.test(src[i].getAttribute("class") || "")) s += "vector-effect:non-scaling-stroke;";
       dst[i].setAttribute("style", s);
       dst[i].removeAttribute("class");
     }
@@ -1862,7 +2071,9 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
      clair, et en rend la géométrie en MÈTRES du site (y vers le nord) avec les
      couleurs résolues — le même dessin que l'écran, rien de redessiné. Ce qui
      est contexte (parcelle, existant, volumes absents du niveau) porte `ctx`, sa sorte.
-     Un trait « non-scaling » garde son épaisseur d'écran : `lwPt`. */
+     Chaque trait dit son RANG dans la hiérarchie (`w`, de sa classe `w-*`) : la
+     planche en tire l'épaisseur de `TRAITS`, la même table que l'écran. Ce qui
+     n'a pas de rang a l'épaisseur du dessin, en mètres : les cloisons. */
   var CV = document.createElement("canvas").getContext("2d", { willReadFrequently:true });
   function couleur(c, a){
     if(!c || c === "none" || /^url/.test(c)) return /^url/.test(c || "") ? [0.86, 0.85, 0.82] : null;
@@ -1878,10 +2089,10 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     function W(m, x, y){ return [m.a * x + m.c * y + m.e, -(m.b * x + m.d * y + m.f)]; }
     function vu(el){ return el.checkVisibility ? el.checkVisibility() : getComputedStyle(el).display !== "none"; }
     vue.querySelectorAll("polygon,polyline,line,rect,circle,ellipse,text").forEach(function(el){
-      if(!vu(el)) return;
+      if(!vu(el) || el.classList.contains("ecran")) return;
       var cs = getComputedStyle(el), m = M(el), k = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) || 1;
       /* le contexte, par sa sorte : "site" (la parcelle), "exist", "ombre" */
-      var ctx = el.closest(".siteg") || el.classList.contains("ombre") ? el.getAttribute("class") || "exist" : null;
+      var ctx = el.closest(".siteg") || el.classList.contains("ombre") ? (el.getAttribute("class") || "exist").split(" ")[0] : null;
       var op = +cs.opacity;
       /* les cotes et le mobilier, que l'axonométrie éclatée laisse de côté */
       var g = el.closest(".nordg") ? "nord" : el.closest(".echelle") ? "echelle" : el.closest(".dimg") ? "dim" : el.closest(".mbg") ? "mb" : null;
@@ -1910,11 +2121,14 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       if(P.length < 2) return;
       var fixe = cs.vectorEffect === "non-scaling-stroke", lw = parseFloat(cs.strokeWidth) || 0;
       var da = cs.strokeDasharray && cs.strokeDasharray !== "none" ? cs.strokeDasharray.split(/[ ,]+/).map(parseFloat) : null;
+      var w = /\bw-(\w+)/.exec(el.getAttribute("class") || "");
       var o = { k:"p", pts:P.map(function(p){ return W(m, p[0], p[1]); }), ferme:/polygon|rect|circle|ellipse/.test(el.tagName),
                 fill:el.tagName === "line" ? null : couleur(cs.fill, op * +cs.fillOpacity),
                 stroke:lw ? couleur(cs.stroke, op * +cs.strokeOpacity) : null, ctx:ctx, g:g,
                 cl:el.getAttribute("class") || "", chap:el.getAttribute("data-chap") || null };
-      if(fixe){ o.lwPt = lw; o.dashPt = da; } else { o.lw = lw * k; o.dash = da && da.map(function(d){ return d * k; }); }
+      if(w) o.w = w[1];
+      /* un tiret d'écran est en px : les motifs propres à un élément (l'aire de rotation…) */
+      if(fixe){ o.dashPx = da; } else { o.lw = lw * k; o.dash = da && da.map(function(d){ return d * k; }); }
       if(o.fill || o.stroke) R.push(o);
     });
     return R;
