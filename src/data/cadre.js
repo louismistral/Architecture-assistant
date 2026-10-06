@@ -193,6 +193,13 @@ export var CADRE_MASS = [
       + "rectangles — un L, un U, un peigne d'un seul tenant. La salle de sport, à ses cotes et à "
       + "sa hauteur, reste un volume accolé : un même bâtiment, un seul mur entre eux. Éteint : "
       + "les corps restent des volumes accolés." },
+  { id:"alignement", sujet:"Volumes", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
+    n:"Deux volumes recollés s'alignent", k:"alignDist", def:3, min:0, max:5, pas:0.5,
+    unite:"m de décrochement au plus",
+    lu:"src/mass/gen.js — recoller(), aligner()",
+    d:"Deux volumes qui se recollent glissent le long de leur jonction pour aligner la façade la "
+      + "plus proche, si le décrochement est sous cet écart. À même profondeur, ils deviennent un "
+      + "seul rectangle ; sinon, le décrochement ne reste que d'un côté. Rien ne change de cotes." },
   { id:"module", sujet:"Module", tag:"intangible", src:CHOIX, qui:"groupe",
     n:"Module dimensionnel", k:"module", def:0.5, min:0.1, max:3, pas:0.1, unite:"m",
     lu:"src/mass/model.js — auModule(), horsModule()",
