@@ -99,6 +99,16 @@ export var RULES = {
        fauteuil roulant (diamètre, SIA 500) */
     sanitaire: { wc: [0.40, 0.70], lavabo: [0.60, 0.50], douche: 0.90 },
     travail: 0.60, passage: 0.90, rotation: 1.50,
+    /* UNE PIÈCE VIVABLE, pas un couloir : le pavage n'en règle que la forme,
+       jamais la surface. Le côté long fait au plus `ratio` fois le court
+       (`ratioGrand` dès `grand` m² : un hall, un dépôt de 160 m²) ; aucune
+       pièce sous `larg` m de largeur libre, sauf la cabine d'un bloc
+       sanitaire (`cabine`, la cuvette et sa porte). Les petites pièces d'un
+       bloc s'ouvrent sur un sas de `sas` m (l'aire de rotation quand il
+       dessert un WC PMR). Le WC PMR : `pmr` (l × p, m) au moins, pour
+       l'aire de rotation (SIA 500). */
+    piece: { ratio: 2, ratioGrand: 3, grand: 100, larg: 1.60, cabine: 0.90, sas: 1.20 },
+    pmr: [1.65, 1.80],
     /* la cotation, en m sur le plan : le blanc entre le dessin et une ligne
        d'attache, la première chaîne au-delà de la façade, l'écart entre deux
        chaînes, la hauteur du texte */
