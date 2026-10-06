@@ -102,7 +102,7 @@ export var RULES = {
     /* la cotation, en m sur le plan : le blanc entre le dessin et une ligne
        d'attache, la première chaîne au-delà de la façade, l'écart entre deux
        chaînes, la hauteur du texte */
-    cotes: { ecart: 0.40, premier: 1.60, pas: 1.20, texte: 0.70 }
+    cotes: { ecart: 0.40, premier: 1.60, pas: 1.20, texte: 0.50 }
   },
 
   /* --- circulation ------------------------------------------------------- */
