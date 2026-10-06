@@ -104,7 +104,7 @@ function caseV(l, k, unite){
   var w = el("span", "pr-val");
   var deux = k === l.k2, pct = l.pct && !deux;
   var v = pct ? Math.round(V[k] * 100) / 100 : V[k];
-  w.appendChild(nombre(v, deux ? { min:l.min2, max:l.max2, pas:l.pas } : { min:l.min, max:l.max, pas:l.pas },
+  w.appendChild(nombre(v, deux ? { min:l.min2, max:l.max2, pas:l.pas2 || l.pas } : { min:l.min, max:l.max, pas:l.pas },
     function(x){
       if(!regler(k, x)) return false;
       saveSoon(); rendre();

@@ -25,7 +25,7 @@
 import { ITEMBYKEY } from "../core/model.js";
 import { PER, SITE } from "../data/site.js";
 import { V, courExigee, enVigueur, recul, reculVise } from "../data/cadre.js";
-import { distVisee, feuExige, feuVise, force, ombreVisee, preference } from "../data/orientation.js";
+import { distVisee, feuExige, feuVise, force, ombreVisee, preference, vise } from "../data/orientation.js";
 import "../data/leviers.js";
 import "../data/recherche.js";
 import { RULES } from "../data/rules.js";
@@ -165,11 +165,15 @@ function accolerA(sp, M, vols, r, bout){
       }
     }
   });
-  cand.forEach(function(c){ c.o = r() - (bout && c.bout ? 1 : 0); });
+  var c = Math.cos(M.a), sn = Math.sin(M.a), cote = vise("pub-est");
+  /* le public d'un côté : les faces du corps qui regardent ce côté d'abord */
+  cand.forEach(function(k){
+    var px = k.u * c - k.v * sn, py = k.u * sn + k.v * c;
+    k.o = r() - (bout && k.bout ? 1 : 0) - (cote ? 2 * versPublic({ x:px, y:py }) / Math.max(1, rm.w + rm.d) : 0);
+  });
   cand.sort(function(a, b){ return a.o - b.o; });
   var av = { x:sp.x, y:sp.y, a:sp.a };
   sp.joint = M.id;
-  var c = Math.cos(M.a), sn = Math.sin(M.a);
   for(q = 0; q < cand.length; q++){
     var k = cand[q];
     sp.x = d1(rm.x + k.u * c - k.v * sn); sp.y = d1(rm.y + k.u * sn + k.v * c);
@@ -271,6 +275,11 @@ function auBord(v, vols){
       cand.push([cx, cy, d]);
     }
   }
+  /* du bord vers le cœur ; et quand on vise le public d'un côté (`pub-est`),
+     d'abord la marge de ce côté : on ajoute au bord la distance au côté public */
+  var pmax = -Infinity, cote = v.lv[0].keys.some(function(k){ return PMAP[k] && PMAP[k].pub; }) && vise("pub-est");
+  cand.forEach(function(c){ c[3] = versPublic({ x:c[0], y:c[1] }); pmax = Math.max(pmax, c[3]); });
+  cand.forEach(function(c){ c[2] += cote ? pmax - c[3] : 0; });
   cand.sort(function(p, q2){ return p[2] - q2[2]; });
   var angles = [v.a, v.a + Math.PI / 2, v.a + Math.PI / 4, v.a - Math.PI / 4];
   for(k = 0; k < angles.length; k++){
@@ -522,6 +531,8 @@ export function intact(vols){
    elle se pose à part. Ses cotes ne bougent pas. Le cadre `scene-sport` (la
    scène collée à la salle, sur un de ses côtés) la veut TOUJOURS accolée : il
    essaie chaque corps d'école, et sans succès l'essai échoue. */
+/* Où un point se tient vers le côté public (`V.pubAz`, l'orientation `pub-est`) : m. */
+function versPublic(p){ var az = V.pubAz * Math.PI / 180; return p.x * Math.sin(az) + p.y * Math.cos(az); }
 function placerSport(vols, imp, r, th){
   var sp = { id:"vsport", x:0, y:0, a:th, fix:1, ancre:1, key:imp.key, prof:imp.d, grad:0,
              lv:[{ i:imp.i, w:imp.w, d:imp.d, dx:0, dy:0, a:imp.aire, keys:[imp.key] }] };
@@ -529,7 +540,10 @@ function placerSport(vols, imp, r, th){
   var E = vols.filter(function(v){ return !v.fix && !v.ph; });
   if(enVigueur("scene-sport")){
     var o = Math.floor(r() * Math.max(1, E.length));
-    for(var e = 0; e < E.length; e++) if(accolerA(sp, E[(o + e) % E.length], vols, r)) return true;
+    var L0 = E.map(function(x, e){ return E[(o + e) % E.length]; });
+    /* le public d'un côté (`pub-est`) : d'abord le corps le plus avancé de ce côté */
+    if(vise("pub-est")) L0.sort(function(a, b){ return versPublic(b) - versPublic(a); });
+    for(var e = 0; e < L0.length; e++) if(accolerA(sp, L0[e], vols, r)) return true;
     vols.pop();
     return false;
   }

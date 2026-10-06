@@ -43,6 +43,7 @@ CHAP.forEach(function(ch, ci){
       solid: (it.w && it.h) ? 1 : 0,
       hors: HORS[ci] ? 1 : 0,
       hlibre: HL[it.key] || 0,
+      pub: ch.public ? 1 : 0,          /* ouvert au public (`program.js`) */
       /* déjà compté ailleurs : les locaux engins de la salle de gym sont
          convertis en abri PC, dont les 750 m² les contiennent. Les poser une
          seconde fois compterait 180 m² deux fois. */

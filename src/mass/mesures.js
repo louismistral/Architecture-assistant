@@ -30,7 +30,7 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
-import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, distRoute, ecart,
+import { airePosable, alignement, assise, attracteurs, cibleVue, coins, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
 import { CONTACT, MASS, aireEtage, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
@@ -315,6 +315,44 @@ export function angleSoleilVue(x, y){
   return ecartAngle(pv, Math.PI / 2) / 2;
 }
 
+/* PUBLIC ET ÉCOLE. Un volume est public quand ce qu'il porte l'est (`pub`, les
+   chapitres publics de `program.js`) : la salle polyvalente, la piscine, le
+   chauffage communal ; les autres corps sont l'école. Deux nombres :
+   - `sep`, le recouvrement de leurs emprises projetées sur la direction qui les
+     sépare le mieux, rapporté à la plus petite des deux : 0 quand une ligne
+     droite passe entre elles. On essaie les axes des volumes, et tous les 5° ;
+   - `cote`, l'écart de leurs centres vers le côté public (`V.pubAz`), en m,
+     et `demi` la demi-largeur de l'école dans cette direction. */
+function publicEcole(vols){
+  var P = [], S = [];
+  vols.forEach(function(v){
+    var pub = v.lv.some(function(e){ return (e.keys || []).some(function(k){ return PMAP[k] && PMAP[k].pub; }); });
+    if(!pub && (v.ph || v.fix)) return;
+    solRects(v).forEach(function(r){ (pub ? P : S).push(r); });
+  });
+  if(!P.length || !S.length) return { sep:null, cote:null, demi:0 };
+  function pts(L){ var o = []; L.forEach(function(r){ coins(r).forEach(function(c){ o.push(c); }); }); return o; }
+  function centre(L){
+    var a = 0, x = 0, y = 0;
+    L.forEach(function(r){ var w = r.w * r.d; a += w; x += r.x * w; y += r.y * w; });
+    return [x / a, y / a];
+  }
+  function etendue(Q, ux, uy){
+    var lo = Infinity, hi = -Infinity;
+    Q.forEach(function(c){ var t = c[0] * ux + c[1] * uy; lo = Math.min(lo, t); hi = Math.max(hi, t); });
+    return [lo, hi];
+  }
+  var QP = pts(P), QS = pts(S), sep = Infinity, axes = [];
+  for(var t = 0; t < 180; t += 5) axes.push(t * DEG);
+  P.concat(S).forEach(function(r){ axes.push(r.a, r.a + Math.PI / 2); });
+  axes.forEach(function(t){
+    var a = etendue(QP, Math.cos(t), Math.sin(t)), b = etendue(QS, Math.cos(t), Math.sin(t));
+    sep = Math.min(sep, Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0])) / Math.max(1e-6, Math.min(a[1] - a[0], b[1] - b[0])));
+  });
+  var az = V.pubAz * DEG, dx = Math.sin(az), dy = Math.cos(az), cp = centre(P), cs = centre(S), e = etendue(QS, dx, dy);
+  return { sep:sep, cote:(cp[0] - cs[0]) * dx + (cp[1] - cs[1]) * dy, demi:(e[1] - e[0]) / 2 };
+}
+
 function lire(vols){
   var E = ecole(vols), N = horsSol(), HN = {};
   N.forEach(function(n){ HN[n.i] = n; });
@@ -451,7 +489,7 @@ function lire(vols){
     cour: courUtile(vols), emprise:emp, volume:vol, sousPart: tot ? sous / tot : 0,
     dn:dn, dok:dok, pmax:pmax, el:el, pente:pt, ecartRez:zhi > zlo ? zhi - zlo : 0, rang:rang, niv:niv, dirs:dirs.length,
     pn:pn, pok:pok, pfeu:pfeu, dmin:dmin, dex:dex, marge:marge, PF:PF, fmax:fmax,
-    terrain: terrainLibre(vols), terrain0: terrainLibre(vols, 0), nappe: couverture(vols),
+    terrain: terrainLibre(vols), terrain0: terrainLibre(vols, 0), nappe: couverture(vols), pub: publicEcole(vols),
     ensembles: ensembles(E.filter(function(v){ return !v.fix; }), vols.ponts || []),
     second: s2d ? Math.min(1, s2p / s2d) : null,
     sport: sp.length ? (sp.some(function(v){ return !!v.joint; }) ? 1 : 0) : null
@@ -533,6 +571,14 @@ export function qualites(vols, L){
     !paires ? "aucune façade en vis-à-vis"
       : pire <= 0 ? "tous les vis-à-vis tiennent " + dec(V.ombreK) + " × la hauteur"
       : "le pire vis-à-vis manque " + Math.round(pire * 100) + " % de l'écart utile");
+  /* le public d'un côté, l'école de l'autre : séparés par une ligne, et le
+     public au-delà de la demi-largeur de l'école vers `V.pubAz` */
+  var pe = L.pub, pq = pe.sep == null ? 0 : (lin(pe.sep, 0, V.pubMele) + borne(pe.cote / Math.max(1, pe.demi))) / 2;
+  q("pub-est", "Le public d'un côté, l'école de l'autre",
+    pe.sep == null ? 1 : pe.sep > V.pubMele || pe.cote < 0 ? 0 : pe.sep <= .01 && pe.cote >= pe.demi ? 2 : 1, pq,
+    pe.sep == null ? "aucun volume public posé"
+      : (pe.sep <= .01 ? "une ligne sépare public et école" : "public et école se recouvrent à " + Math.round(100 * pe.sep) + " %")
+        + " ; le public à " + Math.round(pe.cote) + " m vers " + Math.round(V.pubAz) + "° (demi-école : " + Math.round(pe.demi) + " m)");
   q("compa", "Un volume compact", palier(L.compa, V.compaBon, V.compaMax), lin(L.compa, V.compaBon, V.compaMax),
     dec(Math.round(L.compa * 100) / 100) + " m² de façade par m² de plancher");
   q("align", "Des corps alignés", E.length && L.rang / E.length >= .5 ? 2 : 1,
@@ -629,7 +675,8 @@ export function mesuresMass(vols, L){
     profMax: fini(L.pmax), elan: fini(L.el), pente: fini(L.pente),
     distMin: fini(L.dmin), distExistant: fini(L.dex), alignPart: L.E.length ? fini(L.rang / L.E.length) : null,
     couverture: L.nappe.c == null ? null : fini(L.nappe.c), sousSolPart: fini(L.sousPart),
-    sportIntegre: L.sport, secondPose: L.second == null ? null : fini(L.second)
+    sportIntegre: L.sport, secondPose: L.second == null ? null : fini(L.second),
+    pubSep: L.pub.sep == null ? null : fini(L.pub.sep), pubCote: L.pub.cote == null ? null : fini(L.pub.cote)
   };
 }
 

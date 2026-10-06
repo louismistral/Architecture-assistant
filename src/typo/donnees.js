@@ -43,7 +43,7 @@ export function donneesTypo(vols, ponts, graine){
       circ:flCircDe(i), net:Math.round(flNet(i)),
       rooms:ordre.map(function(k){
         var p = PMAP[k];
-        return { key:k, n:p.n, f:p.f, q:q[k], u:uOf(k), hors:p.hors, solid:p.solid,
+        return { key:k, n:p.n, f:p.f, q:q[k], u:uOf(k), hors:p.hors, solid:p.solid, pub:p.pub,
                  w:TYPO.cotes[k] != null ? TYPO.cotes[k] : coteDe(k) };
       }) };
   });
