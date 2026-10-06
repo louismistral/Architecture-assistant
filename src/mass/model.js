@@ -23,7 +23,7 @@
    et ne cherche qu'une autre solution architecturale. Ils ont donc deux graines
    distinctes : celle du mixer vit dans `core/rand.js`, celle du massing ici.
    ========================================================================= */
-import { COULOIR, FMAP, ITEMS } from "../core/model.js";
+import { COULOIR, FMAP, ITEMS, cagesDe } from "../core/model.js";
 import { squarify } from "../core/treemap.js";
 import { V } from "../data/leviers.js";
 import { enVigueur } from "../data/cadre.js";
@@ -128,6 +128,57 @@ export function profFacade(){
   if(!u) return V.profMin;
   return auModule(2 * (enVigueur("classe-dim") ? V.classeP : Math.sqrt(u.u)) + COULOIR);
 }
+/* CE QUE LES PLANS PAVENT. Le mixer ESTIME la circulation d'un niveau sur le
+   front de ses pièces ; les Typologies la DESSINENT dans la section du corps
+   (`typo/plans.html — composer`) : un couloir sur toute la longueur, des
+   bandes de pièces de part et d'autre, et devant une pièce que ses
+   proportions (`RULES.plan.piece`) empêchent de prendre toute la bande, un
+   dégagement. Le volume doit loger ce qu'elles dessinent, sans quoi des
+   pièces restent au bac (« Ne tient pas dans le volume »). Pour des corps de
+   profondeur intérieure D :
+     pièce pavée  = a × b ÷ min(b, √(max(a, colonne) × ratio))     b : la bande ;
+     niveau       = (Σ pièces pavées × D ÷ (D − couloir) + cages) × (1 + reste du pavage)
+                    + postes aux cotes imposées.
+   Le reste (`V.pavage`, une hypothèse) : un rang finit rarement sur une pièce
+   entière, et deux bandes rarement ensemble.
+   Une petite pièce ne se pave pas seule : WC et cabines s'empilent en colonnes
+   d'au moins `piece.colonne` m², et c'est la colonne qui prend la bande.
+   Ce n'est pas du programme : c'est de la circulation, que le bilan demande. */
+export function aPaver(i, D){
+  var P = RULES.plan.piece, c = COULOIR, b = D >= RULES.plan.deuxRangs ? (D - c) / 2 : D - c;
+  if(!(b > 0)) return flBuilt(i);
+  var s = 0, imp = 0, net = 0;
+  BLOCKS.forEach(function(k){
+    var p = PMAP[k.key], u = uOf(k.key);
+    if(k.fl !== i || p.hors) return;
+    net += areaOf(k);
+    if(p.solid){ imp += areaOf(k); return; }
+    /* la profondeur la plus grande que ses proportions lui laissent */
+    var R = u >= P.grand ? P.ratioGrand : P.ratio;
+    s += k.q * u * b / Math.min(b, Math.sqrt(Math.max(u, P.colonne) * R));
+  });
+  if(!net) return 0;
+  var h = s * D / (D - c);
+  return (h + cagesDe(h)) * (1 + V.pavage / 100) + imp;
+}
+/* Ce que le niveau `i` demande aux volumes `vols` : ce que les plans y
+   pavent, à la profondeur de ses corps. Le bilan, le contrôle et les remèdes
+   la lisent ; le générateur la calcule à la profondeur qu'il a tirée. */
+export function demande(i, vols){ return aPaver(i, profNiveau(vols, i)); }
+/* La profondeur intérieure des corps d'école qui portent le niveau `i` dans
+   `vols`, pondérée par leur emprise ; celle de façade quand aucun ne le porte. */
+export function profNiveau(vols, i){
+  var a = 0, d = 0;
+  (vols || []).forEach(function(v){
+    if(v.ph || v.fix) return;
+    var e = volEtage(v, i);
+    if(!e || e.keys) return;
+    var x = aireEtage(e);
+    a += x; d += x * Math.min(e.w, e.d);
+  });
+  return a > 0 ? d / a : profFacade();
+}
+
 /* LE MODULE : toute cote de corps est un multiple de `V.module` (0,50 m, une
    ligne du cadre choisi). Une seule fonction arrondit, le générateur, les
    remèdes et la main l'appellent. */
@@ -628,7 +679,7 @@ export function volTitre(v, k){
 export function bilan(){
   var N = niveaux(), out = [], i;
   for(i = 0; i < N.length; i++){
-    var dem = N[i].A, po = 0;
+    var dem = demande(i, MASS.vol), po = 0;
     MASS.vol.forEach(function(v){
       /* Un ouvrage du second temps n'est pas de l'enveloppe scolaire : il ne
          pèse sur aucun plateau, et le compter ici ferait croire à un excédent

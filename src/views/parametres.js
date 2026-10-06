@@ -340,7 +340,7 @@ function donnees(cle, niv){
 }
 function contexte(){
   var R = RULES, L = [];
-  ["pass-larg", "couverture", "enveloppe", "place-parc", "cages"].forEach(function(id){
+  ["pavage", "pass-larg", "couverture", "enveloppe", "place-parc", "cages"].forEach(function(id){
     var l = ligne(id), o = base(l);
     o.val = valeurDe(l);
     o.sujet = "Hypothèses";

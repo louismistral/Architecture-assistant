@@ -32,7 +32,8 @@ export function creerPG(D){
       CAGE_A = R0.cage || 24, NOY = R0.noyau || { prof:5, volee:1.2, asc:[2.1, 2.4] },
       FEU = R0.feu || { cageSeuil:900, fuiteSimple:35, fuiteDouble:50 },
       LIEN = R0.lien || 15, MODULE = R0.module || 0.5, VIDE = R0.vide, PLAN = R0.plan || {},
-      FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6, PALIER = 1.2, CLASSE = R0.classe;
+      FRONT_MAX = 12.5, PETIT = (PLAN.piece || {}).petit || 30, BMIN = 5.6, PALIER = 1.2, CLASSE = R0.classe,
+      DEUX = PLAN.deuxRangs || 14;
   /* l'ordre des familles : les pièces d'une famille se posent ensemble */
   var FAMS_O = ["cla", "eau", "uap", "adm", "spo", "tec", "pis", "ext"];
   var WC = 2 * NOY.volee + 0.10 + NOY.asc[0] + CLOISON;     /* largeur du noyau */
@@ -244,7 +245,7 @@ export function creerPG(D){
   /* la façade du côté du noyau (la bande nord), dans le repère du volume */
   function facadeN(v, e, N){
     /* un seul rang : il est du côté du noyau quand on le connaît, le couloir de l'autre */
-    N = N || (e.d >= 14 ? (bandeSud(v.a) === "A" ? "B" : "A") : "B");
+    N = N || (e.d >= DEUX ? (bandeSud(v.a) === "A" ? "B" : "A") : "B");
     return { N:N, y:(e.dy || 0) + (N === "A" ? -e.d / 2 : e.d / 2) };
   }
   /* le côté du noyau : le nord, sauf si sa façade bouge d'un niveau à l'autre
@@ -278,7 +279,7 @@ export function creerPG(D){
   /* ---------- un corps à un niveau : le cadre ---------- */
   function cadre(v, e){
     var p = local(v.x, v.y, v.a, e.dx || 0, e.dy || 0);
-    return { v:v, e:e, cx:p[0], cy:p[1], a:v.a, L:e.w, D:e.d, deux:e.d >= 14,
+    return { v:v, e:e, cx:p[0], cy:p[1], a:v.a, L:e.w, D:e.d, deux:e.d >= DEUX,
              rooms:[], cages:[], libre:[], paliers:[], bb:{}, U:[] };
   }
 

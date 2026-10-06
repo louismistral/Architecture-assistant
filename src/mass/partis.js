@@ -419,6 +419,7 @@ export function signature(pid, S, d){
    avec ce programme et cette profondeur — le générateur essaie alors autre
    chose. */
 export var PARTIS_FIGURES = Object.keys(FIG);
+var NMIN = { U:3, cour:4, peigne:4 };
 export function composer(pid, A, d, r){
   var f = FIG[pid];
   if(!f) return null;
@@ -427,6 +428,10 @@ export function composer(pid, A, d, r){
   /* Le hameau et les pavillons veulent des volumes plus petits et plus nombreux. */
   if((pid === "pavillons" || pid === "hameau") && r() < .5)
     S.push({ haut: S.length && r() < .5 ? b.H : 1, p:entre(r, .7, 1) });
+  /* le moins de volumes dont la figure a besoin pour se dessiner : un étage
+     presque aussi grand que le rez ne laissait aucun volume bas, et une cour
+     n'avait plus ses quatre côtés */
+  while(S.length < (NMIN[pid] || 1)) S.push({ haut:b.H, p:entre(r, .8, 1.2) });
   if(pid === "terrasses") S.forEach(function(s){ if(s.haut > 1) s.gradin = true; });
   if(!programme(S, A, d)) return null;
   if(!f(S, d, r)) return null;

@@ -27,7 +27,7 @@ import { acte } from "../mix/fix.js";
 import { repartir } from "../mix/shuffle.js";
 import {
   admissible, ecarter, genMass, poser, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
-import { MASS, aireEtage, auModule, fusionne, massSet, massVols, niveaux, profBornes, profFacade, volEtage,
+import { MASS, aireEtage, auModule, demande, fusionne, massSet, massVols, niveaux, profBornes, profFacade, volEtage,
   volFusionne } from "./model.js";
 
 function vol(i){ return (i >= 0 && MASS.vol[i]) ? MASS.vol[i] : null; }
@@ -111,7 +111,7 @@ export function fixSousSol(){
 
 /* ---------- les surfaces ----------------------------------------------------
    Un niveau se repartage entre les corps qui le portent : la SOMME doit rester
-   la surface bâtie que le mixer demande. Les cotes changent, les mètres carrés
+   ce que les plans y pavent (`demande`). Les cotes changent, les mètres carrés
    non. Ce geste vivait dans la vue, où il n'était appelé qu'après un ajout
    d'étage — il est la réponse à l'écart de bilan, et c'est ici sa place. */
 export function requilibre(){
@@ -125,7 +125,7 @@ export function requilibre(){
       if(e) som += aireEtage(e);
     });
     if(som <= 0) return;
-    var k = Math.sqrt(n.A / som);
+    var k = Math.sqrt(demande(n.i, MASS.vol) / som);
     if(Math.abs(k - 1) < .001) return;
     port.forEach(function(v){
       var e = volEtage(v, n.i);

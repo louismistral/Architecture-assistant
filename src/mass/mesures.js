@@ -32,7 +32,7 @@ import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
 import { airePosable, alignement, assise, attracteurs, cibleVue, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, aireEtage, assiseEff, bilan, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
+import { CONTACT, MASS, aireEtage, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
 import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
@@ -258,7 +258,8 @@ function bilanDe(vols){
   return niveaux().map(function(n){
     var po = 0;
     vols.forEach(function(v){ if(v.ph) return; v.lv.forEach(function(e){ if(e.i === n.i) po += aireEtage(e); }); });
-    return { i:n.i, nom:n.nom, demande:n.A, pose:po, ecart:po - n.A };
+    var dem = demande(n.i, vols);
+    return { i:n.i, nom:n.nom, demande:dem, pose:po, ecart:po - dem };
   });
 }
 /* Ce qui peut invalider une variante — les écarts `pile` se règlent au mixer. */

@@ -36,7 +36,7 @@ import {
   assise, attracteurs, axePer, bbox, bordDist, dedans, airePosable,
   ecart, ecartAngle, margeAu, terrain, tientA, visAVis
 } from "./geom.js";
-import { CONTACT, MASS, massVols, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
+import { CONTACT, MASS, massVols, aPaver, auModule, horsSol, lies, pontRect, profBornes, profFacade, secondTemps,
   profPieces, sousSol, volEtage, volRect, volRects, solRects, assiseDe, contourDe, hauteurEtage, partsDe } from "./model.js";
 export { lies };
 import { angleSoleilVue, courUtile, ecarts, ensembles, evaluer, lecture, oublier }
@@ -602,9 +602,6 @@ export function genMass(graine){
   var centreSite = bbox(PER);
   var valides = [], rates = [], nEssais = 0;
 
-  /* L'aire bâtie d'école par niveau hors sol : ce que la figure doit loger. */
-  var Aecole = N.map(function(n, k){ return Math.max(0, n.A - (imp && k === 0 ? imp.aire : 0)); });
-
   /* UN ESSAI, dans l'ordre voulu : 1. les LEVIERS — le parti construit sa
      figure, le programme lui donne ses étages et ses emprises (dans
      `composer`), la figure est posée d'un bloc, puis la salle de sport, le
@@ -613,17 +610,19 @@ export function genMass(graine){
   function essai(pid){
     nEssais++;
     /* La profondeur — un levier : fixée, la nôtre ; libre, tirée sous la cote
-       de façade, pleine pour une barre et un bloc compact, plus mince pour des
-       pavillons et un hameau. */
+       de façade, pleine pour une barre et un bloc compact. Toute profondeur se
+       pave, mais un corps mince paie plus de couloir : `aPaver` le dit, et le
+       niveau le reçoit. Des pavillons plus minces ne tenaient plus sur le site. */
     var p0 = B.lo, p1 = hiE;
     if(pid === "barre" || pid === "compact") p0 = Math.max(B.lo, hiE - 3);
-    if(pid === "pavillons" || pid === "hameau") p1 = Math.max(B.lo, Math.min(hiE, B.lo + 5));
     /* fixée au rail, elle est la nôtre ; sinon, des pièces redimensionnées au
        mixer la dictent (`profPieces`) ; sinon, elle est tirée */
     var fixe = MASS.lev.prof, pp = SANS_PIECES ? null : profPieces();
     var prof = fixe != null ? auModule(Math.max(B.lo, Math.min(hiE, fixe - 2 * RULES.haut.mur)))
              : pp != null ? auModule(Math.max(B.lo, Math.min(hiE, pp)))
                           : auModule(entre(r, p0, p1)), vols;
+    /* ce que chaque niveau demande à cette profondeur : ce que les plans y pavent */
+    var Aecole = N.map(function(n, k){ return Math.max(0, aPaver(n.i, prof) - (imp && k === 0 ? imp.aire : 0)); });
     {
       var S = composer(pid, Aecole, prof, r);
       if(!S){ rates.push({ pid:pid, k:"parti" }); return false; }
@@ -776,7 +775,7 @@ function enterrer(vols){
     return assiseVol(b).z - assiseVol(a).z; });
   ordre.splice(ordre.indexOf(big), 1); ordre.unshift(big);
   S.forEach(function(n){
-    var reste = n.A, k = 0;
+    var reste = aPaver(n.i, Math.min(etageSol(big).d, profBornes().hi)), k = 0;
     while(reste > 1 && k < ordre.length){
       var v = ordre[k++], hi = profBornes().hi, d = Math.min(etageSol(v).d, hi);
       var a = Math.min(reste, d * hi);
