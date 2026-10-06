@@ -9,36 +9,9 @@
 
 .mix{position:relative}
 
-.mix-bar{gap:var(--s-3) var(--s-4)}
-.mix-seed{display:flex;align-items:center}
-.mix-seed input{
-  width:6.5em;font:inherit;font-family:var(--font-mono);font-size:var(--t-xs);
-  padding:var(--s-1) var(--s-2);min-height:var(--ctl-h);
-  border:1px solid var(--border);border-radius:var(--radius-md);
-  background:var(--card);color:var(--foreground);
-}
-.mix-opt{
-  display:inline-flex;align-items:center;gap:var(--s-2);
-  font-size:var(--t-xs);color:var(--soft-foreground);cursor:pointer;min-height:var(--tap-min);
-}
-
-/* --- la grille : la pile, et son flanc ---------------------------------- */
-.mix-grid{
-  display:grid;grid-template-columns:minmax(0,1fr) 320px;
-  gap:var(--s-5);align-items:start;margin-top:var(--s-4);
-}
+/* Le rail et sa grille sont ceux du Massing (`massing.css` — .mass-grid,
+   .mass-rail, .mass-etape). */
 .mix-main{min-width:0}
-.mix-side{
-  position:sticky;top:calc(var(--ctl-h) + var(--s-6));
-  display:grid;gap:var(--s-4);
-  max-height:calc(100vh - var(--s-8));overflow-y:auto;
-  border-left:1px solid var(--border);padding-left:var(--s-4);
-}
-@media (max-width:1000px){
-  .mix-grid{grid-template-columns:1fr}
-  .mix-side{position:static;max-height:none;border-left:0;border-top:1px solid var(--border);
-            padding-left:0;padding-top:var(--s-4)}
-}
 
 /* --- le bandeau de chiffres --------------------------------------------- */
 .mix-sum{
@@ -187,11 +160,7 @@
 }
 .mix-why{font-size:var(--t-3xs);color:var(--muted-foreground);font-weight:400;line-height:var(--lh-snug)}
 
-/* --- le flanc : circulation, contrôle, bac ------------------------------- */
-.mix-circ{
-  border:1px dashed var(--border-strong);border-radius:var(--radius-lg);padding:var(--s-3);
-}
-.mix-circ h3{margin:0 0 var(--s-1)}
+/* --- les corps des étapes du rail : circulation, contrôle, bac --------- */
 .mix-circ__v{
   margin:0;font-family:var(--font-mono);font-size:var(--t-num-md);font-weight:500;
   font-variant-numeric:tabular-nums;
@@ -200,11 +169,10 @@
 .mix-circ__n{margin:var(--s-1) 0 var(--s-2);font-size:var(--t-2xs);color:var(--soft-foreground)}
 .mix-circ__go{font-size:var(--t-2xs);padding:var(--s-1) var(--s-2);min-height:var(--tap-min)}
 
-.mix-issues__hd,.mix-tray__hd{
+.mix-issues__hd{
   display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-2);margin-bottom:var(--s-2);
 }
-.mix-issues__hd h3,.mix-tray__hd h3{margin:0}
-.mix-tray__hd .mono{font-size:var(--t-2xs);color:var(--muted-foreground)}
+.mix-issues__hd h3{margin:0}
 .mix-ok{margin:0;font-size:var(--t-2xs);color:var(--ok)}
 
 .mix-list{margin:0;padding:0;list-style:none;display:grid;gap:var(--s-2)}
@@ -376,7 +344,6 @@
 .mixblk.is-delie .mixpc:hover{border-width:2px}
 
 /* --- ce que tire le Shuffle ------------------------------------------------ */
-.mix-regl h3,.mix-adj h3{margin:0 0 var(--s-1)}
 .mix-regl__n{margin:0 0 var(--s-2);font-size:var(--t-2xs);color:var(--muted-foreground);line-height:var(--lh-snug)}
 .mix-regl__l{list-style:none;margin:0;padding:0;display:grid}
 .mix-regl__l li{
@@ -397,7 +364,6 @@
 .mix-postes__n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* --- les adjacences -------------------------------------------------------- */
-.mix-adj__c{font-size:var(--t-2xs);color:var(--muted-foreground)}
 .mix-adj__g{width:max-content;margin-bottom:var(--s-2)}
 .mix-adj__g .btn{min-height:var(--tap-min);font-size:var(--t-2xs)}
 .mix-adj__l{list-style:none;margin:0;padding:0;display:grid}

@@ -14,7 +14,7 @@ src/mix/accept.js     les écarts qu'on assume — « laisser comme ça »
 src/mix/opts.js       les réglages : la pile et son dé, le lien des postes, les cotes ;
                       les adjacences exigées, toujours actives
 src/mix/store.js      persistance (localStorage, clé `saxon-mix-v1`)
-src/views/mixer.js    la vue : la pile, les niveaux à l'échelle, le bac, le glisser
+src/views/mixer.js    la vue : le rail en chaîne, la pile, les niveaux à l'échelle, le glisser
 ```
 
 Un **poste** est une ligne du programme (18 salles de classe standard). Une **part** est un
@@ -163,10 +163,10 @@ valeur la fige** : son dé s'éteint. Chacun se règle là où il se voit :
 |---|---|---|
 | le nombre de niveaux | en tête de la pile | allumé — le tirage propose la pile |
 | le plateau d'un niveau | sur le niveau, à côté du champ | allumé, niveau par niveau |
-| le lien d'un poste | sur son bloc, et dans la liste du flanc | éteint ; les postes sont déliés |
-| une adjacence | au flanc, lien par lien | éteint ; exigées actives, mutualisations éteintes |
+| le lien d'un poste | sur son bloc, et à l'étape Leviers du rail | éteint ; les postes sont déliés |
+| une adjacence | à l'étape Adjacences du rail, lien par lien | éteint ; exigées actives, mutualisations éteintes |
 
-Au flanc, **« Ce que tire le Shuffle »** porte un dé MAÎTRE par famille : il bascule toute
+À l'étape **Leviers** du rail, ce que tire le Shuffle porte un dé MAÎTRE par famille : il bascule toute
 la famille d'un coup, et se lit « mixte » quand elle est partagée. « Tout lier » et « Tout
 délier » y sont aussi, et la liste des quinze postes qui ont le choix — pour les blocs trop
 petits pour porter leurs commandes, et pour le clavier. Le panneau **« Adjacences »** liste
@@ -176,7 +176,7 @@ tient pas porte la marque du contrôle.
 
 Ce que tire un dé allumé se tire AVANT la pose, sur la même seed (`tirerReglages()` dans
 `shuffle.js`) : lié ou délié, actif ou éteint, à pile ou face — un levier libre tire à parts
-égales. La valeur tirée devient la valeur du réglage — on la lit sur le bloc et au flanc,
+égales. La valeur tirée devient la valeur du réglage — on la lit sur le bloc et au rail,
 et on la garde en éteignant le dé. Une proposition se rejoue donc à l'identique, liens et
 adjacences compris.
 
@@ -189,8 +189,20 @@ règlement impose les cotes, n'a pas le choix (`lienLibre()` dans `prog.js`). Al
 adjacence agit aussi sur ce qui est posé : le plus léger des deux postes rejoint le plus lourd,
 si la règle de niveau l'y admet (`rapprocherLien`).
 
-La barre du haut ne garde que ce qui agit sur l'ensemble : **Shuffle**, **Tout au bac**, et la
-**Seed**, qu'on retape pour rejouer une proposition.
+## Le rail est une chaîne, comme au Massing et aux Typologies
+
+La pile tient toute la largeur ; ce qui la commande est au rail de gauche, avec les composants
+du Massing (`.mass-rail`, `.mass-etape`) :
+
+- **Proposer**, en tête et toujours visible : **Shuffle programme** (le geste de l'onglet, le
+  même nom qu'au Massing), le mode auto et les shuffles des autres onglets, **Tout au bac**, et
+  la **Seed**, qu'on retape pour rejouer une proposition.
+- **Les étapes**, chacune repliable, son ÉTAT écrit à droite : 1 · **À placer** — le bac ;
+  l'étape entière reçoit un bloc glissé, même repliée, et s'ouvre tant qu'il reste à poser.
+  2 · **Contraintes** — le contrôle ; un conflit l'ouvre d'elle-même. 3 · **Leviers** — ce que
+  tire le Shuffle. 4 · **Adjacences** — rompues ou tenues. 5 · **Circulation** — en lecture.
+  Contraintes et Leviers renvoient au volet Contraintes.
+- Le corps d'une étape ne se construit que si elle est OUVERTE : le rail se refait à chaque geste.
 
 > Avant : trois interrupteurs dans la barre — « Shuffle niveaux », « Grouper les liés »,
 > « Voir les pièces ». Le premier est devenu le dé de la pile, le deuxième les adjacences
