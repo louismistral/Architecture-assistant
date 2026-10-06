@@ -542,6 +542,16 @@ export function recouvrement(vols, i, murs, haut){
   }
   return { aire:aire, enfouie:enfouie, volume:volume, facade:facade };
 }
+/* L'EMPRISE COMMUNE, vue du ciel : chaque corps par son plus bas étage hors sol
+   (`etageBas`, celui de `volSol`) — un corps qui ne commence qu'au R+1, posé au-dessus
+   du bout d'un autre, la partage aussi. Quand les deux posent au rez, c'est
+   `recouvrement(vols, rez, true).aire`. */
+export function recouvrementSol(vols){
+  var E = (vols || []).filter(function(v){ return !v.ph && etageBas(v); }), s = 0, j, k;
+  for(j = 0; j < E.length; j++) for(k = j + 1; k < E.length; k++)
+    if(lies(E[j], E[k])) s += commun(E[j], etageBas(E[j]), E[k], etageBas(E[k]), true).aire;
+  return s;
+}
 /* Ce que `v` cède à l'étage `i` : la partie commune appartient au PLUS GRAND
    des deux corps à cet étage — la barre garde son programme, le bloc posé
    dessus en cède ; à égalité, le premier de la liste garde. Les parts cédées
@@ -665,23 +675,23 @@ export function volAire(v){
   v.lv.forEach(function(e){ a += aireEtage(e); });
   return a;
 }
-/* L'emprise au sol : le plus bas étage hors sol, celui qui touche le terrain. */
-export function volSol(v){
+/* Le plus bas étage hors sol, celui qui touche le terrain — null s'il n'y en a pas. */
+function etageBas(v){
   var best = null;
   v.lv.forEach(function(e){
     if(lvlOf(e.i) < 0) return;
     if(!best || e.i < best.i) best = e;
   });
+  return best;
+}
+/* L'emprise au sol : celle du plus bas étage hors sol. */
+export function volSol(v){
+  var best = etageBas(v);
   return best ? volRect(v, best) : null;
 }
 /* Toutes les emprises du plus bas étage hors sol — une par part. */
 export function solRects(v){
-  var best = null;
-  v.lv.forEach(function(e){
-    if(lvlOf(e.i) < 0) return;
-    if(!best || e.i < best.i) best = e;
-  });
-  return volRects(v, best || v.lv[0]);
+  return volRects(v, etageBas(v) || v.lv[0]);
 }
 export function volCoins(v){
   var r = volSol(v);

@@ -75,18 +75,26 @@ export function donneesTypo(vols, ponts, graine){
     var autres = parts.filter(function(o){ return o === v || !v.aile || o.aile !== v.aile; });
     v.lv.forEach(function(e){ var c = cedeeDe(v, autres, e.i); if(c.aire > 0) coupes.push([e, c]); });
   });
+  /* Un étage presque tout entier posé sur l'autre — il ne lui resterait pas un mètre —
+     SORT des plans ; un corps qui n'a plus d'étage aussi. */
   coupes.forEach(function(k){
     var e = k[0], c = k[1], cx = e.dx || 0, cy = e.dy || 0;
     /* hors du centre de l'étage (ses décalages), sur quel axe tombe la part ? */
     var gu = c.u, gv = c.v;
     if(Math.abs(gu) / e.w >= Math.abs(gv) / e.d){
-      var du = Math.min(c.aire / e.d, e.w - 1);
+      var du = c.aire / e.d;
+      if(du >= e.w - 1){ e.sort = 1; return; }
       e.w -= du; e.dx = cx - (gu >= 0 ? 1 : -1) * du / 2;
     } else {
-      var dv = Math.min(c.aire / e.w, e.d - 1);
+      var dv = c.aire / e.w;
+      if(dv >= e.d - 1){ e.sort = 1; return; }
       e.d -= dv; e.dy = cy - (gv >= 0 ? 1 : -1) * dv / 2;
     }
   });
+  if(coupes.length){
+    parts.forEach(function(v){ v.lv = v.lv.filter(function(e){ return !e.sort; }); });
+    parts = parts.filter(function(v){ return v.lv.length; });
+  }
   return { floors:floors, graine:graine || TYPO.graine, verrou:fige("typologie"),
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
                        vols:parts, ponts:ponts || MASS.pont || [] } },

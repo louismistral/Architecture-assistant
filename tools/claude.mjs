@@ -1295,6 +1295,55 @@ const TESTS = {
     assert.ok(Math.abs(M.recouvrement(r.vols, 1, true).aire - r0) < 1, "même recouvrement " + r0);
     assert.deepEqual(r.vols.map((v) => v.lv.length).sort(), [1, 2], "chaque corps garde ses étages");
   },
+  async rec_sol(ref){
+    const { M, E, geom } = await modules();
+    /* c commence au R+1 (niveau 2), posé en biais au-dessus du bout de a, qui ne porte que le rez */
+    const lire = (bat) => {
+      const e = structuredClone(ref);
+      e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                    { id:"c", x:106, y:63, a:0.4, bat, lv:[{ i:2, w:16, d:16 }] }];
+      e.mass.pont = [];
+      charger(null, e);
+      return E.terrainLibre(M.MASS.vol).libre;
+    };
+    const brut = lire("autre"), lie = lire("b"), [a, c] = M.MASS.vol;
+    const co = geom.airePoly(geom.interConvexe(geom.coins(M.volRect(a, a.lv[0])), geom.coins(M.volRect(c, c.lv[0]))));
+    assert.ok(co > 50, "le cas recouvre vu du ciel : " + co);
+    assert.ok(Math.abs(lie - brut - co) < 1e-6, "terrain libre " + brut + " → " + lie);
+  },
+  async rec_typo_entier(ref){
+    const im = (p) => import(new URL(p, SRC));
+    const { donneesTypo } = await im("typo/donnees.js");
+    const e = structuredClone(ref);
+    /* c, 10 × 16, posé sur a à 9,5 m sur 10 : raccourci, il ne lui resterait que 0,5 m */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:100.5, y:60, a:0, bat:"b", lv:[{ i:1, w:10, d:16 }, { i:2, w:10, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const C = donneesTypo().partis.courant.vols.find((v) => v.id === "c");
+    assert.ok(C, "c garde son étage du dessus");
+    assert.deepEqual(C.lv.map((x) => x.i), [2], "son rez, tout entier sur a, sort des plans");
+    e.mass.vol[1].lv = [{ i:1, w:10, d:16 }];
+    charger(null, e);
+    assert.equal(donneesTypo().partis.courant.vols.some((v) => v.id === "c"), false, "un corps sans étage aussi");
+  },
+  async rec_recoller(ref){
+    const { M, G } = await modules();
+    const e = structuredClone(ref), t = 0.3, u = [Math.cos(t), Math.sin(t)], P0 = [106, 62], L = 16.8 + 0.5;
+    /* p posé sur a, z posé sur w ; p et z, dans le même axe, à 0,50 m l'un de l'autre */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"p", x:P0[0], y:P0[1], a:t, bat:"b", lv:[{ i:1, w:16, d:16 }] },
+                  { id:"z", x:P0[0] + u[0] * L, y:P0[1] + u[1] * L, a:t, bat:"z", lv:[{ i:1, w:16, d:16 }] },
+                  { id:"w", x:P0[0] + u[0] * (L + 12), y:P0[1] + u[1] * (L + 12) - 2, a:t + 0.5, bat:"z", lv:[{ i:1, w:12, d:12 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const [, p, z, w] = M.MASS.vol;
+    assert.ok(M.recouvrement(M.MASS.vol, 1, true).aire > 40 && G.dansPerimetre(z) && G.dansPerimetre(w), "le cas tient");
+    G.fusionner(M.MASS.vol, M.MASS.pont);
+    const V = M.MASS.vol, reste = V.includes(p) && V.includes(z);
+    assert.ok(!reste || Math.abs(G.ecartVols(p, z)) <= M.CONTACT, "recollés : " + (reste ? G.ecartVols(p, z) : "soudés"));
+    assert.ok(V.every((v) => !G.chevaucheMain(v, V)), "rien ne se superpose sans lien");
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));

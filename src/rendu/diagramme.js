@@ -23,7 +23,7 @@ import { PER } from "../data/site.js";
 import { ENCRE, FORMATS } from "../data/planches.js";
 import { flName, lvlOf } from "../mix/floors.js";
 import { bbox, coins } from "../mass/geom.js";
-import { MASS, etagesDe, familleDom, famTok, partiOf, recouvrement } from "../mass/model.js";
+import { MASS, etagesDe, familleDom, famTok, partiOf, recouvrement, recouvrementSol } from "../mass/model.js";
 
 var E = ENCRE;
 export var BLANC = [E.blanc, E.cote, E.cote2];
@@ -132,17 +132,16 @@ function lire(vols){
   /* deux corps du même bâtiment posés l'un sur l'autre : leur part commune, une
      fois (`model.js — recouvrement`) — au sol, et étage par étage, à la hauteur
      que le cube a lue */
-  var lus = ecole.map(function(c){ return c.v; }), niv = {}, sol = Infinity;
+  var lus = ecole.map(function(c){ return c.v; }), niv = {};
   function hautR(v, e){
     var c = ecole.filter(function(x){ return x.v === v; })[0], s = c && c.et.filter(function(x){ return x.e === e; })[0];
     return s ? s.z1 - s.z0 : 0;
   }
   ecole.forEach(function(c){
     c.et.forEach(function(e){ niv[e.e.i] = 1; });
-    if(c.et.length) sol = Math.min(sol, c.et[0].e.i);
   });
   Object.keys(niv).forEach(function(i){ V -= recouvrement(lus, +i, true, hautR).volume; });
-  if(isFinite(sol)) emprise -= recouvrement(lus, sol, true).aire;
+  emprise -= recouvrementSol(lus);
   /* l'angle de la figure et son centre : `vols.T` s'il est là, sinon le corps principal */
   var maj = ecole.slice().sort(function(a, b){ return b.aire - a.aire; })[0];
   var th = vols.T ? vols.T.a : maj ? maj.et[0].rc.a : 0;
