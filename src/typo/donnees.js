@@ -69,7 +69,11 @@ export function donneesTypo(vols, ponts, graine){
      bout d'une barre ; une part commune en biais laisse un peu de jeu. */
   var parts = ailes(volsOf(vols)), coupes = [];
   parts.forEach(function(v){
-    v.lv.forEach(function(e){ var c = cedeeDe(v, parts, e.i); if(c.aire > 0) coupes.push([e, c]); });
+    /* les ailes d'un MÊME volume fusionné ne se cèdent rien : ce sont ses parts
+       (aux sous-sols fusionnés, elles se chevauchent parfois de quelques
+       décimètres) — seul un autre corps posé dessus raccourcit une aile */
+    var autres = parts.filter(function(o){ return o === v || !v.aile || o.aile !== v.aile; });
+    v.lv.forEach(function(e){ var c = cedeeDe(v, autres, e.i); if(c.aire > 0) coupes.push([e, c]); });
   });
   coupes.forEach(function(k){
     var e = k[0], c = k[1], cx = e.dx || 0, cy = e.dy || 0;

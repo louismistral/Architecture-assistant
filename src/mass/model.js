@@ -34,7 +34,7 @@ import { BLOCKS, FLOORS, areaOf, avecCloisons, flInterieur, flHeight, flName, fl
   from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { coteDe, toutesCotes } from "../mix/opts.js";
-import { aire, airePoly, assise, coins, diffRects, ecartAngle, interConvexe, local, longueurDans, unionRects } from "./geom.js";
+import { aire, airePoly, assise, coins, diffRects, ecart, ecartAngle, interConvexe, local, longueurCommune, longueurDans, unionRects } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
    Chacun est une FAÇON DE COMPOSER, pas un style : il dit combien de corps, où
@@ -471,19 +471,52 @@ export function lies(a, b){
    ponytail: paire par paire — une zone commune à TROIS corps serait comptée de
    travers ; une vraie union de polygones le jour où ça arrive. */
 function commun(a, ea, b, eb, murs){
-  var R = murs ? volRects : volInts, A = R(a, ea).map(coins), B = R(b, eb).map(coins), aire = 0, enfouie = 0, gx = 0, gy = 0;
-  A.forEach(function(P){
-    B.forEach(function(Q){
-      var X = interConvexe(P, Q);
-      if(!X.length) return;
-      var s = airePoly(X), c = [0, 0];
-      X.forEach(function(p){ c[0] += p[0] / X.length; c[1] += p[1] / X.length; });
-      aire += s; gx += c[0] * s; gy += c[1] * s;
-      if(murs) enfouie += longueurDans(P, Q) + longueurDans(Q, P);
+  var HA = volRects(a, ea), HB = volRects(b, eb), rien = { aire:0, enfouie:0, g:null };
+  /* UN CONTACT N'EST PAS UN RECOUVREMENT — à `CONTACT` près, comme partout ailleurs
+     (`touchent`, `chevaucheMain`) : deux corps qui se touchaient avant restent à 0. */
+  var e = Infinity;
+  HA.forEach(function(r){ HB.forEach(function(q){ e = Math.min(e, ecart(r, q)); }); });
+  if(e >= -CONTACT) return rien;
+  if(!murs){
+    /* les intérieurs : les parts d'un volume fusionné se touchent sans se recouvrir */
+    var aire = 0, gx = 0, gy = 0;
+    volInts(a, ea).map(coins).forEach(function(P){
+      volInts(b, eb).map(coins).forEach(function(Q){
+        var X = interConvexe(P, Q);
+        if(!X.length) return;
+        var s = airePoly(X), c = [0, 0];
+        X.forEach(function(p){ c[0] += p[0] / X.length; c[1] += p[1] / X.length; });
+        aire += s; gx += c[0] * s; gy += c[1] * s;
+      });
     });
-  });
-  /* `g` : à peu près le centre de la part commune — assez pour dire de quel côté elle est */
-  return { aire:aire, enfouie:enfouie, g: aire ? [gx / aire, gy / aire] : null };
+    /* `g` : à peu près le centre de la part commune — assez pour dire de quel côté elle est */
+    return { aire:aire, enfouie:0, g: aire ? [gx / aire, gy / aire] : null };
+  }
+  /* HORS TOUT, les parts d'un volume fusionné se recouvrent de l'épaisseur du mur
+     qu'elles ne portent plus : inclusion–exclusion, paire de parts par paire de parts.
+     ponytail: trois parts d'un même corps sur une même zone seraient mal comptées. */
+  var A = HA.map(coins), B = HB.map(coins), s2 = 0, i, j, k;
+  function ar(P, Q, R){ var X = interConvexe(P, Q); if(X.length && R) X = interConvexe(X, R); return X.length ? airePoly(X) : 0; }
+  for(i = 0; i < A.length; i++) for(j = 0; j < B.length; j++){
+    s2 += ar(A[i], B[j]);
+    for(k = i + 1; k < A.length; k++) s2 -= ar(A[i], A[k], B[j]);
+    for(k = j + 1; k < B.length; k++) s2 -= ar(A[i], B[j], B[k]);
+  }
+  /* LA FAÇADE se lit sur le contour d'union de chaque corps (`contourDe`) : ce qui
+     en tombe dans l'autre corps, plus ce qui court à fleur de sa façade. */
+  function dans(boucle, parts){
+    var L = 0, m, n;
+    for(m = 0; m < parts.length; m++){
+      L += longueurDans(boucle, parts[m]);
+      for(n = m + 1; n < parts.length; n++){ var X = interConvexe(parts[m], parts[n]); if(X.length) L -= longueurDans(boucle, X); }
+    }
+    return L;
+  }
+  var CA = contourDe(a, ea).loops, CB = contourDe(b, eb).loops, enf = 0;
+  CA.forEach(function(l){ enf += dans(l, B); });
+  CB.forEach(function(l){ enf += dans(l, A); });
+  CA.forEach(function(l){ CB.forEach(function(m){ enf += longueurCommune(l, m); }); });
+  return { aire:s2, enfouie:enf, g:null };
 }
 /* `haut(v, e)` : la hauteur d'un étage de corps — alors `volume` et `facade`
    (façade enfouie × hauteur) se lisent à la plus basse des deux : c'est là
