@@ -145,7 +145,19 @@ export function lirePlans(D){
       if(e || (J[0] > 0 && J[J.length - 1] < S.length - 1)) meles.push({ nom:nomVol(f.v), i:i, n:e });
     });
   }); });
-  return { PG:PG, tous:tous, pos:pos, nm:nm, am:am, non:non, acces:acces, empile:empile, feu:feu,
+  /* LE VESTIAIRE EN SAS : les pièces qu'un lien `sas` dit s'entrer par leur
+     antichambre (les classes standard), et celles qui s'y entrent vraiment —
+     l'antichambre contre elle, un mur commun assez long pour la porte */
+  var meres = {}, sas = { n:0, ok:0, sans:[] };
+  (D.liens || []).forEach(function(l){ if(l.sas) meres[l.a] = 1; });
+  tous.forEach(function(r, i){ r.F.forEach(function(f){ f.rooms.forEach(function(rm){
+    if(rm.kind !== "band" || !meres[rm.key]) return;
+    sas.n++;
+    var v = rm.vest, colle = v && v.frame === rm.frame && (Math.abs(v.x0 - rm.x0 - rm.W) < 0.05 || Math.abs(rm.x0 - v.x0 - v.W) < 0.05);
+    var m = colle ? Math.min(rm.v0 + rm.H, v.v0 + v.H) - Math.max(rm.v0, v.v0) : 0;
+    if(m >= PG.PLAN.porte + 0.2) sas.ok++; else sas.sans.push({ lab:rm.lab || rm.n, i:i });
+  }); }); });
+  return { PG:PG, tous:tous, pos:pos, nm:nm, am:am, sas:sas, non:non, acces:acces, empile:empile, feu:feu,
            fuite:fuite, fuiteMax:fuiteMax, rompus:rompus, liens:{ n:n, ok:ok }, scene:scene, vides:vides,
            pub:{ n:pubBandes, meles:meles } };
 }
@@ -212,6 +224,8 @@ function mesuresDe(L, D){
         var K = f.cages.filter(function(c){ return c.bande === fr; }), run = 0, fin = null;
         function clore(){ if(run){ sG += grappe(run) * run; nG += run; } run = 0; }
         B.forEach(function(rm){
+          /* le vestiaire en sas fait partie de sa classe : il ne coupe pas la suite */
+          if(rm.antichambre) return;
           var cl = rm.kind === "band" && UNITE.test(rm.n);
           var coupe = fin != null && K.some(function(c){ return c.x0 + c.W > fin - 0.05 && c.x0 < rm.x0 + 0.05; });
           if(!cl || coupe) clore();
@@ -254,7 +268,8 @@ function mesuresDe(L, D){
     techGroupes: T.length ? Object.keys(groupes).length : null,
     posePlan: demande ? r3(1 - L.am / demande) : null,
     couloirsJour: bouts ? r3(jour / bouts) : null,
-    pubGroupe: L.pub.n ? r3(1 - L.pub.meles.length / L.pub.n) : null
+    pubGroupe: L.pub.n ? r3(1 - L.pub.meles.length / L.pub.n) : null,
+    vestSas: L.sas.n ? r3(L.sas.ok / L.sas.n) : null
   };
 }
 

@@ -340,6 +340,20 @@ export function creerPG(D){
     var c = COULOIR, D = f.D, T = D - c, deux = f.deux;
     var N = o.N || (deux ? (bandeSud(f.a) === "A" ? "B" : "A") : "B"), S = deux ? (N === "A" ? "B" : "A") : N;
     f.sud = S; f.nord = N;
+    /* LE VESTIAIRE EN SAS (lien `sas` du schéma) : chaque classe prend UN des
+       vestiaires qui la suivent pour antichambre — couloir, vestiaire, classe.
+       Elle le porte (`ante`) : un seul élément de bande, que ni la coupe entre
+       les rangs, ni un noyau, ni un palier ne séparent. D'abord sa classe mère ;
+       un vestiaire dont la mère est sortie du corps (au bac) va à une classe
+       restée sans. Un vestiaire de trop reste un satellite, en bloc. */
+    function sas(g, x){ g.ante = x; x.enSas = 1; }
+    f.U.forEach(function(u){ u.ante = null; u.enSas = 0; });
+    f.U.forEach(function(x){ if(x.anti && x.prin && x.prin.key === x.anti && !x.prin.ante && f.U.indexOf(x.prin) >= 0) sas(x.prin, x); });
+    f.U.forEach(function(x){
+      if(!x.anti || x.enSas) return;
+      var g = f.U.filter(function(u){ return u.key === x.anti && !u.ante; })[0];
+      if(g) sas(g, x);
+    });
     var trav = [], full = [], gr = [], pe = [];
     f.U.forEach(function(u){
       /* un hall traverse le corps s'il en a la largeur (4 m au moins) ; plus
@@ -370,7 +384,7 @@ export function creerPG(D){
     var seuls = [];
     function suite(u){
       f.U.forEach(function(x){
-        if(x.prin !== u || x.salle) return;
+        if(x.prin !== u || x.salle || x.enSas) return;
         if(x.a >= PETIT) items.push(piece(x)); else attente.push(x);
         suite(x);
       });
@@ -389,7 +403,7 @@ export function creerPG(D){
     var principal = items; items = [];
     trav.concat(full).forEach(function(T){ suite(T); vider(); });
     var orphI = items; items = principal;
-    var dedans = function(x){ return items.concat(orphI).some(function(it){ return it.src === x || (it.cel && it.cel.indexOf(x) >= 0); }); };
+    var dedans = function(x){ return items.concat(orphI).some(function(it){ return it.src === x || it.ante === x || (it.cel && it.cel.indexOf(x) >= 0); }); };
     var reste2 = f.U.filter(function(x){ return x.prin && !x.salle && !dedans(x) && trav.indexOf(x) < 0 && full.indexOf(x) < 0; });
     reste2.filter(function(x){ return x.a >= PETIT; }).forEach(function(x){ orphI.push(piece(x)); });
     blocsDe(reste2.filter(function(x){ return x.a < PETIT; })).forEach(function(b){ orphI.push(b); });
@@ -418,11 +432,13 @@ export function creerPG(D){
     var extG = !o.passG && !K.some(function(x){ return x < 0.5; }),
         extD = !o.passD && !full.length && !trav.length && !K.some(function(x){ return x + WC > Lw - 0.5; });
     /* la largeur d'un élément de bande à la profondeur H */
-    function larg(it, H){ return it.kind === "bloc" ? peigne(it.cel, H).W : it.a / profDe(it, H); }
+    function larg(it, H){ return it.kind === "bloc" ? peigne(it.cel, H).W : it.a / profDe(it, H) + anteW(it, H); }
+    /* le front du vestiaire en sas d'une classe, contre la façade comme elle */
+    function anteW(it, H){ return it.ante ? it.ante.a / profDe(it.ante, H) : 0; }
     /* au bout, une pièce ferme le couloir si elle en prend toute la profondeur
        sans perdre ses proportions ; sinon le couloir finit sur la façade */
     function ferme(it, k, L, b, eg, ed){
-      return ((k === 0 && eg) || (k === L.length - 1 && ed)) && it.kind !== "bloc" && profDe(it, b + c) >= b + c - 0.01;
+      return ((k === 0 && eg) || (k === L.length - 1 && ed)) && it.kind !== "bloc" && !it.ante && profDe(it, b + c) >= b + c - 0.01;
     }
     /* longueur d'une bande de profondeur b, ses bouts éventuellement à travers le couloir */
     function long(L, b, eg, ed){
@@ -499,7 +515,7 @@ export function creerPG(D){
       function mesure(k){
         if(M[k]) return M[k];
         var it = list[k], e = ferme(it, k, list, b, eg, ed), H = b + (e ? c : 0), m = { e:e, H:H };
-        if(it.kind === "bloc"){ m.P = peigne(it.cel, H); m.W = m.P.W; } else { m.p = profDe(it, H); m.W = it.a / m.p; }
+        if(it.kind === "bloc"){ m.P = peigne(it.cel, H); m.W = m.P.W; } else { m.p = profDe(it, H); m.W = it.a / m.p + anteW(it, H); }
         return (M[k] = m);
       }
       function noyau(W){
@@ -535,6 +551,14 @@ export function creerPG(D){
           var W = it.a / p;
           r = Object.assign({}, it, { frame:frame, x0:x, W:W, H:p, v0:(e ? -c : 0) + H - p, ext:e ? (k === 0 ? -1 : 1) : 0 });
           if(H - p > 0.05) paliers.push({ frame:frame, x0:x, W:W, H:H - p });
+          /* la classe, puis son vestiaire : il a sa porte sur le couloir (ou
+             le dégagement devant lui), elle la sienne dans leur mur commun */
+          if(it.ante){
+            var pa = profDe(it.ante, H), va = Object.assign({}, it.ante, { kind:"band", src:it.ante, antichambre:1,
+              frame:frame, x0:x + W, W:it.ante.a / pa, H:pa, v0:H - pa, ext:0 });
+            if(H - pa > 0.05) paliers.push({ frame:frame, x0:va.x0, W:va.W, H:H - pa });
+            r.vest = va; R.push(r); x += W; r = va;
+          }
         }
         R.push(r); x += r.W;
       }
@@ -628,7 +652,10 @@ export function creerPG(D){
        corps — les vestiaires et les WC avec les classes, le local de
        reproduction avec la salle des maîtres. Elles se partagent à tour de
        rôle entre les grandes pièces de leur poste lié. */
-    var lie = {};
+    var lie = {}, sasDe = {};
+    (D0.liens || []).forEach(function(l){ if(l.sas) sasDe[l.b] = l.a; });
+    /* `anti` : la clé de la pièce dont ce poste est l'antichambre */
+    U.forEach(function(u){ if(sasDe[u.key]) u.anti = sasDe[u.key]; });
     (D0.liens || []).forEach(function(l){ (lie[l.a] = lie[l.a] || []).push(l.b); (lie[l.b] = lie[l.b] || []).push(l.a); });
     var grands = U.filter(function(u){ return u.a >= PETIT; });
     function plusGrand(u, g){ return g !== u && g.a > u.a && lie[u.key].indexOf(g.key) >= 0; }
@@ -760,7 +787,7 @@ export function creerPG(D){
          que le plan tienne. C'est au Massing ou au mixer d'y répondre. */
       while(f.L > e.w + 0.05 && f.U.length){
         /* un hall reste : c'est par lui qu'on entre */
-        var ex = (f.L - e.w) * f.D, par = f.U.filter(function(u){ return !/^Hall|foyer/i.test(u.n); });
+        var ex = (f.L - e.w) * f.D, par = f.U.filter(function(u){ return !/^Hall|foyer/i.test(u.n) && !u.enSas; });
         par = (par.length ? par : f.U).slice().sort(function(p, q){ return p.a - q.a; });
         var pris = par.filter(function(u){ return u.a >= ex; })[0] || par[par.length - 1];
         f.U.splice(f.U.indexOf(pris), 1);

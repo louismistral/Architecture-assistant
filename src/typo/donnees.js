@@ -62,7 +62,7 @@ export function donneesTypo(vols, ponts, graine){
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
                        vols:ailes(volsOf(vols)), ponts:ponts || MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
-    liens:PROX.filter(function(l){ return adjActive(l.id); }).map(function(l){ return { a:l.a, b:l.b, q:l.q }; }),
+    liens:PROX.filter(function(l){ return adjActive(l.id); }).map(function(l){ return { a:l.a, b:l.b, q:l.q, sas:l.sas }; }),
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
        des charges, le noyau, le feu, les murs, le module, la distance d'un lien */
     regles:{ fusion:V.fusionDist == null ? 1 : V.fusionDist, couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,

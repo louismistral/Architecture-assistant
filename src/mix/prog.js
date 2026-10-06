@@ -97,7 +97,7 @@ SLINK.forEach(function(lk){
   var A = keysOf(lk.a), B = keysOf(lk.b);
   A.forEach(function(a){
     B.forEach(function(b){
-      if(a !== b) PROX.push({ a:a, b:b, q:lk.q, opt:lk.opt ? 1 : 0, id:lienId(lk) });
+      if(a !== b) PROX.push({ a:a, b:b, q:lk.q, opt:lk.opt ? 1 : 0, sas:lk.sas ? 1 : 0, id:lienId(lk) });
     });
   });
 });

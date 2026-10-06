@@ -797,7 +797,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         var trav = r.kind === "trav";
         out.rooms.push('<polygon class="' + cls + ' fam-' + (r.f || "tec") + '" data-chap="' + (r.chap || String(r.key || "").split("|")[0]) + '" data-k="' + INFO.length + '"' + (trav ? ' style="stroke:none"' : "") + ' points="' + pts(f, rectF(f, frame, x0, u0, v0, W, H)) + '"/>');
         INFO.push({ lab:r.lab || r.n, n:r.n, a:r.a, W:W, H:H, f:r.f,
-                    regle:r.kind === "band" ? { id:f.v.id, i:f.e.i, lab:r.lab, a:r.a, ext:!!r.ext, key:r.key } : null });
+                    regle:r.kind === "band" && !r.antichambre ? { id:f.v.id, i:f.e.i, lab:r.lab, a:r.a, ext:!!r.ext, key:r.key } : null });
         if(trav){
           [r.x0, r.x0 + r.W].forEach(function(x){
             if(Math.abs(Math.abs(x) - f.L / 2) < 0.01) return;
@@ -830,6 +830,12 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           /* la pièce du fond d'un bloc : sa porte au bout du sas */
           var dU = Math.min(PG.PLAN.porte, W - 0.4);
           porte(f, frame, x0, r.porteU + dU / 2, v0, dU);
+        } else if(!cellule && r.vest){
+          /* une classe s'entre par son vestiaire (lien `sas`) : sa porte dans
+             leur mur commun, au milieu de ce qu'ils partagent, ouverte vers elle */
+          var vs = r.vest, apres = vs.x0 > r.x0, va0 = Math.max(v0, vs.v0), va1 = Math.min(v0 + H, vs.v0 + vs.H);
+          var qV = fr(f, frame, apres ? x0 + W : x0, 0, (va0 + va1) / 2);
+          porteX(f, qV[0], qV[1], Math.min(PG.PLAN.porte, va1 - va0 - 0.2), apres ? -1 : 1);
         } else if(r.kind === "band" || (cellule)){
           /* la porte là où le couloir passe */
           /* une cabine de WC (1 m) a sa porte de 80 cm */
@@ -1284,8 +1290,13 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         return x.nom + " au " + niv(x.i).toLowerCase() + (x.n ? " (" + x.n + " pièce" + (x.n > 1 ? "s" : "") + " d\u2019école entre)" : " (au milieu de la bande)"); }).join(" ; ") + (R.pub.meles.length > 5 ? "…" : "")
         : "Le public se tient d\u2019un côté : ses pièces se suivent au bout de chaque bande",
       "La salle polyvalente et ses annexes — scène, foyer, vestiaires, cuisine, toilettes publiques — s\u2019ouvrent à la commune hors de l\u2019école. Une suite par bande, à un bout : on y entre par le hall ou le pignon sans longer de classe. " + R.pub.n + " bande" + (R.pub.n > 1 ? "s" : "") + " en portent.");
+    /* le vestiaire en sas : chaque classe s'entre par lui (`lirePlans — sas`) */
+    if(R.sas.n) dit(!R.sas.sans.length, R.sas.sans.length ? R.sas.sans.length + " classe" + (R.sas.sans.length > 1 ? "s" : "") + " sur " + R.sas.n + " sans vestiaire en sas : "
+        + R.sas.sans.slice(0, 4).map(function(x){ return x.lab + " au " + niv(x.i).toLowerCase(); }).join(" ; ") + (R.sas.sans.length > 4 ? "…" : "")
+        : "Chaque classe s\u2019entre par son vestiaire",
+      "Couloir, vestiaire, classe : le vestiaire ouvre sur le couloir, la porte de la classe est dans leur mur commun. Une classe sans le sien ouvre sur le couloir — son vestiaire est à un autre niveau (Programme mixer) ou ne tient pas dans le plan.");
     dit(!sansPorte.length, sansPorte.length ? "Pièces sans porte sur la circulation : " + sansPorte.slice(0, 4).join(" ; ") + (sansPorte.length > 4 ? "…" : "")
-        : "Toutes les pièces ouvrent sur un couloir", "Les pièces des bandes donnent sur le couloir ou sur le dégagement devant elles, celles du bout le ferment de leur porte, les halls le traversent ; dans un bloc, chaque pièce ouvre sur le couloir ou sur un sas qui y mène.");
+        : "Toutes les pièces ouvrent sur un couloir", "Les pièces des bandes donnent sur le couloir ou sur le dégagement devant elles, celles du bout le ferment de leur porte, les halls le traversent, une classe s\u2019entre par son vestiaire ; dans un bloc, chaque pièce ouvre sur le couloir ou sur un sas qui y mène.");
     dit(true, "Les plans tiennent dans les volumes du Massing", "Chaque corps garde ses cotes, niveau par niveau ; le Shuffle ne change que l\u2019ordonnance des pièces.");
     dit(true, "Couloir de " + fmt(PG.COULOIR, 2) + " m, réglé au cahier des charges", "Il finit toujours sur un noyau, un hall, un passage ou la porte de la pièce qui le ferme.");
     dit(true, "Murs extérieurs et porteurs " + fmt(PG.MUR * 100, 0) + " cm, cloisons " + fmt(PG.CLOISON * 100, 0) + " cm", "Pochés en plein : on coupe dans les murs.");
