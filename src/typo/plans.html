@@ -1189,17 +1189,17 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     if(EV === null) EV = parent.typoEvaluation ? parent.typoEvaluation() : undefined;
     return EV;
   }
-  function barre(s){
+  function jauge(s){
     return '<span class="mass-axe__b"><i style="inline-size:' + (s == null ? 0 : Math.round(100 * s)) + '%"></i></span>' +
       '<span class="mass-axe__s mono">' + (s == null ? "—" : Math.round(100 * s) + " %") + '</span>';
   }
   function evaluationHtml(E){
     if(!E) return '<p class="mass-note">Aucune composition posée.</p>';
     var h = '<div class="mass-axe" title="La moyenne, au poids de chacun, des critères que le plan mesure : pour un même volume, la bonne et la mauvaise typologie.">' +
-      '<span class="mass-axe__n"><b>Typologie</b></span>' + barre(E.typo) + '</div>';
+      '<span class="mass-axe__n"><b>Typologie</b></span>' + jauge(E.typo) + '</div>';
     E.crit.forEach(function(c){
       h += '<div class="mass-axe" title="' + esc(c.n) + ' — ' + esc(c.val) + '"><span class="mass-axe__n">' + esc(c.n) +
-        '<small class="mono typo-mes">' + esc(c.val) + '</small></span>' + barre(c.s) + '</div>';
+        '<small class="mono typo-mes">' + esc(c.val) + '</small></span>' + jauge(c.s) + '</div>';
     });
     return h + '<p class="mass-note">Les critères que le plan mesure, notés par le jury ; la note générale lit aussi le programme et la volumétrie. Poids et seuils : Paramètres &amp; contraintes, rubrique Évaluation.</p>';
   }
