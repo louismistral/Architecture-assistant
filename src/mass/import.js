@@ -103,6 +103,10 @@ export function solides3dm(rh, octets){
     out.push(T = []);
     var deObjet = at.colorSource && at.colorSource.value === rh.ObjectColorSource.ColorFromObject.value;
     T.par = acteurDe(deObjet ? at.objectColor : L.get(at.layerIndex).color);
+    /* ce que l'export d'ici a écrit sur l'objet (`export.js`) — vide pour un objet d'ailleurs */
+    T.corps = at.getUserString("Saxon corps") || null;
+    T.bat = at.getUserString("Saxon bat") || null;
+    T.boites = at.getUserString("Saxon boites") || null;
     if(g instanceof rh.Mesh) maille(g);
     else if(g instanceof rh.Extrusion) maille(g.getMesh(rh.MeshType.Any));
     else if(g instanceof rh.Brep){
@@ -132,8 +136,8 @@ export function volsDe3dm(solides){
   /* un étage fusionné exporté d'ici (un L, un U) est un prisme droit : il se
      relit en boîtes, que `fusionner()` recolle */
   var B = solides.map(function(T){
-    var b = boite(T), L = b ? [b] : prismes(T);
-    (L || []).forEach(function(x){ x.par = T.par; });
+    var b = boite(T), L = b ? [b] : relu(T) || prismes(T);
+    (L || []).forEach(function(x){ x.par = T.par; x.corps = T.corps || null; x.bat = T.bat || null; });
     return L;
   });
   if(B.every(Boolean)) return parBoites([].concat.apply([], B));
@@ -151,6 +155,22 @@ export function acteurDes(L){
   return P.indexOf("humain") >= 0 ? "humain" : P.indexOf("ia") >= 0 ? "ia" : null;
 }
 
+/* UN CORPS POSÉ SUR UN CORPS DU MÊME BÂTIMENT est exporté découpé : son emprise moins
+   celle de l'autre (`export.js — massif`), et sa boîte d'origine écrite sur l'objet.
+   S'il tient encore dans cette boîte, à ses deux altitudes, il se relit comme elle ;
+   déplacé ou retaillé dans Rhino, il se relit par sa géométrie. */
+function relu(T){
+  var B = null;
+  try{ B = T.boites && JSON.parse(T.boites); }catch(_){ return null; }
+  if(!Array.isArray(B) || !B.length) return null;
+  var z0 = Infinity, z1 = -Infinity, ok = true;
+  T.forEach(function(t){ t.forEach(function(p){
+    z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]);
+    if(!B.some(function(b){ return dansRect({ x:b.x, y:b.y, w:b.w + .04, d:b.d + .04, a:b.a }, p[0], p[1]); })) ok = false;
+  }); });
+  return ok && B.every(function(b){ return Math.abs(b.z0 - z0) <= TOL && Math.abs(b.z1 - z1) <= TOL; })
+    ? B.map(function(b){ return Object.assign({}, b); }) : null;
+}
 /* Une boîte : des faces horizontales ou verticales, huit sommets, le dessus
    un rectangle posé sur le même rectangle. Cotes hors tout. */
 function boite(T){
@@ -611,7 +631,7 @@ function parBoites(B){
   B.forEach(function(b){
     var P = piles.filter(function(L){
       var t = L[L.length - 1];
-      return Math.abs(t.z1 - b.z0) <= TOL && Math.abs(Math.sin(2 * (t.a - b.a))) < 1e-3
+      return Math.abs(t.z1 - b.z0) <= TOL && Math.abs(Math.sin(2 * (t.a - b.a))) < 1e-3 && t.corps === b.corps
         && (dansRect(t, b.x, b.y) || dansRect(b, t.x, t.y));
     })[0];
     if(P) P.push(b); else piles.push([b]);
@@ -634,6 +654,8 @@ function parBoites(B){
     var v = { id:"b" + (k + 1), x:R.x, y:R.y, a:R.a, fix:0, lv:lv };
     var p = acteurDes(L);
     if(p) v.par = p;
+    /* le bâtiment que l'export a écrit : deux corps posés l'un sur l'autre restent liés */
+    L.forEach(function(b){ if(b.bat && !v.bat) v.bat = b.bat; });
     if(L.length === 1 && Math.abs(R.d - V.passLarg) <= .3 && R.z0 - assise(R).z > 2) perches.push({ v:v, b:R });
     vols.push(v);
   });

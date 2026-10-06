@@ -1246,6 +1246,55 @@ const TESTS = {
     const [, c2] = pose({ x:90 + 15.4 + 8.4, y:60, a:0 });
     assert.equal(M.dessinDe(c2, c2.lv[0], M.MASS.vol), null, "au contact : comme avant");
   },
+  async rec_export(ref){
+    const { M, geom } = await modules();
+    const X = await import(new URL("mass/export.js", SRC));
+    const e = structuredClone(ref);
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const O = X.piecesMassing({ date:new Date(0) }).objets.filter((o) => o.us && o.us["Saxon corps"]);
+    const A = O.find((o) => o.us["Saxon corps"] === "a"), C = O.find((o) => o.us["Saxon corps"] === "c");
+    assert.ok(A && C, "un objet par corps, nommé par sa chaîne");
+    assert.equal(A.us["Saxon bat"], "b"); assert.equal(C.us["Saxon bat"], "b");
+    assert.equal(A.us["Saxon boites"], undefined, "le grand reste une boîte");
+    assert.equal(JSON.parse(C.us["Saxon boites"]).length, 1, "le petit garde sa boîte d'origine");
+    /* fermé : chaque côté orienté a son inverse ; triangles en [a, b, c, c] */
+    const T = (o) => [].concat(...o.f.map((f) => f[2] === f[3] ? [[f[0], f[1], f[2]]] : [[f[0], f[1], f[2]], [f[0], f[2], f[3]]]));
+    const cotes = new Set(); T(C).forEach((t) => t.forEach((p, i) => cotes.add(p + ">" + t[(i + 1) % 3])));
+    cotes.forEach((k) => { const [p, q] = k.split(">"); assert.ok(cotes.has(q + ">" + p), "côté sans inverse " + k); });
+    /* son volume : (emprise − commune) × h, dans le rapport de la boîte entière ; normales dehors */
+    const vol = (o) => T(o).reduce((s, t) => { const [p, q, r] = t.map((k) => o.v[k]);
+      return s + (p[0] * (q[1] * r[2] - q[2] * r[1]) - p[1] * (q[0] * r[2] - q[2] * r[0]) + p[2] * (q[0] * r[1] - q[1] * r[0])) / 6; }, 0);
+    const [a, c] = M.MASS.vol, Ra = M.volRect(a, a.lv[0]), Rc = M.volRect(c, c.lv[0]);
+    const co = geom.airePoly(geom.interConvexe(geom.coins(Ra), geom.coins(Rc)));
+    assert.ok(vol(A) > 0 && vol(C) > 0, "normales dehors");
+    assert.ok(Math.abs(vol(C) / vol(A) - (Rc.w * Rc.d - co) / (Ra.w * Ra.d)) < 1e-3, "volume " + vol(C) / vol(A));
+    /* il ne recoupe pas le grand : aucun dessus du petit dans l'emprise du grand */
+    const haut = Math.max(...A.v.map((p) => p[2])), pa = A.v.filter((p) => p[2] === haut);
+    assert.ok(T(C).some((t) => t.every((i) => C.v[i][2] === haut)), "le petit a un dessus");
+    T(C).filter((t) => t.every((i) => C.v[i][2] === haut)).forEach((t) => { const g = [0, 1].map((k) => t.reduce((s, i) => s + C.v[i][k] / 3, 0));
+      assert.equal(geom.interConvexe([[g[0] - .1, g[1] - .1], [g[0] + .1, g[1] - .1], [g[0] + .1, g[1] + .1], [g[0] - .1, g[1] + .1]], geom.enveloppe(pa)).length, 0, "dans le grand"); });
+  },
+  async rec_rhino_lien(ref){
+    let rh;
+    try{ rh = await rhino3dm(); }catch(_){ return; }
+    const { M } = await modules();
+    const X = await import(new URL("mass/export.js", SRC)), I = await import(new URL("mass/import.js", SRC));
+    const e = structuredClone(ref);
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }, { i:2, w:16, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const r0 = M.recouvrement(M.MASS.vol, 1, true).aire;
+    const r = I.volsDe3dm(I.solides3dm(rh, X.dm3Massing(rh, {})));
+    assert.equal(r.mode, "boites");
+    assert.equal(r.vols.length, 2, r.vols.map((v) => v.id).join(" "));
+    assert.ok(M.lies(r.vols[0], r.vols[1]), "le lien revient");
+    assert.ok(Math.abs(M.recouvrement(r.vols, 1, true).aire - r0) < 1, "même recouvrement " + r0);
+    assert.deepEqual(r.vols.map((v) => v.lv.length).sort(), [1, 2], "chaque corps garde ses étages");
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
