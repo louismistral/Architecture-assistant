@@ -311,7 +311,7 @@ async function verbeTirer({ opt }){
    `regler()` borne, et la valeur demandée n'est pas toujours celle qui tient.
    Écrire le groupe dans la base change l'app de TOUT le groupe : c'est à
    Claude de le faire, sur demande — ici, on ne fait que le fichier. */
-/* Ce que dit une clé, en mots : il y en a plus de 360, et `w:b7` ne parle pas.
+/* Ce que dit une clé, en mots : il y en a plus de 400, et `w:b7` ne parle pas.
    Les préfixes sont ceux de `data/lignes.js — declarer()` et de
    `data/jugement.js` (axes, sous-axes, fonctions de score). */
 function decrire(c){
@@ -627,7 +627,7 @@ const TESTS = {
     /* La figure tirée en « Auto » ne survit pas à l'instantané (il garde
        `auto`) : on ne la lit que dans le processus qui a tiré. */
     assert.equal(b.massing.parti, M.MASS.vol.parti || M.MASS.parti);
-    assert.equal(b.jugement.total, 64);
+    assert.equal(b.jugement.total, 63);
     assert.equal(b.empreinte, (await import(new URL("core/empreinte.js", SRC))).empreinte());
   },
   async corps_minimal(ref){
@@ -657,7 +657,7 @@ const TESTS = {
     const b0 = await verbeTirer({ pos:[], opt:{ ordonne:true, seed:"1", graine:"11", etat:f, muet:true } });
     assert.equal(b0.massing.parti, "barres");
     const b = bilan(charger(null, lireJSON(f, true)));
-    assert.equal(b.jugement.total, 64);
+    assert.equal(b.jugement.total, 63);
     assert.equal(b.empreinte, (await import(new URL("core/empreinte.js", SRC))).empreinte());
   },
   async tirer_sans_etat(){
@@ -724,7 +724,7 @@ const TESTS = {
     const r = await verbeVariante({ pos:["essai"], opt:{ etat:f, sortie:s, muet:true } });
     assert.equal(r.name, "essai");
     assert.ok(r.state.mass.vol.length > 0);
-    assert.equal(r.criteria.v, 3);
+    assert.equal(r.criteria.v, 4);   /* le format de `net/variantes.js` (aJour : v ≥ 4) */
     assert.deepEqual(r.tags, ["claude"]);
     assert.equal("team_id" in r, false);
     assert.equal("author_id" in r, false);
