@@ -28,6 +28,12 @@
    italique, jusqu'au Reload.
 
    Plus l'EMPREINTE des fichiers du dépôt : voir `core/empreinte.js`.
+
+   Et sa MÈRE (`parent_id`) : la variante dont l'état à l'écran est parti —
+   chargée, enregistrée, ou rapportée de Rhino dans un .3dm qui la nomme. Les
+   variantes se lisent alors à la suite, comme un historique : qui est partie
+   de quoi, et ce que chaque passage a fait à la note. L'acteur (humain,
+   claude, algo) reste dans le nom et les étiquettes.
    ========================================================================= */
 import { BUILTG, VARITEMS, recompute, userAreas } from "../core/model.js";
 import { curSeed as seedActuelle, seed } from "../core/rand.js";
@@ -47,6 +53,19 @@ import { CPT } from "./compte.js";
 import { deleteApi, insertApi, patchApi, selectApi } from "./supa.js";
 
 export var VARIANTES = [];
+
+/* ---------- la source ----------
+   La variante d'où vient l'état à l'écran. Sur l'appareil, pour survivre à un
+   rechargement ; hors de l'instantané, qui dit l'état du projet et pas son
+   histoire. */
+var SKEY = "saxon.source";
+var SOURCE = null;
+try{ SOURCE = localStorage.getItem(SKEY) || null; }catch(_){}
+export function source(){ return SOURCE; }
+export function setSource(id){
+  SOURCE = id || null;
+  try{ if(SOURCE) localStorage.setItem(SKEY, SOURCE); else localStorage.removeItem(SKEY); }catch(_){}
+}
 var abonnes = [];
 export function onVariantes(fn){
   abonnes.push(fn);
@@ -166,14 +185,26 @@ export function nomPropose(){
 var CHAMPS = "id,name,created_at,updated_at,author_id,seed_program,seed_massing,parti," +
              "fingerprint,score,floors,bodies,area_required,area_placed,area_gross," +
              "verdict,criteria,thumbnail,tags";
+/* `parent_id` vient d'une migration (20261006120000). Tant qu'elle n'est pas
+   passée sur la base, la colonne manque : on la retire de ce qu'on demande, au
+   lieu de perdre toute la liste. */
+var PARENT = true;
+function sansParent(e){ return /parent_id/.test(String(e && e.message)); }
+async function essai(f){
+  try{ return await f(); }
+  catch(e){ if(!PARENT || !sansParent(e)) throw e; PARENT = false; return f(); }
+}
+function avecParent(row){ if(PARENT && SOURCE) row.parent_id = SOURCE; else delete row.parent_id; return row; }
 
 export async function chargerVariantes(){
   if(!CPT.equipe){ VARIANTES = []; signale(); return VARIANTES; }
   /* `state` est le gros morceau — on ne le tire qu'au chargement d'UNE
      variante. Cinquante états dans une liste, c'est plusieurs mégaoctets pour
      dessiner des miniatures. */
-  VARIANTES = await selectApi("variant",
-    "team_id=eq." + CPT.equipe.id + "&select=" + CHAMPS + "&order=score.desc.nullslast") || [];
+  VARIANTES = await essai(function(){
+    return selectApi("variant", "team_id=eq." + CPT.equipe.id + "&select=" + CHAMPS + (PARENT ? ",parent_id" : "")
+      + "&order=score.desc.nullslast");
+  }) || [];
   signale();
   return VARIANTES;
 }
@@ -185,7 +216,9 @@ export async function enregistrer(nom){
   row.author_id = CPT.profil.id;
   row.name = (nom && nom.trim()) || nomPropose();
   row.state = snapshot();
-  var r = await insertApi("variant", row);
+  var r = await essai(function(){ return insertApi("variant", avecParent(row)); });
+  /* on continue de travailler à partir d'elle */
+  if(r && r[0]) setSource(r[0].id);
   await chargerVariantes();
   return r && r[0];
 }
@@ -206,7 +239,7 @@ export async function poserTrouvees(trouves, tag){
     row.state = t.state;
     return row;
   });
-  var r = await insertApi("variant", rows);
+  var r = await essai(function(){ return insertApi("variant", rows.map(avecParent)); });
   await chargerVariantes();
   return r || [];
 }
@@ -220,6 +253,7 @@ export async function renommer(id, nom){
 
 export async function supprimer(id){
   await deleteApi("variant", "id=eq." + id);
+  if(SOURCE === id) setSource(null);
   VARIANTES = VARIANTES.filter(function(v){ return v.id !== id; });
   signale();
 }
@@ -236,6 +270,7 @@ export async function charger(id){
   var st = await etatDe(id);
   if(!st) throw new Error("état introuvable");
   var perdu = restore(st);
+  setSource(id);
   saveSoon();
   return perdu;
 }

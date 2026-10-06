@@ -51,7 +51,9 @@ ignoré s'il manque) et `--json`.
 | `chercher` | La recherche automatique : `--essais 30 --garder 3 --partis L,U,cour --avec-erreurs`. Écrit `trouve-<k>.json` à côté de `--etat`. |
 | `ligne` | Sans argument : les écarts au défaut. `--toutes [--cherche mot]` : toutes les lignes (plus de 400), en mots. `<clé>` : sa valeur, son défaut, sa borne. `<clé> <valeur>` : la règle, rend **avant → après** (la valeur est bornée). Le jury va dans `groupe.json` seul, le reste aussi dans l'état. Ce fichier sert au calcul ; la base ne s'écrit que clé par clé (requête 6). |
 | `remede <code> [n]` | Joue le n-ième remède (0 par défaut) qu'une alerte du bilan propose — ceux de `mix/fix.js`, `mass/fix.js`. |
-| `variante "<nom>" [--sortie f] [--team <uuid> --auteur <uuid>]` | La ligne de `variant` prête à insérer, tag `claude`, sans `team_id` ni `author_id` ; avec `--team` et `--auteur`, la requête d'insertion complète à côté (`.sql`). La note du fichier ignore les notes manuelles du groupe : l'app la refait à l'affichage. |
+| `variante "<nom>" [--sortie f] [--team <uuid> --auteur <uuid>] [--parent <uuid>]` | La ligne de `variant` prête à insérer, tag `claude`, sans `team_id` ni `author_id` ; avec `--team` et `--auteur`, la requête d'insertion complète à côté (`.sql`). `--parent` : la variante dont l'état est parti (celle de la requête 4, ou celle que `importer` a lue) — **donne-la toujours quand il y en a une**, les variantes se lisent à la suite. La note du fichier ignore les notes manuelles du groupe : l'app la refait à l'affichage. |
+| `rhino [--sortie f] [--parent <uuid>]` | L'état en .3dm (`.atelier/massing.3dm`), selon la convention de calques : ce que les humains ouvrent dans Rhino, ou ce que tu y importes par le MCP. Il faut rhino3dm en local : `npm i --no-save rhino3dm@8.35.0`. |
+| `importer <f.3dm>` | Un .3dm (document Rhino entier : seul `3D::Projet::Volume` est relu) remplace la volumétrie de l'état, puis le bilan. Dit combien de corps sont retouchés à la main (plus bleus) et la variante mère nommée dans le fichier. Il faut un état : sa pile du mixer place les étages. |
 | `js "<code>"` / `js --fichier f [--ecrire]` | Tout le reste. Modules sous la main : `M` massing (`mass/model.js`), `G` générateur, `F` étages du mixer, `S` shuffle, `St` store, `R` hasard, `L` lignes, `J` jugement, `E` mesures, `C`/`CM` contrôles massing/mixer, `XM`/`XX` remèdes massing/mixer, `Va` variantes, `Rech` recherche, `T` typo, `model` (`core/model.js`), `cadre`, `site`, `geom`, `emp` (empreinte), et `bilan([])`, `texte(b)`. `return` imprime ; `import('../src/…')` marche. Tes propres `const L = …` masquent le module du même nom. Sous PowerShell, préfère `--fichier`. |
 | `test` | La vérification de l'outil. |
 
@@ -122,6 +124,18 @@ se juge très bien.
   `G.relierCourant()` (passerelles), `G.toutDedans(M.MASS.vol)`.
 - Le jugement ne lit que des **mesures** : regarde quels critères mesurés tu fais bouger, et lesquels
   restent « sans mesure » (le jury humain les notera dans l'app).
+
+## Avec Rhino
+
+Le MCP Rhino s'utilise comme d'habitude ; l'app et Rhino font un seul atelier (`docs/echange.md`).
+
+- **La convention de calques** (`src/data/calques.js`) : ce que tu poses dans Rhino va sur ses calques
+  — un étage de corps sur `3D::Projet::Volume::<Chapitre>::Niveau_<nom>`, une aide sur `AIDE`, ce qui
+  n'a pas de place sur `AUTRE`. Crée le calque qui manque plutôt que de ranger de travers.
+- **Ce que tu crées est bleu** (RVB 0, 90, 255, couleur de l'objet) : tu es une IA. Ce qu'un humain a
+  retouché est en couleur Par calque — ne le repeins pas.
+- **La boucle** : `rhino` → import dans Rhino → retouches (toi, les humains) → enregistrer le .3dm →
+  `importer` → `bilan`, `plan` → `variante … --parent <mère>`. La note dit si le passage a servi.
 
 ## Les règles du projet
 

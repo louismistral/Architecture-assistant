@@ -430,6 +430,16 @@ function carte(v){
   meta.appendChild(el("span", "vc__qui", nomDe(v.author_id) + " · " + quand(v.created_at)));
   d.appendChild(meta);
 
+  /* Sa mère, et ce que ce passage a fait à la note : les variantes se lisent
+     à la suite. Chercher le nom de la mère montre ses filles (`passeRecherche`). */
+  var mere = mereDe(v);
+  if(mere){
+    var sm = noteDe(mere, MOY), dn = sc != null && sm != null ? sc - sm : null;
+    var fil = el("p", "vc__fil", "↳ de « " + mere.name + " »" + (dn == null ? "" : " · " + (dn > 0 ? "+" : dn < 0 ? "−" : "±") + Math.abs(dn)));
+    fil.title = "Partie de « " + mere.name + " »" + (sm != null ? ", notée " + sm : "");
+    d.appendChild(fil);
+  }
+
   /* Les étiquettes se cumulent : une trouvaille de la recherche, neuve et déjà
      périmée, porte les trois. */
   var tags = [];
@@ -558,6 +568,9 @@ function meche(cls, texte, quoi, faire, cle){
   return b;
 }
 
+function mereDe(v){
+  return v.parent_id ? VARIANTES.filter(function(x){ return x.id === v.parent_id; })[0] || null : null;
+}
 function estTrouvee(v){ return (v.tags || []).indexOf(TAG_RECHERCHE) >= 0; }
 function partiReel(v){ return (v.thumbnail && v.thumbnail.parti) || v.parti || "auto"; }
 
@@ -653,7 +666,8 @@ function passeFiltre(v, f){
 }
 function passeRecherche(v, q){
   if(!q) return true;
-  var txt = [v.name, nomDe(v.author_id), partiOf(partiReel(v)).n, (v.tags || []).join(" ")].join(" ").toLowerCase();
+  var m = mereDe(v);
+  var txt = [v.name, nomDe(v.author_id), partiOf(partiReel(v)).n, (v.tags || []).join(" "), m ? m.name : ""].join(" ").toLowerCase();
   return q.toLowerCase().split(/\s+/).every(function(m){ return !m || txt.indexOf(m) >= 0; });
 }
 function setFiltre(k, val){

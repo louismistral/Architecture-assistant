@@ -33,6 +33,17 @@
      Puis ce que le solide ne nomme pas, ses mesures le disent : la salle de
      sport, les ouvrages du second temps, les passerelles.
 
+   LA CONVENTION DE CALQUES (`data/calques.js`) dit quoi relire : seul
+   `3D::Projet::Volume` et ses sous-calques, quand le fichier l'a. On peut donc
+   rendre son fichier de travail entier — relevé, contexte, planches, aides —,
+   sans rien isoler. Un fichier sans ce calque (d'avant la convention, ou un
+   solide modelé ailleurs) se lit tout entier, l'architecture exportée d'ici
+   mise à part. LA COULEUR dit qui : un objet bleu (`GENERE`) a été généré,
+   un autre a été dessiné ou retouché à la main — le volume qu'il fait le
+   garde (`v.main`), et l'export suivant ne le repeindra pas en bleu. La
+   variante dont le fichier est parti (`Saxon variante`) est rendue avec les
+   solides : la variante qu'on en tirera sera sa fille.
+
    Ce qui ne passe pas : un toit en pente n'est pas horizontal, il n'est donc
    pas lu ; une bande de moins d'un mètre est un reste de découpe ; là où un
    corps bute en biais contre un autre, restent de petits rectangles.
@@ -46,6 +57,7 @@ import { V } from "../data/cadre.js";
 import { assise, dansRect, ecart, terrain } from "./geom.js";
 import { CONTACT, etagesDe, fusionne, hauteurEtage, niveaux, secondTemps, volRect } from "./model.js";
 import { ecartVols, fusionner } from "./gen.js";
+import { CALQUE, SEP, estGenere } from "../data/calques.js";
 
 var TOL = .05;        /* m : deux altitudes plus proches sont la même */
 var MIETTE = 1;       /* m : un côté plus court est un reste de découpe */
@@ -73,14 +85,22 @@ export function solides3dm(rh, octets){
       if(f[3] !== f[2]) T.push([p(f[0]), p(f[2]), p(f[3])]);
     }
   }
-  /* l'habillage d'un massing exporté d'ici : un toit, un auvent ne sont pas
-     des étages */
-  var L = doc.layers(), passe = {};
-  for(k = 0; k < L.count; k++) if(L.get(k).name === "Architecture") passe[k] = 1;
+  /* ce qu'on relit : le calque Volume de la convention, s'il y est ; sinon
+     tout, sauf l'habillage d'un massing exporté d'ici (un toit, un auvent ne
+     sont pas des étages) */
+  var L = doc.layers(), lu = {}, passe = {}, conv = false;
+  for(k = 0; k < L.count; k++){
+    var ch = L.get(k).fullPath || L.get(k).name;
+    if(ch === CALQUE.volume || ch.indexOf(CALQUE.volume + SEP) === 0){ lu[k] = 1; conv = true; }
+    if(ch === "Architecture" || ch === CALQUE.architecture) passe[k] = 1;
+  }
   for(k = 0; k < O.count; k++){
-    if(passe[O.get(k).attributes().layerIndex]) continue;
+    var at = O.get(k).attributes();
+    if(conv ? !lu[at.layerIndex] : passe[at.layerIndex]) continue;
     var g = O.get(k).geometry();
     out.push(T = []);
+    T.main = !(at.colorSource && at.colorSource.value === rh.ObjectColorSource.ColorFromObject.value
+               && estGenere(at.objectColor));
     if(g instanceof rh.Mesh) maille(g);
     else if(g instanceof rh.Extrusion) maille(g.getMesh(rh.MeshType.Any));
     else if(g instanceof rh.Brep){
@@ -88,13 +108,16 @@ export function solides3dm(rh, octets){
       for(j = 0; j < F.count; j++) maille(F.get(j).getMesh(rh.MeshType.Any));
     }
   }
+  var vs = doc.strings().getvalue("Saxon variante");
   doc.delete();
   /* rhino3dm ne maille pas : il relit les maillages de rendu que Rhino a
      enregistrés. Un fichier « Save small » n'en a pas. */
   if(sans) throw new Error(sans + " face(s) sans maillage de rendu : dans Rhino, affiche le "
     + "modèle en mode Ombré puis enregistre sans « Save small ».");
   out = out.filter(function(t){ return t.length; });
-  if(!out.length) throw new Error("Aucun solide dans le fichier : ni Brep, ni extrusion, ni maillage.");
+  if(!out.length) throw new Error("Aucun solide " + (conv ? "sur le calque " + CALQUE.volume : "dans le fichier")
+    + " : ni Brep, ni extrusion, ni maillage.");
+  out.variante = vs || null;
   return out;
 }
 
@@ -106,9 +129,17 @@ export function solides3dm(rh, octets){
 export function volsDe3dm(solides){
   /* un étage fusionné exporté d'ici (un L, un U) est un prisme droit : il se
      relit en boîtes, que `fusionner()` recolle */
-  var B = solides.map(function(T){ var b = boite(T); return b ? [b] : prismes(T); });
+  var B = solides.map(function(T){
+    var b = boite(T), L = b ? [b] : prismes(T);
+    (L || []).forEach(function(x){ x.main = !!T.main; });
+    return L;
+  });
   if(B.every(Boolean)) return parBoites([].concat.apply([], B));
-  return parToits([].concat.apply([], solides));
+  /* ponytail: un solide unifié se découpe sans savoir d'où vient chaque toit —
+     tout est « à la main » dès qu'un solide l'est ; par face si on en a besoin */
+  var r = parToits([].concat.apply([], solides));
+  if(solides.some(function(T){ return T.main; })) r.vols.forEach(function(v){ v.main = 1; });
+  return r;
 }
 
 /* Une boîte : des faces horizontales ou verticales, huit sommets, le dessus
@@ -592,6 +623,7 @@ function parBoites(B){
     });
     if(!lv.length) return;
     var v = { id:"b" + (k + 1), x:R.x, y:R.y, a:R.a, fix:0, lv:lv };
+    if(L.some(function(b){ return b.main; })) v.main = 1;
     if(L.length === 1 && Math.abs(R.d - V.passLarg) <= .3 && R.z0 - assise(R).z > 2) perches.push({ v:v, b:R });
     vols.push(v);
   });

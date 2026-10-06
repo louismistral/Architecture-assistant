@@ -174,6 +174,16 @@ La **miniature** dessine le périmètre du relevé D'AUJOURD'HUI et les corps de
 variante : si le terrain a changé, on le voit tout de suite, et c'est justement
 ce qu'une variante périmée doit montrer.
 
+## Les variantes se lisent à la suite
+
+Une variante peut avoir une **mère** (`parent_id`) : celle dont l'état est parti — chargée,
+enregistrée, ou nommée par un .3dm rapporté de Rhino. Charger une variante en fait la source
+(`source()`, gardée sur l'appareil, hors de l'instantané) ; enregistrer pose la nouvelle comme sa
+fille et la prend pour source ; la recherche automatique pose ses trouvailles comme filles. La
+carte dit « ↳ de « mère » · +4 » — ce que le passage a fait à la note —, et chercher le nom
+d'une variante montre ses filles. L'acteur reste dans le nom et les étiquettes. Effacer une mère
+ne fait pas d'orphelines : leur lien tombe. Voir `docs/echange.md`.
+
 ## Une variante est un preset, pas une photo
 
 Elle porte trois familles de choses :
@@ -378,7 +388,7 @@ pas, et rien ne se perd si le réseau tombe.
 ## La base
 
 Six tables dans le schéma `public` : `profile`, `team`, `membership`, `invite`,
-`team_settings`, `variant`. Une seule idée les gouverne : **on ne voit une ligne
+`team_settings`, `variant` (dont `parent_id`, la mère, migration `20261006120000`). Une seule idée les gouverne : **on ne voit une ligne
 que si l'on est membre de son équipe**, et la règle est écrite dans la base, pas
 dans le navigateur.
 

@@ -914,6 +914,7 @@ export function fusionner(vols, ponts, etage){
       vols.forEach(function(o){ if(o.joint === b.id) o.joint = a.id; });
       if(!a.joint && b.joint) a.joint = b.joint;
       if(!a.bat && b.bat) a.bat = b.bat;
+      if(b.main) a.main = 1;                 /* retouché à la main, d'un côté ou de l'autre */
       (ponts || []).forEach(function(p){ if(p.a === b.id) p.a = a.id; if(p.b === b.id) p.b = a.id; });
       if(ponts) for(var q = ponts.length - 1; q >= 0; q--) if(ponts[q].a === ponts[q].b) ponts.splice(q, 1);
       vols.splice(j, 1); faits++; encore = true;

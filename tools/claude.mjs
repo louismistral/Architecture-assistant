@@ -13,6 +13,8 @@
    apprendra demain entrera dans l'instantané, donc ici, le même jour.
 
      node tools/claude.mjs bilan            ce que l'état donne
+     node tools/claude.mjs rhino            l'état → un .3dm, selon la convention de calques
+     node tools/claude.mjs importer f.3dm   un .3dm (de Rhino, d'un humain) → l'état
      node tools/claude.mjs test             la vérification de l'outil
    ========================================================================= */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from "node:fs";
@@ -382,6 +384,12 @@ async function verbeVariante({ pos, opt }){
   row.tags = ["claude"];
   const fs = opt.sortie || ".atelier/variante.json", fq = fs.replace(/\.json$/, "") + ".sql";
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /* la mère : la variante dont l'état est parti (requête 4, ou ce que `importer`
+     a lu dans le .3dm) — les variantes se lisent alors à la suite */
+  if(opt.parent !== undefined){
+    if(!UUID.test(String(opt.parent))) throw new Erreur("--parent attend l'uuid de la variante mère");
+    row.parent_id = opt.parent;
+  }
   /* vérifié AVANT d'écrire quoi que ce soit ; et jamais une vieille requête à
      côté d'une nouvelle ligne : on l'insérerait par erreur */
   if((opt.team || opt.auteur) && (!UUID.test(String(opt.team)) || !UUID.test(String(opt.auteur))))
@@ -395,7 +403,7 @@ async function verbeVariante({ pos, opt }){
     const j = JSON.stringify(row);
     let tag = "$j$"; for(let k = 0; j.includes(tag); k++) tag = "$j" + k + "$";
     const C = "name, seed_program, seed_massing, parti, score, floors, bodies, area_required, area_placed, "
-      + "area_gross, verdict, criteria, thumbnail, fingerprint, state, tags";
+      + "area_gross, verdict, criteria, thumbnail, fingerprint, state, tags" + (row.parent_id ? ", parent_id" : "");
     writeFileSync(fq,
       "insert into variant (team_id, author_id, " + C + ")\nselect '" + opt.team + "', '" + opt.auteur + "', "
       + C.split(", ").map((c) => "r." + c).join(", ") + "\nfrom jsonb_populate_record(null::public.variant, "
@@ -466,6 +474,58 @@ async function verbeSite({ opt }){
     + " · y " + o.bbox[1] + "→" + o.bbox[3] + "\nrecul visé : " + o.recul + " m · axe du périmètre : "
     + o.axe + " rad (" + Math.round(o.axe * 1800 / Math.PI) / 10 + "°)\nligne de recul : "
     + o.ligneRecul.map((l) => l.map((p) => p.join(",")).join(" ")).join("  |  "));
+}
+
+/* ---------- Rhino, dans les deux sens ----------
+   Le même fichier que les boutons « Exporter / Importer (.3dm) » du Massing
+   (`mass/export.js`, `mass/import.js`), selon la convention de calques
+   (`data/calques.js`, docs/echange.md) : ce que Claude pose dans Rhino par le
+   MCP, ou ce qu'un humain y a retouché, revient ici et se juge comme le
+   reste. rhino3dm n'est PAS une dépendance du dépôt : la vue le charge du
+   réseau, l'outil le prend dans un node_modules local (ignoré par git). */
+async function rhino3dm(){
+  let m;
+  try{ m = await import("rhino3dm"); }
+  catch(_){ throw new Erreur("rhino3dm absent : `npm i --no-save rhino3dm@8.35.0` à la racine du dépôt (node_modules est ignoré par git)"); }
+  return m.default();
+}
+async function verbeRhino({ opt }){
+  const { St } = await modules();
+  const X = await import(new URL("mass/export.js", SRC));
+  garde(ouvrir(opt));
+  const rh = await rhino3dm();
+  const fs = opt.sortie || ".atelier/massing.3dm";
+  if(opt.parent !== undefined && !/^[0-9a-f-]{36}$/i.test(String(opt.parent)))
+    throw new Erreur("--parent attend l'uuid de la variante dont l'état part");
+  mkdirSync(dirname(fs), { recursive:true });
+  const P = X.piecesMassing({ variante:opt.parent || null });
+  writeFileSync(fs, X.dm3Massing(rh, { variante:opt.parent || null }));
+  const o = { fichier:fs, calques:P.calques, objets:P.objets.length, generes:P.objets.filter((x) => x.gen).length };
+  return sortie(o, opt, (o) => o.fichier + " · " + o.objets + " objets dont " + o.generes + " générés (bleus) · calques :\n  "
+    + o.calques.join("\n  "));
+}
+async function verbeImporter({ pos, opt }){
+  const { M, St } = await modules();
+  const I = await import(new URL("mass/import.js", SRC));
+  if(!pos[0]) throw new Erreur("importer <fichier.3dm>");
+  /* l'état d'où vient le fichier : sa pile du mixer dit à quel niveau tombe
+     chaque étage — sans elle, rien ne se relit */
+  const fe = opt.etat || FE;
+  garde(charger(groupeDe(opt), lireEtat(fe, true)));
+  const rh = await rhino3dm();
+  let sol, r;
+  try{ sol = I.solides3dm(rh, new Uint8Array(readFileSync(pos[0]))); r = I.volsDe3dm(sol); }
+  catch(e){ throw new Erreur("import impossible : " + (e.message || e)); }
+  M.massVols(r.vols);
+  M.MASS.pile = M.empreintePile();
+  const b = bilan([]);
+  ecrireJSON(fe, St.snapshot());
+  b.importe = { mode:r.mode, corps:r.vols.length, main:r.vols.filter((v) => v.main).length,
+                horsPile:r.horsPile || 0, parent:sol.variante || null };
+  if(!opt.muet && !opt.json) console.log("importé : " + b.importe.corps + " corps (" + r.mode + "), "
+    + b.importe.main + " retouché(s) à la main" + (b.importe.horsPile ? ", " + b.importe.horsPile + " étage(s) hors pile ignorés" : "")
+    + " · variante mère : " + (b.importe.parent || "aucune") + (b.importe.parent ? " — passe --parent " + b.importe.parent + " à `variante`" : "") + "\n");
+  return sortie(b, opt, texte);
 }
 
 /* ---------- le plan ----------
@@ -741,6 +801,45 @@ const TESTS = {
     const j = q.slice(q.indexOf("$j$") + 3, q.lastIndexOf("$j$"));
     assert.equal(JSON.parse(j).name, "l'essai");
     await assert.rejects(verbeVariante({ pos:["x"], opt:{ etat:f, sortie:s, team:"pas-un-uuid", auteur:moi, muet:true } }), Erreur);
+    /* la mère entre dans la requête, et seulement si on la donne */
+    assert.equal(q.includes("parent_id"), false);
+    await verbeVariante({ pos:["fille"], opt:{ etat:f, sortie:s, team, auteur:moi, parent:team, muet:true } });
+    assert.match(readFileSync(s.replace(/\.json$/, ".sql"), "utf8"), /tags, parent_id\)/);
+    await assert.rejects(verbeVariante({ pos:["x"], opt:{ etat:f, sortie:s, parent:"pas-un-uuid", muet:true } }), Erreur);
+  },
+  /* Rhino aller et retour, selon la convention : le Volume en bleu, la mère
+     dans le fichier, et un corps repeint « par calque » revient retouché à la
+     main. Sans rhino3dm local, il n'y a rien à vérifier. */
+  async rhino_aller_retour(ref){
+    let rh;
+    try{ rh = await rhino3dm(); }catch(_){ return; }
+    const { M } = MODS;
+    const X = await import(new URL("mass/export.js", SRC)), I = await import(new URL("mass/import.js", SRC));
+    const Cq = await import(new URL("data/calques.js", SRC));
+    garde(charger(null, ref));
+    const mere = "11111111-2222-3333-4444-555555555555", n0 = M.MASS.vol.length;
+    const doc = rh.File3dm.fromByteArray(X.dm3Massing(rh, { variante:mere })), O = doc.objects(), L = doc.layers();
+    const d2 = new rh.File3dm();
+    d2.settings().modelUnitSystem = doc.settings().modelUnitSystem;
+    d2.strings().set("Saxon variante", doc.strings().getvalue("Saxon variante"));
+    for(let k = 0; k < L.count; k++){
+      const l = L.get(k), n = new rh.Layer();
+      n.name = l.name; n.id = l.id; n.parentLayerId = l.parentLayerId; d2.layers().add(n);
+    }
+    let vol = 0, bleus = 0, repeint = null;
+    for(let k = 0; k < O.count; k++){
+      const o = O.get(k), a = o.attributes(), ch = L.get(a.layerIndex).fullPath;
+      if(ch.startsWith(Cq.CALQUE.volume)){ vol++; if(Cq.estGenere(a.objectColor)) bleus++; }
+      if(!repeint && ch.startsWith(Cq.CALQUE.volume) && !/Second_temps/.test(ch)){
+        repeint = a.name; a.colorSource = rh.ObjectColorSource.ColorFromLayer;
+      }
+      d2.objects().add(o.geometry(), a);
+    }
+    assert.ok(vol > 0 && bleus === vol, bleus + " bleus sur " + vol);
+    const sol = I.solides3dm(rh, d2.toByteArray()), r = I.volsDe3dm(sol);
+    assert.equal(sol.variante, mere);
+    assert.equal(r.vols.length, n0);
+    assert.equal(r.vols.filter((v) => v.main).length, 1, "retouché : " + repeint);
   },
   async js_ecrire(ref){
     const f = ".atelier/test/js.json", x0 = ref.mass.vol[0].x;
@@ -893,7 +992,8 @@ async function test(){
 
 /* ---------- la ligne de commande ---------- */
 const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, ligne: verbeLigne,
-  remede: verbeRemede, variante: verbeVariante, js: verbeJs, site: verbeSite, plan: verbePlan, test };
+  remede: verbeRemede, variante: verbeVariante, js: verbeJs, site: verbeSite, plan: verbePlan,
+  rhino: verbeRhino, importer: verbeImporter, test };
 
 /* Les drapeaux sans valeur : sans cette liste, `js --ecrire "code"` prenait le
    code pour la valeur de --ecrire, et `variante --json "nom"` perdait son nom. */

@@ -15,6 +15,7 @@ Le détail de ce qu'elles posent, et pourquoi, est dans `docs/variantes.md`.
 20260928120000_variante_tags.sql         les étiquettes d'une variante (« algo search »)
 20260929090000_preferences_du_compte.sql les préférences du compte (profile.prefs)
 20260929100000_forensics.sql             la planche Forensics et son bucket d'images
+20261006120000_variante_parent.sql       la mère d'une variante (parent_id)
 ```
 
 Pour les rejouer sur un projet neuf, avec la CLI Supabase :

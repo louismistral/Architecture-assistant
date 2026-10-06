@@ -19,18 +19,29 @@
    d'autre pour se superposer au relevé. L'import (`mass/import.js`) relit le
    même repère.
 
-   CE QU'IL CONTIENT, un calque Rhino par groupe :
+   CE QU'IL CONTIENT, rangé selon la CONVENTION DE CALQUES (`data/calques.js`,
+   docs/echange.md) :
 
-     Niveau_<nom>  chaque étage de chaque volume, en maillage FERMÉ — huit
+     3D::Projet::Volume::<chapitre>::Niveau_<nom>
+                   chaque étage de chaque volume, en maillage FERMÉ — huit
                    sommets, six faces, normales vers l'extérieur —, à son
-                   altitude : `etagesDe()`, que lit aussi la 3D. Les passerelles
-                   vont avec le niveau qu'elles desservent ;
-     Second_temps  la piscine et le local CAD, s'ils sont posés : ils ne portent
-                   aucun niveau de la pile ;
-     Architecture  toits, lanterneaux, auvents, rampes, sous-passages ;
-     Perimetre     le périmètre du concours, polyligne fermée ;
-     Recul_5m      la ligne de recul du PACom, `ligneRecul()` — les points que
-                   le contrôle mesure à 5 m du bord, et pas un décalage refait.
+                   altitude : `etagesDe()`, que lit aussi la 3D. Le chapitre est
+                   celui de ses postes (la salle de sport), sinon celui qui
+                   porte le plus de surface au niveau. Les passerelles vont avec
+                   le niveau qu'elles desservent ; la piscine et le local CAD,
+                   qui ne portent aucun niveau de la pile, dans `Second_temps` ;
+     3D::Projet::Architecture
+                   toits, lanterneaux, auvents, rampes, sous-passages ;
+     AIDE::Perimetre, AIDE::Recul_5m
+                   le périmètre du concours, polyligne fermée, et la ligne de
+                   recul du PACom, `ligneRecul()` — les points que le contrôle
+                   mesure à 5 m du bord, et pas un décalage refait.
+
+   CE QUI EST GÉNÉRÉ est BLEU (`GENERE`), couleur forcée sur l'objet : tout le
+   projet, sauf un corps revenu de Rhino retouché à la main (`v.main`), qui
+   garde la couleur de son calque. Le périmètre et le recul viennent du relevé
+   et du règlement : couleur du calque. Le fichier dit aussi de quelle variante
+   il part (`Saxon variante`) : l'import la reprend pour parent.
 
    Les deux lignes sont DRAPÉES sur le terrain, un sommet au moins tous les deux
    mètres, le pas de la grille. Le fichier Rhino n'a pas de surface de terrain,
@@ -48,7 +59,9 @@ import { reculVise } from "../data/cadre.js";
 import { RULES } from "../data/rules.js";
 import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain, unionRects } from "./geom.js";
-import { MASS, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, volNom } from "./model.js";
+import { MASS, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, postesDe, volNom } from "./model.js";
+import { PMAP } from "../mix/prog.js";
+import { CALQUE, GENERE, SEP, chemin } from "../data/calques.js";
 import { archiDe, faces } from "./archi.js";
 
 /* Un nom sans accent ni espace : Rhino en fait un nom de calque ou d'objet.
@@ -62,6 +75,17 @@ export function nomObj(s){
 /* Le rez s'appelle « Rez », comme dans le rail : « Rez-de-chaussée » est long
    pour un calque qu'on lit dans une colonne étroite. */
 function nomNiveau(n){ return nomObj(n.lvl === 0 ? "Rez" : n.nom); }
+/* Le chapitre d'un étage : celui de ses postes s'il en nomme (la salle de
+   sport, le second temps), sinon celui qui porte le plus de surface au niveau
+   — un corps d'école porte sa part de chaque poste du niveau (`postesDe`),
+   hors ceux qui ont leur propre corps (`solid`, la salle de sport). */
+function chapDe(keys, i){
+  var A = {}, best = null;
+  if(keys && keys.length) keys.forEach(function(k){ if(PMAP[k]) A[PMAP[k].chap] = (A[PMAP[k].chap] || 0) + 1; });
+  else postesDe(i).forEach(function(p){ var q = PMAP[p.key]; if(q && !q.solid) A[q.chap] = (A[q.chap] || 0) + p.a; });
+  for(var c in A) if(best == null || A[c] > A[best]) best = c;
+  return nomObj(best || "Projet");
+}
 
 /* Du dessin, en mètres, vers le fichier Rhino. Au millimètre : les positions
    du massing sont au décimètre, le reste serait du bruit. */
@@ -81,13 +105,13 @@ function jour(d){
    quoi deux exports du même massing ne se compareraient pas. */
 export function piecesMassing(o){
   var date = (o && o.date) || new Date();
-  var N = niveaux(), out = [], obj = null, nEt = 0, nPont = 0, calques = [];
+  var N = niveaux(), out = [], obj = null, nEt = 0, nPont = 0, calques = [], gen = true;
   var recul = reculVise();
   var gRecul = "Recul_" + String(recul).replace(".", "_") + "m";
 
   function objet(nom, calque, o){
     if(calques.indexOf(calque) < 0) calques.push(calque);
-    obj = Object.assign({ nom:nom, calque:calque }, o);
+    obj = Object.assign({ nom:nom, calque:calque, gen:gen }, o);
     out.push(obj);
   }
   function sommet(x, y, z){ obj.v.push([X(x), Y(y), Z(z)]); }
@@ -151,17 +175,19 @@ export function piecesMassing(o){
 
   /* --- les volumes, niveau par niveau, du plus bas au plus haut --- */
   var corps = [];
+  /* un corps revenu de Rhino retouché à la main n'est plus « généré » */
+  function genere(main, f){ return function(){ gen = !main; f(); gen = true; }; }
   N.forEach(function(n){
-    var g = "Niveau_" + nomNiveau(n);
+    function g(keys){ return chemin(CALQUE.volume, chapDe(keys, n.i), "Niveau_" + nomNiveau(n)); }
     MASS.vol.forEach(function(v, k){
       if(v.ph) return;
       etagesDe(v).forEach(function(s){
         if(s.e.i !== n.i) return;
-        corps.push(function(){
+        corps.push(genere(v.main, function(){
           var nom = nomObj(volNom(v, k)) + "_" + nomNiveau(n);
-          if(fusionne(s.e)) prisme(nom, g, v, s.e, s.z0, s.z1);
-          else boite(nom, g, s.rc, s.z0, s.z1);
-        });
+          if(fusionne(s.e)) prisme(nom, g(s.e.keys), v, s.e, s.z0, s.z1);
+          else boite(nom, g(s.e.keys), s.rc, s.z0, s.z1);
+        }));
         nEt++;
       });
     });
@@ -173,7 +199,7 @@ export function piecesMassing(o){
       MASS.vol.forEach(function(v, k){ if(v.id === p.a) ka = k; if(v.id === p.b) kb = k; });
       corps.push(function(){
         boite("Passerelle_" + nomObj(volNom(MASS.vol[ka], ka)) + "_"
-          + nomObj(volNom(MASS.vol[kb], kb)) + "_" + nomNiveau(n), g, s.rc, s.z0, s.z1);
+          + nomObj(volNom(MASS.vol[kb], kb)) + "_" + nomNiveau(n), g(null), s.rc, s.z0, s.z1);
       });
       nPont++;
     });
@@ -182,7 +208,9 @@ export function piecesMassing(o){
   MASS.vol.forEach(function(v, k){
     if(!v.ph) return;
     etagesDe(v).forEach(function(s){
-      corps.push(function(){ boite(nomObj(volNom(v, k)), "Second_temps", s.rc, s.z0, s.z1); });
+      corps.push(genere(v.main, function(){
+        boite(nomObj(volNom(v, k)), chemin(CALQUE.volume, chapDe(s.e.keys, s.e.i), "Second_temps"), s.rc, s.z0, s.z1);
+      }));
       nEt++;
     });
   });
@@ -190,14 +218,14 @@ export function piecesMassing(o){
   /* --- l'architecture : toits, lanterneaux, auvents, rampes, sous-passages --- */
   MASS.vol.forEach(function(v, k){
     archiDe(v).forEach(function(c, j){
-      corps.push(function(){
-        objet(nomObj(volNom(v, k)) + "_" + c.k + "_" + (j + 1), "Architecture", { v:[], f:[] });
+      corps.push(genere(v.main, function(){
+        objet(nomObj(volNom(v, k)) + "_" + c.k + "_" + (j + 1), CALQUE.architecture, { v:[], f:[] });
         faces(c).forEach(function(f){
           var b = obj.v.length;
           f.forEach(function(p){ sommet(p[0], p[1], p[2]); });
           obj.f.push([b, b + 1, b + 2, b + 3]);
         });
-      });
+      }));
     });
   });
 
@@ -216,15 +244,21 @@ export function piecesMassing(o){
     "  X = " + RHINO.x0.toFixed(2) + " + " + RHINO.u + " * x,  Y = " + RHINO.y0.toFixed(2)
       + " + " + RHINO.u + " * y,  Z = " + RHINO.u + " * (z - " + RHINO.z0 + ")",
     "  (x, y en metres, origine au coin sud-ouest du perimetre ; z altitude en metres)",
-    "Contenu :",
-    "  Niveau_*      un maillage ferme par etage de chaque volume - 8 sommets, 6 faces,",
+    "Calques : la convention du projet (docs/echange.md) - AIDE, BLOCKS, 2D, 3D, AUTRE.",
+    "  3D::Projet::Volume::<chapitre>::Niveau_*",
+    "                un maillage ferme par etage de chaque volume - 8 sommets, 6 faces,",
     "                normales vers l'exterieur -, de plancher a plancher, murs compris ;",
     "                un volume fusionne (L, U, cour) : un maillage ferme sur son contour ;",
-    "                passerelles comprises, au niveau qu'elles desservent",
-    "  Second_temps  piscine et local CAD, s'ils sont poses",
-    "  Perimetre     perimetre du concours, polyligne fermee drapee sur le terrain",
-    "  " + (gRecul + "            ").slice(0, 14) + "recul PACom de " + String(recul).replace(".", ",")
-      + " m, polyligne(s) fermee(s) drapee(s) sur le terrain",
+    "                passerelles comprises, au niveau qu'elles desservent ;",
+    "                ::Second_temps : piscine et local CAD, s'ils sont poses.",
+    "                SEUL CE CALQUE EST RELU par l'import du massing.",
+    "  3D::Projet::Architecture  toits, auvents, rampes - exportes, pas relus",
+    "  AIDE::Perimetre           perimetre du concours, polyligne fermee drapee sur le terrain",
+    "  AIDE::" + (gRecul + "            ").slice(0, 19) + "recul PACom de " + String(recul).replace(".", ",")
+      + " m, polyligne(s) fermee(s) drapee(s)",
+    "Couleur : BLEU (" + GENERE.join(", ") + ") = genere par l'algorithme ou une IA ; couleur du",
+    "  calque = dessine a la main. Ce que vous retouchez, passez-le en couleur Par calque.",
+    o && o.variante ? "Variante source : " + o.variante : "Variante source : aucune (etat non enregistre)",
     "Non modelises : l'acrotere (" + dec(RULES.haut.acrotere)
       + " m), le programme a l'interieur des volumes.",
     MASS.vol.length + " volumes, " + nEt + " etages, " + nPont + " passerelles."
@@ -232,11 +266,12 @@ export function piecesMassing(o){
   corps.forEach(function(f){ f(); });
 
   /* --- le périmètre et le recul --- */
-  ligne("Perimetre", "Perimetre", PER);
+  gen = false;
+  ligne("Perimetre", chemin(CALQUE.aide, "Perimetre"), PER);
   ligneRecul(recul).forEach(function(b, k, T){
-    ligne(gRecul + (T.length > 1 ? "_" + (k + 1) : ""), gRecul, b);
+    ligne(gRecul + (T.length > 1 ? "_" + (k + 1) : ""), chemin(CALQUE.aide, gRecul), b);
   });
-  return { calques:calques, objets:out, notes:notes };
+  return { calques:calques, objets:out, notes:notes, variante:(o && o.variante) || null };
 }
 
 /* Le fichier .3dm, en octets. `rh` est rhino3dm, chargé par l'appelant. */
@@ -244,15 +279,24 @@ export function dm3Massing(rh, o){
   var P = piecesMassing(o), doc = new rh.File3dm(), idx = {};
   doc.settings().modelUnitSystem = rh.UnitSystem.Centimeters;
   doc.strings().set("Saxon massing", P.notes.join("\n"));
-  P.calques.forEach(function(nom){
-    var L = new rh.Layer();
-    L.name = nom;
-    idx[nom] = doc.layers().add(L);
-  });
+  if(P.variante) doc.strings().set("Saxon variante", P.variante);
+  /* un calque et chacun de ses parents, dans l'ordre de l'arbre */
+  function calque(ch){
+    if(idx[ch] != null) return idx[ch];
+    var k = ch.lastIndexOf(SEP), L = new rh.Layer();
+    L.name = k < 0 ? ch : ch.slice(k + SEP.length);
+    if(k >= 0) L.parentLayerId = doc.layers().get(calque(ch.slice(0, k))).id;
+    return (idx[ch] = doc.layers().add(L));
+  }
+  P.calques.forEach(calque);
   P.objets.forEach(function(x){
     var att = new rh.ObjectAttributes(), g;
     att.name = x.nom;
     att.layerIndex = idx[x.calque];
+    if(x.gen){
+      att.colorSource = rh.ObjectColorSource.ColorFromObject;
+      att.objectColor = { r:GENERE[0], g:GENERE[1], b:GENERE[2], a:255 };
+    }
     if(x.l) g = new rh.PolylineCurve(x.l);
     else {
       g = new rh.Mesh();
