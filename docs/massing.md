@@ -523,3 +523,7 @@ parcelle vers `V.pubAz` (0 côté opposé, 1 bord public ; le moins avancé comp
 l'école tire deux positions et garde la plus éloignée du côté public (`implanter`), et `auBord()`
 essaie chaque position sous ses quatre angles avant de passer à la suivante — une place du bon
 côté qui ne tient que tournée passe avant une place du mauvais côté.
+
+**Plus de leviers d'architecture.** Toiture, porte-à-faux, jeu de niveaux, puits de lumière,
+entrées marquées, rampe et sous-passages ne sont plus tirés : `architecturer()` donne à chaque
+corps un toit plat et rien d'autre. Ils restent posables à la main sur la carte du volume choisi.

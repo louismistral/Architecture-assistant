@@ -134,7 +134,7 @@ parts égales.
 | onglet | leviers | où vit l'état |
 |---|---|---|
 | mixer | nombre de niveaux | `mix/opts.js` |
-| massing | parti · figure · profondeur · largeur · salle de sport · passerelles · architecture · second temps | `MASS.parti`, `MASS.second`, `MASS.lev` |
+| massing | parti · figure · profondeur · largeur · salle de sport · passerelles · second temps | `MASS.parti`, `MASS.second`, `MASS.lev` |
 
 L'**état** fixe ou libre suit chacun — il est dans l'instantané, comme les dés du mixer. Le
 **domaine** (le minimum des cotes, 11 m, longueur d'une passerelle) est au groupe. Profondeur et
