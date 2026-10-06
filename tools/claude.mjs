@@ -20,6 +20,7 @@ import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { deflateSync } from "node:zlib";
 
 /* Les modules de l'app écrivent sur l'appareil ; ici, il n'y en a pas. Posé
    AVANT de les importer, d'où les imports dynamiques. */
@@ -40,9 +41,10 @@ export async function modules(){
     "typo/etat.js", "mass/fix.js", "mix/fix.js", "core/model.js"
   ].map(im));
   /* que TOUTES les lignes soient déclarées, jury compris */
-  await Promise.all(["data/leviers.js", "data/cadre.js", "data/orientation.js",
+  const [, cadre] = await Promise.all(["data/leviers.js", "data/cadre.js", "data/orientation.js",
                      "data/recherche.js", "data/donnees.js"].map(im));
-  MODS = { M, G, F, S, St, R, L, J, E, C, CM, Va, Rech, T, XM, XX, model };
+  const [site, geom] = await Promise.all(["data/site.js", "mass/geom.js"].map(im));
+  MODS = { M, G, F, S, St, R, L, J, E, C, CM, Va, Rech, T, XM, XX, model, cadre, site, geom };
   return MODS;
 }
 
@@ -118,6 +120,10 @@ export function bilan(perdu){
       })),
       demande: Math.round(b.demande || 0),
       pose: Math.round(b.pose || 0),
+      /* ce que chaque niveau demande (bâti : locaux + circulation) et ce que
+         les corps y posent — ce qu'il faut tenir en composant à la main */
+      niveaux: M.bilan().map((n) => ({ i:n.i, nom:n.nom, lvl:n.lvl, demande:Math.round(n.demande),
+        pose:Math.round(n.pose), ecart:Math.round(n.ecart) })),
       verdict: C.massVerdict(lmass),
       alertes: alertes(lmass)
     },
@@ -147,6 +153,8 @@ export function texte(b, complet){
   b.mixer.alertes.forEach((a) => L.push("  [" + a.sev + "] " + a.code + " — " + a.msg
     + (a.remedes ? "  → " + a.remedes.join(" | ") : "")));
   L.push("", "MASSING · " + b.massing.parti + " · demandé " + b.massing.demande + " · posé " + b.massing.pose);
+  b.massing.niveaux.forEach((n) => L.push("  niveau " + n.i + " " + n.nom.padEnd(17) + "demandé " + n.demande
+    + " · posé " + n.pose + " · écart " + (n.ecart > 0 ? "+" : "") + n.ecart));
   b.massing.corps.forEach((v) => {
     L.push("  corps " + v.id + (v.nom ? " « " + v.nom + " »" : "") + " x=" + v.x + " y=" + v.y + " a=" + v.a
       + (v.bat ? " bât " + v.bat : ""));
@@ -351,6 +359,125 @@ async function verbeRemede({ pos, opt }){
   return sortie(b, opt, texte);
 }
 
+/* ---------- le site ----------
+   Où l'on peut poser : le périmètre du concours et la ligne de recul, en
+   mètres du relevé (x vers l'est, y vers le nord), et l'axe principal du
+   périmètre. Ce qu'il faut pour composer un corps à la main. */
+async function verbeSite({ opt }){
+  const { site, geom, cadre } = await modules();
+  const P = site.PER, xs = P.map((p) => p[0]), ys = P.map((p) => p[1]);
+  const m = cadre.reculVise();
+  const o = { perimetre:P, bbox:[Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)],
+              recul:m, ligneRecul: m ? geom.ligneRecul(m).map((l) => l.map((p) => [r2(p[0]), r2(p[1])])) : [],
+              axe:site.VANG, existants:site.SITE.bat.length };
+  return sortie(o, opt, (o) => "périmètre (" + o.perimetre.length + " sommets, m) : "
+    + o.perimetre.map((p) => p.join(",")).join(" ") + "\nemprise : x " + o.bbox[0] + "→" + o.bbox[2]
+    + " · y " + o.bbox[1] + "→" + o.bbox[3] + "\nrecul visé : " + o.recul + " m · axe du périmètre : "
+    + o.axe + " rad (" + Math.round(o.axe * 1800 / Math.PI) / 10 + "°)\nligne de recul : "
+    + o.ligneRecul.map((l) => l.map((p) => p.join(",")).join(" ")).join("  |  "));
+}
+
+/* ---------- le plan ----------
+   Un PNG du plan, pour que Claude VOIE ce qu'il compose : courbes de niveau
+   (une par mètre), bâtiments existants, routes, périmètre, recul, et chaque
+   corps — l'emprise de son plus bas étage hors sol peinte, chaque étage
+   cerné. Le nord en haut, une barre de 10 m en bas à gauche. Aucune
+   dépendance : un raster, un remplissage par balayage, un encodeur PNG. */
+const PALETTE = [[214, 76, 60], [52, 120, 198], [46, 160, 90], [230, 150, 30], [140, 82, 190],
+                 [30, 170, 170], [200, 70, 150], [120, 120, 40], [90, 90, 90], [170, 110, 70]];
+const hex = (c) => "#" + c.map((x) => x.toString(16).padStart(2, "0")).join("");
+
+function raster(x0, y0, x1, y1, s){
+  const w = Math.ceil((x1 - x0) * s), h = Math.ceil((y1 - y0) * s), px = new Uint8Array(w * h * 3).fill(255);
+  const versPx = (x, y) => [(x - x0) * s, (y1 - y) * s];
+  function pose(i, j, c){
+    if(i < 0 || j < 0 || i >= w || j >= h) return;
+    const k = 3 * (j * w + i); px[k] = c[0]; px[k + 1] = c[1]; px[k + 2] = c[2];
+  }
+  function trait(a, b, c, ep){
+    const [ax, ay] = versPx(a[0], a[1]), [bx, by] = versPx(b[0], b[1]);
+    const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay))), e = ep || 1, d = Math.floor((e - 1) / 2);
+    for(let t = 0; t <= n; t++){
+      const i = Math.round(ax + (bx - ax) * t / n), j = Math.round(ay + (by - ay) * t / n);
+      for(let u = -d; u < e - d; u++) for(let v = -d; v < e - d; v++) pose(i + u, j + v, c);
+    }
+  }
+  function ligne(pts, c, ep, fermee){
+    for(let k = 0; k + 1 < pts.length; k++) trait(pts[k], pts[k + 1], c, ep);
+    if(fermee && pts.length > 2) trait(pts[pts.length - 1], pts[0], c, ep);
+  }
+  /* pair-impair, au centre des pixels */
+  function remplir(pts, c){
+    const q = pts.map((p) => versPx(p[0], p[1]));
+    const jm = Math.max(0, Math.floor(Math.min(...q.map((p) => p[1])))), jM = Math.min(h - 1, Math.ceil(Math.max(...q.map((p) => p[1]))));
+    for(let j = jm; j <= jM; j++){
+      const yc = j + .5, X = [];
+      for(let k = 0; k < q.length; k++){
+        const a = q[k], b = q[(k + 1) % q.length];
+        if((a[1] <= yc) !== (b[1] <= yc)) X.push(a[0] + (yc - a[1]) * (b[0] - a[0]) / (b[1] - a[1]));
+      }
+      X.sort((u, v) => u - v);
+      for(let k = 0; k + 1 < X.length; k += 2)
+        for(let i = Math.ceil(X[k] - .5); i <= Math.floor(X[k + 1] - .5); i++) pose(i, j, c);
+    }
+  }
+  function lire(x, y){
+    const [i, j] = versPx(x, y).map(Math.floor);
+    if(i < 0 || j < 0 || i >= w || j >= h) return null;
+    const k = 3 * (j * w + i); return [px[k], px[k + 1], px[k + 2]];
+  }
+  return { w, h, px, trait, ligne, remplir, lire };
+}
+
+const CRC = Array.from({ length:256 }, (_, n) => {
+  let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0;
+});
+function crc32(b){ let c = 0xFFFFFFFF; for(const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function png(w, h, rgb){
+  const bloc = (type, data) => {
+    const t = Buffer.concat([Buffer.from(type, "ascii"), data]), o = Buffer.alloc(4), c = Buffer.alloc(4);
+    o.writeUInt32BE(data.length); c.writeUInt32BE(crc32(t));
+    return Buffer.concat([o, t, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const brut = Buffer.alloc((3 * w + 1) * h);
+  for(let j = 0; j < h; j++) Buffer.from(rgb.buffer, rgb.byteOffset + 3 * w * j, 3 * w).copy(brut, (3 * w + 1) * j + 1);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), bloc("IHDR", ihdr),
+                        bloc("IDAT", deflateSync(brut)), bloc("IEND", Buffer.alloc(0))]);
+}
+
+async function verbePlan({ opt }){
+  const { M, site, geom, cadre } = await modules();
+  ouvrir(opt);
+  const P = site.PER, marge = 25, s = Number(opt.echelle) || 4;
+  const x0 = Math.min(...P.map((p) => p[0])) - marge, x1 = Math.max(...P.map((p) => p[0])) + marge;
+  const y0 = Math.min(...P.map((p) => p[1])) - marge, y1 = Math.max(...P.map((p) => p[1])) + marge;
+  const R = raster(x0, y0, x1, y1, s);
+  site.SITE.ctr.forEach(([z, l]) => R.ligne(l, Math.round(z) % 5 ? [228, 228, 228] : [200, 200, 200], 1));
+  site.SITE.rou.forEach((l) => R.ligne(l, [170, 170, 170], 2));
+  site.SITE.bat.forEach((b) => { R.remplir(b, [185, 185, 185]); R.ligne(b, [120, 120, 120], 1, true); });
+  R.ligne(P, [0, 0, 0], 2, true);
+  const m = cadre.reculVise();
+  if(m) geom.ligneRecul(m).forEach((l) => R.ligne(l, [240, 140, 40], 1, true));
+  const legende = M.MASS.vol.map((v, k) => {
+    const c = PALETTE[k % PALETTE.length];
+    M.solRects(v).forEach((rc) => R.remplir(geom.coins(rc), c));
+    v.lv.forEach((e) => M.volRects(v, e).forEach((rc) => R.ligne(geom.coins(rc), c.map((x) => x >> 1), 1, true)));
+    return { corps: v.id == null ? k : v.id, nom: v.nom || null, couleur: hex(c), rgb: c };
+  });
+  (M.MASS.pont || []).forEach((p) => { const r = M.pontRect(p, M.MASS.vol); if(r) R.ligne(geom.coins(r), [0, 0, 0], 1, true); });
+  /* la barre de 10 m */
+  R.trait([x0 + 5, y0 + 4], [x0 + 15, y0 + 4], [0, 0, 0], 3);
+  const fichier = opt.sortie || ".atelier/plan.png";
+  mkdirSync(dirname(fichier), { recursive:true });
+  writeFileSync(fichier, png(R.w, R.h, R.px));
+  const o = { fichier, largeur:R.w, hauteur:R.h, echelle:s, legende, pixel:R.lire };
+  return sortie(o, opt, (o) => o.fichier + " · " + o.largeur + "×" + o.hauteur + " px · " + o.echelle
+    + " px/m · nord en haut · barre de 10 m en bas à gauche · courbes de niveau au mètre"
+    + " · recul en orange\n" + o.legende.map((l) => "  " + l.couleur + "  corps " + l.corps + (l.nom ? " « " + l.nom + " »" : "")).join("\n"));
+}
+
 /* ---------- chercher ----------
    La recherche automatique de l'app : tirer beaucoup, garder peu. Chaque
    trouvaille est un état complet, écrit à côté de `--etat`. */
@@ -528,6 +655,33 @@ const TESTS = {
     assert.equal(bilan(charger(null, lireJSON(f, true))).massing.alertes.some((x) => x.code === "m:perimetre:v1"), false);
     await assert.rejects(verbeRemede({ pos:["m:pas-la"], opt:{ etat:f, muet:true } }), Erreur);
   },
+  async niveaux_du_massing(ref){
+    const { F } = await modules();
+    const b = bilan(charger(null, ref));
+    assert.equal(b.massing.niveaux.length, F.FLOORS.length);
+    const d = b.massing.niveaux.reduce((s, n) => s + n.demande, 0);
+    assert.ok(Math.abs(d - b.massing.demande) <= b.massing.niveaux.length, d + " / " + b.massing.demande);
+  },
+  async site(){
+    const s = await verbeSite({ pos:[], opt:{ muet:true } });
+    assert.equal(s.perimetre.length, 27);
+    assert.equal(s.recul, 5);
+    assert.ok(s.ligneRecul.length >= 1 && s.ligneRecul[0].length > 3);
+  },
+  async plan_png(ref){
+    const f = ".atelier/test/p-etat.json", p = ".atelier/test/plan.png";
+    ecrireJSON(f, ref);
+    const r = await verbePlan({ pos:[], opt:{ etat:f, sortie:p, muet:true } });
+    const o = readFileSync(p);
+    assert.deepEqual([...o.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    assert.equal(o.readUInt32BE(16), r.largeur);
+    assert.equal(o.readUInt32BE(20), r.hauteur);
+    /* le centre de l'emprise du premier corps est peint de sa couleur */
+    const { M } = await modules();
+    const v = M.MASS.vol[0], rc = M.solRects(v)[0], c = r.legende.find((l) => l.corps === v.id).rgb;
+    assert.deepEqual(r.pixel(rc.x, rc.y), c);
+    assert.notDeepEqual(r.pixel(-50, -50), c);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
@@ -548,7 +702,7 @@ async function test(){
 
 /* ---------- la ligne de commande ---------- */
 const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, ligne: verbeLigne,
-  remede: verbeRemede, variante: verbeVariante, js: verbeJs, test };
+  remede: verbeRemede, variante: verbeVariante, js: verbeJs, site: verbeSite, plan: verbePlan, test };
 
 function analyser(argv){
   const pos = [], opt = {};
