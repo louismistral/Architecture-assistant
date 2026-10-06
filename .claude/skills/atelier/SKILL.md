@@ -23,14 +23,18 @@ Deux moitiés :
    `.atelier/groupe.json` (requête 3). Sans ce fichier, tu juges avec le jury par défaut du code, pas
    celui du groupe.
 2. **Un point de départ** — une variante du groupe (requêtes 2 puis 4 → `.atelier/etat.json`), ou un
-   tirage : `node tools/claude.mjs tirer`.
+   tirage : `node tools/claude.mjs tirer`. Une variante dont la colonne `fingerprint` diffère de
+   l'`empreinte du code` en tête du bilan est **périmée** : le programme ou le règlement a changé depuis,
+   ses surfaces ne sont plus celles du concours — dis-le avant de la juger.
 3. **Lire** — `bilan` (le texte) et `plan` (l'image : **lis-la** avec Read, `.atelier/plan.png`), et
    `site` la première fois.
 4. **Raisonner, puis modifier** — éditer `etat.json` à la main (voir *La carte*), `tirer`, `remede`,
    `ligne`, `js`.
 5. **Rejuger** — `bilan`, `plan`. Comparer à l'état d'avant (garde des copies : `.atelier/essai-2.json`,
    `--etat` les lit toutes). Recommencer.
-6. **Enregistrer** — `variante "<nom>"` puis l'insérer (requête 5). Dire à la personne son nom, sa note,
+6. **Enregistrer** — `variante "<nom>" --team <team_id> --auteur <profile_id>` écrit aussi
+   `.atelier/variante.sql`, la requête d'insertion entière : passe son contenu tel quel au connecteur
+   (requête 5), puis relis l'état inséré pour vérifier. Dire à la personne son nom, sa note,
    ce qui la distingue, et qu'elle la trouvera dans le panneau Variantes sous le tag `claude`.
 
 ## Les verbes
@@ -47,8 +51,8 @@ ignoré s'il manque) et `--json`.
 | `chercher` | La recherche automatique : `--essais 30 --garder 3 --partis L,U,cour --avec-erreurs`. Écrit `trouve-<k>.json` à côté de `--etat`. |
 | `ligne` | Sans argument : les écarts au défaut. `--toutes [--cherche mot]` : les 362 lignes, en mots. `<clé>` : sa valeur, son défaut, sa borne. `<clé> <valeur>` : la règle, rend **avant → après** (la valeur est bornée). Le jury va dans `groupe.json` seul, le reste aussi dans l'état. |
 | `remede <code> [n]` | Joue le n-ième remède (0 par défaut) qu'une alerte du bilan propose — ceux de `mix/fix.js`, `mass/fix.js`. |
-| `variante "<nom>" [--sortie f]` | La ligne de `variant` prête à insérer, tag `claude`, sans `team_id` ni `author_id`. |
-| `js "<code>"` / `js --fichier f [--ecrire]` | Tout le reste. Modules sous la main : `M` massing (`mass/model.js`), `G` générateur, `F` étages du mixer, `S` shuffle, `St` store, `R` hasard, `L` lignes, `J` jugement, `E` mesures, `C`/`CM` contrôles massing/mixer, `XM`/`XX` remèdes massing/mixer, `Va` variantes, `Rech` recherche, `T` typo, `model` (`core/model.js`), `cadre`, `site`, `geom`, et `bilan([])`, `texte(b)`. `return` imprime. Sous PowerShell, préfère `--fichier`. |
+| `variante "<nom>" [--sortie f] [--team <uuid> --auteur <uuid>]` | La ligne de `variant` prête à insérer, tag `claude`, sans `team_id` ni `author_id` ; avec `--team` et `--auteur`, la requête d'insertion complète à côté (`.sql`). La note du fichier ignore les notes manuelles du groupe : l'app la refait à l'affichage. |
+| `js "<code>"` / `js --fichier f [--ecrire]` | Tout le reste. Modules sous la main : `M` massing (`mass/model.js`), `G` générateur, `F` étages du mixer, `S` shuffle, `St` store, `R` hasard, `L` lignes, `J` jugement, `E` mesures, `C`/`CM` contrôles massing/mixer, `XM`/`XX` remèdes massing/mixer, `Va` variantes, `Rech` recherche, `T` typo, `model` (`core/model.js`), `cadre`, `site`, `geom`, `emp` (empreinte), et `bilan([])`, `texte(b)`. `return` imprime ; `import('../src/…')` marche. Tes propres `const L = …` masquent le module du même nom. Sous PowerShell, préfère `--fichier`. |
 | `test` | La vérification de l'outil. |
 
 Un `js` que tu réécris souvent mérite un verbe : ajoute-le à `tools/claude.mjs`, avec son test.
@@ -105,6 +109,12 @@ se juge très bien.
   distance incendie entre bâtiments quand le cadre l'exige — le contrôle le dit, et `remede` propose
   souvent le geste (« Ramener le volume dans la parcelle », « Écarter les volumes », « Recomposer les
   passerelles »).
+- **Ce qui fait un bâtiment** : deux corps sont « liés » (`M.lies`) s'ils ont le même `bat` ou si l'un
+  nomme l'autre en `joint`. Deux corps qui se touchent sans être liés sont jugés comme deux façades qui se
+  font face à 0 m (lumière entre les corps à 0 %) — une salle de sport accolée à une barre que tu coupes
+  doit porter le `bat` de la barre.
+- **Le module** (0,50 m, intangible) : toute cote `w`/`d` se cale par `M.auModule(x)` ; une cote hors
+  module est une erreur rouge. `XM.requilibre()` repartage un niveau en restant au module.
 - Aides du générateur, par `js` : `G.admissible(v, M.MASS.vol, x, y, a)`, `G.dansPerimetre(v, x, y, a)`,
   `G.relierCourant()` (passerelles), `G.toutDedans(M.MASS.vol)`.
 - Le jugement ne lit que des **mesures** : regarde quels critères mesurés tu fais bouger, et lesquels
