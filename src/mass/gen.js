@@ -277,13 +277,16 @@ function auBord(v, vols){
   }
   /* du bord vers le cœur ; et quand on vise le public d'un côté (`pub-est`),
      d'abord la marge de ce côté : on ajoute au bord la distance au côté public */
-  var pmax = -Infinity, cote = v.lv[0].keys.some(function(k){ return PMAP[k] && PMAP[k].pub; }) && vise("pub-est");
+  var pmax = -Infinity, cote = (v.lv[0].keys.some(function(k){ return PMAP[k] && PMAP[k].pub; }) && vise("pub-est"))
+    || (v.ph && vise("second-est"));
   cand.forEach(function(c){ c[3] = versPublic({ x:c[0], y:c[1] }); pmax = Math.max(pmax, c[3]); });
   cand.forEach(function(c){ c[2] += cote ? pmax - c[3] : 0; });
   cand.sort(function(p, q2){ return p[2] - q2[2]; });
   var angles = [v.a, v.a + Math.PI / 2, v.a + Math.PI / 4, v.a - Math.PI / 4];
-  for(k = 0; k < angles.length; k++){
-    for(var i = 0; i < cand.length; i++){
+  /* position d'abord, angle ensuite : une place du bon côté qui ne tient que
+     tournée passe avant une place du mauvais côté qui tient droite */
+  for(var i = 0; i < cand.length; i++){
+    for(k = 0; k < angles.length; k++){
       if(!admissible(v, vols, cand[i][0], cand[i][1], angles[k])) continue;
       v.x = d1(cand[i][0]); v.y = d1(cand[i][1]); v.a = angles[k];
       if(courUtile(vols).a >= courExigee()) return true;
@@ -499,6 +502,12 @@ function implanter(S, N, r, th0){
   var t, k;
   for(t = 0; t < 300; t++){
     var p = cand[Math.floor(r() * cand.length)];
+    /* piscine et CAD du côté public (`second-est`) : l'école laisse cette marge —
+       de deux positions tirées, la plus éloignée du côté public */
+    if(vise("second-est")){
+      var p2 = cand[Math.floor(r() * cand.length)];
+      if(versPublic({ x:p2[0], y:p2[1] }) < versPublic({ x:p[0], y:p[1] })) p = p2;
+    }
     /* L'angle choisi le plus souvent ; parfois une direction du site — une
        longue barre ne tient que dans le sens de la parcelle. */
     var th = r() < .7 ? th0 + entre(r, -1, 1) * V.jeuAngle * 1.5 + (r() < .25 ? Math.PI / 2 : 0)

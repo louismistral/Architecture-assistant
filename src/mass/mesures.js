@@ -579,6 +579,17 @@ export function qualites(vols, L){
     pe.sep == null ? "aucun volume public posé"
       : (pe.sep <= .01 ? "une ligne sépare public et école" : "public et école se recouvrent à " + Math.round(100 * pe.sep) + " %")
         + " ; le public à " + Math.round(pe.cote) + " m vers " + Math.round(V.pubAz) + "° (demi-école : " + Math.round(pe.demi) + " m)");
+  /* la piscine et le CAD du côté public : leur place sur la parcelle, de 0 (côté
+     opposé) à 1 (bord du côté public) — le moins avancé compte */
+  var saz = V.pubAz * DEG, sux = Math.sin(saz), suy = Math.cos(saz), slo = Infinity, shi = -Infinity, ss = Infinity;
+  PER.forEach(function(p){ var t = p[0] * sux + p[1] * suy; slo = Math.min(slo, t); shi = Math.max(shi, t); });
+  vols.forEach(function(v){ if(v.ph) ss = Math.min(ss, (v.x * sux + v.y * suy - slo) / Math.max(1, shi - slo)); });
+  var sok = isFinite(ss);
+  q("second-est", "Piscine et chauffage du côté public",
+    !sok ? 1 : ss >= V.secondBon ? 2 : ss < V.secondMax ? 0 : 1,
+    !sok ? 0 : borne(2 * (ss - V.secondMax) / Math.max(.01, V.secondBon - V.secondMax) - 1),
+    !sok ? "aucun ouvrage du second temps posé"
+      : "piscine et CAD à " + Math.round(100 * ss) + " % de la parcelle vers " + Math.round(V.pubAz) + "°");
   q("compa", "Un volume compact", palier(L.compa, V.compaBon, V.compaMax), lin(L.compa, V.compaBon, V.compaMax),
     dec(Math.round(L.compa * 100) / 100) + " m² de façade par m² de plancher");
   q("align", "Des corps alignés", E.length && L.rang / E.length >= .5 ? 2 : 1,
