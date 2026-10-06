@@ -53,7 +53,7 @@ ignoré s'il manque) et `--json`.
 | `remede <code> [n]` | Joue le n-ième remède (0 par défaut) qu'une alerte du bilan propose — ceux de `mix/fix.js`, `mass/fix.js`. |
 | `variante "<nom>" [--sortie f] [--team <uuid> --auteur <uuid>] [--parent <uuid>]` | La ligne de `variant` prête à insérer, tag `claude`, sans `team_id` ni `author_id` ; avec `--team` et `--auteur`, la requête d'insertion complète à côté (`.sql`). `--parent` : la variante dont l'état est parti (celle de la requête 4, ou celle que `importer` a lue) — **donne-la toujours quand il y en a une**, les variantes se lisent à la suite. La note du fichier ignore les notes manuelles du groupe : l'app la refait à l'affichage. |
 | `rhino [--sortie f] [--parent <uuid>]` | L'état en .3dm (`.atelier/massing.3dm`), selon la convention de calques : ce que les humains ouvrent dans Rhino, ou ce que tu y importes par le MCP. Il faut rhino3dm en local : `npm i --no-save rhino3dm@8.35.0`. |
-| `importer <f.3dm>` | Un .3dm (document Rhino entier : seul `3D::Projet::Volume` est relu) remplace la volumétrie de l'état, puis le bilan. Dit combien de corps sont retouchés à la main (plus bleus) et la variante mère nommée dans le fichier. Il faut un état : sa pile du mixer place les étages. |
+| `importer <f.3dm>` | Un .3dm (document Rhino entier : seul `3D::Projet::Volume` est relu) remplace la volumétrie de l'état, puis le bilan. Dit combien de corps ont été touchés par un humain (gris) ou une IA (bleus), et la variante mère nommée dans le fichier. Il faut un état : sa pile du mixer place les étages. |
 | `js "<code>"` / `js --fichier f [--ecrire]` | Tout le reste. Modules sous la main : `M` massing (`mass/model.js`), `G` générateur, `F` étages du mixer, `S` shuffle, `St` store, `R` hasard, `L` lignes, `J` jugement, `E` mesures, `C`/`CM` contrôles massing/mixer, `XM`/`XX` remèdes massing/mixer, `Va` variantes, `Rech` recherche, `T` typo, `model` (`core/model.js`), `cadre`, `site`, `geom`, `emp` (empreinte), et `bilan([])`, `texte(b)`. `return` imprime ; `import('../src/…')` marche. Tes propres `const L = …` masquent le module du même nom. Sous PowerShell, préfère `--fichier`. |
 | `test` | La vérification de l'outil. |
 
@@ -87,6 +87,7 @@ fixe), `second`, `pile` (l'empreinte de la pile pour laquelle les corps ont ét�
 | `ph` | 0 : bâti scolaire ; 2 : ouvrage du second temps (piscine, local CAD) — hors du bilan de surface |
 | `bat`, `joint` | le bâtiment d'un corps ; `joint` : l'id du corps contre lequel il est accolé |
 | `nom` | facultatif ; sinon « Volume k » / « Salle de sport » |
+| `par` | qui l'a touché, si ce n'est pas l'algorithme : `"ia"` ou `"humain"`. **Un corps que tu composes ou modifies à la main, mets-lui `par:"ia"`** ; ne touche pas à un `"humain"`. Un tirage n'en porte pas. |
 | `lv` | ses étages, un par niveau porté |
 
 Un étage `lv[k]` : `i` l'indice d'étage dans FLOORS (celui de `bilan → niveau i`), `w` la longueur le
@@ -132,8 +133,9 @@ Le MCP Rhino s'utilise comme d'habitude ; l'app et Rhino font un seul atelier (`
 - **La convention de calques** (`src/data/calques.js`) : ce que tu poses dans Rhino va sur ses calques
   — un étage de corps sur `3D::Projet::Volume::<Chapitre>::Niveau_<nom>`, une aide sur `AIDE`, ce qui
   n'a pas de place sur `AUTRE`. Crée le calque qui manque plutôt que de ranger de travers.
-- **Ce que tu crées est bleu** (RVB 0, 90, 255, couleur de l'objet) : tu es une IA. Ce qu'un humain a
-  retouché est en couleur Par calque — ne le repeins pas.
+- **Ce que tu crées est dans les bleus** (`couleur("ia", k)`, `src/data/calques.js` : teinte 200–235°,
+  couleur de l'objet) : tu es une IA. L'orange est à l'algorithme, les gris aux humains — ne repeins
+  jamais ce qu'un autre acteur a fait.
 - **La boucle** : `rhino` → import dans Rhino → retouches (toi, les humains) → enregistrer le .3dm →
   `importer` → `bilan`, `plan` → `variante … --parent <mère>`. La note dit si le passage a servi.
 
