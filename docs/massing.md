@@ -125,6 +125,16 @@ périmètre n'a pas d'existant —, `extensionPossible` (i74, contre `V.extEmpri
 le second temps contre l'école), `toitPV` (h69, `V.pvPart` ÷ `V.pvVise`). Le terrain se lit sur une
 grille de 2 m, calculée une fois ; les rayons la lisent au lieu de tester chaque emprise.
 
+Ce que le jugement POSE pour se lire (`jugesPoses()`), le temps d'une mesure, dans le terrain libre —
+la première place qui tient, dans l'ordre de ce que le critère préfère : `couvertPart` (c21, préau du
+programme contre la façade de la cour × `V.avantToit`), `sportExtAxe` (c23, un terrain `V.sportExtL` ×
+`V.sportExtW` hors cour, tourné de 5 en 5° depuis le nord-sud ; 90° s'il ne tient pas), `voituresBord`
+(c26, 70 × 25 m² aux proportions `V.parcRatio`, hors cour, au plus près d'une route ; 0 s'il ne tient
+pas — sur ce site, à seed 1, il ne tient jamais), `accesSepares` (c27, de l'entrée piétons — la façade
+la plus proche du parvis — à l'accès véhicules le plus proche, à vol d'oiseau entre points de route),
+`velosDist` (c28, 50 × `V.mVelo` contre une façade), `niveauxDifferents` (d36, locaux à 20 %, emprise à
+10 %). Un centre moins dégagé que la demi-largeur est écarté d'avance ; la grille est en tables typées.
+
 Le cadre du massing : le périmètre (opposable) et notre **recul** de 5 m (choisi) à tous les
 étages, passerelles comprises · la **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 →
 AEAI 15-15), entre bâtiments — une préférence Prioritaire, bloquante seulement Imposée
