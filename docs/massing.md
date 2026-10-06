@@ -516,3 +516,10 @@ programme ressemblerait-il, physiquement, sur ce site ?
   `pubSep`, `pubCote` (`mesures.js — publicEcole`) ; voir `docs/parametres.md`. Seed 1/11 : le
   public est du côté est sur 12 partis sur 12 (7 sans la ligne), séparé de l'école par une ligne
   sur 2 — la piscine et le CAD se posent où la marge le permet.
+
+**Piscine et CAD du côté public** (orientation `second-est`, Prioritaire) : leur place sur la
+parcelle vers `V.pubAz` (0 côté opposé, 1 bord public ; le moins avancé compte), favorable dès
+`secondBon` (0,67), défavorable sous `secondMax` (0,5). Le générateur la sert à deux endroits :
+l'école tire deux positions et garde la plus éloignée du côté public (`implanter`), et `auBord()`
+essaie chaque position sous ses quatre angles avant de passer à la suivante — une place du bon
+côté qui ne tient que tournée passe avant une place du mauvais côté.
