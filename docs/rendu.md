@@ -74,17 +74,20 @@ tel quel : le Rendu charge `src/typo/plans.html` hors de la vue (`typoHote()` lu
 lit), et `typoPlanches()` dessine chaque niveau puis en rend la géométrie — couleurs résolues, en
 mètres du site, le contexte marqué (`site`, `exist`, `ombre`). Rien n'est redessiné.
 
-- **Échelle 1:200**, toujours (`ETAGES.echelle`). Ni l'échelle graphique ni les cotes de l'écran ne sont reprises sur la
-  planche ; le nord l'est. **Les étages inférieurs** s'y lisent en trait : le contour extérieur de
+- **Échelle 1:200**, toujours (`ETAGES.echelle`), dite dans le titre ; l'échelle graphique, les
+  cotes (en cm), les axes et les cotes de niveau de l'écran sont repris tels quels, à l'encre ; le
+  nord aussi. **Les étages inférieurs** s'y lisent en trait : le contour extérieur de
   chacun de leurs corps, en tirets gris (`ETAGES.dessous`). Le format est le plus petit de `ETAGES.formats`
   qui tient le bâti de TOUS les niveaux et la parcelle : le même pour chaque niveau, au même
   cadrage — les planches se superposent.
-- **Feuille blanche, notre bâtiment seul sur fond noir** (`NUIT`) : le poché extérieur de chaque
-  corps est rempli de noir, le plan y est en trait blanc ; contexte, cotes, échelle et nord à
-  l'encre noire sur le papier. Aucun aplat ni hachure : `trait()` (`etages.js`) dessine
-  chaque élément du plan par son trait ; ce qui n'avait qu'un aplat ne garde que son contour s'il
-  compte (poché, circulation, noyaux). Épaisseurs dans `NUIT.lw` : chaque trait doublé, jamais sous `min` ;
-  la **structure** — poché des murs, noyaux — la plus épaisse (`structure`). L'éclatée les réduit. L'axonométrie éclatée prend le même trait.
+- **Feuille blanche, notre bâtiment seul sur fond noir** (`NUIT`) : le NÉGATIF d'un plan à l'encre.
+  Ce que la coupe tranche — murs extérieurs, cloisons à leur épaisseur réelle, gaine d'ascenseur —
+  en **poché gris** (`NUIT.poche`) ; les sols et les percements rendent le fond noir ; tout le reste
+  en trait blanc ; contexte, cotes, échelle et nord à l'encre noire sur le papier. `trait()`
+  (`etages.js`) dessine chaque élément par son RANG dans la hiérarchie (`p.w`, la classe `w-*` de
+  l'écran) : **une seule table d'épaisseurs, `TRAITS`** (`planches.js`, en mm sur le papier), lue
+  aussi par l'écran — coupe 0,50 · menuiseries 0,25 · vu 0,18 · au-dessus 0,18 en tirets · axes
+  0,13 en trait mixte · cotes 0,09. L'éclatée les réduit (`ECH`) et prend le même trait.
 - **L'existant** en aplat gris très clair sans trait (`ETAGES.existant`), comme dans l'axonométrie
   du volume.
 - **Le contexte s'efface en montant** : du plus bas au plus haut niveau, il se fond dans le papier de

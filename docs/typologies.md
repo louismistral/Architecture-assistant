@@ -84,3 +84,40 @@ La palette du DESSIN (poché, papier, lavis) reste celle de la page — un rendu
 même niveau — `scene-sport`), toutes les pièces ouvertes sur un couloir (`couloir-acces`, tenu
 par construction de `composer()`) et pas de sol inutilisé dans un corps (`sol-vide`). La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
 est déclarée au cadre mais pas encore lue : à construire.
+
+## Le dessin suit les conventions d'un plan d'architecte
+
+Un plan est une coupe horizontale à `RULES.plan.coupe` (1,20 m) du sol : ce qu'elle tranche est
+fort, ce qu'on voit dessous est fin, ce qui est au-dessus est en tirets. Toutes les cotes
+physiques sont dans `RULES.plan` (`data/rules.js`), les épaisseurs de trait dans `TRAITS`
+(`data/planches.js`, en mm) — la même table pour l'écran et les planches du Rendu.
+
+- **La hiérarchie des traits** : chaque élément porte une classe `w-*` (coupe, menuiserie, vu,
+  dessus, axe, cote), engendrée de `TRAITS` au chargement, à 96 px par pouce : l'écran se lit
+  comme imprimé à 100 %, quel que soit le zoom.
+- **Les murs** : extérieurs et porteurs à `RULES.haut.mur` (40 cm, isolation comprise), pochés
+  pleins ; une cloison est le trait de sa pièce à son épaisseur réelle (`--cloison`, 10 cm).
+- **Les ouvertures** : une porte est un vide, un vantail ouvert à 90° (menuiserie) et l'arc de
+  son débattement (vu) — 90 cm (`porte`), à deux battants dès `porteDouble`. Une fenêtre :
+  cadre et verre en trait moyen au milieu du mur, l'allège vue aux deux nus. La porte palière de
+  l'ascenseur coulisse : vantail décalé, sa flèche.
+- **L'escalier** se déduit de la hauteur d'étage du VOLUME (`DATA.regles.alt`, de `etagesDe`) :
+  autant de marches de `marche.h` (17 cm) qu'il faut, au giron `marche.g` (29 cm, 2h + g = 63).
+  La volée qui monte est coupée : marches pleines en deçà, ligne de rupture, tirets au-delà ;
+  « M » et « D », la flèche part du bas. La gaine a ses cloisons pochées.
+- **Les cotes**, en centimètres, hors du dessin, un blanc (`cotes.ecart`) entre le dessin et les
+  lignes d'attache : sur la façade libre, trois chaînes — percements, murs et cloisons,
+  hors-tout ; sur le pignon libre, deux. Les axes des murs porteurs (façades, couloir) en trait
+  mixte, repérés d'une lettre au bout libre.
+- **Les niveaux** : un triangle par bâtiment, ±0.00 au rez de l'école (`datumEcole`), +3.20… à la
+  hauteur de chaque volume.
+- **Au-dessus de la coupe** : l'étage du dessus, là où il déborde (porte-à-faux), en tirets.
+- **Les pièces** : nom et surface, qui tiennent dans la pièce. Mobilier et appareils au trait
+  fin, aux cotes de `RULES.plan` (WC 40 × 70, lavabo 60 × 50, douche 90, plan de travail 60) ;
+  l'aire de rotation de 150 cm dans le WC PMR quand elle y tient — sinon le Contrôle le dit :
+  la surface est fixe, ce sont les proportions que le pavage lui donne qu'il faut revoir.
+- **L'échelle est dite** : dans la cartouche et sous l'échelle graphique, celle de l'écran et
+  celle du Rendu (1:200).
+- **Les calques suivent l'ordre du dessin** : contexte, axes, murs, sols, pièces et cloisons,
+  portes et fenêtres, escalier, au-dessus, mobilier, noms, niveaux, cotes. L'escalier n'est pas
+  du mobilier : il reste quand on masque le mobilier.
