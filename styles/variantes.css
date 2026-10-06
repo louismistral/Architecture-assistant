@@ -146,6 +146,7 @@
   font-size:var(--t-2xs);color:var(--muted-foreground);
 }
 .vc__qui{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vc__fil{margin:0;font-size:var(--t-2xs);color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vc__tags{display:flex;flex-wrap:wrap;gap:var(--s-1)}
 .vc-tag{
   padding:0 var(--s-2);line-height:1.6;
