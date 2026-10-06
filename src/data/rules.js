@@ -61,9 +61,10 @@ export var RULES = {
      local. `dalle`, `mur` et `acrotere` sont des hypothèses de projet,
      assumées comme telles. La dalle s'AJOUTE à la hauteur libre, le mur
      extérieur s'ajoute AUTOUR de la surface utile : ni l'un ni l'autre ne
-     retranche un mètre carré au programme. */
+     retranche un mètre carré au programme. Le mur extérieur et porteur fait
+     40 cm isolation comprise — l'épaisseur courante d'un mur Minergie. */
   haut: {
-    dalle: 0.40, mur: 0.50, cloison: 0.10, acrotere: 0.60,
+    dalle: 0.40, mur: 0.40, cloison: 0.10, acrotere: 0.60,
     libre: {
       cla: 2.80,    /* vide d'étage des salles de classe — 2.10 */
       spo: 7.00,    /* salle de sport double, libre sous structure — 2.10 */
@@ -72,6 +73,36 @@ export var RULES = {
       abri: 2.40,   /* abri PC */
       def: 2.80     /* tout local non nommé */
     }
+  },
+
+  /* --- le dessin des plans -------------------------------------------- */
+  /* Les cotes physiques que les plans des Typologies DESSINENT (portes,
+     fenêtres, escaliers, appareils, cotation) : des usages du métier et de la
+     SIA 500, pas du règlement. Aucune ne touche une surface du programme.
+     Les épaisseurs de trait, elles, sont des valeurs de papier : `TRAITS`,
+     `data/planches.js`. */
+  plan: {
+    /* le plan est une coupe horizontale à cette hauteur au-dessus du sol :
+       ce qui est dessous se voit, ce qui la traverse est coupé */
+    coupe: 1.20,
+    /* portes : passage libre de 90 cm au moins (SIA 500), à deux battants
+       pour un grand local ou un hall */
+    porte: 0.90, porteDouble: 1.60,
+    /* fenêtres : une baie de `larg` m tous les `pas` m de façade, sur une
+       allège de `allege` m — vue, sous la coupe */
+    fenetre: { larg: 1.80, pas: 2.60, allege: 0.90 },
+    /* l'escalier : 2h + g = 63 cm (Blondel), 17 cm de hauteur de marche pour
+       29 cm de giron ; le nombre de marches se déduit de la hauteur d'étage */
+    marche: { h: 0.17, g: 0.29 },
+    /* les appareils, en m : WC (l × p), lavabo (l × p), douche (côté minimal),
+       plan de travail (profondeur), passage libre, aire de rotation d'un
+       fauteuil roulant (diamètre, SIA 500) */
+    sanitaire: { wc: [0.40, 0.70], lavabo: [0.60, 0.50], douche: 0.90 },
+    travail: 0.60, passage: 0.90, rotation: 1.50,
+    /* la cotation, en m sur le plan : le blanc entre le dessin et une ligne
+       d'attache, la première chaîne au-delà de la façade, l'écart entre deux
+       chaînes, la hauteur du texte */
+    cotes: { ecart: 0.40, premier: 1.60, pas: 1.20, texte: 0.70 }
   },
 
   /* --- circulation ------------------------------------------------------- */
