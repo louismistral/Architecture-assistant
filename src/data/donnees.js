@@ -117,7 +117,8 @@ export var MESURES = [
   { id:"grappes",      de:"typo", n:"Part des classes en grappes de 3 à 4", unite:"" },
   { id:"techGroupes",  de:"typo", n:"Groupes de locaux techniques séparés", unite:"" },
   { id:"posePlan",     de:"typo", n:"Part du programme posée dans les plans", unite:"" },
-  { id:"couloirsJour", de:"typo", n:"Part des bouts de couloir sur une façade", unite:"" }
+  { id:"couloirsJour", de:"typo", n:"Part des bouts de couloir sur une façade", unite:"" },
+  { id:"pubGroupe",    de:"typo", n:"Part des bandes où le public forme une suite, à un bout", unite:"" }
 ];
 MESURES.forEach(function(x){
   x.role = "donnee"; x.nature = "mesure"; x.sujet = "Mesures"; x.src = { t:"mesure" }; x.qui = "code";

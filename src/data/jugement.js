@@ -133,7 +133,8 @@ export var CRITERES = [
   c("d37", "D", 4, "Vestiaires et garderobes près de l'entrée ou des classes", null, null, "Boswil"),
   c("d38", "D", 6, "Salle de sport intégrée ou semi-enterrée", "sportIntegre", { t:"options", v:{ 1:1, 0:0.6 } },
     "Vignettaz, Champagne"),
-  c("d39", "D", 6, "Locaux ouverts à la commune, accessibles sans traverser l'école"),
+  /* au plan : les pièces publiques en une suite au bout de chaque bande */
+  c("d39", "D", 6, "Locaux ouverts à la commune, accessibles sans traverser l'école", "pubGroupe", mn(1, 0.5)),
   Object.assign(c("pub-sep", "D", 6, "Public et école nettement séparés, une limite claire entre eux", "pubSep", mx(0, 0.5)),
     { src:{ t:"choix" } }),
   c("d40", "D", 5, "Parascolaire et cantine autonomes et reliés à l'école"),
