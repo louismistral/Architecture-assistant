@@ -37,11 +37,13 @@
                    recul du PACom, `ligneRecul()` — les points que le contrôle
                    mesure à 5 m du bord, et pas un décalage refait.
 
-   CE QUI EST GÉNÉRÉ est BLEU (`GENERE`), couleur forcée sur l'objet : tout le
-   projet, sauf un corps revenu de Rhino retouché à la main (`v.main`), qui
-   garde la couleur de son calque. Le périmètre et le recul viennent du relevé
-   et du règlement : couleur du calque. Le fichier dit aussi de quelle variante
-   il part (`Saxon variante`) : l'import la reprend pour parent.
+   LA COULEUR DIT QUI (`ACTEURS`, `data/calques.js`), forcée sur l'objet : un
+   corps de l'algorithme en ORANGE — une nuance par niveau, pour les lire —,
+   un corps qu'une IA a composé (`v.par = "ia"`) en BLEU, un corps qu'un
+   humain a touché (`v.par = "humain"`) en couleur du calque, qui est grise.
+   Le périmètre et le recul viennent du relevé et du règlement : humains. Le
+   fichier dit aussi de quelle variante il part (`Saxon variante`) : l'import
+   la reprend pour mère.
 
    Les deux lignes sont DRAPÉES sur le terrain, un sommet au moins tous les deux
    mètres, le pas de la grille. Le fichier Rhino n'a pas de surface de terrain,
@@ -61,7 +63,7 @@ import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain, unionRects } from "./geom.js";
 import { MASS, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, postesDe, volNom } from "./model.js";
 import { PMAP } from "../mix/prog.js";
-import { CALQUE, GENERE, SEP, chemin } from "../data/calques.js";
+import { CALQUE, SEP, chemin, couleur } from "../data/calques.js";
 import { archiDe, faces } from "./archi.js";
 
 /* Un nom sans accent ni espace : Rhino en fait un nom de calque ou d'objet.
@@ -105,13 +107,13 @@ function jour(d){
    quoi deux exports du même massing ne se compareraient pas. */
 export function piecesMassing(o){
   var date = (o && o.date) || new Date();
-  var N = niveaux(), out = [], obj = null, nEt = 0, nPont = 0, calques = [], gen = true;
+  var N = niveaux(), out = [], obj = null, nEt = 0, nPont = 0, calques = [], par = "algo", nuance = 0;
   var recul = reculVise();
   var gRecul = "Recul_" + String(recul).replace(".", "_") + "m";
 
   function objet(nom, calque, o){
     if(calques.indexOf(calque) < 0) calques.push(calque);
-    obj = Object.assign({ nom:nom, calque:calque, gen:gen }, o);
+    obj = Object.assign({ nom:nom, calque:calque, par:par, k:nuance }, o);
     out.push(obj);
   }
   function sommet(x, y, z){ obj.v.push([X(x), Y(y), Z(z)]); }
@@ -175,15 +177,15 @@ export function piecesMassing(o){
 
   /* --- les volumes, niveau par niveau, du plus bas au plus haut --- */
   var corps = [];
-  /* un corps revenu de Rhino retouché à la main n'est plus « généré » */
-  function genere(main, f){ return function(){ gen = !main; f(); gen = true; }; }
+  /* l'acteur d'un corps : l'algorithme, sauf si une IA ou un humain l'a touché */
+  function de(v, kk, f){ return function(){ par = v.par || "algo"; nuance = kk; f(); par = "algo"; nuance = 0; }; }
   N.forEach(function(n){
     function g(keys){ return chemin(CALQUE.volume, chapDe(keys, n.i), "Niveau_" + nomNiveau(n)); }
     MASS.vol.forEach(function(v, k){
       if(v.ph) return;
       etagesDe(v).forEach(function(s){
         if(s.e.i !== n.i) return;
-        corps.push(genere(v.main, function(){
+        corps.push(de(v, N.length > 1 ? N.indexOf(n) / (N.length - 1) : 0, function(){
           var nom = nomObj(volNom(v, k)) + "_" + nomNiveau(n);
           if(fusionne(s.e)) prisme(nom, g(s.e.keys), v, s.e, s.z0, s.z1);
           else boite(nom, g(s.e.keys), s.rc, s.z0, s.z1);
@@ -208,7 +210,7 @@ export function piecesMassing(o){
   MASS.vol.forEach(function(v, k){
     if(!v.ph) return;
     etagesDe(v).forEach(function(s){
-      corps.push(genere(v.main, function(){
+      corps.push(de(v, .5, function(){
         boite(nomObj(volNom(v, k)), chemin(CALQUE.volume, chapDe(s.e.keys, s.e.i), "Second_temps"), s.rc, s.z0, s.z1);
       }));
       nEt++;
@@ -218,7 +220,7 @@ export function piecesMassing(o){
   /* --- l'architecture : toits, lanterneaux, auvents, rampes, sous-passages --- */
   MASS.vol.forEach(function(v, k){
     archiDe(v).forEach(function(c, j){
-      corps.push(genere(v.main, function(){
+      corps.push(de(v, 1, function(){
         objet(nomObj(volNom(v, k)) + "_" + c.k + "_" + (j + 1), CALQUE.architecture, { v:[], f:[] });
         faces(c).forEach(function(f){
           var b = obj.v.length;
@@ -256,8 +258,8 @@ export function piecesMassing(o){
     "  AIDE::Perimetre           perimetre du concours, polyligne fermee drapee sur le terrain",
     "  AIDE::" + (gRecul + "            ").slice(0, 19) + "recul PACom de " + String(recul).replace(".", ",")
       + " m, polyligne(s) fermee(s) drapee(s)",
-    "Couleur : BLEU (" + GENERE.join(", ") + ") = genere par l'algorithme ou une IA ; couleur du",
-    "  calque = dessine a la main. Ce que vous retouchez, passez-le en couleur Par calque.",
+    "Couleur = l'acteur : ORANGES = l'algorithme, BLEUS = une IA, GRIS (couleur du calque) =",
+    "  un humain. Ce que vous retouchez, passez-le en couleur Par calque ; une IA dessine en bleu.",
     o && o.variante ? "Variante source : " + o.variante : "Variante source : aucune (etat non enregistre)",
     "Non modelises : l'acrotere (" + dec(RULES.haut.acrotere)
       + " m), le programme a l'interieur des volumes.",
@@ -266,7 +268,7 @@ export function piecesMassing(o){
   corps.forEach(function(f){ f(); });
 
   /* --- le périmètre et le recul --- */
-  gen = false;
+  par = "humain";
   ligne("Perimetre", chemin(CALQUE.aide, "Perimetre"), PER);
   ligneRecul(recul).forEach(function(b, k, T){
     ligne(gRecul + (T.length > 1 ? "_" + (k + 1) : ""), chemin(CALQUE.aide, gRecul), b);
@@ -285,6 +287,9 @@ export function dm3Massing(rh, o){
     if(idx[ch] != null) return idx[ch];
     var k = ch.lastIndexOf(SEP), L = new rh.Layer();
     L.name = k < 0 ? ch : ch.slice(k + SEP.length);
+    /* un calque est gris : ce qu'on y dessine « Par calque » est humain */
+    var g = couleur("humain", .15);
+    L.color = { r:g[0], g:g[1], b:g[2], a:255 };
     if(k >= 0) L.parentLayerId = doc.layers().get(calque(ch.slice(0, k))).id;
     return (idx[ch] = doc.layers().add(L));
   }
@@ -293,9 +298,10 @@ export function dm3Massing(rh, o){
     var att = new rh.ObjectAttributes(), g;
     att.name = x.nom;
     att.layerIndex = idx[x.calque];
-    if(x.gen){
+    if(x.par !== "humain"){
+      var c = couleur(x.par, x.k);
       att.colorSource = rh.ObjectColorSource.ColorFromObject;
-      att.objectColor = { r:GENERE[0], g:GENERE[1], b:GENERE[2], a:255 };
+      att.objectColor = { r:c[0], g:c[1], b:c[2], a:255 };
     }
     if(x.l) g = new rh.PolylineCurve(x.l);
     else {

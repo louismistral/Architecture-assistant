@@ -924,7 +924,7 @@ export function fusionner(vols, ponts, etage){
       vols.forEach(function(o){ if(o.joint === b.id) o.joint = a.id; });
       if(!a.joint && b.joint) a.joint = b.joint;
       if(!a.bat && b.bat) a.bat = b.bat;
-      if(b.main) a.main = 1;                 /* retouché à la main, d'un côté ou de l'autre */
+      if(b.par === "humain" || (b.par && !a.par)) a.par = b.par;   /* qui l'a touché : l'humain d'abord */
       /* un corps de l'autre bâtiment POSÉ sur b (`chevaucheMain`) suit b dans le nouveau :
          délié, son recouvrement deviendrait une superposition interdite */
       if(a.bat && b.bat && a.bat !== b.bat) vols.forEach(function(o){ if(o !== b && o.bat === b.bat && recouvre(o, b)) o.bat = a.bat; });

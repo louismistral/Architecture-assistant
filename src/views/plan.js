@@ -456,6 +456,8 @@ function wirePlan(){
     var mode = drag.mode, live = drag.live, v = drag.v;
     drag = null;
     if(mode !== "pan" && live){
+      /* un corps déplacé, tourné ou étiré à la main est à l'humain */
+      if(v) v.par = "humain";
       /* ce qui se touche ne fait qu'un */
       if(fusionner(MASS.vol, MASS.pont) && v && !MASS.vol.some(function(o){ return o.id === v.id; })) MASS.sel = null;
       change("fin");
