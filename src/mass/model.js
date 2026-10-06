@@ -575,7 +575,7 @@ export function cedeeDe(v, vols, i){
    l'export le lisent. `null` s'il ne recouvre personne : on dessine comme avant.
    `garde` : ceux à qui il cède la part commune (`cedeeDe`) ; `emprise` : son emprise
    hors tout privée de la leur ; `cel(P)` : une cellule de son programme privée de
-   leurs intérieurs ; `murs` : ses murs privés des intérieurs de TOUS les autres et
+   leurs intérieurs, `celBords(P)` ce qui reste de son contour ; `murs` : ses murs privés des intérieurs de TOUS les autres et
    de l'emprise de ceux qui gardent ; `bords` : son contour privé de l'emprise des
    autres. Morceaux convexes et disjoints : réunis, ceux de la paire font l'union. */
 export function dessinDe(v, e, vols){
@@ -597,7 +597,7 @@ export function dessinDe(v, e, vols){
   mursDe(v, e).forEach(function(m){ murs = murs.concat(moins(coins(m), aI.concat(gO))); });
   contourDe(v, e).loops.forEach(function(L){ bords = bords.concat(horsDe(L, aO)); });
   return { garde:G.map(function(x){ return x[0]; }), emprise:emp, murs:murs, bords:bords,
-           cel:function(P){ return moins(P, gI); } };
+           cel:function(P){ return moins(P, gI); }, celBords:function(P){ return horsDe(P, gI); } };
 }
 
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine

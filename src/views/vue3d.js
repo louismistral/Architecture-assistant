@@ -26,9 +26,9 @@ import { STRIDE, cssRGB, themeKey, glDraw, glDrawStatic, glInit, glLibere, glSta
   orbitEye, orbitMVP } from "../core/gl.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { coins, grille, terrain } from "../mass/geom.js";
+import { coins, dedans, grille, terrain } from "../mass/geom.js";
 import { archiDe, faces } from "../mass/archi.js";
-import { MASS, assiseDe, cellules, etagesDe, famTok, filtreDe, fusionne, mursDe, niveaux, pontEtage,
+import { MASS, assiseDe, cellules, dessinDe, etagesDe, famTok, filtreDe, fusionne, mursDe, niveaux, pontEtage,
   solRects, volInts, volRects, vu } from "../mass/model.js";
 
 var ZBAS = 460;                 /* origine des hauteurs : le pied du site */
@@ -132,6 +132,34 @@ function aretesP(M, P, z0, z1, c){
     push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [B[0], B[1], z0], n, c, 1);
     push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [A[0], A[1], z1], n, c, 1);
   }
+}
+/* Les arêtes de segments `[a, b]` — les bords d'un étage posé sur un corps du même
+   bâtiment (`dessinDe`) : en haut, en bas, et en montant à chaque bout. */
+function aretesS(M, S, z0, z1, c){
+  var n = [0, 0, 0];
+  S.forEach(function(s){
+    var A = s[0], B = s[1];
+    push(M.l, [A[0], A[1], z1], n, c, 1); push(M.l, [B[0], B[1], z1], n, c, 1);
+    push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [B[0], B[1], z0], n, c, 1);
+    push(M.l, [A[0], A[1], z0], n, c, 1); push(M.l, [A[0], A[1], z1], n, c, 1);
+    push(M.l, [B[0], B[1], z0], n, c, 1); push(M.l, [B[0], B[1], z1], n, c, 1);
+  });
+}
+/* Un massif fait de morceaux convexes (`dessinDe`) : leurs dessus, et des côtés le
+   long de ses seuls bords — des faces entre deux morceaux se disputeraient le pixel
+   avec les dessus et laisseraient une couture. Un côté regarde hors des morceaux. */
+function massif(M, L, S, z0, z1, c){
+  L.forEach(function(P){
+    var cx = 0, cy = 0;
+    P.forEach(function(p){ cx += p[0] / P.length; cy += p[1] / P.length; });
+    for(var i = 0; i < P.length; i++){ var A = P[i], B = P[(i + 1) % P.length]; tri(M, [cx, cy, z1], [A[0], A[1], z1], [B[0], B[1], z1], c, 1); }
+  });
+  S.forEach(function(s){
+    var A = s[0], B = s[1], mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2, l = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
+    /* à droite de A→B, juste à côté : dedans, le côté doit tourner dans l'autre sens */
+    if(L.some(function(P){ return dedans(P, mx + (B[1] - A[1]) / l * .05, my - (B[0] - A[0]) / l * .05); })){ var T = A; A = B; B = T; }
+    quad(M, [A[0], A[1], z0], [B[0], B[1], z0], [B[0], B[1], z1], [A[0], A[1], z1], c, 1);
+  });
 }
 function zT(p){ return terrain(p[0], p[1]) - ZBAS; }
 /* L'altitude d'un nœud de la grille, sans repasser par l'interpolation : le
@@ -243,8 +271,27 @@ function volMesh(){
          quand même sa profondeur, et l'on retrouverait le moucheté noir que la
          boîte-enveloppe donnait déjà. */
       var op = v.ph ? .40 : undefined;
-      var fu = fusionne(e);
-      if(MASS.mono || n.lvl < 0){
+      var fu = fusionne(e), D = dessinDe(v, e, MASS.vol), zt = z0 + h - .12;
+      /* POSÉ SUR UN CORPS DU MÊME BÂTIMENT : des prismes convexes qui ne recouvrent
+         rien de ce que l'autre garde — ni boîtes qui s'interpénètrent, ni dessus qui
+         se disputent le pixel —, et les seules arêtes du contour d'union */
+      if(D && (MASS.mono || n.lvl < 0)){
+        var cD = n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono);
+        massif(M, D.emprise, D.bords, z0, zt, cD);
+        aretesS(M, D.bords, z0, zt, edge);
+      } else if(D){
+        volInts(v, e).forEach(function(ri){
+        cellules(e.i, ri.w, ri.d, filtreDe(v, e)).forEach(function(c){
+          var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
+          var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
+                      y: ri.y + cx * Math.sin(ri.a) + cy * Math.cos(ri.a),
+                      w: c.w, d: c.d, a: ri.a };
+          D.cel(coins(sub)).forEach(function(P){ boiteLibre(M, P, z0, zt, teinte(famTok(c.f), op), 1, null); });
+        });
+        });
+        D.murs.forEach(function(P){ boiteLibre(M, P, z0, zt, cMono, 1, null); });
+        aretesS(M, D.bords, z0, zt, edge);
+      } else if(MASS.mono || n.lvl < 0){
         var cm = n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono);
         /* un volume fusionné : une boîte par part, sans arêtes — leurs faces
            communes sont dans la masse —, et les arêtes du seul contour */
