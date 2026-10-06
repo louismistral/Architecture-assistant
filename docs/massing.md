@@ -475,9 +475,10 @@ piecesMassing()` dit ce que contient le fichier, en pur ; `dm3Massing()` l'écri
   piscine et le local CAD. `3D::Projet::Architecture` porte les toits et auvents,
   `AIDE::Perimetre` et `AIDE::Recul_5m` les deux limites. Le chapitre d'un étage est celui de
   ses postes, sinon celui qui porte le plus de surface au niveau.
-- **Ce qui est généré est bleu** (`GENERE`, couleur forcée sur l'objet) ; un corps revenu de
-  Rhino retouché à la main (`v.main`) garde la couleur de son calque. Le fichier nomme la
-  variante dont l'état part (`Saxon variante`). Les objets portent le nom du plan : le V3 qu'on lit
+- **La couleur dit qui** (`ACTEURS`, `docs/echange.md`) : un corps de l'algorithme en orange,
+  une nuance par niveau ; un corps qu'une IA a composé (`v.par = "ia"`) en bleu ; un corps qu'un
+  humain a touché (`v.par = "humain"` — à la souris sur le plan, ou retouché dans Rhino) en
+  couleur de son calque, gris. Le fichier nomme la variante dont l'état part (`Saxon variante`). Les objets portent le nom du plan : le V3 qu'on lit
   au plan est le `V3_Rez` du fichier. L'en-tête est dans le texte utilisateur du document
   (`Saxon massing`).
 - **Le recul est celui que le contrôle mesure.** Aucun module ne le traçait : la règle est une
@@ -497,8 +498,8 @@ piecesMassing()` dit ce que contient le fichier, en pur ; `dm3Massing()` l'écri
 « Importer (.3dm) » relit un fichier dans le même repère, **remplace** la
 volumétrie après confirmation, et la note se recalcule. **Seul `3D::Projet::Volume`** et ses
 sous-calques sont relus quand le fichier les a : on rend son document de travail entier, relevé
-et aides compris. Un fichier sans ce calque se lit tout entier, `Architecture` mise à part. Un
-objet qui n'est plus bleu fait un corps **retouché à la main** (`v.main`), et la variante nommée
+et aides compris. Un fichier sans ce calque se lit tout entier, `Architecture` mise à part. La
+couleur d'un objet dit qui a touché le corps (`v.par`), et la variante nommée
 dans le fichier devient la mère de la suivante (`docs/echange.md`). Le jugement ne lit que des mesures, et
 les mesures ne lisent que des volumes `{ x, y, a, lv }` : `mass/import.js` RECONSTRUIT donc ces
 volumes, et la note ne dépend plus de qui a dessiné le bâtiment. L'unité est celle que le
