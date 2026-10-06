@@ -31,6 +31,11 @@ let MODS = null;
 
 class Erreur extends Error {}
 
+/* L'outil ne touche JAMAIS au réseau : la base est l'affaire de Claude, par le
+   connecteur. Imposé ici plutôt que promis — `js` atteint `net/supa.js`. */
+globalThis.fetch = () => { throw new Erreur("réseau interdit : la base passe par le connecteur, pas par l'outil"); };
+globalThis.WebSocket = undefined;
+
 export async function modules(){
   if(MODS) return MODS;
   const im = (p) => import(new URL(p, SRC));
@@ -62,6 +67,37 @@ export function ecrireJSON(chemin, o){
   writeFileSync(chemin, JSON.stringify(o, null, 2) + "\n");
 }
 
+/* Ce que le connecteur rend est une LISTE de lignes : `[{ state:{…} }]`. Écrit
+   tel quel, un état se relisait vide, sans erreur — et l'on jugeait le projet
+   par défaut. On déballe, puis on refuse ce qui n'a rien d'un état. */
+function deballer(o){
+  if(Array.isArray(o)) o = o[0];
+  if(o && typeof o === "object" && o.state && typeof o.state === "object" && !o.mass && !o.blocks) o = o.state;
+  return o;
+}
+export function lireEtat(chemin, requis){
+  const o = lireJSON(chemin, requis);
+  if(o === null && !requis) return null;
+  const e = deballer(o);
+  if(!e || typeof e !== "object" || !["areas", "lvls", "blocks", "mass"].some((k) => k in e))
+    throw new Erreur(chemin + " ne ressemble pas à un état du projet (ni areas, ni lvls, ni blocks, ni mass)");
+  return e;
+}
+export function lireGroupe(chemin, requis){
+  const o = lireJSON(chemin, requis);
+  if(o === null) return null;
+  const g = Array.isArray(o) ? o[0] : o;
+  if(g != null && (typeof g !== "object" || !["areas", "circulation", "doctrine"].some((k) => k in g)))
+    throw new Erreur(chemin + " ne ressemble pas aux réglages d'un groupe (areas, circulation, doctrine)");
+  return g || null;
+}
+/* Un verbe qui ÉCRIT ne le fait pas sur un état à moitié remis : il
+   blanchirait la perte en un état qui a l'air sain. */
+function garde(perdu){
+  if(perdu.length) throw new Erreur("PERDU au chargement : " + perdu.join(", ") + " — rien n'est écrit");
+  return perdu;
+}
+
 /* ---------- remettre en place ----------
    Le groupe d'abord, comme `tirerReglages()` à l'ouverture de l'app : le jury
    et les surfaces sont ceux du groupe, pas les défauts du code. Puis l'état.
@@ -78,7 +114,30 @@ export function charger(groupe, etat){
     model.recompute();
   }
   M.massVols([]);
-  return etat ? St.restore(etat) : [];
+  if(!etat) return [];
+  etat = structuredClone(etat);
+  const perdu = [];
+  const m = etat.mass;
+  if(m !== undefined && m !== null && (typeof m !== "object" || Array.isArray(m))){ perdu.push("massing"); delete etat.mass; }
+  else if(m && m.vol !== undefined){
+    if(!Array.isArray(m.vol)){ perdu.push("massing"); m.vol = []; }
+    else {
+      /* `setMass()` écarte en silence un corps sans étages ; on le dit */
+      const n = m.vol.length;
+      m.vol = m.vol.filter((v) => v && typeof v === "object" && Array.isArray(v.lv) && v.lv.length);
+      if(m.vol.length < n) perdu.push("massing (" + (n - m.vol.length) + " corps sans étages ignorés)");
+      /* Un corps sans `id` est « lié » à tous les autres (`lies()` compare
+         `joint` et `id`, tous deux absents) : on lui en donne un. */
+      const pris = new Set(m.vol.map((v) => v.id).filter((x) => x != null));
+      m.vol.forEach((v, k) => {
+        if(v.id != null) return;
+        let id = "c" + (k + 1), j = 1;
+        while(pris.has(id)) id = "c" + (k + 1) + "_" + j++;
+        v.id = id; pris.add(id);
+      });
+    }
+  }
+  return perdu.concat(St.restore(etat));
 }
 
 /* ---------- le bilan ----------
@@ -203,10 +262,8 @@ function entier(x, nom){
 const graineAuHasard = () => (Math.floor(Math.random() * 0xFFFFFFFF) >>> 0) || 1;
 /* `let` : les tests les détournent, pour ne pas lire le groupe de l'espace de travail */
 let FG = ".atelier/groupe.json", FE = ".atelier/etat.json";
-function ouvrir(opt){
-  const g = lireJSON(opt.groupe || FG, !!opt.groupe), e = lireJSON(opt.etat || FE, true);
-  return charger(g, e);
-}
+function groupeDe(opt){ return lireGroupe(opt.groupe || FG, !!opt.groupe); }
+function ouvrir(opt){ return charger(groupeDe(opt), lireEtat(opt.etat || FE, true)); }
 
 async function verbeBilan({ opt }){
   await modules();
@@ -221,8 +278,8 @@ async function verbeBilan({ opt }){
 async function verbeTirer({ opt }){
   const { M, G, S, St, R, T } = await modules();
   const fe = opt.etat || FE;
-  const e = lireJSON(fe, false);
-  charger(lireJSON(opt.groupe || FG, !!opt.groupe), e);
+  const e = lireEtat(fe, false);
+  garde(charger(groupeDe(opt), e));
   /* `--parti` seul change la figure, pas le reste : même pile, même graine */
   const tout = !opt.mixer && !opt.massing && !opt.typo && !opt.parti;
   const seed = entier(opt.seed, "seed"), graine = entier(opt.graine, "graine");
@@ -275,8 +332,8 @@ function decrire(c){
 async function verbeLigne({ pos, opt }){
   const { L } = await modules();
   const fg = opt.groupe || FG, fe = opt.etat || FE;
-  const g = lireJSON(fg, false), e = lireJSON(fe, false);
-  charger(g, e);
+  const g = lireGroupe(fg, false), e = lireEtat(fe, false);
+  const perdu = charger(g, e);
   const [k, v] = pos;
   if(k === undefined && opt.toutes){
     const mot = opt.cherche ? String(opt.cherche).toLowerCase() : null;
@@ -296,9 +353,16 @@ async function verbeLigne({ pos, opt }){
     return sortie({ cle:k, valeur:L.V[k], defaut:L.defaut(k), borne:L.borne(k), jury:L.estJury(k) },
       opt, (o) => JSON.stringify(o));
   }
+  garde(perdu);
   const avant = L.V[k], change = L.regler(k, v);
-  if(!change && String(v) !== String(avant) && Number(v) !== avant)
-    throw new Erreur("valeur refusée pour " + k + " : " + v + " (borne " + JSON.stringify(L.borne(k)) + ")");
+  /* Refusée, seulement si `regler()` ne pouvait pas la lire : une valeur bornée
+     qui retombe sur l'actuelle est « inchangée », pas refusée. */
+  if(!change){
+    const d = L.defaut(k), b = L.borne(k) || {};
+    const n = typeof v === "string" ? parseFloat(v.replace(",", ".")) : +v;
+    if((typeof d === "number" && !isFinite(n)) || (typeof d === "string" && b.parmi && !b.parmi.includes(v)))
+      throw new Erreur("valeur refusée pour " + k + " : " + v + " (borne " + JSON.stringify(L.borne(k)) + ")");
+  }
   ecrireJSON(fg, Object.assign({}, g || {}, { doctrine: L.ecarts(false) }));
   if(e) ecrireJSON(fe, Object.assign({}, e, { doc: L.ecarts(true) }));
   return sortie({ cle:k, avant, apres:L.V[k], change }, opt,
@@ -311,25 +375,28 @@ async function verbeLigne({ pos, opt }){
    absents : c'est Claude qui les remplit à l'insertion, par le connecteur. */
 async function verbeVariante({ pos, opt }){
   const { Va, St } = await modules();
-  ouvrir(opt);
+  garde(ouvrir(opt));
   const row = Va.resumeCourant();
   row.name = (pos[0] && pos[0].trim()) || Va.nomPropose();
   row.state = St.snapshot();
   row.tags = ["claude"];
-  const fs = opt.sortie || ".atelier/variante.json";
+  const fs = opt.sortie || ".atelier/variante.json", fq = fs.replace(/\.json$/, "") + ".sql";
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /* vérifié AVANT d'écrire quoi que ce soit ; et jamais une vieille requête à
+     côté d'une nouvelle ligne : on l'insérerait par erreur */
+  if((opt.team || opt.auteur) && (!UUID.test(String(opt.team)) || !UUID.test(String(opt.auteur))))
+    throw new Erreur("--team et --auteur attendent deux uuid (requête 1 du skill)");
+  if(existsSync(fq)) unlinkSync(fq);
   ecrireJSON(fs, row);
   /* `--team` et `--auteur` : la requête d'insertion entière, à passer telle
      quelle au connecteur — recopier six kilo-octets de JSON à la main est le
      plus sûr moyen d'en perdre un caractère. */
-  if(opt.team || opt.auteur){
-    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if(!UUID.test(String(opt.team)) || !UUID.test(String(opt.auteur)))
-      throw new Erreur("--team et --auteur attendent deux uuid (requête 1 du skill)");
+  if(opt.team){
     const j = JSON.stringify(row);
     let tag = "$j$"; for(let k = 0; j.includes(tag); k++) tag = "$j" + k + "$";
     const C = "name, seed_program, seed_massing, parti, score, floors, bodies, area_required, area_placed, "
       + "area_gross, verdict, criteria, thumbnail, fingerprint, state, tags";
-    writeFileSync(fs.replace(/\.json$/, "") + ".sql",
+    writeFileSync(fq,
       "insert into variant (team_id, author_id, " + C + ")\nselect '" + opt.team + "', '" + opt.auteur + "', "
       + C.split(", ").map((c) => "r." + c).join(", ") + "\nfrom jsonb_populate_record(null::public.variant, "
       + tag + j + tag + "::jsonb) r\nreturning id, name, score, tags;\n");
@@ -346,7 +413,8 @@ const AsyncFunction = (async () => {}).constructor;
 async function verbeJs({ pos, opt }){
   const m = await modules();
   const fe = opt.etat || FE;
-  charger(lireJSON(opt.groupe || FG, !!opt.groupe), lireJSON(fe, false));
+  const perdu = charger(groupeDe(opt), lireEtat(fe, false));
+  if(opt.ecrire) garde(perdu);
   const code = opt.fichier ? readFileSync(opt.fichier, "utf8") : pos.join(" ");
   if(!code.trim()) throw new Erreur("rien à exécuter : js \"<code>\" ou js --fichier <chemin>");
   const noms = Object.keys(m).concat(["bilan", "texte"]);
@@ -365,7 +433,7 @@ async function verbeJs({ pos, opt }){
 async function verbeRemede({ pos, opt }){
   const { C, CM, St } = await modules();
   const fe = opt.etat || FE;
-  ouvrir(opt);
+  garde(ouvrir(opt));
   const [code, n] = pos;
   if(!code) throw new Erreur("remede <code> [n] — les codes et leurs remèdes sont dans le bilan");
   const a = C.massCheck().concat(CM.mixCheck()).find((x) => x.code === code && !x.ok);
@@ -507,7 +575,7 @@ async function verbePlan({ opt }){
 async function verbeChercher({ opt }){
   const { Rech } = await modules();
   const fe = opt.etat || FE, dos = dirname(fe);
-  charger(lireJSON(opt.groupe || FG, !!opt.groupe), lireJSON(fe, false));
+  garde(charger(groupeDe(opt), lireEtat(fe, false)));
   const o = { essais: entier(opt.essais, "essais") || 30, garder: entier(opt.garder, "garder") || 3 };
   if(opt.partis) o.partis = String(opt.partis).split(",").map((s) => s.trim()).filter(Boolean);
   if(opt["avec-erreurs"]) o.sansErreur = false;
@@ -595,14 +663,17 @@ const TESTS = {
   async tirer_sans_etat(){
     const f = ".atelier/test/neuf.json";
     if(existsSync(f)) unlinkSync(f);
-    /* dans un processus NEUF : celui des tests a déjà un programme réparti */
+    /* dans un processus NEUF : celui des tests a déjà un programme réparti ;
+       et un groupe vide, pas celui de l'espace de travail */
+    const vide = ".atelier/test/groupe-vide.json";
+    ecrireJSON(vide, { doctrine:{} });
     const b = JSON.parse(execFileSync(process.execPath,
-      [fileURLToPath(import.meta.url), "tirer", "--parti", "cour", "--etat", f, "--json"], { encoding:"utf8" }));
+      [fileURLToPath(import.meta.url), "tirer", "--parti", "cour", "--etat", f, "--groupe", vide, "--json"], { encoding:"utf8" }));
     assert.ok(b.massing.demande > 0, "demandé " + b.massing.demande);
   },
   async chercher(){
     const etat = ".atelier/test/c/etat.json";
-    const r = await verbeChercher({ pos:[], opt:{ essais:"3", garder:"2", etat, muet:true } });
+    const r = await verbeChercher({ pos:[], opt:{ essais:"3", garder:"2", "avec-erreurs":true, etat, muet:true } });
     assert.ok(r.length >= 1 && r.length <= 2, "trouvés : " + r.length);
     r.forEach((t) => assert.deepEqual(charger(null, lireJSON(t.fichier, true)), []));
   },
@@ -725,6 +796,82 @@ const TESTS = {
     assert.deepEqual(r.pixel(rc.x, rc.y), c);
     assert.notDeepEqual(r.pixel(-50, -50), c);
   },
+  /* ---- la relecture finale ---- */
+  async deux_corps_sans_id(ref){
+    const { M } = await modules();
+    const v0 = ref.mass.vol[0], e = structuredClone(ref);
+    e.mass.vol = [{ x:v0.x, y:v0.y, a:0, lv:[{ i:1, w:30, d:14 }] }, { x:v0.x + 40, y:v0.y, a:0, lv:[{ i:1, w:30, d:14 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const [a, b] = M.MASS.vol;
+    assert.ok(a.id && b.id && a.id !== b.id, a.id + " / " + b.id);
+    assert.equal(M.lies(a, b), false);
+  },
+  async perte_bloque_ecriture(ref){
+    const f = ".atelier/test/casse.json", e = structuredClone(ref);
+    e.blocks = "cassé";
+    ecrireJSON(f, e);
+    const avant = readFileSync(f, "utf8");
+    await assert.rejects(verbeVariante({ pos:["x"], opt:{ etat:f, sortie:".atelier/test/vc.json", muet:true } }), /PERDU/);
+    await assert.rejects(verbeTirer({ pos:[], opt:{ typo:true, etat:f, muet:true } }), /PERDU/);
+    await assert.rejects(verbeJs({ pos:["1"], opt:{ etat:f, ecrire:true, muet:true } }), /PERDU/);
+    assert.equal(readFileSync(f, "utf8"), avant);
+  },
+  async etat_enveloppe(ref){
+    const f = ".atelier/test/env.json";
+    for(const o of [[{ state:ref }], { state:ref }]){
+      ecrireJSON(f, o);
+      const b = await verbeBilan({ pos:[], opt:{ etat:f, muet:true } });
+      assert.equal(b.massing.corps.length, ref.mass.vol.length);
+    }
+    for(const o of [null, {}, [], "x"]){
+      ecrireJSON(f, o);
+      await assert.rejects(verbeBilan({ pos:[], opt:{ etat:f, muet:true } }), Erreur);
+    }
+  },
+  async groupe_enveloppe(ref){
+    const { L } = await modules();
+    const f = ".atelier/test/env.json", g = ".atelier/test/genv.json";
+    ecrireJSON(f, ref);
+    ecrireJSON(g, [{ areas:{}, circulation:null, doctrine:{ "ax:site":7 } }]);
+    await verbeBilan({ pos:[], opt:{ etat:f, groupe:g, muet:true } });
+    assert.equal(L.V["ax:site"], 7);
+  },
+  async corps_ignores(ref){
+    const e = structuredClone(ref);
+    e.mass.vol.push({ id:"z1", x:0, y:0, a:0, lv:[] }, { id:"z2", x:0, y:0, a:0, lv:"x" });
+    const p = charger(null, e);
+    assert.ok(p.some((x) => /massing/.test(x)), JSON.stringify(p));
+    const e2 = structuredClone(ref); e2.mass = "cassé";
+    assert.ok(charger(null, e2).some((x) => /massing/.test(x)));
+  },
+  async drapeaux(){
+    assert.deepEqual(analyser(["--ecrire", "M.x = 1"]), { pos:["M.x = 1"], opt:{ ecrire:true } });
+    assert.deepEqual(analyser(["--json", "nom", "--etat", "f.json"]), { pos:["nom"], opt:{ json:true, etat:"f.json" } });
+  },
+  async reseau_interdit(){
+    assert.throws(() => fetch("https://example.com"), /réseau/);
+  },
+  async ligne_idempotente(ref){
+    const f = ".atelier/test/l.json", g = ".atelier/test/g.json";
+    ecrireJSON(f, ref); if(existsSync(g)) unlinkSync(g);
+    await verbeLigne({ pos:["ax:site", "500"], opt:{ etat:f, groupe:g, muet:true } });
+    const r = await verbeLigne({ pos:["ax:site", "500"], opt:{ etat:f, groupe:g, muet:true } });
+    assert.equal(r.apres, 100);
+    assert.equal(r.change, false);
+    await verbeLigne({ pos:["module", "0,5"], opt:{ etat:f, groupe:g, muet:true } });
+  },
+  async sql_jamais_perime(ref){
+    const f = ".atelier/test/v-etat.json", s = ".atelier/test/vs.json", q = ".atelier/test/vs.sql";
+    ecrireJSON(f, ref);
+    const team = "063c3451-3876-418b-b5a5-1da988e2c21a", moi = "65049058-9774-4e47-b23f-3d77bf6817e5";
+    await verbeVariante({ pos:["a"], opt:{ etat:f, sortie:s, team, auteur:moi, muet:true } });
+    await verbeVariante({ pos:["b"], opt:{ etat:f, sortie:s, muet:true } });
+    assert.equal(existsSync(q), false);
+    unlinkSync(s);
+    await assert.rejects(verbeVariante({ pos:["c"], opt:{ etat:f, sortie:s, team, muet:true } }), Erreur);
+    assert.equal(existsSync(s), false);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
@@ -748,13 +895,17 @@ async function test(){
 const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, ligne: verbeLigne,
   remede: verbeRemede, variante: verbeVariante, js: verbeJs, site: verbeSite, plan: verbePlan, test };
 
-function analyser(argv){
+/* Les drapeaux sans valeur : sans cette liste, `js --ecrire "code"` prenait le
+   code pour la valeur de --ecrire, et `variante --json "nom"` perdait son nom. */
+const DRAPEAUX = new Set(["json", "muet", "complet", "ecrire", "ordonne", "mixer", "massing", "typo",
+                          "toutes", "avec-erreurs"]);
+export function analyser(argv){
   const pos = [], opt = {};
   for(let i = 0; i < argv.length; i++){
     const a = argv[i];
     if(a.startsWith("--")){
       const k = a.slice(2), suiv = argv[i + 1];
-      if(suiv !== undefined && !suiv.startsWith("--")){ opt[k] = suiv; i++; }
+      if(!DRAPEAUX.has(k) && suiv !== undefined && !suiv.startsWith("--")){ opt[k] = suiv; i++; }
       else opt[k] = true;
     } else pos.push(a);
   }
