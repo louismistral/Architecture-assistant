@@ -80,9 +80,33 @@ l'hôte, et en reprend les composants :
 La palette du DESSIN (poché, papier, lavis) reste celle de la page — un rendu de concours — et suit
 `data-mode` ; `typoPlanches()` la force en clair pour le Rendu.
 
+## Des pièces, pas des couloirs
+
+Une pièce prenait toute la profondeur de sa bande, sa largeur en découlait : un WC PMR de 3 m²
+devenait une lame de 0,48 × 6,20 m, un vestiaire de 10 m² 1,13 × 8,90 m. La surface reste
+fixe ; le pavage règle la FORME, dans les limites de `RULES.plan.piece` et `RULES.plan.pmr` :
+
+- **une pièce de bande** (`profDe()`) prend la profondeur de sa bande si ses proportions le
+  permettent, sinon elle se pose contre la façade et ce qui reste devant elle est un dégagement
+  ouvert sur le couloir (compté au sol libre, `sol-vide`). Une classe garde la profondeur de
+  `classe-dim` (9 m). Une bande ne descend pas sous la profondeur que ses pièces demandent ;
+  au bout, une pièce ne ferme le couloir que si elle en prend toute la profondeur ;
+- **un bloc de petites pièces** (`peigne()`) garde la plus étroite de trois dispositions :
+  chacune seule ; en colonnes empilées autour d'un sas (`piece.sas`, l'aire de rotation s'il
+  dessert un WC PMR) ; la plus grande au fond, les autres devant, côte à côte, un sas entre elles.
+  Chaque pièce a sa porte sur le couloir, le dégagement ou le sas ;
+- **une aile plus profonde que longue** (le bras d'un L, 17 × 72 m) se pave le long de son grand
+  côté : `donnees.js — enLong()` la tourne d'un quart de tour, le volume ne change pas.
+
+Le prix est dit, pas caché : le dégagement et le sas sont du sol que les pièces ne prennent
+pas, donc un plan plus long, plus de sol libre et plus de pièces au bac.
+
 **Au contrôle, trois lignes du cadre** : la scène collée à la salle de sport (mur contre mur, au
-même niveau — `scene-sport`), toutes les pièces ouvertes sur un couloir (`couloir-acces`, tenu
-par construction de `composer()`) et pas de sol inutilisé dans un corps (`sol-vide`). La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
+même niveau — `scene-sport`), toutes les pièces ouvertes sur un couloir (`couloir-acces`,
+VÉRIFIÉ pièce par pièce dans les blocs : la face par où l'on entre ne touche aucune autre
+pièce) et pas de sol inutilisé dans un corps (`sol-vide`). Une ligne de plus, « proportions
+vivables », lit `RULES.plan.piece` et `pmr` : ce qu'elle signale vient d'une bande trop mince
+(un corps de 14 m à deux rangs) ou d'un très grand local — c'est au Massing d'y répondre. La **trame** de placement des pièces (`trame`, Imposé, 1,20 m)
 est déclarée au cadre mais pas encore lue : à construire.
 
 ## Le dessin suit les conventions d'un plan d'architecte
@@ -114,8 +138,7 @@ physiques sont dans `RULES.plan` (`data/rules.js`), les épaisseurs de trait dan
 - **Au-dessus de la coupe** : l'étage du dessus, là où il déborde (porte-à-faux), en tirets.
 - **Les pièces** : nom et surface, qui tiennent dans la pièce. Mobilier et appareils au trait
   fin, aux cotes de `RULES.plan` (WC 40 × 70, lavabo 60 × 50, douche 90, plan de travail 60) ;
-  l'aire de rotation de 150 cm dans le WC PMR quand elle y tient — sinon le Contrôle le dit :
-  la surface est fixe, ce sont les proportions que le pavage lui donne qu'il faut revoir.
+  l'aire de rotation de 150 cm dans le WC PMR, posé à 1,65 × 1,80 m au moins.
 - **L'échelle est dite** : dans la cartouche et sous l'échelle graphique, celle de l'écran et
   celle du Rendu (1:200).
 - **Les calques suivent l'ordre du dessin** : contexte, axes, murs, sols, pièces et cloisons,
