@@ -106,8 +106,16 @@ export var RULES = {
        sanitaire (`cabine`, la cuvette et sa porte). Les petites pièces d'un
        bloc s'ouvrent sur un sas de `sas` m (l'aire de rotation quand il
        dessert un WC PMR). Le WC PMR : `pmr` (l × p, m) au moins, pour
-       l'aire de rotation (SIA 500). */
-    piece: { ratio: 2, ratioGrand: 3, grand: 100, larg: 1.60, cabine: 0.90, sas: 1.20 },
+       l'aire de rotation (SIA 500). Sous `petit` m², une pièce se range dans
+       un bloc ; dès `deuxRangs` m de profondeur intérieure, un corps a deux
+       bandes de pièces de part et d'autre du couloir — une classe de 72 m²
+       (6 m de bande au moins), le noyau et son palier (6,20 m) en face, le
+       couloir : 14,6 m. Plus mince, un seul rang, sans classe hors proportions. Le Massing en déduit ce
+       que les plans pavent (`mass/model.js — aPaver`) : une petite pièce s'y
+       compte dans une colonne d'au moins `colonne` m² — un vestiaire de classe,
+       ou deux WC et leur sas —, ce que les plans font (mesuré sur 72 tirages). */
+    piece: { ratio: 2, ratioGrand: 3, grand: 100, larg: 1.60, cabine: 0.90, sas: 1.20, petit: 30, colonne: 10 },
+    deuxRangs: 15,
     pmr: [1.65, 1.80],
     /* la cotation, en m sur le plan : le blanc entre le dessin et une ligne
        d'attache, la première chaîne au-delà de la façade, l'écart entre deux

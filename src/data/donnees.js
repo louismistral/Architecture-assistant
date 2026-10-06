@@ -42,6 +42,14 @@ export var HYPOTHESES = [
     d:"Calé pour que la variante de départ tombe à peu près au budget du règlement ("
       + nb(RULES.budget / 1e6) + " M CHF, art. 1.9). Une hypothèse du JURY : elle chiffre le "
       + "volume mesuré, elle ne change aucune variante — la changer renote sans rien regénérer." },
+  { id:"pavage", sujet:"Circulation", onglet:"massing", src:H, qui:"groupe",
+    n:"Reste du pavage des plans", k:"pavage", def:4, min:0, max:20, pas:1,
+    unite:"% de plus que la section des plans", lu:"src/mass/model.js — aPaver()",
+    d:"Le Massing donne à chaque niveau ce que les plans y pavent : les pièces dans leurs bandes, "
+      + "le dégagement devant celles que leurs proportions arrêtent, le couloir, les cages. Reste ce "
+      + "que la formule ne voit pas — un rang finit rarement sur une pièce entière, deux bandes "
+      + "rarement ensemble. Calé sur 72 tirages : à 0 %, 368 m² par tirage ne tiennent pas ; à 4 %, "
+      + "242 ; à 8 %, 172 — mais le sol libre croît plus vite et le site refuse un parti sur six." },
   { id:"pass-larg", sujet:"Connexions", onglet:"massing", src:H, qui:"groupe",
     n:"Largeur d'une passerelle", k:"passLarg", def:3, min:2, max:6, pas:0.5, unite:"m",
     lu:"src/mass/model.js — pontRect()" },
