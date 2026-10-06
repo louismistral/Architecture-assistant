@@ -56,16 +56,18 @@ Paire par paire : une zone commune à TROIS corps serait comptée de travers
 | `mass/mesures.js — ecarts()` « dist » | deux corps liés ne se doivent aucune distance : jamais « s'interpénètrent » |
 | `mass/gen.js — chevaucheMain()` (nouvelle, à côté de `chevauche`) | la règle du geste à la main : comme `chevauche`, sauf entre corps liés |
 | `views/plan.js` — `tient`, glisser | lisent `chevaucheMain` : on peut poser un corps sur un corps du même bâtiment |
-| `typo/donnees.js` | chaque étage passé aux plans porte `cede` = `partCedee(v, vols, i)` |
-| `typo/gen.js` — répartition, `manque` | la capacité d'un corps, et l'aire d'un niveau par bâtiment, retranchent `cede` |
-| `typo/mesures.js` — noyaux « feu », circulation | l'aire par bâtiment et le bâti servi retranchent `cede` |
+| `mass/gen.js — fusionner()` | un recouvrement entre corps liés compte comme un contact pour le regroupement en bâtiments, et un corps posé sur un corps absorbé suit son nouveau bâtiment : le lien ne se perd pas |
+| `typo/donnees.js` | le corps qui cède est RACCOURCI d'autant, aux plans, du côté où tombe la part commune (`cedeeDe` : son aire et sa position dans le repère du corps) — ses pièces ne s'y posent pas, et ce que les plans mesurent (capacité, noyaux, circulation) suit sans autre retouche |
 | `rendu/diagramme.js` | le m³ et l'emprise du « cube » retranchent le recouvrement |
+
+> Écart à la première version de cette spec : retrancher la part cédée de la CAPACITÉ dans
+> `typo/gen.js` ne changeait presque rien — le générateur des plans pave le rectangle entier de chaque
+> corps. Raccourcir le corps est le geste juste ; `typo/gen.js` et `typo/mesures.js` ne changent pas.
 
 ## Ce qui reste pour la phase 2, ou plus tard
 
 - **Le dessin** : deux contours et des murs qui se croisent au plan, deux boîtes en 3D, deux solides
-  à l'export Rhino, des pièces des typologies posées dans la zone commune du corps qui la cède (sa
-  capacité est juste, pas encore la place de ses pièces).
+  à l'export Rhino.
 - **L'import Rhino** de nos propres boîtes (`parBoites`) ne rend pas `bat` : une paire recouverte
   revient en deux bâtiments.
 - De petits biais, sans effet de seuil : l'assise et la pente pondérées par l'aire, l'orientation des
@@ -80,6 +82,10 @@ Paire par paire : une zone commune à TROIS corps serait comptée de travers
   - deux corps qui se touchent : recouvrement 0, façade enfouie 0 ;
   - `partCedee` : la partie commune va au plus grand, et se resomme au recouvrement ;
   - `chevaucheMain` permet le recouvrement entre corps liés, le refuse entre corps non liés ;
-  - aucun écart « dist » entre corps liés qui se recouvrent, même distance incendie imposée.
+  - aucun écart « dist » entre corps liés qui se recouvrent, même distance incendie imposée ;
+  - le jury : emprise, volume (à la hauteur des étages de corps) et terrain retranchent le recouvrement ;
+  - « Rééquilibrer » ramène l'union à la demande ;
+  - `fusionner` garde liés deux corps posés l'un sur l'autre ;
+  - aux plans, le petit corps est raccourci de sa part commune, du côté du grand, et n'y pave rien.
 - Dans l'app (navigateur local) : glisser un corps sur un corps du même bâtiment est accepté, le bilan
   du rail baisse de la surface commune.
