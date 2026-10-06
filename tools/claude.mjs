@@ -228,6 +228,64 @@ async function verbeTirer({ opt }){
   return sortie(b, opt, texte);
 }
 
+/* ---------- les lignes ----------
+   Tout ce qui influe sur une variante, jury compris (`data/lignes.js`). Le
+   jury va au GROUPE seul (`doctrine`) ; le reste va aussi à l'état (`doc`),
+   comme dans l'app. Rend l'ancienne valeur ET celle réellement posée :
+   `regler()` borne, et la valeur demandée n'est pas toujours celle qui tient.
+   Écrire le groupe dans la base change l'app de TOUT le groupe : c'est à
+   Claude de le faire, sur demande — ici, on ne fait que le fichier. */
+/* Ce que dit une clé, en mots : il y en a plus de 360, et `w:b7` ne parle pas.
+   Les préfixes sont ceux de `data/lignes.js — declarer()` et de
+   `data/jugement.js` (axes, sous-axes, fonctions de score). */
+function decrire(c){
+  const { L, J } = MODS;
+  const [p, id] = c.includes(":") ? [c.slice(0, c.indexOf(":")), c.slice(c.indexOf(":") + 1)] : [null, c];
+  const l = id && L.ligne(id), role = l ? l.role : null;
+  if(p === "ax"){ const a = J.AXES.find((a) => a.id === id); return { n:"poids de l'axe — " + (a ? a.n : id), role:"jugement" }; }
+  if(p === "sx"){ const s = J.sousAxe(id); return { n:"poids du sous-axe — " + (s ? s.n : id), role:"jugement" }; }
+  if(p === "t" && l) return { n:"tag — " + l.n, role };
+  if(p === "on" && l) return { n:"allumée (1) ou éteinte (0) — " + l.n, role };
+  if((p === "jb" || p === "jn" || p === "jh") && l)
+    return { n:{ jb:"score plein à", jn:"score nul à", jh:"seuil haut" }[p] + " — " + l.n, role };
+  const d = L.LIGNES.find((x) => x.k === c || x.k2 === c);
+  if(d) return { n:(d.k2 === c ? "2ᵉ valeur — " : "") + d.n, role:d.role };
+  return { n:l ? l.n : "", role };
+}
+
+async function verbeLigne({ pos, opt }){
+  const { L } = await modules();
+  const fg = opt.groupe || FG, fe = opt.etat || FE;
+  const g = lireJSON(fg, false), e = lireJSON(fe, false);
+  charger(g, e);
+  const [k, v] = pos;
+  if(k === undefined && opt.toutes){
+    const mot = opt.cherche ? String(opt.cherche).toLowerCase() : null;
+    const l = Object.keys(L.V).map((c) => Object.assign({ cle:c, valeur:L.V[c], defaut:L.defaut(c),
+      jury:L.estJury(c) }, decrire(c))).filter((x) => !mot || (x.cle + " " + x.n + " " + x.role).toLowerCase().includes(mot));
+    return sortie(l, opt, (l) => l.map((x) => x.cle.padEnd(20) + String(x.valeur).padEnd(12)
+      + (x.role || "").padEnd(12) + x.n).join("\n"));
+  }
+  if(k === undefined){
+    const l = Object.entries(L.ecarts(false)).map(([c, x]) =>
+      ({ cle:c, valeur:x, defaut:L.defaut(c), jury:L.estJury(c) }));
+    return sortie(l, opt, (l) => l.length ? l.map((x) => x.cle.padEnd(24) + String(x.valeur).padEnd(10)
+      + "défaut " + x.defaut + (x.jury ? "  · jury" : "")).join("\n") : "toutes les lignes au défaut");
+  }
+  if(!L.connue(k)) throw new Erreur("ligne inconnue : " + k);
+  if(v === undefined){
+    return sortie({ cle:k, valeur:L.V[k], defaut:L.defaut(k), borne:L.borne(k), jury:L.estJury(k) },
+      opt, (o) => JSON.stringify(o));
+  }
+  const avant = L.V[k], change = L.regler(k, v);
+  if(!change && String(v) !== String(avant) && Number(v) !== avant)
+    throw new Erreur("valeur refusée pour " + k + " : " + v + " (borne " + JSON.stringify(L.borne(k)) + ")");
+  ecrireJSON(fg, Object.assign({}, g || {}, { doctrine: L.ecarts(false) }));
+  if(e) ecrireJSON(fe, Object.assign({}, e, { doc: L.ecarts(true) }));
+  return sortie({ cle:k, avant, apres:L.V[k], change }, opt,
+    (o) => o.cle + " : " + o.avant + " → " + o.apres + (o.change ? "" : " (inchangé)"));
+}
+
 /* ---------- chercher ----------
    La recherche automatique de l'app : tirer beaucoup, garder peu. Chaque
    trouvaille est un état complet, écrit à côté de `--etat`. */
@@ -330,6 +388,47 @@ const TESTS = {
     assert.ok(r.length >= 1 && r.length <= 2, "trouvés : " + r.length);
     r.forEach((t) => assert.deepEqual(charger(null, lireJSON(t.fichier, true)), []));
   },
+  async poids_change_la_note(ref){
+    const { J } = await modules();
+    const f = ".atelier/test/l.json", g = ".atelier/test/g.json", ax = J.AXES[0];
+    ecrireJSON(f, ref); if(existsSync(g)) unlinkSync(g);
+    const t0 = bilan(charger(null, ref)).jugement.total;
+    const r = await verbeLigne({ pos:["ax:" + ax.id, "0"], opt:{ etat:f, groupe:g, muet:true } });
+    assert.equal(r.avant, ax.w);
+    assert.equal(r.apres, 0);
+    assert.notEqual(bilan(charger(lireJSON(g, true), lireJSON(f, true))).jugement.total, t0);
+  },
+  async borne(ref){
+    const { J } = await modules();
+    const f = ".atelier/test/l.json", g = ".atelier/test/g.json";
+    ecrireJSON(f, ref); if(existsSync(g)) unlinkSync(g);
+    const r = await verbeLigne({ pos:["ax:" + J.AXES[0].id, "500"], opt:{ etat:f, groupe:g, muet:true } });
+    assert.equal(r.apres, 100);
+  },
+  async ligne_inconnue(){
+    await assert.rejects(verbeLigne({ pos:["pas:une:ligne", "1"], opt:{ groupe:".atelier/test/g.json", muet:true } }),
+      (e) => e instanceof Erreur && e.message.includes("pas:une:ligne"));
+  },
+  async jury_hors_etat(ref){
+    const { J } = await modules();
+    const f = ".atelier/test/l.json", g = ".atelier/test/g.json", k = "ax:" + J.AXES[0].id;
+    ecrireJSON(f, ref); if(existsSync(g)) unlinkSync(g);
+    await verbeLigne({ pos:[k, "7"], opt:{ etat:f, groupe:g, muet:true } });
+    assert.equal(k in (lireJSON(f, true).doc || {}), false);
+    assert.equal(lireJSON(g, true).doctrine[k], 7);
+  },
+  async valeur_refusee(){
+    await assert.rejects(verbeLigne({ pos:["module", "abc"], opt:{ groupe:".atelier/test/g.json", etat:"nope.json", muet:true } }),
+      (e) => e instanceof Erreur && e.message.includes("refusée"));
+  },
+  async toutes_les_lignes(){
+    const { L } = await modules();
+    const l = await verbeLigne({ pos:[], opt:{ toutes:true, groupe:"nope.json", etat:"nope.json", muet:true } });
+    assert.equal(l.length, Object.keys(L.V).length);
+    assert.match(l.find((x) => x.cle === "w:b7").n, /Implantation/);
+    const c = await verbeLigne({ pos:[], opt:{ toutes:true, cherche:"nappe", groupe:"nope.json", etat:"nope.json", muet:true } });
+    assert.ok(c.length > 0 && c.length < l.length);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
@@ -349,7 +448,7 @@ async function test(){
 }
 
 /* ---------- la ligne de commande ---------- */
-const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, test };
+const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, ligne: verbeLigne, test };
 
 function analyser(argv){
   const pos = [], opt = {};
