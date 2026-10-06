@@ -105,6 +105,11 @@ export function flBuilt(i){ return flNet(i) + flCirc(i); }
    Massing dessine ses murs lui-même et ne reçoit que `flBuilt()`. */
 export function flMurs(i){ var m = V.partMurs; return flBuilt(i) * m / (1 - m); }
 export function flBrut(i){ return flBuilt(i) + flMurs(i); }
+/* Les CLOISONS entre pièces : la part `V.partCloisons` (levier « Part des
+   cloisons ») de l'intérieur d'un volume. C'est ce que le Massing doit loger
+   — pièces, circulation, cloisons ; il dessine les murs extérieurs autour. */
+export function avecCloisons(a){ return a / (1 - V.partCloisons); }
+export function flInterieur(i){ return avecCloisons(flBuilt(i)); }
 export function flCount(i){
   var n = 0;
   BLOCKS.forEach(function(b){ if(b.fl === i) n += b.q; });

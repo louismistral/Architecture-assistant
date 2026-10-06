@@ -237,4 +237,6 @@ Une source pour trois onglets :
 cloisons de 10 cm, surface de construction SIA 416). Le plateau du mixer est BRUT : pièces,
 circulation et murs (`flBrut()` = `flBuilt()` + `flMurs()`). `usable()`, `pilesAdmissibles()`,
 `ajusterPlateaux()` et le contrôle du plateau le lisent ; le Massing, qui dessine ses murs autour
-des volumes, ne reçoit que `flBuilt()` — les murs ne sont pas comptés deux fois.
+des volumes, reçoit `flInterieur()` : `flBuilt()` plus les cloisons entre pièces (levier « Part des
+cloisons », `V.partCloisons`, 6 % de l'intérieur — `avecCloisons()`, lu aussi par `mass/model.js —
+aPaver()`). Les murs extérieurs ne sont pas comptés deux fois, les cloisons ne sont pas oubliées.

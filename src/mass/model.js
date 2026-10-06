@@ -30,7 +30,7 @@ import { enVigueur } from "../data/cadre.js";
 import { vise } from "../data/orientation.js";
 import "../data/donnees.js";
 import { RULES } from "../data/rules.js";
-import { BLOCKS, FLOORS, areaOf, flBuilt, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
+import { BLOCKS, FLOORS, areaOf, avecCloisons, flInterieur, flHeight, flName, flNet, horsAt, lvlOf, onFloor }
   from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { coteDe, toutesCotes } from "../mix/opts.js";
@@ -136,7 +136,7 @@ export function profFacade(){
    profondeur intérieure D :
      pièce pavée  = a × b ÷ min(b, √(max(a, colonne) × ratio))     b : la bande ;
      niveau       = (Σ pièces pavées × D ÷ (D − couloir) + cages) × (1 + reste du pavage)
-                    + postes aux cotes imposées.
+                    ÷ (1 − part des cloisons) + postes aux cotes imposées.
    Le reste (`V.pavage`, une hypothèse) : un rang finit rarement sur une pièce
    entière, et deux bandes rarement ensemble.
    Une petite pièce ne se pave pas seule : WC et cabines s'empilent en colonnes
@@ -144,7 +144,7 @@ export function profFacade(){
    Ce n'est pas du programme : c'est de la circulation, que le bilan demande. */
 export function aPaver(i, D){
   var P = RULES.plan.piece, c = COULOIR, b = D >= RULES.plan.deuxRangs ? (D - c) / 2 : D - c;
-  if(!(b > 0)) return flBuilt(i);
+  if(!(b > 0)) return flInterieur(i);
   var s = 0, imp = 0, net = 0;
   BLOCKS.forEach(function(k){
     var p = PMAP[k.key], u = uOf(k.key);
@@ -157,7 +157,7 @@ export function aPaver(i, D){
   });
   if(!net) return 0;
   var h = s * D / (D - c);
-  return (h + cagesDe(h)) * (1 + V.pavage / 100) + imp;
+  return avecCloisons((h + cagesDe(h)) * (1 + V.pavage / 100)) + imp;
 }
 /* Ce que le niveau `i` demande aux volumes `vols` : ce que les plans y
    pavent, à la profondeur de ses corps. Le bilan, le contrôle et les remèdes
@@ -197,7 +197,7 @@ export function niveaux(){
       lvl: lvlOf(i),
       nom: flName(i),
       utile: flNet(i),
-      A: flBuilt(i),          /* surface BÂTIE : locaux + circulation */
+      A: flInterieur(i),      /* surface INTÉRIEURE : locaux + circulation + cloisons */
       h: flHeight(i),         /* la plus haute pièce du niveau — le mixer */
       hc: hauteurCourante(i), /* celle d'un corps d'école (`hauteurEtage`) */
       hors: horsAt(i)
@@ -307,7 +307,7 @@ export function postesDe(i, avecHors){
   if(!net && !avecHors) return [];
   /* La circulation ne porte que sur le bâti SCOLAIRE : un ouvrage du second
      temps n'a pas de couloirs à nous, et sa surface est déjà sa surface. */
-  var k = net ? flBuilt(i) / net : 1;
+  var k = net ? flInterieur(i) / net : 1;
   return bl.map(function(b){
     var p = PMAP[b.key];
     return { key:b.key, n:p.n, f:p.f, q:b.q, a:areaOf(b) * (p.hors ? 1 : k) };
