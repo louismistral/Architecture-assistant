@@ -30,6 +30,15 @@ export var LEVIERS = [
     etat:"sur la pile, au mixer · dé allumé par défaut", lu:"src/mix/shuffle.js — proposerPile()",
     d:"Dé allumé, la pile est tirée parmi les piles admissibles, la plus compacte d'abord "
       + "(orientation « pile compacte ») ; éteint, elle reste celle qu'on a composée." },
+  { id:"lev-murs", sujet:"Murs", onglet:"mixer", src:{ t:"hypothese", a:"— SIA 416, surface de construction" },
+    n:"Part des murs", k:"partMurs", def:0.10, min:0, max:0.25, pas:0.01, pct:1,
+    unite:"de la surface brute d'un niveau",
+    etat:"au groupe · une estimation", lu:"src/mix/floors.js — flMurs(), usable() · src/mix/shuffle.js — pilesAdmissibles()",
+    d:"Ce que les murs prennent au plateau : murs extérieurs de 40 cm et cloisons de 10 cm, "
+      + "environ 10 % de la surface brute d'une école (surface de construction, SIA 416). Le "
+      + "plateau du mixer est BRUT — pièces, circulation et murs ; le Massing, lui, dessine ses "
+      + "murs autour des volumes et ne reçoit que les pièces et la circulation." },
+
   /* ---- le massing ---- */
   { id:"lev-parti", sujet:"Parti", onglet:"massing", src:G,
     n:"Le parti", val:"les onze partis — bloc compact, barre, barres, L, U, cour, pavillons, hameau, terrasses, peigne, libre",
