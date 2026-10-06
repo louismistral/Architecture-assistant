@@ -23,6 +23,7 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | l'onglet Forensics, sa table et son stockage | `docs/forensics.md` |
 | l'onglet Rendu, ses planches PDF | `docs/rendu.md` |
 | les tokens, les thèmes shadcn, le mode | `README.md` — *Règles du projet* |
+| faire travailler Claude dans l'app : composer, juger, tirer, enregistrer | `.claude/skills/atelier/SKILL.md` |
 
 ---
 
