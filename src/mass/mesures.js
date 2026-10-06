@@ -21,7 +21,7 @@
    ========================================================================= */
 import { dec, fmt } from "../core/format.js";
 import { ITEMBYKEY } from "../core/model.js";
-import { NAPPE, PER } from "../data/site.js";
+import { NAPPE, PER, SITE } from "../data/site.js";
 import { V, courProgramme, enVigueur, lu, recul, reculVise, severite } from "../data/cadre.js";
 import { feuExige, imposees } from "../data/orientation.js";
 import { noter } from "../data/jugement.js";
@@ -30,7 +30,7 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
-import { airePosable, alignement, assise, attracteurs, cibleVue, coins, dansRect, dedans, distRoute, ecart,
+import { airePosable, alignement, assise, attracteurs, bbox, bordDist, cibleVue, coins, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
 import { CONTACT, MASS, aireEtage, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
@@ -492,7 +492,8 @@ function lire(vols){
     terrain: terrainLibre(vols), terrain0: terrainLibre(vols, 0), nappe: couverture(vols), pub: publicEcole(vols),
     ensembles: ensembles(E.filter(function(v){ return !v.fix; }), vols.ponts || []),
     second: s2d ? Math.min(1, s2p / s2d) : null,
-    sport: sp.length ? (sp.some(function(v){ return !!v.joint; }) ? 1 : 0) : null
+    sport: sp.length ? (sp.some(function(v){ return !!v.joint; }) ? 1 : 0) : null,
+    hmax: E.reduce(function(m, v){ return Math.max(m, haut(v)); }, 0)
   };
 }
 function moyenne(L){
@@ -677,7 +678,7 @@ export function ensembles(E, ponts){
 export function mesuresMass(vols, L){
   L = L || lire(vols);
   function fini(x){ return isFinite(x) ? Math.round(x * 100) / 100 : null; }
-  return {
+  return Object.assign({
     soleil: fini(moyenne(L.sud)), vue: fini(moyenne(L.vue)),
     jourRatio: fini(L.ratio), compa: fini(L.compa), cour: Math.round(L.cour.a),
     terrainMarge: Math.round(L.terrain0.libre - L.terrain0.besoin),
@@ -688,7 +689,265 @@ export function mesuresMass(vols, L){
     couverture: L.nappe.c == null ? null : fini(L.nappe.c), sousSolPart: fini(L.sousPart),
     sportIntegre: L.sport, secondPose: L.second == null ? null : fini(L.second),
     pubSep: L.pub.sep == null ? null : fini(L.pub.sep), pubCote: L.pub.cote == null ? null : fini(L.pub.cote)
+  }, jugesSite(vols, L, fini));
+}
+
+/* ---------- les jugements du site, traduits en mesures -----------------------
+   Chaque mesure suit sa formule du jury (b9, b11, b12, c18, c19, c22, f51, f54,
+   f55, i73, i74, e47, h69, h70). Les portées — la bande de 20 m, les 50 m de
+   voisinage, les 40 m des rayons… — sont des FORMULES de mesure, donc du code,
+   comme `COUR_FOND`. Le terrain se lit sur une grille au pas de `PAS`. */
+var PAS = 2, VOISINS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], ENTRE = -Math.SQRT1_2, BANDE = 20, VOISINS = 50, RAYON = 40, ROUTE_PORTEE = 80, ZONE_MIN = 200;
+var EXI = null, GRILLE = null, ROUTE_PTS = null;
+/* l'existant : chaque emprise, sa boîte, sa hauteur (faîte − pied), et s'il est dans le périmètre */
+function existants(){
+  if(!EXI) EXI = (SITE.bat || []).map(function(P, i){
+    var h = SITE.bath && SITE.bath[i];
+    return { P:P, b:bbox(P), h: h ? h[1] - h[0] : 0,
+             dans: P.some(function(p){ return dedans(PER, p[0], p[1]); }) };
+  });
+  return EXI;
+}
+function dansExistant(x, y){
+  return existants().some(function(e){
+    return x >= e.b.x0 && x <= e.b.x1 && y >= e.b.y0 && y <= e.b.y1 && dedans(e.P, x, y); });
+}
+/* les routes, échantillonnées au double pas — assez pour une ligne de vue */
+function routePts(){
+  if(ROUTE_PTS) return ROUTE_PTS;
+  ROUTE_PTS = [];
+  (SITE.rou || []).forEach(function(R){
+    for(var k = 0; k + 1 < R.length; k++){
+      var a = R[k], b = R[k + 1], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (2 * PAS)));
+      for(var t = 0; t <= n; t++) ROUTE_PTS.push([a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n]);
+    }
+  });
+  return ROUTE_PTS;
+}
+/* le terrain du périmètre hors existant, au pas, et la route la plus proche de chaque nœud */
+function grille(){
+  if(GRILLE) return GRILLE;
+  var B = bbox(PER), R = routePts(), C = [], I = {};
+  for(var x = B.x0 + PAS / 2; x < B.x1; x += PAS) for(var y = B.y0 + PAS / 2; y < B.y1; y += PAS){
+    if(!dedans(PER, x, y) || dansExistant(x, y)) continue;
+    var best = null, d = Infinity;
+    R.forEach(function(p){ var q = Math.hypot(p[0] - x, p[1] - y); if(q < d){ d = q; best = p; } });
+    var c = { x:x, y:y, i:Math.round((x - B.x0) / PAS), j:Math.round((y - B.y0) / PAS), route:best, dr:d };
+    I[c.i + "," + c.j] = C.length; C.push(c);
+  }
+  return GRILLE = { C:C, I:I, B:B };
+}
+/* le point d'un rectangle le plus proche de (x, y), et sa distance — 0 dedans */
+function proche(rc, x, y){
+  var c = Math.cos(rc.a), s = Math.sin(rc.a), dx = x - rc.x, dy = y - rc.y;
+  var u = Math.max(-rc.w / 2, Math.min(rc.w / 2, dx * c + dy * s));
+  var v = Math.max(-rc.d / 2, Math.min(rc.d / 2, -dx * s + dy * c));
+  var px = rc.x + u * c - v * s, py = rc.y + u * s + v * c;
+  return { x:px, y:py, d:Math.hypot(x - px, y - py) };
+}
+/* les composantes d'un seul tenant des nœuds retenus, en m² */
+function tenants(C, I, garde){
+  var vu = {}, out = [];
+  C.forEach(function(c, k){
+    if(vu[k] || !garde(c)) return;
+    var pile = [k], n = 0, tous = [];
+    vu[k] = 1;
+    while(pile.length){
+      var q = C[pile.pop()]; n++; tous.push(q);
+      VOISINS4.forEach(function(d){
+        var m = I[(q.i + d[0]) + "," + (q.j + d[1])];
+        if(m != null && !vu[m] && garde(C[m])){ vu[m] = 1; pile.push(m); }
+      });
+    }
+    out.push({ a:n * PAS * PAS, C:tous });
+  });
+  return out;
+}
+/* la part d'existant (du périmètre) qu'aucun rectangle de `R` ne recouvre */
+function existantLibre(R){
+  var D = existants().filter(function(e){ return e.dans; });
+  if(!D.length) return null;
+  var libres = D.filter(function(e){
+    return !R.some(function(r){
+      return e.P.some(function(p){ return dansRect(r, p[0], p[1]); })
+          || coins(r).some(function(q){ return dedans(e.P, q[0], q[1]); });
+    });
+  }).length;
+  return libres / D.length;
+}
+function jugesSite(vols, L, fini){
+  var E = L.E, CO = E.filter(function(v){ return !v.fix; }), R = [], RE = [], RE1 = [];
+  /* les emprises au sol suffisent : un étage qui déborde est rare (f54 le juge) */
+  vols.forEach(function(v){ solRects(v).forEach(function(r){ R.push(r); if(!v.ph) RE1.push(r); }); });
+  E.forEach(function(v){ solRects(v).forEach(function(r){ RE.push(r); }); });
+  function occupe(x, y){ return R.some(function(r){ return dansRect(r, x, y); }) || dansExistant(x, y); }
+
+  function facade(x, y){
+    var b = null;
+    RE.forEach(function(r){ var p = proche(r, x, y); if(!b || p.d < b.d) b = p; });
+    return b;
+  }
+  var G = grille(), F = G.C.filter(function(c){ return !R.some(function(r){ return dansRect(r, c.x, c.y); }); });
+  var FI = {}; F.forEach(function(c, k){ FI[c.i + "," + c.j] = k; });
+  /* lus sur la grille dans le périmètre, au vrai dehors */
+  function cle(x, y){ return (Math.floor((x - G.B.x0) / PAS) + 1) + "," + (Math.floor((y - G.B.y0) / PAS) + 1); }
+  function libre(x, y){ return FI[cle(x, y)] != null; }
+  function pris(x, y){ var k = cle(x, y); return G.I[k] != null ? FI[k] == null : occupe(x, y); }
+
+  /* b9 — l'emprise d'école dans la bande de 20 m du périmètre */
+  var band = 0, tot = 0;
+  RE.forEach(function(r){
+    var c = Math.cos(r.a), s = Math.sin(r.a);
+    for(var u = -r.w / 2 + PAS / 2; u < r.w / 2; u += PAS) for(var w = -r.d / 2 + PAS / 2; w < r.d / 2; w += PAS){
+      tot++;
+      if(bordDist(PER, r.x + u * c - w * s, r.y + u * s + w * c) <= BANDE) band++;
+    }
+  });
+
+  /* b11 — la hauteur de l'école ÷ celle de l'existant à 50 m */
+  var voisins = existants().filter(function(e){
+    return e.h > 0 && RE.some(function(r){ return ecartPoly(r, e.P) <= VOISINS; }); });
+  var hv = voisins.reduce(function(t, e){ return t + e.h; }, 0) / (voisins.length || 1);
+
+  /* b12 — le parvis : le terrain libre entre une route et une façade d'école */
+  var parvis = 0;
+  if(RE.length) tenants(F, FI, function(c){
+    if(!c.route || c.dr > COUR_FOND) return false;
+    var f = facade(c.x, c.y);
+    if(f.d > COUR_FOND) return false;
+    /* ENTRE les deux : la route et la façade de part et d'autre, à 135° au moins */
+    var ax = c.route[0] - c.x, ay = c.route[1] - c.y, bx = f.x - c.x, by = f.y - c.y;
+    return ax * bx + ay * by < ENTRE * Math.hypot(ax, ay) * Math.hypot(bx, by);
+  }).forEach(function(t){ parvis = Math.max(parvis, t.a); });
+
+  /* c18, c19 — depuis le centre de la cour utile */
+  var cr = L.cour, fermee = null, abritee = null;
+  function coupe(x0, y0, x1, y1, lim){
+    var l = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(Math.min(l, lim) / PAS);
+    for(var k = 1; k <= n; k++){ var t = Math.min(1, k * PAS / l); if(pris(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return true; }
+    return false;
+  }
+  if(cr.a > 0){
+    var tou = 0;
+    for(var k = 0; k < 36; k++){
+      var t = k * 10 * DEG;
+      if(coupe(cr.x, cr.y, cr.x + Math.cos(t) * RAYON, cr.y + Math.sin(t) * RAYON, RAYON)) tou++;
+    }
+    fermee = tou / 36;
+    var lignes = routePts().filter(function(p){ return Math.hypot(p[0] - cr.x, p[1] - cr.y) <= ROUTE_PORTEE; });
+    if(lignes.length) abritee = lignes.filter(function(p){
+      return coupe(cr.x, cr.y, p[0], p[1], Infinity); }).length / lignes.length;
+  }
+
+  /* c22 — les zones libres de plus de 200 m² qui touchent une façade d'école */
+  var zones = RE.length ? tenants(F, FI, function(){ return true; }).filter(function(t){
+    return t.a > ZONE_MIN && t.C.some(contreEcole); }).length : null;
+  /* un nœud contre une façade : un voisin pris par un corps d'école */
+  function contreEcole(c){
+    return VOISINS4.some(function(d){
+      var x = c.x + d[0] * PAS, y = c.y + d[1] * PAS;
+      return RE.some(function(r){ return dansRect(r, x, y); });
+    });
+  }
+
+  /* f51, f55 — les profondeurs des corps d'école, au demi-mètre */
+  var prof = {}, plancher = {}, ptot = 0;
+  CO.forEach(function(v){
+    v.lv.forEach(function(e){
+      if(lvlOf(e.i) < 0) return;
+      partsDe(e).forEach(function(p){
+        var d = Math.round(Math.min(p.w, p.d) * 2) / 2, a = p.w * p.d;
+        plancher[d] = (plancher[d] || 0) + a; ptot += a;
+      });
+    });
+    solRects(v).forEach(function(r){
+      var d = Math.round((Math.min(r.w, r.d) - 2 * RULES.haut.mur) * 2) / 2;
+      prof[d] = (prof[d] || 0) + 1;
+    });
+  });
+  var freq = Object.keys(prof).sort(function(a, b){ return prof[b] - prof[a]; })[0];
+
+  /* f54 — le plus grand dépassement d'un étage sur celui du dessous ; la boîte
+     du dessous fait foi (ponytail: un dessous en L est lu comme sa boîte) */
+  var faux = 0;
+  vols.forEach(function(v){
+    if(v.ph) return;
+    var lv = v.lv.filter(function(e){ return lvlOf(e.i) >= 0; }).sort(function(a, b){ return lvlOf(a.i) - lvlOf(b.i); });
+    for(var k = 1; k < lv.length; k++){
+      var bo = boiteParts(lv[k - 1]);
+      partsDe(lv[k]).forEach(function(p){
+        faux = Math.max(faux, bo.x0 - (p.dx - p.w / 2), (p.dx + p.w / 2) - bo.x1,
+                              bo.y0 - (p.dy - p.d / 2), (p.dy + p.d / 2) - bo.y1);
+      });
+    }
+  });
+
+  /* i74 — le plus grand rectangle libre collé à un corps d'école */
+  var ext = 0;
+  RE.forEach(function(rc){
+    var c = Math.cos(rc.a), s = Math.sin(rc.a);
+    [[[-s, c], [c, s], rc.w / 2, rc.d / 2], [[s, -c], [c, s], rc.w / 2, rc.d / 2],
+     [[c, s], [-s, c], rc.d / 2, rc.w / 2], [[-c, -s], [-s, c], rc.d / 2, rc.w / 2]].forEach(function(f){
+      var H = [];
+      for(var u = -f[2] + PAS / 2; u < f[2]; u += PAS){
+        var z = PAS / 2;
+        while(z < COUR_FOND && libre(rc.x + f[0][0] * (f[3] + z) + f[1][0] * u, rc.y + f[0][1] * (f[3] + z) + f[1][1] * u)) z += PAS;
+        H.push(z - PAS / 2);
+      }
+      ext = Math.max(ext, histoMax(H) * PAS);
+    });
+  });
+
+  /* e47 — chaque corps de l'étape 2 contre le plus semblable de l'étape 1 */
+  var P2 = vols.filter(function(v){ return v.ph; }), unite = null;
+  function profV(v){ var r = solRects(v)[0]; return r ? Math.min(r.w, r.d) : 0; }
+  if(P2.length && E.length) unite = P2.reduce(function(t, p){
+    return t + Math.max.apply(null, E.map(function(v){
+      var da = Math.abs(ecartAngle(4 * p.a, 4 * v.a)) / 4;
+      return ((Math.abs(profV(p) - profV(v)) <= 1) + (da <= 10 * DEG) + (volNiv(p) === volNiv(v))) / 3;
+    }));
+  }, 0) / P2.length;
+
+  /* h69 — les toits plats de l'école, posables, contre la surface visée */
+  var toit = 0;
+  E.forEach(function(v){
+    var top = null;
+    v.lv.forEach(function(e){ if(lvlOf(e.i) >= 0 && (!top || lvlOf(e.i) > lvlOf(top.i))) top = e; });
+    if(top) toit += aireEtage(top);
+  });
+
+  return {
+    bordurePart: tot ? fini(band / tot) : null,
+    rapportHauteur: voisins.length && L.hmax ? fini(L.hmax / hv) : null,
+    parvis: Math.round(parvis),
+    courFermee: fermee == null ? null : fini(fermee), courAbritee: abritee == null ? null : fini(abritee),
+    zonesExt: zones,
+    profondeursDistinctes: CO.length ? Object.keys(prof).length : null,
+    porteAFaux: fini(Math.max(0, faux)),
+    repetitionPart: ptot && freq != null ? fini((plancher[freq] || 0) / ptot) : null,
+    chantierLibre: existantLibre(RE1), existantGarde: existantLibre(R),
+    extensionPossible: RE.length ? fini(Math.min(1, ext / V.extEmprise)) : null,
+    uniteEtapes: unite == null ? null : fini(unite),
+    toitPV: E.length ? fini(toit * V.pvPart / V.pvVise) : null
   };
+}
+/* la boîte des parts d'un niveau, dans le repère du volume */
+function boiteParts(e){
+  var b = { x0:Infinity, y0:Infinity, x1:-Infinity, y1:-Infinity };
+  partsDe(e).forEach(function(p){
+    b.x0 = Math.min(b.x0, p.dx - p.w / 2); b.x1 = Math.max(b.x1, p.dx + p.w / 2);
+    b.y0 = Math.min(b.y0, p.dy - p.d / 2); b.y1 = Math.max(b.y1, p.dy + p.d / 2);
+  });
+  return b;
+}
+/* le plus grand rectangle sous un histogramme de profondeurs (largeur 1 par colonne) */
+function histoMax(H){
+  var best = 0;
+  for(var i = 0; i < H.length; i++){
+    var h = Infinity;
+    for(var j = i; j < H.length; j++){ h = Math.min(h, H[j]); if(!h) break; best = Math.max(best, h * (j - i + 1)); }
+  }
+  return best;
 }
 
 /* ---------- le bâtiment entier ---------------------------------------------------
