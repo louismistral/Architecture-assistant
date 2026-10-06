@@ -119,7 +119,7 @@ isolé. Sans quoi le conflit est garanti et illisible.
 03 Programme mixer            répartition du programme sur les niveaux
 04 Massing                    volumétrie sur le site
 05 Typologies · 06 Tectonics · 07 Materiality                  à construire
-08 Rendu                      les planches PDF de chaque étape — le massing seul, pour l'instant
+08 Rendu                      les planches de chaque étape, en PDF, SVG ou DXF ; le rendu final
 ```
 
 Chaque onglet se sert de ce que le précédent a décidé. L'ancien ordre faisait l'inverse :

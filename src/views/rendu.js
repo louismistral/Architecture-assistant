@@ -8,13 +8,14 @@
    ========================================================================= */
 import { el } from "../core/format.js";
 import { dxf, pdfNeuf, pdfSur, telecharger } from "../core/pdf.js";
-import { AXO, BASE, ETAGES, ETAPES, FORMATS, MIDTERM } from "../data/planches.js";
+import { AXO, BASE, ETAGES, ETAPES, FINAL, FORMATS, MIDTERM } from "../data/planches.js";
 import { MASS } from "../mass/model.js";
 import { planSituation } from "../rendu/siteplan.js";
 import { planDiagrammes } from "../rendu/diagramme.js";
 import { planMidterm, planMidterm2 } from "../rendu/midterm.js";
 import { cadrage, planEtage } from "../rendu/etages.js";
 import { axoEclatee, axoVolume } from "../rendu/axo.js";
+import { finalExplicative, finalNiveauxFacades, finalRez, finalSituation } from "../rendu/final.js";
 import { typoHote } from "./render.js";
 
 var OCTETS = {};
@@ -141,7 +142,7 @@ export function renduVue(sub){
   var e = ETAPES.filter(function(x){ return x.id === sub; })[0] || ETAPES[0];
   var h = el("header", "rd__h");
   h.appendChild(el("h1", null, "Rendu · " + e.n));
-  if(!e.pret || !(PLANCHES[e.id] || e.id === "typologies")){
+  if(!e.pret || !(PLANCHES[e.id] || e.id === "typologies" || e.id === "final")){
     h.appendChild(el("p", "rd__lead", "Les planches de cette étape sont à construire."));
     s.appendChild(h);
     return s;
@@ -155,6 +156,7 @@ export function renduVue(sub){
   }
   var g = el("div", "rd-grille");
   if(e.id === "typologies") etages(g);
+  else if(e.id === "final") final(g);
   else PLANCHES[e.id].forEach(function(p){ g.appendChild(carte(p)); });
   s.appendChild(g);
   return s;
@@ -202,6 +204,32 @@ function etages(g){
         spec:cad.format + " paysage · 1:" + ETAGES.echelle + " · PDF vectoriel",
         dessin:function(){ return planEtage(n, cad); },
         fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
+    });
+  }).catch(function(e){ att.textContent = "Les plans n'ont pas pu être lus : " + e.message; });
+}
+
+/* LE RENDU FINAL — les cinq planches A1 du règlement (`rendu/final.js`). La
+   situation se dessine tout de suite ; les quatre autres attendent les plans
+   des Typologies. */
+function final(g){
+  var neuf = function(t){ return Promise.resolve(pdfNeuf(t)); }, spec = FINAL.format + " paysage · ";
+  g.appendChild(carte({ id:"final-1", n:"1 · Situation", format:FINAL.format, nom:"saxon-final-1-situation",
+    spec:spec + "1:500 · sur la base du géomètre", dessin:function(){ return finalSituation(vols()); }, fond:FINAL.apercu,
+    fichier:function(t){ return base(FINAL.pdf).then(function(b){ return pdfSur(b, t); }); } }));
+  var att = el("p", "rd-attente", "Calcul des plans des Typologies…");
+  g.appendChild(att);
+  plansTypo().then(function(N){
+    var cad = cadrage(N), p34 = null;
+    /* les planches 3 et 4 se rangent ensemble : ce qui déborde de l'une va à l'autre */
+    function deux(){ return p34 || (p34 = finalNiveauxFacades(N, cad, vols())); }
+    att.remove();
+    [["2 · Plan du rez-de-chaussée", "rez", "1:" + FINAL.echelle + " · trait noir · abords", function(){ return finalRez(N, cad, vols()); }],
+     ["3 · Plans des niveaux", "niveaux", "1:" + FINAL.echelle + " · trait noir", function(){ return deux().t3; }],
+     ["4 · Façades et coupes", "facades-coupes", "1:" + FINAL.echelle + " · trait noir · terrain naturel", function(){ return deux().t4; }],
+     ["5 · Planche explicative", "explicative", "rendu libre", function(){ return finalExplicative(N, vols()); }]
+    ].forEach(function(x, i){
+      g.appendChild(carte({ id:"final-" + (i + 2), n:x[0], format:FINAL.format, nom:"saxon-final-" + (i + 2) + "-" + x[1],
+        spec:spec + x[2], dessin:x[3], fichier:neuf }));
     });
   }).catch(function(e){ att.textContent = "Les plans n'ont pas pu être lus : " + e.message; });
 }

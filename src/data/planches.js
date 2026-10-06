@@ -15,7 +15,7 @@ export var ETAPES = [
   { id:"tectonics",   n:"Tectonics" },
   { id:"materiality", n:"Materiality" },
   { id:"midterm",     n:"Midterm rendu", pret:true },
-  { id:"final",       n:"Rendu final" }
+  { id:"final",       n:"Rendu final", pret:true }
 ];
 
 /* Formats ISO paysage, en points (1 pt = 1/72 po). */
@@ -124,6 +124,44 @@ export var TRAITS = { coupe:0.50, menuiserie:0.25, vu:0.18, dessus:0.18, axe:0.1
    contexte s'efface vers le papier. Les épaisseurs : `TRAITS`. */
 export var NUIT = { fond:[0, 0, 0], trait:[1, 1, 1], papier:[1, 1, 1], encre:[0, 0, 0], gris:[0.45, 0.45, 0.45],
   poche:[0.62, 0.62, 0.62] };
+
+/* LE TRAIT NOIR SUR BLANC — le rendu final : le règlement (art. 1.21) veut
+   les plans, coupes et façades « exclusivement au trait noir sur fond blanc ».
+   Le positif de `NUIT` : ce que la coupe tranche, en poché noir. */
+export var JOUR = { fond:[1, 1, 1], trait:[0, 0, 0], papier:[1, 1, 1], encre:[0, 0, 0], gris:[0.45, 0.45, 0.45],
+  poche:[0, 0, 0] };
+
+/* LE RENDU FINAL — art. 1.20 et 1.21 du règlement : au plus cinq planches A1
+   paysage, affichées selon son schéma (1 Situation, 2, 3 en haut ; la
+   maquette ; 4, 5 en bas).
+     1  situation 1:500, sur la base du géomètre (`DOC/final_base.pdf`,
+        engendré par `tools/final-base.py` à partir de ce calage)
+     2  le plan du rez 1:200, avec les aménagements extérieurs
+     3  les plans des autres niveaux 1:200
+     4  les façades et les coupes 1:200, horizontales, terrain naturel et cotes
+     5  la planche explicative
+   Toutes portent « Concours CS Saxon » et la DEVISE — l'anonymat (art. 1.22) :
+   à remplacer par celle du groupe, et rien qui nous nomme. */
+export var FINAL = {
+  format: "A1", echelle: 200,
+  devise: "DEVISE",
+  pdf: "DOC/final_base.pdf", apercu: "DOC/final_base.jpg",
+  marge: 15 * MM, cartouche: 22 * MM,
+  /* m de plan autour du bâti d'un niveau, pour ses cotes */
+  autour: 7,
+  /* les coupes, schématiques : dalle et mur, en m */
+  dalle: 0.35, mur: 0.4,
+  /* m de terrain dessiné au-delà du bâti, dans les façades et coupes */
+  terrain: 10
+};
+(function(){
+  var F = FORMATS[FINAL.format], m = FINAL.marge;
+  FINAL.situation = [m, m + FINAL.cartouche, F.w - m, F.h - m];
+  var xs = PER.map(function(p){ return p[0]; }), ys = PER.map(function(p){ return p[1]; }), c = FINAL.situation;
+  FINAL.calage = { k: BASE.k,
+    ox: (c[0] + c[2]) / 2 - BASE.k * (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2,
+    oy: (c[1] + c[3]) / 2 - BASE.k * (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 };
+})();
 
 /* La palette d'impression, en RVB 0–1 : celle de la base (routes, ombres,
    toitures blanches), relevée dans le PDF. */

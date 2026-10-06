@@ -2,7 +2,7 @@
 
 Un volet par étape du projet (`ETAPES`, `src/data/planches.js`) : Massing, Typologies,
 Tectonics, Materiality, Rendu final. Chaque volet rend ses planches à partir de la composition
-à l'écran. Seul le massing est construit.
+à l'écran. Tectonics et Materiality sont à construire.
 
 ## Les formats d'export
 
@@ -143,3 +143,30 @@ massing (`VUE`, `axo()`, `prisme()` de `diagramme.js`) :
 `K = 1000 / 200 × 72 / 25,4` pt par mètre (5 mm pour 1 m), sur une page A1 de 2381,1 × 1683,8 pt
 — celle du gabarit, sans mise à l'échelle (le contenu d'origine entre `q … Q`). Les primitives des
 Typologies sont en mètres : la salle de sport y mesure 33 × 29 m hors tout (32 × 28 + les murs).
+
+## Rendu final — les cinq planches du règlement
+
+Art. 1.20 et 1.21 : au plus **cinq planches A1 paysage**, affichées selon le schéma (1 Situation,
+2, 3 en haut ; la maquette ; 4, 5 en bas). `src/rendu/final.js`, réglages dans `FINAL`
+(`planches.js`).
+
+| planche | ce qu'elle porte |
+|---|---|
+| 1 Situation 1:500 | sur `DOC/final_base.pdf` (la base du géomètre, relevé entier, engendrée par `python3 tools/final-base.py` à partir de `FINAL.calage` — à relancer si le calage change) : la volumétrie (`situation()`), la plus courte distance de chaque corps à la limite, les cotes du rez, du terrain naturel et de l'acrotère, en msm |
+| 2 Plan du rez 1:200 | le plan des Typologies, avec ses abords, centré sur le bâti ; les traits de coupe A-A et B-B |
+| 3 Plans des niveaux 1:200 | les autres niveaux, à leur taille, les plus larges d'abord |
+| 4 Façades et coupes 1:200 | la façade longue et la coupe A-A dans la longueur du corps principal, la façade courte et la coupe B-B en travers ; terrain naturel du relevé (`terrain()`), cotes d'altitude de chaque plancher et acrotère |
+| 5 Planche explicative | a insertion (les quatre temps), b concept (l'axonométrie), c structure (l'éclatée, les noyaux, `RULES.seisme`), d incendie (les cages de chaque niveau et leur rayon de `RULES.feu.fuiteSimple` m) |
+
+- **Trait noir sur fond blanc** (art. 1.21) : plans, coupes et façades prennent la palette
+  `JOUR`, le positif de `NUIT` — `dessinPlan(…, pal)` et `trait(…, pal)`.
+- **Anonymat** (art. 1.22) : chaque planche porte « Concours CS Saxon » et `FINAL.devise` —
+  à remplacer par la devise du groupe.
+- **Les planches 3 et 4 se rangent ensemble** (`finalNiveauxFacades`) : au 1:200, tout est à sa
+  taille ; ce qui ne tient pas sur sa planche prend la place libre de l'autre, et ce qui ne tient
+  nulle part se dit en rouge sur les deux.
+- Les façades et les coupes se lisent sur les volumes du Massing, en boîtes : la façade montre
+  les corps et leurs étages, la coupe tranche dalles et pignons (`FINAL.dalle`, `FINAL.mur`). Ni
+  baies ni structure : elles viendront de Tectonics et Materiality.
+- Ce que le règlement demande encore et que la planche 1 ne dessine pas : les entrées, les
+  circulations, les aménagements extérieurs.

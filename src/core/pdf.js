@@ -27,7 +27,7 @@ function chaine(s){
     if(c === 40 || c === 41 || c === 92) o += "\\" + s[i];
     else if(c < 128) o += s[i];
     else if(c < 256) o += "\\" + c.toString(8);
-    else o += ({ 0x2019:"\\222", 0x2014:"\\227", 0x2013:"\\226", 0x2022:"\\225", 0x2026:"\\205", 0x2192:"->", 0x1D49:"e" })[c] || "?";
+    else o += ({ 0x2019:"\\222", 0x2014:"\\227", 0x2013:"\\226", 0x2022:"\\225", 0x2026:"\\205", 0x2192:"->", 0x1D49:"e", 0x02B3:"r" })[c] || "?";
   }
   return "(" + o + ")";
 }
@@ -201,6 +201,10 @@ export function pdfSur(base, t, t2){
   [t, t2].forEach(function(tr, k){
     if(!tr || P[k] == null) return;
     var q = n++, Q = n++, ov = n++, dict = dictDe(P[k]).trim();
+    /* des ressources en objet à part (pymupdf l'écrit ainsi) : recopiées dans
+       la page, où l'on peut leur ajouter nos polices */
+    dict = dict.replace(/\/Resources\s+(\d+) 0 R/, function(_, r){ return "/Resources" + dictDe(+r).trim(); });
+    dict = dict.replace(/\/Font\s+(\d+) 0 R/, function(_, r){ return "/Font" + dictDe(+r).trim(); });
     dict = dict.replace(/\/Contents\s*(\[[^\]]*\]|\d+ \d+ R)/, function(_, c){
       return "/Contents[" + q + " 0 R " + c.replace(/^\[|\]$/g, "") + " " + Q + " 0 R " + ov + " 0 R]";
     });

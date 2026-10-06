@@ -12,6 +12,8 @@
 import { trace } from "../core/pdf.js";
 import { ETAGES, FORMATS, NUIT, TRAITS } from "../data/planches.js";
 
+var NUIT0 = NUIT;
+
 var MM = 72 / 25.4, K = 1000 / ETAGES.echelle * MM;   /* pt par mètre */
 var PX = 0.75;                                         /* un px d'écran (96 par pouce), en pt */
 var GRIS = [0.4, 0.4, 0.4];
@@ -51,8 +53,11 @@ export function planEtage(n, cad){
 
 /* Le plan d'un niveau, au 1:200, découpé par la zone `z` [x0, y0, x1, y1] et
    centré sur le point (cx, cy) du site : la planche entière, ou une bande du
-   cadre « Representative Floor plan » du midterm. */
-export function dessinPlan(t, n, cad, z, cx, cy){
+   cadre « Representative Floor plan » du midterm. `pal` : la palette, `NUIT`
+   par défaut ; `JOUR` au rendu final, que le règlement veut au trait noir
+   sur fond blanc. */
+export function dessinPlan(t, n, cad, z, cx, cy, pal){
+  pal = pal || NUIT;
   var ox = (z[0] + z[2]) / 2 - K * cx, oy = (z[1] + z[3]) / 2 - K * cy;
   function P(q){ return [ox + K * q[0], oy + K * q[1]]; }
   /* plus on monte, plus le contexte s'efface dans le fond */
@@ -60,7 +65,7 @@ export function dessinPlan(t, n, cad, z, cx, cy){
   var cl = ETAGES.clair[0] + (ETAGES.clair[1] - ETAGES.clair[0]) * r;
   t.decoupe([[z[0], z[1]], [z[2], z[1]], [z[2], z[3]], [z[0], z[3]]]);
   /* le bâtiment, et lui seul, sur fond noir : le poché extérieur de chaque corps */
-  n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:NUIT.fond }); });
+  n.prims.forEach(function(p){ if(p.cl === "mur" && !p.ctx) t.poly(p.pts.map(P), { fill:pal.fond }); });
   /* tout le plan de l'écran : ses cotes, son échelle graphique et le nord
      — la planche est au 1:200 et le dit dans son titre */
   n.prims.forEach(function(p){
@@ -68,7 +73,7 @@ export function dessinPlan(t, n, cad, z, cx, cy){
       t.poly(p.pts.map(P), { fill:ETAGES.existant.map(function(v){ return v + (1 - v) * cl; }) });
       return;
     }
-    trait(t, p, P, K, p.ctx ? cl : 0);
+    trait(t, p, P, K, p.ctx ? cl : 0, 1, pal);
   });
   /* les étages inférieurs, en trait : le contour extérieur de chacun de leurs
      corps, par-dessus — on voit ce qui déborde dessous et ce qui porte */
@@ -91,7 +96,8 @@ export function dessinPlan(t, n, cad, z, cx, cy){
    un point du site sur la feuille, `k` les points par mètre ; `efface` (0 à
    1) fond le trait du dehors dans le papier ; `ech` réduit les épaisseurs pour
    un dessin plus petit. */
-export function trait(t, p, map, k, efface, ech){
+export function trait(t, p, map, k, efface, ech, pal){
+  var NUIT = pal || NUIT0;
   var dehors = p.ctx || p.g === "dim" || p.g === "echelle" || p.g === "nord";
   var c = (dehors ? NUIT.encre : NUIT.trait).map(function(v, i){ return v + (NUIT.papier[i] - v) * (dehors ? efface || 0 : 0); });
   if(p.k === "t"){
