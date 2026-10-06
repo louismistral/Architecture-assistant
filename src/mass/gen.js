@@ -991,11 +991,40 @@ function recoller(vols){
         /* `J` dit de combien m doit avancer vers f, dans le repère de f */
         m.x = m.x + J.u * c - J.v * s; m.y = m.y + J.u * s + J.v * c;
       }
-      if(J && J.g <= D && dansPerimetre(m) && !chevauche(m, vols)) return true;
+      if(J && J.g <= D && dansPerimetre(m) && !chevauche(m, vols)){ aligner(f, m, J, vols); return true; }
       m.x = g0.x; m.y = g0.y; m.a = g0.a;
       return false;
     });
   }
+}
+/* `m`, recollé à `f` le long de `J`, glisse le long de la jonction pour
+   aligner ses façades sur celles de `f` si le décrochement est sous
+   `V.alignDist` (la ligne `alignement` du cadre) : le glissement qui laisse
+   le moins de décrochement, tous niveaux hors sol comptés */
+function aligner(f, m, J, vols){
+  if(!enVigueur("alignement")) return;
+  var x = J.du ? ["x0", "x1"] : ["y0", "y1"], y = J.du ? ["y0", "y1"] : ["x0", "x1"], niv = [];
+  m.lv.forEach(function(em){
+    var ef = volEtage(f, em.i), ds = [];
+    if(!ef || lvlOf(em.i) < 0) return;
+    boitesDe(f, f, ef, 0).forEach(function(A){
+      boitesDe(f, m, em, 0).forEach(function(B){
+        var g = Math.max(B[x[0]] - A[x[1]], A[x[0]] - B[x[1]]);
+        if(g > 2 * RULES.haut.mur + CONTACT || Math.min(A[y[1]], B[y[1]]) - Math.max(A[y[0]], B[y[0]]) < .5) return;
+        ds.push(A[y[0]] - B[y[0]], A[y[1]] - B[y[1]]);
+      });
+    });
+    if(ds.length) niv.push(ds);
+  });
+  function reste(d){
+    return niv.reduce(function(t, ds){ return t + Math.min.apply(null, ds.map(function(e){ return Math.abs(e - d); })); }, 0);
+  }
+  var d = [].concat.apply([], niv).filter(function(e){ return Math.abs(e) <= V.alignDist; })
+    .sort(function(p, q){ return reste(p) - reste(q) || Math.abs(p) - Math.abs(q); })[0];
+  if(d == null || Math.abs(d) < 1e-3) return;
+  var c = Math.cos(f.a), s = Math.sin(f.a), du = J.du ? 0 : d, dv = J.du ? d : 0, g0 = { x:m.x, y:m.y };
+  m.x += du * c - dv * s; m.y += du * s + dv * c;
+  if(!dansPerimetre(m) || chevauche(m, vols)){ m.x = g0.x; m.y = g0.y; }
 }
 /* Deux corps d'école qui se touchent, en un volume : `b` avance de
    l'épaisseur des deux murs qui se faisaient face, ses intérieurs touchent

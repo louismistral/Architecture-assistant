@@ -278,6 +278,10 @@ bâtiment et peuvent se toucher sans se recouvrir — c'est ce qui intègre la s
 Ce qui s'approche à moins de `V.fusionDist` (1 m, la ligne `fusion` du cadre) d'un autre bâtiment,
 côtés parallèles ou en équerre (à 3° près), se **recolle** (`gen.js — recoller`) : l'un glisse — et
 tourne au besoin — jusqu'à toucher l'autre, s'il le peut sans rien recouvrir ni sortir du périmètre.
+Recollé, il glisse le long de la jonction pour **aligner** ses façades sur celles de l'autre si le
+décrochement est sous `V.alignDist` (3 m, la ligne `alignement` du cadre — `gen.js — aligner`) : le
+glissement qui laisse le moins de décrochement, tous niveaux hors sol comptés. Un étage plus long
+que l'autre, à surface fixe, garde le sien.
 Deux corps d'école qui se touchent alors s'**assemblent** (`assembler`) en UN volume fait de
 plusieurs rectangles (`model.js — partsDe`, `e.ext`) : l'un avance de l'épaisseur des deux murs qui
 se faisaient face, leurs intérieurs se touchent, ses parts passent dans l'autre niveau par niveau.
