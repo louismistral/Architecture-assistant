@@ -225,18 +225,14 @@ export var CADRE_TYPO = [
       + "dégagement ; au-delà de ce seuil, c'est un plateau vide, et le contrôle le signale." },
   /* Mesurées sur le plan (`src/typo/mesures.js`) : un écart ne jette aucun
      volume — le générateur du massing ne voit pas les plans —, il rend la
-     variante invalide (Intangible) ou le notifie (Imposé).
-     L'évacuation et l'accessibilité sont opposables, et pourtant IMPOSÉES,
-     non Intangibles : le générateur de plans pose ses noyaux sans tenir les
-     35 m, ni desservir chaque sous-sol, et aucune seed n'y change rien — le
-     noyau suit le volume. Rouges, elles rendraient presque toute variante
-     invalide et ne départageraient rien. Elles repassent Intangibles quand
-     les noyaux sauront les tenir. */
-  { id:"fuites", sujet:"Incendie", tag:"impose", admet:["impose"], src:{ t:"aeai", a:"16-15" }, qui:"code",
+     variante invalide (Intangible) ou le notifie (Imposé). Les noyaux du
+     générateur de plans tiennent l'évacuation et desservent chaque niveau
+     (`typo/gen.js — hotes()`) : ce qui reste rouge vient du volume. */
+  { id:"fuites", sujet:"Incendie", tag:"intangible", src:{ t:"aeai", a:"16-15" }, qui:"code",
     n:"Voies d'évacuation", val: RULES.feu.fuiteSimple + " m vers un escalier, " + RULES.feu.fuiteDouble
       + " m vers deux ; deux noyaux au-delà de " + RULES.feu.cageSeuil + " m² d'étage",
     lu:"src/typo/mesures.js — ecartsTypo()" },
-  { id:"sia500", sujet:"Accessibilité", tag:"impose", admet:["impose"], src:r("1.5"), qui:"code",
+  { id:"sia500", sujet:"Accessibilité", tag:"intangible", src:r("1.5"), qui:"code",
     n:"Accessibilité SIA 500", val:"un noyau escalier + ascenseur à chaque niveau",
     lu:"src/typo/mesures.js — ecartsTypo()" },
   { id:"noyaux-empiles", sujet:"Structure", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
