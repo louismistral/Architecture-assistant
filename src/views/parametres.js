@@ -473,10 +473,10 @@ function critere(x, J){
   var parts = Object.keys(x.axes);
   o.val = x.mesure ? (MESURES.filter(function(m){ return m.m === x.mesure; })[0] || { n:x.mesure }).n
     + (parts.length > 1 ? " — partagé " + parts.map(function(k){ return k + " " + Math.round(x.axes[k] * 100) + " %"; }).join(", ") : "")
-    : "à noter à la main, sur une variante";
+    : "non mesuré — ne compte pas dans la note";
   var c = J && J.crit[x.id];
   if(c && c.s != null){
-    var src = { mesure:"mesuré", main:"noté", moyenne:"moyenne des notes", neutre:"neutre, non noté" }[c.de] || c.de;
+    var src = "mesuré";
     o.ecran = puce(pct(c.s), c.de === "mesure" ? (c.s >= .75 ? "chip--ok" : c.s >= .4 ? "chip--soft" : "chip--warn") : "chip--soft", src);
     o.ecranTxt = src + (x.mesure && ECRAN && ECRAN.ev ? " — " + x.mesure + " = " + String(ECRAN.ev.mes[x.mesure]).replace(".", ",") : "");
   } else if(c) o.ecran = puce(c.de, "chip--soft");

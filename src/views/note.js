@@ -3,20 +3,16 @@
 
    La note générale sur 100, en grand ; puis chaque axe du jugement, sa barre
    et son score ; puis, repliés, les sous-axes et leurs critères — d'où vient
-   chaque score : mesuré, noté à la main, moyenne des notes des autres, ou
-   neutre. La fiche d'une variante l'appelle, avec de quoi poser les notes
-   manuelles.
+   chaque score : mesuré, ou non mesuré — un critère sans mesure ne compte
+   pas dans la note.
 
-   `j` : le résultat de `data/jugement.js — noter()`. `o.main` : les notes
-   manuelles de la variante ; `o.poser(id, s)` : les écrire. Une variante
+   `j` : le résultat de `data/jugement.js — noter()`. Une variante
    d'avant les mesures n'a que sa note enregistrée : `o.ancienne`.
    ========================================================================= */
 import { el } from "../core/format.js";
 import { AXES, CRITERES } from "../data/jugement.js";
 
-var DE = { mesure:"mesuré", main:"noté", moyenne:"moyenne des autres", neutre:"neutre",
-           "sans objet":"sans objet", "éteint":"éteint" };
-var NIVEAUX = [[0, "0"], [0.25, "¼"], [0.5, "½"], [0.75, "¾"], [1, "1"]];
+var DE = { mesure:"mesuré", "non mesuré":"non mesuré", "sans objet":"sans objet", "éteint":"éteint" };
 
 function pct(s){ return s == null ? "—" : Math.round(s * 100) + " %"; }
 function barre(s){
@@ -62,22 +58,6 @@ export function noteVue(j, o){
           c.s == null ? DE[c.de] || c.de : pct(c.s)));
         r.appendChild(el("span", "vm-c__n", x.n));
         r.appendChild(el("span", "vm-c__t", DE[c.de] || c.de));
-        /* un critère sans mesure se note ici, sur cinq crans */
-        if(!x.mesure && o.poser){
-          var g = el("div", "btn-group vm-main");
-          g.setAttribute("role", "group");
-          g.setAttribute("aria-label", "Note de « " + x.n + " »");
-          NIVEAUX.forEach(function(nv){
-            var b = el("button", "btn", nv[1]);
-            b.type = "button";
-            var pris = o.main && o.main[x.id] === nv[0];
-            b.setAttribute("aria-pressed", String(!!pris));
-            b.title = pris ? "Effacer la note" : "Noter " + nv[1];
-            b.addEventListener("click", function(){ o.poser(x.id, pris ? null : nv[0]); });
-            g.appendChild(b);
-          });
-          r.appendChild(g);
-        }
         d.appendChild(r);
       });
     });
