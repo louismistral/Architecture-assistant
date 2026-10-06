@@ -72,6 +72,10 @@ Paire par paire : une zone commune à TROIS corps serait comptée de travers
   revient en deux bâtiments.
 - De petits biais, sans effet de seuil : l'assise et la pente pondérées par l'aire, l'orientation des
   façades pondérée par leur longueur, les sous-sols centrés sous chaque corps.
+- Après relecture : l'emprise commune lue au seul rez, un corps presque tout entier posé sur un autre
+  (aux plans, il garde une aile d'un mètre), `recoller` qui ne recolle plus à un tiers un corps posé
+  sur un autre. Faits : contact à `CONTACT` près, parts fusionnées par inclusion–exclusion, façades à
+  fleur, ailes sœurs ; le générateur vérifié identique sur 72 tirages (6 graines × 12 partis).
 
 ## Vérifier
 
