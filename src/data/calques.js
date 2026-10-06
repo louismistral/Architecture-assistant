@@ -55,14 +55,26 @@ export var TAILLES = [
 /* Un trait plus clair que ça, à l'épaisseur de XS, est un XXS (0 noir, 1 blanc). */
 export var CLAIR_XXS = .35;
 
-/* CE QUI EST GÉNÉRÉ — par l'algorithme ou par une IA — a cette couleur, forcée
-   sur l'objet, dans les fichiers exportés seulement ; ce qu'un humain dessine
-   garde la couleur de son calque. Mêmes calques pour les deux : la couleur
-   dit QUI, le calque dit QUOI. À l'import, un objet bleu est généré, un autre
-   a été dessiné ou retouché à la main. */
-export var GENERE = [0, 90, 255];
+/* LA COULEUR DIT QUI, LE CALQUE DIT QUOI. Trois acteurs, trois PLAGES qui ne
+   se recouvrent pas — chacun joue dans la sienne (des nuances aident le
+   dessin), sans en sortir ; on n'en prend que ce qu'il faut :
+     ia      des BLEUS — une IA (Claude, dans l'app ou par le MCP Rhino) ;
+     algo    des ORANGES — l'app seule, sans autre geste humain que le Shuffle ;
+     humain  des GRIS, du noir au gris clair — ce qu'une personne a dessiné ou
+             retouché ; c'est aussi la couleur des calques, donc « Par calque ».
+   Teinte en degrés, saturation et luminosité de 0 à 1 (HSL). Une couleur
+   saturée hors des deux teintes, ou trop pâle, n'est à personne : l'import la
+   compte comme humaine — c'est une main qui l'a choisie. Les plages servent
+   aux fichiers échangés (.3dm, DXF) ; l'app garde ses couleurs. */
+export var ACTEURS = {
+  ia:     { n:"IA",          h:[200, 235], s:.6, l:[.35, .65] },
+  algo:   { n:"algorithme",  h:[18, 38],   s:.75, l:[.40, .65] },
+  humain: { n:"humain",      s:0,          l:[0, .75] }
+};
+/* au-delà, un gris n'est plus un gris ; en deçà, une couleur n'en est pas une */
+export var SAT_GRIS = .12, SAT_COULEUR = .35;
 
-/* ---------- les trois règles qui s'en lisent ---------- */
+/* ---------- les règles qui s'en lisent ---------- */
 export function chemin(){ return [].slice.call(arguments).filter(Boolean).join(SEP); }
 /* Le sous-calque de Courbes d'un trait : la taille la plus proche de son
    épaisseur (mm), XXS si c'est un XS clair (`lum` de 0, noir, à 1, blanc). */
@@ -71,7 +83,26 @@ export function tailleDe(mm, lum){
   TAILLES.forEach(function(x){ if(!x.gris && Math.abs(x.mm - mm) < Math.abs(t.mm - mm)) t = x; });
   return t === TAILLES[1] && lum > CLAIR_XXS ? TAILLES[0] : t;
 }
-/* Un objet de cette couleur (0–255) a été généré. */
-export function estGenere(c){
-  return !!c && Math.abs(c.r - GENERE[0]) + Math.abs(c.g - GENERE[1]) + Math.abs(c.b - GENERE[2]) < 12;
+/* Une couleur de la plage d'un acteur, en octets [r, g, b] ; `k` de 0 à 1 la
+   place dans la plage, du plus sombre au plus clair (et le long de la teinte). */
+export function couleur(acteur, k){
+  var A = ACTEURS[acteur], t = Math.max(0, Math.min(1, k || 0));
+  var h = A.h ? A.h[0] + t * (A.h[1] - A.h[0]) : 0, l = A.l[0] + t * (A.l[1] - A.l[0]);
+  var c = (1 - Math.abs(2 * l - 1)) * A.s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  var q = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return q.map(function(v){ return Math.round(255 * (v + m)); });
+}
+/* L'acteur d'une couleur `{ r, g, b }` (0–255) : « ia », « algo », « humain ». */
+export function acteurDe(c){
+  if(!c) return "humain";
+  var r = c.r / 255, g = c.g / 255, b = c.b / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  var l = (mx + mn) / 2, d = mx - mn, s = d ? d / (1 - Math.abs(2 * l - 1)) : 0, h = 0;
+  if(s <= SAT_GRIS) return "humain";
+  if(mx === r) h = 60 * (((g - b) / d) % 6); else if(mx === g) h = 60 * ((b - r) / d + 2); else h = 60 * ((r - g) / d + 4);
+  if(h < 0) h += 360;
+  if(s >= SAT_COULEUR) for(var k in ACTEURS){
+    var A = ACTEURS[k];
+    if(A.h && h >= A.h[0] - 5 && h <= A.h[1] + 5) return k;
+  }
+  return "humain";
 }
