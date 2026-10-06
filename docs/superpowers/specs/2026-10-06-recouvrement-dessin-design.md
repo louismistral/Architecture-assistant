@@ -60,10 +60,18 @@ Les deux parts de la paire réunies couvrent exactement l'union, sans se recouvr
   ne recouvre jamais rien : il ne voit aucune différence.
 - **Une zone commune à trois corps** : reste comptée paire par paire (`ponytail:`).
 
+## Après relecture
+
+- Les chaînes d'objet ne vont qu'aux corps posés sur un corps de leur bâtiment (`recouvreLie`) :
+  écrire `Saxon bat` partout changeait la relecture d'un export ordinaire.
+- Retombent sur l'ancien dessin : un corps tout entier dans l'autre (rien à exporter), un volume
+  fusionné qui cède (ses boîtes d'origine se recouvrent de leur mur commun, l'import ne les
+  recollerait pas), deux étages liés à deux altitudes (`dessinDe` les ignore).
+
 ## Ce qui reste
 
-- Deux corps posés l'un sur l'autre à des assises différentes (ligne `nivalign` éteinte) : la 3D
-  montre la marche, le modèle ne la refuse pas.
+- Le dessin d'union de deux étages à deux altitudes et d'un volume fusionné qui cède.
+- Le lien `joint` (salle de sport posée sur un corps) : l'import ne relit que `bat`.
 - La planche `plan` de `tools/claude.mjs` (PNG pour Claude) peint encore chaque corps entier.
 
 ## Vérifier
