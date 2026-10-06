@@ -1130,6 +1130,58 @@ const TESTS = {
     const pieces = planifier(D).tous[1].F.filter((f) => f.v.id === "c").reduce((s, f) => s + f.rooms.reduce((t, r) => t + r.a, 0), 0);
     assert.ok(pieces <= 8 * 16 + 1e-6, "pièces dans c : " + Math.round(pieces) + " m² pour 128 de libre");
   },
+  /* ---- la relecture du recouvrement ---- */
+  async rec_typo_jumelles(){
+    /* les ailes d'un même volume fusionné ne se cèdent rien : le générateur et les
+       plans d'aujourd'hui ne bougent pas (sous-sols fusionnés qui se chevauchent de 0,2 m) */
+    const { M, G, S, R } = await modules();
+    const im = (p) => import(new URL(p, SRC));
+    const [{ donneesTypo, ailes }, { volsOf }] = await Promise.all([im("typo/donnees.js"), im("mass/etat.js")]);
+    for(const g of [2, 3, 6]){
+      charger(null, null);
+      R.seed(g); S.repartir({ alea:false, etages:true });
+      M.massSet("parti", "compact"); M.massVols(G.genMass(11));
+      assert.deepEqual(JSON.parse(JSON.stringify(donneesTypo().partis.courant.vols)),
+                       JSON.parse(JSON.stringify(ailes(volsOf(M.MASS.vol)))), "graine " + g);
+    }
+  },
+  async rec_contact_proche(ref){
+    const { M } = await modules();
+    const e = structuredClone(ref);
+    /* hors tout, 0,10 m l'un dans l'autre : c'est un contact (CONTACT = 0,15 m) */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] },
+                  { id:"c", x:90 + 20.8 - 0.10, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const r = M.recouvrement(M.MASS.vol, 1, true);
+    assert.equal(r.aire, 0); assert.equal(r.enfouie, 0);
+  },
+  async rec_facade_affleurante(ref){
+    const { M } = await modules();
+    const e = structuredClone(ref);
+    /* 30 × 16 et 16 × 16 à fleur, 8 m en commun : hors tout 30,8 × 16,8 et 16,8 × 16,8,
+       union 38,8 × 16,8 — façade enfouie = 162,4 − 111,2 */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0.2, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:90 + 15 * Math.cos(0.2), y:60 + 15 * Math.sin(0.2), a:0.2, bat:"b", lv:[{ i:1, w:16, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const r = M.recouvrement(M.MASS.vol, 1, true);
+    assert.ok(Math.abs(r.aire - 8.8 * 16.8) < 1e-6, "aire " + r.aire);
+    assert.ok(Math.abs(r.enfouie - 51.2) < 1e-6, "façade enfouie " + r.enfouie);
+  },
+  async rec_fusionne_murs(ref){
+    const { M } = await modules();
+    const e = structuredClone(ref);
+    /* a fusionné (20 × 20 et une part 10 × 20), hors tout un seul rectangle 30,8 × 20,8 ;
+       c, 10 × 10, posé en plein sur la jonction : hors tout 10,8 × 10,8 tout entier dedans */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20, ext:[{ w:10, d:20, dx:15, dy:0 }] }] },
+                  { id:"c", x:100, y:60, a:0, bat:"b", lv:[{ i:1, w:10, d:10 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const r = M.recouvrement(M.MASS.vol, 1, true);
+    assert.ok(Math.abs(r.aire - 10.8 * 10.8) < 1e-6, "aire " + r.aire);
+    assert.ok(Math.abs(r.enfouie - 4 * 10.8) < 1e-6, "façade enfouie " + r.enfouie);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));

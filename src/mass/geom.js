@@ -396,6 +396,28 @@ export function longueurDans(P, Q){
   return L;
 }
 
+/* La longueur des côtés de P et de Q posés sur la même ligne et tournés du même
+   côté — deux façades À FLEUR : comptées dans les deux contours, elles ne le
+   sont qu'une fois dans l'union. Deux murs dos à dos (un contact) regardent en
+   sens contraire : ils n'y sont pas. */
+export function longueurCommune(P, Q){
+  var A = sensDe(P) > 0 ? P : P.slice().reverse(), B = sensDe(Q) > 0 ? Q : Q.slice().reverse(), L = 0, i, k;
+  for(i = 0; i < A.length; i++){
+    var p0 = A[i], p1 = A[(i + 1) % A.length], dx = p1[0] - p0[0], dy = p1[1] - p0[1], l = Math.hypot(dx, dy);
+    if(l < EPS) continue;
+    var ux = dx / l, uy = dy / l;
+    for(k = 0; k < B.length; k++){
+      var q0 = B[k], q1 = B[(k + 1) % B.length], ex = q1[0] - q0[0], ey = q1[1] - q0[1];
+      if(ex * ux + ey * uy <= 0) continue;                                   /* tournés à l'opposé */
+      if(Math.abs(ux * ey - uy * ex) > 1e-6 * Math.hypot(ex, ey)) continue;  /* pas parallèles */
+      if(Math.abs(ux * (q0[1] - p0[1]) - uy * (q0[0] - p0[0])) > 1e-6) continue; /* pas sur la même ligne */
+      var t0 = (q0[0] - p0[0]) * ux + (q0[1] - p0[1]) * uy, t1 = (q1[0] - p0[0]) * ux + (q1[1] - p0[1]) * uy;
+      L += Math.max(0, Math.min(l, Math.max(t0, t1)) - Math.max(0, Math.min(t0, t1)));
+    }
+  }
+  return L;
+}
+
 /* Recouvrement d'un rectangle et d'un polygone quelconque — l'emprise d'un
    bâtiment existant, par exemple. Approché par les coins et le centre : il ne
    s'agit pas de mesurer, mais de dire qu'il y a choc. */
