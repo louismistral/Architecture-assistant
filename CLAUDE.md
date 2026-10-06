@@ -172,8 +172,9 @@ On prend ce que l'algo a généré, on le retouche à la main, Claude itère, l'
 à l'intérieur ; la note est la même partout et pour tous. **Le test : si passer d'un
 environnement ou d'un acteur à l'autre coûte plus que ce qu'il rapporte, c'est un défaut** ;
 une fonction qui empêche quelqu'un d'avancer en est un. Trois choses le tiennent
-(`docs/echange.md`) : la **convention de calques** (`src/data/calques.js`), le **bleu** de ce
-qui est généré, la **mère** de chaque variante (`parent_id`).
+(`docs/echange.md`) : la **convention de calques** (`src/data/calques.js`), la **couleur de
+chaque acteur** — bleus pour une IA, oranges pour l'algorithme, gris pour un humain —, la
+**mère** de chaque variante (`parent_id`).
 
 ## Règle première : les surfaces sont fixes
 
@@ -263,7 +264,7 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
   voisin, à côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js`, engendré — voir `docs/releve.md`.
-- **Un calque, une épaisseur, la couleur de ce qui est généré** : `src/data/calques.js` seul —
+- **Un calque, une épaisseur, la couleur d'un acteur** : `src/data/calques.js` seul —
   tout export et tout import le lisent (`mass/export.js`, `mass/import.js`, `core/pdf.js — dxf()`).
 - **Un réglage du mixer et son dé** (la pile et son dé, le lien d'un poste, les cotes ; les
   adjacences exigées, toujours actives) : `src/mix/opts.js` seul ; `shuffle.js` le lit, la vue le montre là où il se voit.
