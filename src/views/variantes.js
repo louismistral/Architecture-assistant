@@ -982,8 +982,12 @@ function demandeCharge(v){
   r.appendChild(btn("btn", "Charger quand même", function(){ faireCharger(v); }));
   r.appendChild(btn("btn", "Annuler", function(){ peindre(); }));
   d.appendChild(r);
-  var b = panneau.querySelector(".vp__body");
-  b.insertBefore(d, b.querySelector(".vp-liste"));
+  /* Au-dessus de la liste, DANS sa section : depuis que le panneau en a trois,
+     la liste n'est plus un enfant direct du corps, et `insertBefore` sur le
+     corps levait une exception — le clic ne chargeait rien, sans un mot. */
+  var liste = panneau.querySelector(".vp-liste");
+  if(liste) liste.parentNode.insertBefore(d, liste);
+  else panneau.querySelector(".vp__body").appendChild(d);
   d.scrollIntoView({ block:"nearest" });
 }
 
