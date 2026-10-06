@@ -38,9 +38,11 @@
    rendre son fichier de travail entier — relevé, contexte, planches, aides —,
    sans rien isoler. Un fichier sans ce calque (d'avant la convention, ou un
    solide modelé ailleurs) se lit tout entier, l'architecture exportée d'ici
-   mise à part. LA COULEUR dit qui : un objet bleu (`GENERE`) a été généré,
-   un autre a été dessiné ou retouché à la main — le volume qu'il fait le
-   garde (`v.main`), et l'export suivant ne le repeindra pas en bleu. La
+   mise à part. LA COULEUR dit qui (`acteurDe`, `data/calques.js`) : orange,
+   l'algorithme ; bleu, une IA ; gris ou toute autre couleur, un humain — un
+   objet « Par calque » prend celle de son calque. Le volume garde l'acteur
+   qui l'a touché (`v.par`, l'humain d'abord), et l'export suivant le
+   repeint de sa couleur. La
    variante dont le fichier est parti (`Saxon variante`) est rendue avec les
    solides : la variante qu'on en tirera sera sa fille.
 
@@ -57,7 +59,7 @@ import { V } from "../data/cadre.js";
 import { assise, dansRect, ecart, terrain } from "./geom.js";
 import { CONTACT, etagesDe, fusionne, hauteurEtage, niveaux, secondTemps, volRect } from "./model.js";
 import { ecartVols, fusionner } from "./gen.js";
-import { CALQUE, SEP, estGenere } from "../data/calques.js";
+import { CALQUE, SEP, acteurDe } from "../data/calques.js";
 
 var TOL = .05;        /* m : deux altitudes plus proches sont la même */
 var MIETTE = 1;       /* m : un côté plus court est un reste de découpe */
@@ -99,8 +101,8 @@ export function solides3dm(rh, octets){
     if(conv ? !lu[at.layerIndex] : passe[at.layerIndex]) continue;
     var g = O.get(k).geometry();
     out.push(T = []);
-    T.main = !(at.colorSource && at.colorSource.value === rh.ObjectColorSource.ColorFromObject.value
-               && estGenere(at.objectColor));
+    var deObjet = at.colorSource && at.colorSource.value === rh.ObjectColorSource.ColorFromObject.value;
+    T.par = acteurDe(deObjet ? at.objectColor : L.get(at.layerIndex).color);
     if(g instanceof rh.Mesh) maille(g);
     else if(g instanceof rh.Extrusion) maille(g.getMesh(rh.MeshType.Any));
     else if(g instanceof rh.Brep){
@@ -131,15 +133,22 @@ export function volsDe3dm(solides){
      relit en boîtes, que `fusionner()` recolle */
   var B = solides.map(function(T){
     var b = boite(T), L = b ? [b] : prismes(T);
-    (L || []).forEach(function(x){ x.main = !!T.main; });
+    (L || []).forEach(function(x){ x.par = T.par; });
     return L;
   });
   if(B.every(Boolean)) return parBoites([].concat.apply([], B));
   /* ponytail: un solide unifié se découpe sans savoir d'où vient chaque toit —
-     tout est « à la main » dès qu'un solide l'est ; par face si on en a besoin */
-  var r = parToits([].concat.apply([], solides));
-  if(solides.some(function(T){ return T.main; })) r.vols.forEach(function(v){ v.main = 1; });
+     tous les corps prennent l'acteur le plus humain des solides ; par face si on en a besoin */
+  var r = parToits([].concat.apply([], solides)), p = acteurDes(solides);
+  if(p) r.vols.forEach(function(v){ v.par = p; });
   return r;
+}
+
+/* L'acteur d'un volume fait de plusieurs pièces : l'humain d'abord, puis l'IA ;
+   rien (l'algorithme) si tout est orange. */
+export function acteurDes(L){
+  var P = L.map(function(x){ return x.par; });
+  return P.indexOf("humain") >= 0 ? "humain" : P.indexOf("ia") >= 0 ? "ia" : null;
 }
 
 /* Une boîte : des faces horizontales ou verticales, huit sommets, le dessus
@@ -623,7 +632,8 @@ function parBoites(B){
     });
     if(!lv.length) return;
     var v = { id:"b" + (k + 1), x:R.x, y:R.y, a:R.a, fix:0, lv:lv };
-    if(L.some(function(b){ return b.main; })) v.main = 1;
+    var p = acteurDes(L);
+    if(p) v.par = p;
     if(L.length === 1 && Math.abs(R.d - V.passLarg) <= .3 && R.z0 - assise(R).z > 2) perches.push({ v:v, b:R });
     vols.push(v);
   });

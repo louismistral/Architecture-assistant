@@ -26,7 +26,7 @@ Concrètement, trois choses le tiennent :
 | quoi | où | ce qu'elle garantit |
 |---|---|---|
 | **la convention de calques** | `src/data/calques.js` | un fichier qui la suit se relit sans qu'on sache qui l'a fait, ni où |
-| **la couleur de ce qui est généré** | `GENERE`, même fichier | on voit, dans Rhino comme au retour, ce que l'algo ou une IA a fait et ce qu'un humain a retouché |
+| **la couleur de chaque acteur** | `ACTEURS`, même fichier | on voit, dans Rhino comme au retour, ce que l'algorithme, une IA ou un humain a fait |
 | **la filiation des variantes** | `parent_id`, `net/variantes.js` | chaque passage est une variante qui dit d'où elle part ; on lit ce qu'il a fait à la note |
 
 ## La convention de calques
@@ -76,26 +76,39 @@ AUTRE                     ce qui n'a pas encore sa place
 
 ### La couleur dit qui, le calque dit quoi
 
-Ce que l'algorithme ou une IA a produit est **bleu**, `GENERE` = RVB 0, 90, 255, couleur forcée
-sur l'objet ; ce qu'un humain dessine garde la couleur de son calque. Mêmes calques pour les
-deux. Seulement dans les fichiers exportés : l'app garde ses couleurs.
+Trois acteurs, trois **plages** de couleur qui ne se recouvrent pas (`ACTEURS`, HSL). Chacun
+joue dans la sienne — des nuances aident le dessin —, sans en sortir, et n'en prend que ce qu'il
+faut. Mêmes calques pour tous.
 
-- **Dans Rhino** : ce que vous retouchez, passez-le en couleur **Par calque**. Ce que vous
-  dessinez de neuf l'est déjà. Claude, par le MCP Rhino, pose ce qu'il crée en bleu.
-- **Au retour** : un objet bleu a été généré, un autre a été dessiné ou retouché. Le corps qu'il
-  fait le garde (`v.main`, dans l'instantané) et l'export suivant ne le repeint pas en bleu. Un
-  corps retouché fusionné avec un autre rend le tout retouché.
-- **Ce qui ne vient pas de nous** — le périmètre, le recul : couleur du calque.
-- **Les planches** (DXF, SVG) gardent leurs couleurs de dessin : elles se mettent en page, elles
-  ne reviennent pas.
+| acteur | plage | qui |
+|---|---|---|
+| **IA** | des bleus — teinte 200–235°, saturation 0,6, clarté 0,35–0,65 | Claude, dans l'app (skill `atelier`) ou dans Rhino (MCP) |
+| **algorithme** | des oranges — teinte 18–38°, saturation 0,75, clarté 0,40–0,65 | l'app seule ; le seul geste humain est le Shuffle |
+| **humain** | des gris, du noir au gris clair (saturation ≤ 0,12) | une personne ; c'est aussi la couleur des calques, donc « Par calque » |
+
+`couleur(acteur, k)` donne une nuance de la plage, `acteurDe(c)` dit à qui est une couleur. Une
+couleur hors des trois plages n'est à personne : l'import la compte comme humaine — c'est une
+main qui l'a choisie. Seulement dans les fichiers échangés ; l'app garde ses couleurs.
+
+- **Le .3dm du Massing** : un corps de l'algorithme en orange, une nuance par niveau ; un corps
+  qu'une IA a composé (`v.par = "ia"`) en bleu ; un corps qu'un humain a touché
+  (`v.par = "humain"`) en couleur de son calque, gris. Le périmètre et le recul : humains.
+- **Dans l'app**, un corps déplacé, tourné ou étiré à la souris sur le plan devient humain.
+  Claude marque `par:"ia"` les corps qu'il compose dans l'état.
+- **Dans Rhino** : ce que vous retouchez, passez-le en couleur **Par calque** (ou dans un gris).
+  Ce que vous dessinez de neuf l'est déjà. Claude, par le MCP, dessine en bleu.
+- **Au retour** : le volume garde l'acteur qui l'a touché — l'humain d'abord, puis l'IA —, et
+  l'export suivant le repeint de sa couleur. Deux corps fusionnés gardent le plus humain.
+- **Le DXF des planches** est fait par l'app seule : chaque entité y est orange, la clarté
+  d'origine gardée en nuance. Le papier (un aplat presque blanc) n'est pas écrit.
 
 ### Ce qui suit la convention aujourd'hui
 
 | fichier | sens | état |
 |---|---|---|
-| `.3dm` du Massing (`mass/export.js`, `mass/import.js`) | aller et retour | ✔ calques, bleu, variante source |
-| DXF des planches (`core/pdf.js — dxf()`) | aller | ✔ `2D$Courbes$…`, `2D$Hatchs`, `2D$Textes` |
-| SVG des planches | aller | ✘ — un calque Illustrator est un groupe, et regrouper par calque changerait l'ordre de dessin (un aplat blanc qui masque un trait passerait dessous). À faire si l'on en a besoin, sur une planche qui n'utilise pas de masque |
+| `.3dm` du Massing (`mass/export.js`, `mass/import.js`) | aller et retour | ✔ calques, couleur de l'acteur, variante source |
+| DXF des planches (`core/pdf.js — dxf()`) | aller | ✔ `2D$Courbes$…`, `2D$Hatchs`, `2D$Textes`, en oranges |
+| SVG des planches | aller | ✘ — ni calques ni plages : un calque Illustrator est un groupe, et regrouper par calque changerait l'ordre de dessin (un aplat blanc qui masque un trait passerait dessous). À faire si l'on en a besoin, sur une planche qui n'utilise pas de masque |
 | plans des Typologies | aller et retour | proposition plus bas |
 
 ## La filiation des variantes
@@ -122,8 +135,8 @@ Le MCP Rhino s'utilise comme d'habitude, avec ce contexte en plus :
 1. **De l'app vers Rhino** — `node tools/claude.mjs rhino` écrit `.atelier/massing.3dm` depuis
    l'état ; Claude l'importe dans le document Rhino par le MCP (ou un humain par Import). Il
    faut rhino3dm en local : `npm i --no-save rhino3dm@8.35.0` (node_modules est ignoré).
-2. **Dans Rhino** — Claude crée ses objets sur les calques de la convention, en bleu ; un humain
-   retouche et repasse en Par calque.
+2. **Dans Rhino** — Claude crée ses objets sur les calques de la convention, en bleus ; un
+   humain retouche et repasse en Par calque.
 3. **De Rhino vers l'app** — enregistrer le .3dm (le document entier convient : seul
    `3D::Projet::Volume` est relu), puis `node tools/claude.mjs importer <f.3dm>` : l'état prend
    la volumétrie, le bilan donne la note, et la variante mère à passer à `variante --parent`.
@@ -134,7 +147,7 @@ Le MCP Rhino s'utilise comme d'habitude, avec ce contexte en plus :
 ## Ce qui reste à faire
 
 - **Varier un massing autour des corps retouchés** : `genMass()` compose tout depuis rien. Lui
-  faire garder les corps `main` et tirer le reste est un changement du générateur (`mass/gen.js`),
+  faire garder les corps touchés (`par`) et tirer le reste est un changement du générateur (`mass/gen.js`),
   à mener seul, quand on en aura besoin.
 - **Le SVG en calques**, plus haut.
 - **Archicad** : à brancher par IFC quand il entrera dans la boucle.
@@ -145,39 +158,40 @@ Le MCP Rhino s'utilise comme d'habitude, avec ce contexte en plus :
 Le plan d'un niveau se tire aujourd'hui de sa seed et des cotes de pièces (`typo/etat.js`) ;
 rien d'autre ne l'enregistre. Pour qu'un plan retouché dans Rhino revienne et soit noté, il faut
 que l'app sache le RELIRE — et le jugement ne lit que ce que `lirePlans()` mesure : des pièces,
-leurs postes, leurs façades, les couloirs, les noyaux. Ni murs, ni portes. La convention en
-découle : **on échange des pièces, pas un dessin**.
+leurs postes, leurs façades, les couloirs, les noyaux. Ni murs, ni portes.
+
+**Un plan est un dessin 2D : des courbes et des hachures**, sur `2D` et ses sous-calques, rien
+d'autre. L'app relit donc les **hachures** — chacune est une surface fermée, donc une pièce, un
+couloir ou un noyau — et ignore les courbes, qui sont le dessin (murs, portes, mobilier).
 
 ```
-3D
-  Projet
-    Plans
-      Niveau_<nom>        à l'altitude du plancher : le plan se pose dans son volume
+2D
+  Courbes                 le dessin du plan : exporté, jamais relu
+    01 XXS … 06 XL
+  Hatchs
+    Plan
+      Niveau_<nom>        un plan par niveau, à plat, côte à côte
         Pieces
-          <Chapitre>      une polyligne FERMÉE par pièce
-        Couloirs          une polyligne fermée par tronçon
-        Noyaux            une polyligne fermée par cage (escalier + ascenseur)
+          <Chapitre>      une hachure par pièce
+        Couloirs          une hachure par tronçon
+        Noyaux            une hachure par cage (escalier + ascenseur)
         Halls             dégagements et halls
-    Volume
-2D                        le dessin du plan (murs, portes, mobilier) : exporté, jamais relu
+  Textes                  les noms de pièces : exportés, jamais relus
 ```
 
-- **Une pièce dit son poste** par le texte utilisateur de l'objet, `poste=<clé>` — la clé de
+- **Une pièce dit son poste** par le texte utilisateur de la hachure, `poste=<clé>` — la clé de
   `program.js`, chapitre et nom (`ecole|Salle de classe`) —, et par son nom d'objet, lisible.
   Dans Rhino, on dessine une nouvelle pièce en copiant une voisine : le texte utilisateur suit.
   Une pièce sans poste revient « non reconnue », notée sans, et le contrôle la nomme.
 - **La surface se relit, elle ne se décrète pas** : une salle de classe redessinée à 68 m² au
   lieu de 72 est un écart que le contrôle signale (règle première : les surfaces sont fixes).
-- **La couleur** : bleu = tiré par la seed ; Par calque = retouché. Une pièce retouchée est
-  FIXÉE : le prochain tirage de la seed pose le reste autour d'elle.
+- **La couleur dit qui** : orange, tirée par la seed ; bleu, posée par une IA ; gris, retouchée
+  par un humain. **Une pièce retouchée est seulement notée** : elle ne se fige pas, le prochain
+  tirage de la seed repart de zéro.
 - **Côté app**, trois morceaux :
-  1. `typo/export.js` — les pièces, couloirs et noyaux du plan à l'écran, niveau par niveau, dans
-     le même repère que le massing ;
-  2. `typo/import.js` — les polylignes relues en plan, sous la forme que `lirePlans()` mesure ;
+  1. `typo/export.js` — les pièces, couloirs et noyaux du plan à l'écran, une hachure chacun,
+     niveau par niveau, plus le dessin en courbes ;
+  2. `typo/import.js` — les hachures relues en plan, sous la forme que `lirePlans()` mesure ;
   3. l'état : un plan relu entre dans l'instantané (`typo.plans`), et passe AVANT la seed —
      les mesures le lisent, le jugement le note, la variante le garde. Tirer une autre seed le
-     remplace, après confirmation, en gardant les pièces fixées.
-
-À trancher avant de l'écrire : `Plans` sous `3D::Projet` (à l'altitude, superposé au volume) ou
-sous `2D` (à plat, un niveau à côté de l'autre) ; et si une pièce retouchée doit vraiment se
-fixer, ou seulement être notée.
+     remplace, après confirmation.

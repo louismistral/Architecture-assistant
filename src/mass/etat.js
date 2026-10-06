@@ -48,9 +48,10 @@ export function volsOf(vols){
                         ext:e.ext && e.ext.length ? e.ext.map(function(p){
                           return { w:p.w, d:p.d, dx:p.dx || 0, dy:p.dy || 0 }; }) : null };
              }) };
-    /* revenu de Rhino retouché à la main (`mass/import.js`) ; la clé n'existe
-       pas sinon, pour que l'instantané d'un tirage ne change pas */
-    if(v.main) o.main = 1;
+    /* qui l'a touché, si ce n'est pas l'algorithme : « ia » ou « humain »
+       (`data/calques.js — ACTEURS`). La clé n'existe pas sinon, pour que
+       l'instantané d'un tirage ne change pas. */
+    if(v.par) o.par = v.par;
     return o;
   });
 }

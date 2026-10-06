@@ -1163,11 +1163,11 @@ function blocEmporter(){
     var i = el("button", "btn", "Importer (.3dm)");
     i.type = "button";
     i.title = "Remplace la volumétrie : seul le calque 3D::Projet::Volume est relu s’il existe. Des "
-      + "boîtes par étage se relisent telles quelles, un solide unifié se découpe par ses toits ; ce "
-      + "qui n’est plus bleu est retouché à la main.";
+      + "boîtes par étage se relisent telles quelles, un solide unifié se découpe par ses toits ; la "
+      + "couleur dit qui l’a touché : gris, un humain.";
     t.title = "Repère du relevé DOC/site_plan.3dm, en centimètres, Z = 0 à " + dec(RHINO.z0, 0)
       + " m : le fichier s’y pose en place. Calques de la convention : 3D::Projet::Volume, par "
-      + "chapitre et par niveau, en bleu (généré) ; le périmètre et le recul de " + dec(reculVise(), 0)
+      + "chapitre et par niveau, en orange (l’algorithme), bleu (une IA) ou gris (un humain) ; le périmètre et le recul de " + dec(reculVise(), 0)
       + " m dans AIDE, drapés sur le terrain.";
     i.addEventListener("click", function(){ f.click(); });
     r.appendChild(i);
@@ -1202,7 +1202,7 @@ function importer(fichier){
     MASS.pile = empreintePile();
     /* le fichier dit de quelle variante il part : celle qu'on en tirera sera sa fille */
     setSource(sol.variante);
-    var mains = r.vols.filter(function(v){ return v.main; }).length;
+    var mains = r.vols.filter(function(v){ return v.par === "humain"; }).length;
     statutRhino = "« " + fichier.name + " » : " + n + " volume" + (n > 1 ? "s" : "")
       + (r.mode === "boites" ? ", lus boîte par boîte" : ", découpés par leurs toits"
          + (r.mode === "classe" ? " — étages comptés à " + dec(RULES.haut.libre.cla + RULES.haut.dalle) + " m" : ""))

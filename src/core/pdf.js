@@ -14,7 +14,7 @@
                            la surcouche s'écrit à la suite.
    ========================================================================= */
 
-import { CALQUE, SEP, SEP_DXF, TAILLES, chemin, tailleDe } from "../data/calques.js";
+import { CALQUE, SEP, SEP_DXF, TAILLES, chemin, couleur, tailleDe } from "../data/calques.js";
 
 function f(n){ return (Math.round(n * 100) / 100).toString(); }
 function rgb(c){ return c.map(f).join(" "); }
@@ -233,6 +233,10 @@ export function pdfSur(base, t, t2){
    sous-calque de `2D::Courbes` de la taille la plus proche (XXS à XL), qui
    porte l'épaisseur ; les aplats à `2D::Hatchs`, les textes à `2D::Textes`.
    AutoCAD refuse « : » dans un nom de calque : le chemin s'écrit avec « $ ».
+   LA COULEUR DIT QUI (`data/calques.js — ACTEURS`) : une planche est faite par
+   l'app seule, chaque entité est donc ORANGE, sa clarté d'origine gardée en
+   nuance — le noir au plus sombre, le pâle au plus clair. Le papier (un aplat
+   presque blanc) n'est pas écrit : il serait un grand orange pâle.
    Unités : le millimètre SUR LE PAPIER — la planche s'ouvre à l'échelle de son
    PDF (1:200 → 1 mm du dessin = 0,2 m). Les découpes de la planche sont
    APPLIQUÉES à la géométrie : rien ne déborde. Une page suivante (`t2`) se pose
@@ -253,6 +257,9 @@ function aci(c){
 }
 var CP1252 = { 0x2019:"\x92", 0x2018:"\x91", 0x201C:"\x93", 0x201D:"\x94", 0x2014:"\x97", 0x2013:"\x96",
   0x2022:"\x95", 0x2026:"\x85", 0x2192:"->", 0x1D49:"e", 0x02B3:"r", 0x2032:"'" };
+function lumi(c){ return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }
+/* la couleur d'une entité dans la plage de l'algorithme, en [0–1] */
+function orange(c){ return couleur("algo", lumi(c || [0, 0, 0])).map(function(v){ return v / 255; }); }
 function vrai(c){ return String((Math.round(c[0] * 255) << 16) + (Math.round(c[1] * 255) << 8) + Math.round(c[2] * 255)); }
 
 /* ---- la découpe, faite sur la géométrie ---- */
@@ -340,6 +347,7 @@ export function dxf(t, t2){
   /* le début de chaque entité : poignée, propriétaire, calque, couleur… */
   function entite(type, calque, coul, a){
     calques[calque] = 1;
+    coul = orange(coul);
     E.push("0", type, "5", h(), "330", MS, "100", "AcDbEntity", "8", calque);
     if(a && a.dash){
       /* un type de ligne par motif : le pointillé exact de la planche, en mm */
@@ -352,8 +360,7 @@ export function dxf(t, t2){
     if(a && a.op != null && a.op < 1) E.push("440", String(0x02000000 + Math.round(255 * a.op)));
   }
   function trait(a){
-    var c = a.stroke || [0, 0, 0], lum = .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
-    return nomDxf(chemin(CALQUE.courbes, tailleDe(a.lw != null ? a.lw * MMPT : .25, lum).n));
+    return nomDxf(chemin(CALQUE.courbes, tailleDe(a.lw != null ? a.lw * MMPT : .25, lumi(a.stroke || [0, 0, 0])).n));
   }
   function polyligne(pts, ferme, a, dx){
     entite("LWPOLYLINE", trait(a), a.stroke, a);
@@ -393,7 +400,7 @@ export function dxf(t, t2){
       else if(e.k === "p" || e.k === "c"){
         var pts = e.k === "c" ? cercle(e.x, e.y, e.r) : e.pts, ferme = e.k === "c" || e.ferme;
         var libre = pts.every(tout);
-        if(a.fill && ferme){ var s = libre ? pts : surface(pts); if(s) hachure(s, a, dx); }
+        if(a.fill && ferme && lumi(a.fill) < .97){ var s = libre ? pts : surface(pts); if(s) hachure(s, a, dx); }
         if(!a.stroke) return;
         if(libre && e.k === "c"){
           entite("CIRCLE", trait(a), a.stroke, a);

@@ -500,8 +500,10 @@ async function verbeRhino({ opt }){
   mkdirSync(dirname(fs), { recursive:true });
   const P = X.piecesMassing({ variante:opt.parent || null });
   writeFileSync(fs, X.dm3Massing(rh, { variante:opt.parent || null }));
-  const o = { fichier:fs, calques:P.calques, objets:P.objets.length, generes:P.objets.filter((x) => x.gen).length };
-  return sortie(o, opt, (o) => o.fichier + " · " + o.objets + " objets dont " + o.generes + " générés (bleus) · calques :\n  "
+  const par = {};
+  P.objets.forEach((x) => { par[x.par] = (par[x.par] || 0) + 1; });
+  const o = { fichier:fs, calques:P.calques, objets:P.objets.length, acteurs:par };
+  return sortie(o, opt, (o) => o.fichier + " · " + o.objets + " objets · " + JSON.stringify(o.acteurs) + " · calques :\n  "
     + o.calques.join("\n  "));
 }
 async function verbeImporter({ pos, opt }){
@@ -520,10 +522,11 @@ async function verbeImporter({ pos, opt }){
   M.MASS.pile = M.empreintePile();
   const b = bilan([]);
   ecrireJSON(fe, St.snapshot());
-  b.importe = { mode:r.mode, corps:r.vols.length, main:r.vols.filter((v) => v.main).length,
+  b.importe = { mode:r.mode, corps:r.vols.length, humain:r.vols.filter((v) => v.par === "humain").length,
+                ia:r.vols.filter((v) => v.par === "ia").length,
                 horsPile:r.horsPile || 0, parent:sol.variante || null };
   if(!opt.muet && !opt.json) console.log("importé : " + b.importe.corps + " corps (" + r.mode + "), "
-    + b.importe.main + " retouché(s) à la main" + (b.importe.horsPile ? ", " + b.importe.horsPile + " étage(s) hors pile ignorés" : "")
+    + b.importe.humain + " touché(s) par un humain, " + b.importe.ia + " par une IA" + (b.importe.horsPile ? ", " + b.importe.horsPile + " étage(s) hors pile ignorés" : "")
     + " · variante mère : " + (b.importe.parent || "aucune") + (b.importe.parent ? " — passe --parent " + b.importe.parent + " à `variante`" : "") + "\n");
   return sortie(b, opt, texte);
 }
@@ -812,9 +815,9 @@ const TESTS = {
     assert.match(readFileSync(s.replace(/\.json$/, ".sql"), "utf8"), /tags, parent_id\)/);
     await assert.rejects(verbeVariante({ pos:["x"], opt:{ etat:f, sortie:s, parent:"pas-un-uuid", muet:true } }), Erreur);
   },
-  /* Rhino aller et retour, selon la convention : le Volume en bleu, la mère
-     dans le fichier, et un corps repeint « par calque » revient retouché à la
-     main. Sans rhino3dm local, il n'y a rien à vérifier. */
+  /* Rhino aller et retour, selon la convention : le Volume de l'algorithme en
+     orange, la mère dans le fichier, un corps repeint « par calque » revient
+     humain, un corps repeint en bleu revient à l'IA. Sans rhino3dm local, il n'y a rien à vérifier. */
   async rhino_aller_retour(ref){
     let rh;
     try{ rh = await rhino3dm(); }catch(_){ return; }
@@ -831,20 +834,24 @@ const TESTS = {
       const l = L.get(k), n = new rh.Layer();
       n.name = l.name; n.id = l.id; n.parentLayerId = l.parentLayerId; d2.layers().add(n);
     }
-    let vol = 0, bleus = 0, repeint = null;
+    let vol = 0, oranges = 0, repeint = null, bleui = null;
     for(let k = 0; k < O.count; k++){
       const o = O.get(k), a = o.attributes(), ch = L.get(a.layerIndex).fullPath;
-      if(ch.startsWith(Cq.CALQUE.volume)){ vol++; if(Cq.estGenere(a.objectColor)) bleus++; }
-      if(!repeint && ch.startsWith(Cq.CALQUE.volume) && !/Second_temps/.test(ch)){
-        repeint = a.name; a.colorSource = rh.ObjectColorSource.ColorFromLayer;
+      if(ch.startsWith(Cq.CALQUE.volume)){ vol++; if(Cq.acteurDe(a.objectColor) === "algo") oranges++; }
+      if(ch.startsWith(Cq.CALQUE.volume) && !/Second_temps/.test(ch)){
+        if(!repeint){ repeint = a.name; a.colorSource = rh.ObjectColorSource.ColorFromLayer; }
+        else if(!bleui && !a.name.startsWith(repeint.split("_")[0] + "_")){
+          bleui = a.name; const c = Cq.couleur("ia", .5); a.objectColor = { r:c[0], g:c[1], b:c[2], a:255 };
+        }
       }
       d2.objects().add(o.geometry(), a);
     }
-    assert.ok(vol > 0 && bleus === vol, bleus + " bleus sur " + vol);
+    assert.ok(vol > 0 && oranges === vol, oranges + " oranges sur " + vol);
     const sol = I.solides3dm(rh, d2.toByteArray()), r = I.volsDe3dm(sol);
     assert.equal(sol.variante, mere);
     assert.equal(r.vols.length, n0);
-    assert.equal(r.vols.filter((v) => v.main).length, 1, "retouché : " + repeint);
+    assert.equal(r.vols.filter((v) => v.par === "humain").length, 1, "humain : " + repeint);
+    assert.equal(r.vols.filter((v) => v.par === "ia").length, 1, "IA : " + bleui);
   },
   async js_ecrire(ref){
     const f = ".atelier/test/js.json", x0 = ref.mass.vol[0].x;
