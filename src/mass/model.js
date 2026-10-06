@@ -34,7 +34,7 @@ import { BLOCKS, FLOORS, areaOf, avecCloisons, flInterieur, flHeight, flName, fl
   from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { coteDe, toutesCotes } from "../mix/opts.js";
-import { aire, assise, coins, diffRects, ecartAngle, local, unionRects } from "./geom.js";
+import { aire, airePoly, assise, coins, diffRects, ecartAngle, interConvexe, local, longueurDans, unionRects } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
    Chacun est une FAÇON DE COMPOSER, pas un style : il dit combien de corps, où
@@ -460,6 +460,56 @@ export function lies(a, b){
   return a.joint === b.id || b.joint === a.id || (!!a.bat && a.bat === b.bat);
 }
 
+/* LE RECOUVREMENT : deux corps d'un même bâtiment peuvent se superposer — un
+   bloc posé en biais sur le bout d'une barre ; leur union fait la jonction. Ce
+   qu'ils partagent ne compte qu'UNE fois, et c'est ici seulement qu'on le
+   mesure. `murs` faux : les intérieurs (surfaces de plancher) ; vrai : les
+   emprises hors tout (emprise, volume) et `enfouie`, la façade de l'un prise
+   dans l'autre. Un contact n'est pas un recouvrement : il rend 0 et 0, et
+   aucune composition du générateur n'en bouge d'un chiffre. Le second temps
+   n'est pas de l'enveloppe scolaire : il ne compte pas.
+   ponytail: paire par paire — une zone commune à TROIS corps serait comptée de
+   travers ; une vraie union de polygones le jour où ça arrive. */
+function commun(a, ea, b, eb, murs){
+  var R = murs ? volRects : volInts, A = R(a, ea).map(coins), B = R(b, eb).map(coins), aire = 0, enfouie = 0;
+  A.forEach(function(P){
+    B.forEach(function(Q){
+      var X = interConvexe(P, Q);
+      if(!X.length) return;
+      aire += airePoly(X);
+      if(murs) enfouie += longueurDans(P, Q) + longueurDans(Q, P);
+    });
+  });
+  return { aire:aire, enfouie:enfouie };
+}
+export function recouvrement(vols, i, murs){
+  var E = (vols || []).filter(function(v){ return !v.ph && volEtage(v, i); }), aire = 0, enfouie = 0, j, k;
+  for(j = 0; j < E.length; j++) for(k = j + 1; k < E.length; k++){
+    if(!lies(E[j], E[k])) continue;
+    var c = commun(E[j], volEtage(E[j], i), E[k], volEtage(E[k], i), murs);
+    aire += c.aire; enfouie += c.enfouie;
+  }
+  return { aire:aire, enfouie:enfouie };
+}
+/* Ce que `v` cède à l'étage `i` : la partie commune appartient au PLUS GRAND
+   des deux corps à cet étage — la barre garde son programme, le bloc posé
+   dessus en cède ; à égalité, le premier de la liste garde. Les parts cédées
+   se resomment exactement au recouvrement : les typologies ne pavent la zone
+   commune qu'une fois. */
+export function partCedee(v, vols, i){
+  var ev = volEtage(v, i);
+  if(!ev || v.ph) return 0;
+  var av = aireEtage(ev), iv = vols.indexOf(v), c = 0;
+  vols.forEach(function(o, k){
+    if(o === v || o.ph || !lies(v, o)) return;
+    var eo = volEtage(o, i);
+    if(!eo) return;
+    var ao = aireEtage(eo);
+    if(ao > av || (ao === av && k < iv)) c += commun(v, ev, o, eo, false).aire;
+  });
+  return c;
+}
+
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
    largeur, deux pignons entre eux, 50 cm vers l'intérieur de l'emprise. */
 export function mursDe(v, e){
@@ -686,6 +736,8 @@ export function bilan(){
       var e = volEtage(v, i);
       if(e) po += aireEtage(e);
     });
+    /* deux corps du même bâtiment qui se recouvrent : la part commune, une fois */
+    po -= recouvrement(MASS.vol, i, false).aire;
     out.push({ i:i, nom:N[i].nom, lvl:N[i].lvl, demande:dem, pose:po, ecart:po - dem });
   }
   return out;
