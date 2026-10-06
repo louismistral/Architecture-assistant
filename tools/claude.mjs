@@ -15,9 +15,11 @@
      node tools/claude.mjs bilan            ce que l'état donne
      node tools/claude.mjs test             la vérification de l'outil
    ========================================================================= */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 /* Les modules de l'app écrivent sur l'appareil ; ici, il n'y en a pas. Posé
    AVANT de les importer, d'où les imports dynamiques. */
@@ -170,7 +172,17 @@ export function texte(b){
   return L.join("\n");
 }
 
-function sortie(o, opt, txt){ console.log(opt.json ? JSON.stringify(o, null, 2) : txt(o)); }
+function sortie(o, opt, txt){
+  if(!opt.muet) console.log(opt.json ? JSON.stringify(o, null, 2) : txt(o));
+  return o;
+}
+function entier(x, nom){
+  if(x === undefined) return undefined;
+  const n = Number(x);
+  if(!Number.isInteger(n)) throw new Erreur("--" + nom + " attend un entier : " + x);
+  return n;
+}
+const graineAuHasard = () => (Math.floor(Math.random() * 0xFFFFFFFF) >>> 0) || 1;
 const FG = ".atelier/groupe.json", FE = ".atelier/etat.json";
 function ouvrir(opt){
   const g = lireJSON(opt.groupe || FG, !!opt.groupe), e = lireJSON(opt.etat || FE, true);
@@ -179,7 +191,67 @@ function ouvrir(opt){
 
 async function verbeBilan({ opt }){
   await modules();
-  sortie(bilan(ouvrir(opt)), opt, texte);
+  return sortie(bilan(ouvrir(opt)), opt, texte);
+}
+
+/* ---------- tirer ----------
+   Les dés de l'app, un par onglet. Le bilan est rendu AVANT relecture : c'est
+   le seul moment où la figure tirée en « Auto » est connue. Un mixer retiré
+   regénère le massing avec la graine courante : la volumétrie suit la pile,
+   comme dans la recherche automatique. */
+async function verbeTirer({ opt }){
+  const { M, G, S, St, R, T } = await modules();
+  const fe = opt.etat || FE;
+  const e = lireJSON(fe, false);
+  charger(lireJSON(opt.groupe || FG, !!opt.groupe), e);
+  /* `--parti` seul change la figure, pas le reste : même pile, même graine */
+  const tout = !opt.mixer && !opt.massing && !opt.typo && !opt.parti;
+  const seed = entier(opt.seed, "seed"), graine = entier(opt.graine, "graine");
+  if(opt.parti){
+    if(!M.PARTIS.some((p) => p.id === opt.parti))
+      throw new Erreur("parti inconnu : " + opt.parti + " — " + M.PARTIS.map((p) => p.id).join(", "));
+    M.massSet("parti", opt.parti);
+  }
+  /* Sans état, rien n'est réparti : un massing tiré là n'aurait rien à loger. */
+  if(tout || opt.mixer || !e){
+    R.seed(seed === undefined ? null : seed);
+    S.repartir({ alea: !opt.ordonne, etages:true });
+  }
+  if(tout || opt.mixer || !e || opt.massing || opt.parti){
+    if(tout || opt.massing) M.massSet("graine", graine === undefined ? graineAuHasard() : graine);
+    M.massVols(G.genMass(M.MASS.graine));
+    M.MASS.pile = M.empreintePile();
+  }
+  if(opt.typo) T.TYPO.graine = graine === undefined ? graineAuHasard() : graine;
+  const b = bilan([]);
+  ecrireJSON(fe, St.snapshot());
+  return sortie(b, opt, texte);
+}
+
+/* ---------- chercher ----------
+   La recherche automatique de l'app : tirer beaucoup, garder peu. Chaque
+   trouvaille est un état complet, écrit à côté de `--etat`. */
+async function verbeChercher({ opt }){
+  const { Rech } = await modules();
+  const fe = opt.etat || FE, dos = dirname(fe);
+  charger(lireJSON(opt.groupe || FG, !!opt.groupe), lireJSON(fe, false));
+  const o = { essais: entier(opt.essais, "essais") || 30, garder: entier(opt.garder, "garder") || 3 };
+  if(opt.partis) o.partis = String(opt.partis).split(",").map((s) => s.trim()).filter(Boolean);
+  if(opt["avec-erreurs"]) o.sansErreur = false;
+  const r = await Rech.rechercher(o);
+  if(existsSync(dos)) readdirSync(dos).filter((f) => /^trouve-\d+\.json$/.test(f))
+    .forEach((f) => unlinkSync(join(dos, f)));
+  const out = r.trouves.map((t, k) => {
+    const fichier = join(dos, "trouve-" + (k + 1) + ".json");
+    ecrireJSON(fichier, t.state);
+    const v = t.row.verdict || {};
+    return { fichier, parti:t.pid, score:t.row.score,
+             massing:{ e:(v.mass || {}).e || 0, w:(v.mass || {}).w || 0 },
+             mixer:{ e:(v.mix || {}).e || 0, w:(v.mix || {}).w || 0 } };
+  });
+  return sortie(out, opt, (l) => r.essais + " essais, " + l.length + " gardés\n" + l.map((t) =>
+    t.fichier + " · " + t.parti + " · " + t.score + "/100 · massing " + t.massing.e + "e " + t.massing.w
+    + "w · mixer " + t.mixer.e + "e " + t.mixer.w + "w").join("\n"));
 }
 
 /* ---------- les tests ----------
@@ -237,6 +309,27 @@ const TESTS = {
     assert.ok(perdu.includes("répartition"), JSON.stringify(perdu));
     assert.deepEqual(bilan(perdu).perdu, perdu);
   },
+  async tirer_ordonne(){
+    const f = ".atelier/test/t.json";
+    const b0 = await verbeTirer({ pos:[], opt:{ ordonne:true, seed:"1", graine:"11", etat:f, muet:true } });
+    assert.equal(b0.massing.parti, "barres");
+    const b = bilan(charger(null, lireJSON(f, true)));
+    assert.equal(b.jugement.total, 64);
+  },
+  async tirer_sans_etat(){
+    const f = ".atelier/test/neuf.json";
+    if(existsSync(f)) unlinkSync(f);
+    /* dans un processus NEUF : celui des tests a déjà un programme réparti */
+    const b = JSON.parse(execFileSync(process.execPath,
+      [fileURLToPath(import.meta.url), "tirer", "--parti", "cour", "--etat", f, "--json"], { encoding:"utf8" }));
+    assert.ok(b.massing.demande > 0, "demandé " + b.massing.demande);
+  },
+  async chercher(){
+    const etat = ".atelier/test/c/etat.json";
+    const r = await verbeChercher({ pos:[], opt:{ essais:"3", garder:"2", etat, muet:true } });
+    assert.ok(r.length >= 1 && r.length <= 2, "trouvés : " + r.length);
+    r.forEach((t) => assert.deepEqual(charger(null, lireJSON(t.fichier, true)), []));
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
@@ -256,7 +349,7 @@ async function test(){
 }
 
 /* ---------- la ligne de commande ---------- */
-const VERBES = { bilan: verbeBilan, test };
+const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, test };
 
 function analyser(argv){
   const pos = [], opt = {};
