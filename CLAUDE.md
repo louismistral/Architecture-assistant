@@ -22,6 +22,7 @@ d'un onglet est dans `docs/` — **lis le fichier de l'onglet avant d'y toucher.
 | le relevé du géomètre et sa regénération | `docs/releve.md` |
 | l'onglet Forensics, sa table et son stockage | `docs/forensics.md` |
 | l'onglet Rendu, ses planches PDF | `docs/rendu.md` |
+| l'échange avec Rhino et les autres logiciels, la convention de calques, la filiation des variantes | `docs/echange.md` |
 | les tokens, les thèmes shadcn, le mode | `README.md` — *Règles du projet* |
 | faire travailler Claude dans l'app : composer, juger, tirer, enregistrer | `.claude/skills/atelier/SKILL.md` |
 
@@ -163,6 +164,17 @@ régler sans dire où ne faisait rien.
 
 ---
 
+## Principe : passer de l'un à l'autre ne coûte rien
+
+Le travail ne vit ni dans l'app ni dans Rhino : il vit dans **l'état du projet**, que tout le
+monde peut prendre et rendre — humains, Claude, algorithme ; l'app, Rhino, Archicad, InDesign.
+On prend ce que l'algo a généré, on le retouche à la main, Claude itère, l'app note, l'algo varie
+à l'intérieur ; la note est la même partout et pour tous. **Le test : si passer d'un
+environnement ou d'un acteur à l'autre coûte plus que ce qu'il rapporte, c'est un défaut** ;
+une fonction qui empêche quelqu'un d'avancer en est un. Trois choses le tiennent
+(`docs/echange.md`) : la **convention de calques** (`src/data/calques.js`), le **bleu** de ce
+qui est généré, la **mère** de chaque variante (`parent_id`).
+
 ## Règle première : les surfaces sont fixes
 
 Le règlement chiffre chaque local. **Une surface de programme ne se change pas.** On change les
@@ -251,6 +263,8 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
   voisin, à côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js`, engendré — voir `docs/releve.md`.
+- **Un calque, une épaisseur, la couleur de ce qui est généré** : `src/data/calques.js` seul —
+  tout export et tout import le lisent (`mass/export.js`, `mass/import.js`, `core/pdf.js — dxf()`).
 - **Un réglage du mixer et son dé** (la pile et son dé, le lien d'un poste, les cotes ; les
   adjacences exigées, toujours actives) : `src/mix/opts.js` seul ; `shuffle.js` le lit, la vue le montre là où il se voit.
   Toucher une valeur la fige : son dé s'éteint.
