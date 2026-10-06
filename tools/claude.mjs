@@ -1030,6 +1030,55 @@ const TESTS = {
     assert.equal(M.partCedee(c, M.MASS.vol, 1), 0);
     assert.ok(Math.abs(M.partCedee(a, M.MASS.vol, 1) - 100) < 1e-6);
   },
+  async rec_jury(ref){
+    const { M, E } = await modules();
+    const mes = (bat) => {
+      const e = structuredClone(ref);
+      e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }, { i:2, w:20, d:20 }] },
+                    { id:"c", x:100, y:66, a:0.4, bat, lv:[{ i:1, w:20, d:20 }, { i:2, w:20, d:20 }] }];
+      e.mass.pont = [];
+      charger(null, e);
+      return E.evaluationCourante().mes;
+    };
+    const brut = mes("autre"), lie = mes("b");
+    const r1 = M.recouvrement(M.MASS.vol, 1, true).aire, r2 = M.recouvrement(M.MASS.vol, 2, true).aire;
+    /* la hauteur d'un étage de corps (3,20 m ici), pas celle du niveau (7,40 m au rez, pour la salle) */
+    const h = (i) => M.etagesDe(M.MASS.vol[0], M.MASS.vol).find((x) => x.e.i === i).h;
+    const { RULES } = await import(new URL("data/rules.js", SRC));
+    assert.ok(r1 > 50, "le cas recouvre vraiment : " + r1);
+    assert.ok(Math.abs((brut.emprise - lie.emprise) - r1) <= 1, "emprise " + brut.emprise + " → " + lie.emprise);
+    const attendu = r1 * h(1) + r2 * h(2) + r1 * RULES.haut.acrotere;
+    assert.ok(Math.abs((brut.volume - lie.volume) - attendu) <= 2, "volume " + brut.volume + " → " + lie.volume + ", attendu −" + Math.round(attendu));
+    assert.ok(Math.abs((lie.terrainMarge - brut.terrainMarge) - r1) <= 1, "terrain");
+  },
+  async rec_dist(ref){
+    const { M, E, L } = await modules();
+    const dist = (bat) => {
+      const e = structuredClone(ref);
+      e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] },
+                    { id:"c", x:105, y:60, a:0, bat, lv:[{ i:1, w:20, d:20 }] }];
+      e.mass.pont = [];
+      charger(null, e);
+      L.regler("t:dist", "impose"); L.regler("on:dist", 1);
+      return E.ecarts(M.MASS.vol, false).filter((x) => x.k === "dist").length;
+    };
+    assert.equal(dist("b"), 0, "liés : aucune distance due");
+    assert.ok(dist("autre") > 0, "non liés : ils s'interpénètrent");
+  },
+  async rec_requilibre(ref){
+    const { M, XM } = await modules();
+    const e = structuredClone(ref);
+    /* v1 rejoint le bâtiment de v2 et glisse de 3 m dans lui */
+    const v1 = e.mass.vol.find((v) => v.id === "v1"), v2 = e.mass.vol.find((v) => v.id === "v2");
+    v1.bat = v2.bat;
+    const dx = v2.x - v1.x, dy = v2.y - v1.y, n = Math.hypot(dx, dy);
+    charger(null, e);
+    const w = M.MASS.vol.find((v) => v.id === "v1");
+    for(let s = 0; s < 40 && M.recouvrement(M.MASS.vol, 2, false).aire < 30; s++){ w.x += dx / n; w.y += dy / n; }
+    assert.ok(M.recouvrement(M.MASS.vol, 2, false).aire >= 30, "le cas recouvre vraiment");
+    XM.requilibre();
+    M.bilan().forEach((b) => { if(b.demande > 0 && b.pose > 0) assert.ok(Math.abs(b.ecart) / b.demande < 0.01, b.nom + " écart " + Math.round(b.ecart)); });
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));

@@ -27,12 +27,12 @@ import { feuExige, imposees } from "../data/orientation.js";
 import { noter } from "../data/jugement.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
-import { FLOORS, areaOf, lvlOf, onFloor } from "../mix/floors.js";
+import { FLOORS, areaOf, grade, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
 import { airePosable, alignement, assise, attracteurs, bbox, bordDist, cibleVue, coins, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, aireEtage, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
+import { CONTACT, MASS, aireEtage, recouvrement, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volEtage, volNiv, volRects, volTitre as nomV } from "./model.js";
 import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
@@ -69,6 +69,8 @@ export function portClasses(v){
 export function terrainLibre(vols, r){
   var emp = 0;
   vols.forEach(function(v){ emp += empSol(v); });
+  /* deux corps du même bâtiment qui se recouvrent n'occupent leur part commune qu'une fois */
+  emp -= recouvrement(vols, grade(), true).aire;
   var posable = airePosable(r == null ? reculVise() : r);
   return { libre: posable - emp, posable: posable,
            besoin: courProgramme() + RULES.ext.voitures * RULES.ext.mPlace };
@@ -157,7 +159,8 @@ export function ecarts(vols, vite, Q){
   for(i = 0; FEU && i < vols.length && !stop(); i++){
     for(j = i + 1; j < vols.length && !stop(); j++){
       var e = ecartVols(vols[i], vols[j]), L = lies(vols[i], vols[j]);
-      if(e < FEU - .01 && !(L && e >= -CONTACT))
+      /* un même bâtiment ne se doit aucune distance — et ses corps peuvent se recouvrir */
+      if(e < FEU - .01 && !L)
         dit("dist", i, nomV(vols[i], i) + " et " + nomV(vols[j], j).toLowerCase()
           + (e < 0 ? " s'interpénètrent." : " sont à " + dec(e) + " m : la distance "
             + "incendie est de " + dec(FEU) + " m."), 0, j);
@@ -260,6 +263,7 @@ function bilanDe(vols){
   return niveaux().map(function(n){
     var po = 0;
     vols.forEach(function(v){ if(v.ph) return; v.lv.forEach(function(e){ if(e.i === n.i) po += aireEtage(e); }); });
+    po -= recouvrement(vols, n.i, false).aire;
     var dem = demande(n.i, vols);
     return { i:n.i, nom:n.nom, demande:dem, pose:po, ecart:po - dem };
   });
@@ -427,6 +431,27 @@ function lire(vols){
     });
     vol += es * RULES.haut.acrotere;
   });
+  /* LE RECOUVREMENT : ce que deux corps du même bâtiment partagent, compté une
+     fois — emprise et volume hors tout, façade prise dans l'autre corps,
+     plancher intérieur (`model.js — recouvrement`). */
+  /* la hauteur d'un étage de corps, celle que la façade et le volume ont lue */
+  function hautDe(v, e){
+    var x = etagesDe(v, vols).filter(function(y){ return y.e === e; })[0];
+    return x ? x.h : 0;
+  }
+  niveaux().forEach(function(n){
+    var r = recouvrement(vols, n.i, true, hautDe), ri = recouvrement(vols, n.i, false).aire;
+    if(!r.aire && !ri) return;
+    vol -= r.volume;
+    tot -= ri;
+    if(lvlOf(n.i) < 0){ sous -= ri; return; }
+    if(HN[n.i] === undefined) return;
+    fac -= r.facade;
+    bat -= ri;
+  });
+  var r0 = recouvrement(vols, grade(), true).aire;
+  emp -= r0;
+  vol -= r0 * RULES.haut.acrotere;
 
   /* les cotes des corps d'école : dans les domaines des leviers, et au plus */
   var dn = 0, dok = 0, pmax = 0, el = 0, pt = 0, rang = 0, niv = 0, dirs = [], zlo = Infinity, zhi = -Infinity;

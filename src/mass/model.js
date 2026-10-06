@@ -482,14 +482,21 @@ function commun(a, ea, b, eb, murs){
   });
   return { aire:aire, enfouie:enfouie };
 }
-export function recouvrement(vols, i, murs){
-  var E = (vols || []).filter(function(v){ return !v.ph && volEtage(v, i); }), aire = 0, enfouie = 0, j, k;
+/* `haut(v, e)` : la hauteur d'un étage de corps — alors `volume` et `facade`
+   (façade enfouie × hauteur) se lisent à la plus basse des deux : c'est là
+   que les deux prismes se recouvrent. */
+export function recouvrement(vols, i, murs, haut){
+  var E = (vols || []).filter(function(v){ return !v.ph && volEtage(v, i); }), aire = 0, enfouie = 0, volume = 0, facade = 0, j, k;
   for(j = 0; j < E.length; j++) for(k = j + 1; k < E.length; k++){
     if(!lies(E[j], E[k])) continue;
-    var c = commun(E[j], volEtage(E[j], i), E[k], volEtage(E[k], i), murs);
+    var ea = volEtage(E[j], i), eb = volEtage(E[k], i), c = commun(E[j], ea, E[k], eb, murs);
     aire += c.aire; enfouie += c.enfouie;
+    if(haut && c.aire){
+      var h = Math.min(haut(E[j], ea), haut(E[k], eb));
+      volume += c.aire * h; facade += c.enfouie * h;
+    }
   }
-  return { aire:aire, enfouie:enfouie };
+  return { aire:aire, enfouie:enfouie, volume:volume, facade:facade };
 }
 /* Ce que `v` cède à l'étage `i` : la partie commune appartient au PLUS GRAND
    des deux corps à cet étage — la barre garde son programme, le bloc posé
