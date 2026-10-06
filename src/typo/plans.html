@@ -634,6 +634,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     PG = parent.typoPG(DATA); CTL = null; EV = null; choisir(null); dessiner(false);
   }
   $("shuffle").addEventListener("click", function(){ rejouer(suivante(DATA.graine)); });
+  /* dessous : le mode auto, et les shuffles des autres onglets — posés par l'hôte */
+  try { if(parent.typoSousShuffle) parent.typoSousShuffle($("shuffle")); } catch(e){}
   seedIn.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); seedIn.blur(); } });
   seedIn.addEventListener("change", function(){
     var g = parseInt(String(seedIn.value).trim().replace(/^\s*seed[\s:]+/i, ""), 36);

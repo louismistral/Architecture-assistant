@@ -129,3 +129,13 @@
 .tab-verrou svg{inline-size:15px;block-size:15px;flex:none}
 .tab-verrou span{flex:1 1 20ch}
 body[data-fige] #panels :is(button, input, select, textarea, .mixblk, .mixchip):not(:is(.subtabs, .tab-verrou, .viewbar, .mass-barre, .mix-iss, .mass-al__b, [data-vue]) *):not([data-vue]):not(.pr__q){cursor:not-allowed}
+
+/* --- sous un Shuffle : le mode auto, et les shuffles des autres onglets ---
+   (`views/shuffles.js`). Petits, à dessein : le Shuffle de l'onglet reste le
+   geste ; ceux-ci sont des raccourcis. */
+.shf{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-1);margin-block-start:var(--s-2)}
+.shf .btn{min-height:24px;padding:0 var(--s-2);font-size:11px;gap:var(--s-1)}
+.shf__sep{inline-size:1px;block-size:16px;background:var(--border);margin-inline:var(--s-1)}
+.shf__m.is-fait{border-color:var(--primary);color:var(--foreground);animation:shf-fait 1.2s ease-out}
+@keyframes shf-fait{from{background:color-mix(in srgb, var(--primary) 18%, var(--card))}}
+.is-auto{outline:2px dashed var(--primary);outline-offset:2px}

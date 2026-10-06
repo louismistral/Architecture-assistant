@@ -326,6 +326,19 @@ cherche par l'orientation, le jugement classe ce qu'il trouve.
 En « Auto », `MASS.parti` vaut `auto` : c'est la composition (`MASS.vol.parti`)
 qui dit quel parti a été tiré, et c'est elle qui distingue et nomme.
 
+### Depuis un onglet : le mode auto, et les mini-shuffles
+
+Sous le Shuffle du mixer, du Massing et des Typologies, une rangée (`src/views/shuffles.js`) :
+
+- **Auto** fait passer le Shuffle de l'onglet en mode auto : le même bouton ouvre ce
+  formulaire, **seule la case de l'onglet cochée** (`rechercheAuto(quoi)`). Sans compte, le
+  panneau s'ouvre sur la connexion.
+- **Un mini-shuffle par autre onglet** : Programme, Massing, Typologies rejouent le tirage de
+  leur onglet (`mixTirer`, `massTirer`, `typoGraine`) sans le quitter, puis l'écran se refait.
+  Tectonics et Materiality ont le leur, éteint, à construire.
+- **Un cadenas éteint ce qui en dépend** : le mini-shuffle d'un onglet figé (`fige()`), et sa
+  case dans le formulaire.
+
 ## Charger écrase, donc charger prévient
 
 Un seul endroit décide : la carte ne charge jamais directement. Si l'état à

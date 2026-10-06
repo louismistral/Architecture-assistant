@@ -53,6 +53,7 @@ import { moyennesMain } from "../net/variantes.js";
 import { deBtn } from "./mixer.js";
 import { icone } from "./icons.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
+import { sousShuffle } from "./shuffles.js";
 import { camFit, camLabel, camVers, vue3dDraw, vue3dMount, vue3dOK, vue3dOnChange,
   vue3dPick } from "./vue3d.js";
 
@@ -290,13 +291,16 @@ function blocProposer(){
   var b = el("section", "mass-prop");
   b.appendChild(el("h2", "mass-prop__h", "Proposer"));
   var P = MASS.vol.props, k = MASS.vol.rang;
-  b.appendChild(tirBtn("shuffle", "Shuffle massing", "autre forme bâtie, même programme", true, function(){
+  var tir = tirBtn("shuffle", "Shuffle massing", "autre forme bâtie, même programme", true, function(){
     if(P && k != null && k + 1 < P.length){
       poser(P[k + 1]);
       planFit();
       redessine();
     } else rejouerMassing(graineSuivante());
-  }));
+  });
+  b.appendChild(tir);
+  /* dessous : le mode auto, et les shuffles des autres onglets */
+  sousShuffle(tir, "massing");
 
   var nav = el("div", "mass-nav");
   function fleche(ic, d, lab){
@@ -1226,11 +1230,16 @@ export function massPrepare(){
   /* verrouillé, le Massing ne se recompose pas de lui-même */
   if(!fige("massing") && ((!MASS.vol.length && !MASS.vol.impossible) || perime()) && aPoser() > 0) regenere();
 }
-export function massRejouer(){
+/* Une autre volumétrie, sans rien dessiner : le volet Contraintes, et le
+   mini-shuffle des autres onglets (`views/shuffles.js`). */
+export function massTirer(){
   if(aPoser() > 0 && !fige("massing")){
     massSet("graine", graineSuivante());
     regenere();
     saveSoon();
   }
+}
+export function massRejouer(){
+  massTirer();
   if(massNav) massNav("volumetrie");
 }

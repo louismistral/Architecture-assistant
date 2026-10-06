@@ -55,6 +55,7 @@ import { PMAP, aOf, lienLibre, posables, posesDedans, qOf, uOf } from "../mix/pr
 import { SMAP } from "./schema.js";
 import { pilesAdmissibles, repartir } from "../mix/shuffle.js";
 import { saveSoon, setChip } from "../mix/store.js";
+import { sousShuffle } from "./shuffles.js";
 
 /* Surface d'un mètre carré, en pixels carrés. Constante pour toute la vue :
    c'est ce qui permet de comparer deux niveaux d'un coup d'œil. */
@@ -111,6 +112,8 @@ export function mixPanel(){
   bar.appendChild(chip);
   setChip(chip);
   p.appendChild(bar);
+  /* sous la barre : le mode auto, et les shuffles des autres onglets */
+  sousShuffle(bAle, "mixer", p);
 
   /* --- la pile et son flanc --- */
   var grid = el("div","mix-grid");
@@ -1182,12 +1185,17 @@ export function resizeMix(){
 var mixNav = null;
 export function setMixNav(f){ mixNav = f; }
 
-export function mixRejouer(){
-  if(fige("mixer")){ if(mixNav) mixNav("repartition"); return; }
+/* Le tirage du mixer, sans rien dessiner : le Shuffle d'ici, celui du volet
+   Contraintes, et le mini-shuffle des autres onglets (`views/shuffles.js`). */
+export function mixTirer(){
+  if(fige("mixer")) return;
   seed(null);
   repartir({ alea: true, etages: dePile });
   selU = null; openIss = null; issFocus = null;
   saveSoon();
+}
+export function mixRejouer(){
+  mixTirer();
   /* On revient sur la répartition : régler une ligne sans voir ce qu'elle
      change, c'est régler à l'aveugle. */
   if(mixNav) mixNav("repartition");

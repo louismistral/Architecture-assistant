@@ -27,8 +27,10 @@ import { FAM } from "../data/families.js";
 import { CHAP } from "../data/program.js";
 import { RULES } from "../data/rules.js";
 import { FREE } from "../data/schema.js";
-import { drawMass, massPanel, massPrepare, massRejouer, setMassNav } from "./massing.js";
-import { drawMix, mixPanel, mixPiles, mixRejouer, setMixNav } from "./mixer.js";
+import { drawMass, massPanel, massPrepare, massRejouer, massTirer, setMassNav } from "./massing.js";
+import { drawMix, mixPanel, mixPiles, mixRejouer, mixTirer, setMixNav } from "./mixer.js";
+import { setShuffles, sousShuffle } from "./shuffles.js";
+import { TYPO } from "../typo/etat.js";
 import { saveSoon } from "../mix/store.js";
 import { constraintsSection } from "./constraints.js";
 import { CIRCPAT, hatchDefs, panelsEl, scaleBar } from "./diagram.js";
@@ -74,6 +76,14 @@ function allerAuVolet(sub){
 }
 setMixNav(allerAuVolet);
 setMassNav(allerAuVolet);
+/* Les tirages que les mini-shuffles rejouent d'un autre onglet, puis l'onglet à
+   l'écran se refait (`views/shuffles.js`). Tectonics et Materiality n'en ont
+   pas encore. */
+setShuffles({
+  mixer: mixTirer,
+  massing: massTirer,
+  typologie: function(){ typoGraine((TYPO.graine * 1103515245 + 12345) >>> 8 || 1); }
+}, function(){ render(); });
 
 /* ---------- barre de vue de la section des surfaces ----------
    Le regroupement et le niveau de détail étaient dans le chrome global, au même
@@ -210,6 +220,7 @@ export function typoHote(){
   window.typoDonnees = donneesTypo; window.typoGraine = typoGraine; window.typoRegle = typoRegle;
   window.typoPG = creerPG; window.typoLecture = lirePlans; window.typoEvaluation = typoEvaluation;
   window.typoIcone = function(n, t){ return icone(n, t).outerHTML; };
+  window.typoSousShuffle = function(main){ return sousShuffle(main, "typologie"); };
 }
 
 /* ---------- le cadenas, dans l'onglet ----------

@@ -21,7 +21,7 @@
    mettre dans le même panneau aurait mêlé « où je travaille » et « ce que
    j'ai fait ».
    ========================================================================= */
-import { unVerrou } from "../core/verrou.js";
+import { fige, unVerrou } from "../core/verrou.js";
 import { noteVue } from "./note.js";
 import { el, fmt } from "../core/format.js";
 import { perime } from "../core/empreinte.js";
@@ -1072,7 +1072,22 @@ function resumeTypo(){
     "seed à l'écran " + b36(TYPO.graine)].join(" · ") + ".";
 }
 
-function ouvrirRecherche(){
+/* LE SHUFFLE EN MODE AUTO, depuis un onglet (`views/shuffles.js`) : le même
+   formulaire, la recherche réduite à cet onglet — `quoi` : "programme",
+   "massing" ou "typologies". Le panneau s'ouvre : c'est là qu'elle se suit, et
+   là qu'on se connecte si on ne l'est pas. */
+export function rechercheAuto(quoi){
+  ouvrir();
+  if(CPT.statut !== "dedans" || cherche || rejeu || occupe) return;
+  var o = { programme:false, massing:false, typologies:false };
+  o[quoi] = true;
+  ouvrirRecherche(o);
+}
+
+/* Le cadenas d'un onglet ferme sa case : un onglet figé ne se rebat pas. */
+var CADENAS = { programme:"mixer", massing:"massing", typologies:"typologie" };
+function ouvrirRecherche(pre){
+  pre = pre && pre.programme != null ? pre : RECH;
   var box = boite(true);
   teteModal(box, el("h3", "vm__titre", "Recherche automatique"),
     el("p", "vm__meta", "Tirer beaucoup, garder les meilleures notes. Elles arrivent au groupe, étiquetées « " + TAG_RECHERCHE + " »."),
@@ -1084,15 +1099,17 @@ function ouvrirRecherche(){
   var s1 = el("section", "vm-sec");
   s1.appendChild(el("h4", null, "Ce qu'on rebat à chaque essai"));
   s1.appendChild(el("p", "vp-note", "Ce qui est fixé au mixer ou au Massing reste fixé ; ce qui est libre se rebat."));
-  function rebat(txt, on, aide, resume){
-    var c = caseA(txt, on, aide), r = el("p", "vp-note vr-resume", resume());
+  function rebat(txt, on, aide, resume, quoi){
+    var f = fige(CADENAS[quoi]);
+    var c = caseA(txt, on && !f, f ? "verrouillé — ne se rebat pas" : aide), r = el("p", "vp-note vr-resume", resume());
+    c.champ.disabled = f;
     s1.appendChild(c); s1.appendChild(r);
     c.resume = r;
     return c;
   }
-  var cP = rebat("Le programme", RECH.programme, "la répartition du mixer", resumeProgramme);
-  var cM = rebat("Le massing", RECH.massing, "la volumétrie, à programme égal", resumeMassing);
-  var cT = rebat("Les typologies", RECH.typologies, "l'ordonnance des pièces dans les volumes", resumeTypo);
+  var cP = rebat("Le programme", pre.programme, "la répartition du mixer", resumeProgramme, "programme");
+  var cM = rebat("Le massing", pre.massing, "la volumétrie, à programme égal", resumeMassing, "massing");
+  var cT = rebat("Les typologies", pre.typologies, "l'ordonnance des pièces dans les volumes", resumeTypo, "typologies");
   var nV = nombre("vrParVol", "Typologies essayées par volume", RECH.parVolume, BORNES.parVolume);
   nV.classList.add("vr-parvol");
   nV.title = "Chaque volume tiré garde la meilleure de ses typologies avant d'être comparé aux autres.";
