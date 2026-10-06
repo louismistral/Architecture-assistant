@@ -90,6 +90,13 @@ cascade.
 Le cahier des charges dit ce que le règlement EXIGE. Ce que nous en tenons — quelle
 adjacence est active — se décide au mixer, lien par lien (`docs/mixer.md`).
 
+Un lien a quatre natures (`schema.js — SLINK`) : exigé, mutualisation possible (`opt`),
+indépendance (`sep`), et **passage obligé** (`sas`) — on n'entre dans `a` que par `b`, son
+antichambre. Le seul aujourd'hui : la classe et son vestiaire, couloir → vestiaire → classe
+(un choix de projet, le règlement ne dit que « à proximité »). Pour le mixer c'est une
+adjacence comme une autre, au même niveau ; les Typologies le dessinent
+(`docs/typologies.md` — *Le vestiaire en sas*).
+
 Le schéma est **à l'échelle et en mètres** : une unité de dessin vaut un mètre, un local de
 144 m² est un carré de 12 m de côté, et l'aire du rectangle vaut ses m² dans ses DEUX côtés
 — même convention que les diagrammes du volet Surfaces. Quand le règlement impose les deux

@@ -54,6 +54,7 @@ toute composition ; ils se lisent dans `verdict.typo`.
 | `posePlan` | part du programme posée dans les plans | « Tout le programme tient dans les plans », nouveau |
 | `couloirsJour` | part des bouts de couloir sur une façade | « Couloirs éclairés à leurs bouts », nouveau |
 | `pubGroupe` | part des bandes où les pièces publiques (`program.js`, chapitres `public`) forment une suite, à un bout | d39, noté à la main jusqu'ici |
+| `vestSas` | part des classes standard qu'on entre par leur vestiaire (lien `sas`) | d37, noté à la main jusqu'ici |
 
 Les règles viennent des directives vaudoises (2002, 1-4P), de VS 400.200, de l'AEAI 16-15, des
 Raumstandards de Zurich et des rapports de jury de Broc, Vignettaz, Praroman, Matran, Cugy et
@@ -219,6 +220,30 @@ Imposé, 1,20 m) est déclarée au cadre mais pas encore lue : à construire.
 
 La seed est la troisième de la recherche automatique : elle y est rebattue par volume
 (`docs/variantes.md`), et chaque variante la garde (`snapshot().typo`, `thumbnail.typo`).
+
+## Le vestiaire en sas
+
+Le lien classes–vestiaires est un passage obligé (`schema.js`, `sas:1`) : couloir → vestiaire →
+classe. Les 18 vestiaires de classe vont aux 18 classes **standard** ; les classes de réserve
+et de dédoublement n'en ont pas au programme.
+
+- **un élément de bande** : `composer()` donne à chaque classe UN des vestiaires qui la suivent
+  (`ante`) — sa mère d'abord, sinon un vestiaire dont la mère est sortie au bac. La classe, puis
+  son vestiaire : ni la coupe entre les rangs, ni un noyau, ni un palier ne les séparent, et la
+  classe ne ferme plus le couloir. Un vestiaire de trop reste un satellite, en bloc ; le bac ne
+  prend pas un vestiaire en sas tant qu'autre chose peut sortir ;
+- **la forme** : le vestiaire se pose contre la façade, à ses proportions (2,24 × 4,47 m) ; ce
+  qui reste devant lui est un dégagement ouvert sur le couloir, où il a sa porte. La porte de la
+  classe est dans leur mur commun, ouverte vers elle ; la classe n'a plus de porte sur le couloir ;
+- **la mesure** : `lirePlans() — sas` compte les classes dont le vestiaire est accolé, un mur
+  commun assez long pour la porte ; `vestSas` la part, d37 la note, et une ligne du Contrôle
+  nomme les classes sans. Il n'atteint pas 100 % quand le mixer met des vestiaires à un niveau
+  sans classes, ou qu'une classe ou son vestiaire reste au bac ;
+- **les grappes** : le vestiaire fait partie de sa classe, il ne coupe pas une suite (`grappes`).
+
+Le prix est dit : le dégagement devant chaque vestiaire et les WC qui ne s'empilent plus avec
+lui (un bloc à part) allongent les bandes — sur la composition de référence, la part posée
+passe de 93-96 % à 91-95 % d'une seed à l'autre.
 
 ## Le dessin suit les conventions d'un plan d'architecte
 
