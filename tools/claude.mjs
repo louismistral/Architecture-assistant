@@ -1194,6 +1194,58 @@ const TESTS = {
     assert.ok(Math.abs(r.aire - 10.8 * 10.8) < 1e-6, "aire " + r.aire);
     assert.ok(Math.abs(r.enfouie - 4 * 10.8) < 1e-6, "façade enfouie " + r.enfouie);
   },
+  /* ---- le recouvrement, phase 2 : le dessin ---- */
+  async rec_moins(){
+    const { geom } = await modules();
+    const somme = (L) => L.reduce((s, P) => s + geom.airePoly(P), 0);
+    const P = geom.coins({ x:0, y:0, w:20, d:20, a:0 });
+    for(const Q of [geom.coins({ x:15, y:3, w:20, d:20, a:0 }), geom.coins({ x:4, y:-2, w:12, d:12, a:Math.PI / 4 })]){
+      const L = geom.moins(P, [Q]);
+      assert.ok(Math.abs(somme(L) - (400 - geom.airePoly(geom.interConvexe(P, Q)))) < 1e-6, "aire " + somme(L));
+      L.forEach((A, i) => { assert.equal(geom.interConvexe(A, Q).length, 0, "dans Q");
+        L.forEach((B, j) => { if(j > i) assert.equal(geom.interConvexe(A, B).length, 0, "morceaux disjoints"); }); });
+    }
+    assert.equal(geom.moins(geom.coins({ x:5, y:0, w:4, d:4, a:0 }), [P]).length, 0, "tout dedans : rien");
+    assert.equal(geom.moins(P, []).length, 1, "rien à ôter : P");
+  },
+  async rec_bords(){
+    const { geom } = await modules();
+    const L = (S) => S.reduce((s, x) => s + Math.hypot(x[1][0] - x[0][0], x[1][1] - x[0][1]), 0);
+    /* [-10, 10]² et [5, 25] × [-7, 13] : le contour de leur union fait 2 × (35 + 23) */
+    const A = geom.coins({ x:0, y:0, w:20, d:20, a:0 }), B = geom.coins({ x:15, y:3, w:20, d:20, a:0 });
+    assert.ok(Math.abs(L(geom.horsDe(A, [B])) - 58) < 1e-6 && Math.abs(L(geom.horsDe(B, [A])) - 58) < 1e-6);
+    assert.ok(Math.abs(L(geom.horsDe(A, [])) - 80) < 1e-6);
+  },
+  async rec_dessin(ref){
+    const { M, geom } = await modules();
+    const somme = (L) => L.reduce((s, P) => s + geom.airePoly(P), 0);
+    const pose = (B) => {
+      const e = structuredClone(ref);
+      /* c, 16 × 16, posé en biais sur le bout de a, 30 × 16 */
+      e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                    Object.assign({ id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }] }, B || {})];
+      e.mass.pont = [];
+      charger(null, e);
+      return M.MASS.vol;
+    };
+    const [a, c] = pose(), ea = a.lv[0], ec = c.lv[0], Da = M.dessinDe(a, ea, M.MASS.vol), Dc = M.dessinDe(c, ec, M.MASS.vol);
+    assert.ok(Da && Dc, "les deux se recouvrent");
+    assert.deepEqual([Da.garde.length, Dc.garde.length], [0, 1], "le petit cède au grand");
+    const Ra = M.volRect(a, ea), Rc = M.volRect(c, ec), co = geom.airePoly(geom.interConvexe(geom.coins(Ra), geom.coins(Rc)));
+    const union = Ra.w * Ra.d + Rc.w * Rc.d - co;
+    assert.ok(Math.abs(somme(Da.emprise) + somme(Dc.emprise) - union) < 1e-6, "emprise = union");
+    /* le cédé pavé hors de l'intérieur du grand ; les murs et les intérieurs couvrent l'union, une fois */
+    const ia = geom.coins(M.volInt(a, ea)), ic = geom.coins(M.volInt(c, ec));
+    const intC = somme(Dc.cel(ic)), murs = somme(Da.murs) + somme(Dc.murs);
+    assert.ok(Math.abs(intC - (16 * 16 - geom.airePoly(geom.interConvexe(ia, ic)))) < 1e-6, "cellules du cédé");
+    assert.ok(Math.abs(murs + 30 * 16 + intC - union) < 1e-6, "murs + intérieurs = union : " + (murs + 30 * 16 + intC) + " / " + union);
+    const per = (S) => S.reduce((s, x) => s + Math.hypot(x[1][0] - x[0][0], x[1][1] - x[0][1]), 0);
+    assert.ok(per(Da.bords) + per(Dc.bords) < 2 * (Ra.w + Ra.d + Rc.w + Rc.d), "le contour d'union est plus court");
+    const [, c3] = pose({ bat:"autre" });
+    assert.equal(M.dessinDe(c3, c3.lv[0], M.MASS.vol), null, "non liés : comme avant");
+    const [, c2] = pose({ x:90 + 15.4 + 8.4, y:60, a:0 });
+    assert.equal(M.dessinDe(c2, c2.lv[0], M.MASS.vol), null, "au contact : comme avant");
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
