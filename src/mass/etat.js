@@ -34,7 +34,7 @@ export function massOf(){
    des volumes à l'écran comme de ceux d'une candidate du générateur. */
 export function volsOf(vols){
   return vols.map(function(v){
-    return { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
+    var o = { id:v.id, x:v.x, y:v.y, a:v.a, fix:v.fix ? 1 : 0, key:v.key || null,
              ph:v.ph || 0, nom:v.nom || null, joint:v.joint || null, bat:v.bat || null,
              ar:v.ar || null,
              /* `key` sur l'ÉTAGE et non sur le seul volume : la salle de
@@ -48,6 +48,10 @@ export function volsOf(vols){
                         ext:e.ext && e.ext.length ? e.ext.map(function(p){
                           return { w:p.w, d:p.d, dx:p.dx || 0, dy:p.dy || 0 }; }) : null };
              }) };
+    /* revenu de Rhino retouché à la main (`mass/import.js`) ; la clé n'existe
+       pas sinon, pour que l'instantané d'un tirage ne change pas */
+    if(v.main) o.main = 1;
+    return o;
   });
 }
 export function setMass(o){

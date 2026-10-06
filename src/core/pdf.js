@@ -14,6 +14,8 @@
                            la surcouche s'écrit à la suite.
    ========================================================================= */
 
+import { CALQUE, SEP, SEP_DXF, TAILLES, chemin, tailleDe } from "../data/calques.js";
+
 function f(n){ return (Math.round(n * 100) / 100).toString(); }
 function rgb(c){ return c.map(f).join(" "); }
 function hex(c){
@@ -226,13 +228,19 @@ export function pdfSur(base, t, t2){
    que l'on écrit sans dépendance — le DWG est binaire et fermé. Le fichier se
    travaille comme un dessin fait à la main : des POLYLIGNES (LWPOLYLINE), des
    HACHURES pleines pour les aplats, des TEXTES éditables, des CERCLES. Chaque
-   entité garde sa couleur exacte, son épaisseur de trait, ses tirets ; un calque
-   par épaisseur (`TRAIT-0.50`, `TRAIT-0.18-TIRETS`…), `HACHURE`, `TEXTE`.
+   entité garde sa couleur exacte et ses tirets (un type de ligne par motif) ;
+   les calques sont ceux de la CONVENTION (`data/calques.js`) : un trait va au
+   sous-calque de `2D::Courbes` de la taille la plus proche (XXS à XL), qui
+   porte l'épaisseur ; les aplats à `2D::Hatchs`, les textes à `2D::Textes`.
+   AutoCAD refuse « : » dans un nom de calque : le chemin s'écrit avec « $ ».
    Unités : le millimètre SUR LE PAPIER — la planche s'ouvre à l'échelle de son
    PDF (1:200 → 1 mm du dessin = 0,2 m). Les découpes de la planche sont
    APPLIQUÉES à la géométrie : rien ne déborde. Une page suivante (`t2`) se pose
    à droite de la première. La base d'un PDF posé sur un gabarit (géomètre,
    midterm) n'y est pas : seule notre surcouche est dessinée. */
+function nomDxf(ch){ return ch.split(SEP).join(SEP_DXF); }
+var COURBES = {};
+TAILLES.forEach(function(t){ COURBES[nomDxf(chemin(CALQUE.courbes, t.n))] = t; });
 var ACI = [[1, 255, 0, 0], [2, 255, 255, 0], [3, 0, 255, 0], [4, 0, 255, 255], [5, 0, 0, 255], [6, 255, 0, 255],
   [7, 0, 0, 0], [7, 255, 255, 255], [8, 128, 128, 128], [9, 192, 192, 192],
   [250, 51, 51, 51], [251, 80, 80, 80], [252, 105, 105, 105], [253, 130, 130, 130], [254, 190, 190, 190]];
@@ -339,22 +347,21 @@ export function dxf(t, t2){
       tirets[lt] = mm;
       E.push("6", lt);
     }
-    E.push("62", aci(coul), "420", vrai(coul));
-    if(a && a.lw != null){
-      var lw = a.lw * MMPT * 100, best = LW[0];
-      LW.forEach(function(v){ if(Math.abs(v - lw) < Math.abs(best - lw)) best = v; });
-      E.push("370", String(best));
-    }
+    /* l'épaisseur est celle du calque : six tailles, et non une par trait */
+    E.push("62", aci(coul), "420", vrai(coul), "370", "-1");
     if(a && a.op != null && a.op < 1) E.push("440", String(0x02000000 + Math.round(255 * a.op)));
   }
-  function trait(a){ return "TRAIT-" + (a.lw != null ? (a.lw * MMPT).toFixed(2) : "0.25") + (a.dash ? "-TIRETS" : ""); }
+  function trait(a){
+    var c = a.stroke || [0, 0, 0], lum = .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+    return nomDxf(chemin(CALQUE.courbes, tailleDe(a.lw != null ? a.lw * MMPT : .25, lum).n));
+  }
   function polyligne(pts, ferme, a, dx){
     entite("LWPOLYLINE", trait(a), a.stroke, a);
     E.push("100", "AcDbPolyline", "90", String(pts.length), "70", ferme ? "1" : "0");
     pts.forEach(function(p){ E.push("10", n(p[0] + dx), "20", n(p[1])); });
   }
   function hachure(pts, a, dx){
-    entite("HATCH", "HACHURE", a.fill, { op:a.op });
+    entite("HATCH", nomDxf(CALQUE.hatchs), a.fill, { op:a.op });
     E.push("100", "AcDbHatch", "10", "0", "20", "0", "30", "0", "210", "0", "220", "0", "230", "1",
       "2", "SOLID", "70", "1", "71", "0", "91", "1", "92", "3", "72", "0", "73", "1", "93", String(pts.length));
     pts.forEach(function(p){ E.push("10", n(p[0] + dx), "20", n(p[1])); });
@@ -395,7 +402,7 @@ export function dxf(t, t2){
         else lignes(ferme ? pts.concat([pts[0]]) : pts).forEach(function(l){ polyligne(l, false, a, dx); });
       } else if(e.k === "t" && tout([e.x, e.y])){
         var m = a.m || [Math.cos(a.rot || 0), Math.sin(a.rot || 0)], x = n(e.x + dx), y = n(e.y);
-        entite("TEXT", "TEXTE", a.fill || [0, 0, 0]);
+        entite("TEXT", nomDxf(CALQUE.textes), a.fill || [0, 0, 0]);
         /* la hauteur d'un TEXT est celle des capitales : 0,72 du corps en Helvetica */
         E.push("100", "AcDbText", "10", x, "20", y, "30", "0", "40", n((a.size || 8) * .72 * Math.hypot(m[0], m[1])),
           "1", chaine(e.s), "50", (Math.round(Math.atan2(m[1], m[0]) * 18000 / Math.PI) / 100).toString(), "7", a.gras ? "GRAS" : "STANDARD",
@@ -430,8 +437,13 @@ export function dxf(t, t2){
     mm.forEach(function(v, i){ o.push("49", String(i % 2 ? -v : v), "74", "0"); });
     return [null, o];
   })));
+  /* un calque de Courbes porte son épaisseur, au plus proche de celles
+     qu'AutoCAD connaît ; XXS et les aplats sont gris */
   table("LAYER", ["0"].concat(C).map(function(c){
-    return [null, ["100", "AcDbLayerTableRecord", "2", c, "70", "0", "62", c === "HACHURE" ? "8" : "7", "6", "Continuous", "370", "-3", "390", "0"]];
+    var t = COURBES[c], lw = "-3";
+    if(t){ var b = LW[0]; LW.forEach(function(v){ if(Math.abs(v - 100 * t.mm) < Math.abs(b - 100 * t.mm)) b = v; }); lw = String(b); }
+    return [null, ["100", "AcDbLayerTableRecord", "2", c, "70", "0", "62", (t && t.gris) || c === nomDxf(CALQUE.hatchs) ? "8" : "7",
+      "6", "Continuous", "370", lw, "390", "0"]];
   }));
   table("STYLE", [[null, ["100", "AcDbTextStyleTableRecord", "2", "STANDARD", "70", "0", "40", "0", "41", "1", "50", "0", "71", "0",
     "42", "2.5", "3", "arial.ttf", "4", ""]],

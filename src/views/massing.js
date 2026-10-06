@@ -49,7 +49,7 @@ import {
   massLev, massSet, massVols, niveaux, partiOf, plageVue, profFacade,
   volHaut, volNiv, volNom
 } from "../mass/model.js";
-import { moyennesMain } from "../net/variantes.js";
+import { moyennesMain, setSource, source } from "../net/variantes.js";
 import { deBtn } from "./mixer.js";
 import { icone } from "./icons.js";
 import { planDraw, planFit, planMount, planOnChange, volDe } from "./plan.js";
@@ -1152,7 +1152,7 @@ function blocEmporter(){
     t.disabled = !MASS.vol.length;
     t.addEventListener("click", function(){
       t.disabled = true;
-      rhino().then(function(rh){ telecharger(dm3Massing(rh)); statutRhino = ""; })
+      rhino().then(function(rh){ telecharger(dm3Massing(rh, { variante:source() })); statutRhino = ""; })
         .catch(function(e){ console.error(e); statutRhino = e.message || String(e); })
         .then(function(){ t.disabled = false; dessineRail(); });
     });
@@ -1162,11 +1162,13 @@ function blocEmporter(){
     f.addEventListener("change", function(){ if(f.files[0]) importer(f.files[0]); });
     var i = el("button", "btn", "Importer (.3dm)");
     i.type = "button";
-    i.title = "Remplace la volumétrie : des boîtes par étage se relisent telles quelles, un solide "
-      + "unifié se découpe par ses toits.";
+    i.title = "Remplace la volumétrie : seul le calque 3D::Projet::Volume est relu s’il existe. Des "
+      + "boîtes par étage se relisent telles quelles, un solide unifié se découpe par ses toits ; ce "
+      + "qui n’est plus bleu est retouché à la main.";
     t.title = "Repère du relevé DOC/site_plan.3dm, en centimètres, Z = 0 à " + dec(RHINO.z0, 0)
-      + " m : le fichier s’y pose en place. Un calque par niveau, plus le périmètre et le recul de "
-      + dec(reculVise(), 0) + " m, drapés sur le terrain.";
+      + " m : le fichier s’y pose en place. Calques de la convention : 3D::Projet::Volume, par "
+      + "chapitre et par niveau, en bleu (généré) ; le périmètre et le recul de " + dec(reculVise(), 0)
+      + " m dans AIDE, drapés sur le terrain.";
     i.addEventListener("click", function(){ f.click(); });
     r.appendChild(i);
     b.appendChild(r);
@@ -1190,7 +1192,7 @@ function telecharger(octets){
 /* L'import REMPLACE la volumétrie : on dit ce qui arrive avant de le poser. */
 function importer(fichier){
   Promise.all([rhino(), fichier.arrayBuffer()]).then(function(x){
-    var r = volsDe3dm(solides3dm(x[0], new Uint8Array(x[1])));
+    var sol = solides3dm(x[0], new Uint8Array(x[1])), r = volsDe3dm(sol);
     var n = r.vols.filter(function(v){ return !v.ph; }).length;
     if(MASS.vol.length && !window.confirm("Remplacer la volumétrie actuelle ("
       + MASS.vol.length + " volumes) par celle de « " + fichier.name + " » ("
@@ -1198,10 +1200,14 @@ function importer(fichier){
       + "enregistrée dans une variante.")) return;
     massVols(r.vols);
     MASS.pile = empreintePile();
+    /* le fichier dit de quelle variante il part : celle qu'on en tirera sera sa fille */
+    setSource(sol.variante);
+    var mains = r.vols.filter(function(v){ return v.main; }).length;
     statutRhino = "« " + fichier.name + " » : " + n + " volume" + (n > 1 ? "s" : "")
       + (r.mode === "boites" ? ", lus boîte par boîte" : ", découpés par leurs toits"
          + (r.mode === "classe" ? " — étages comptés à " + dec(RULES.haut.libre.cla + RULES.haut.dalle) + " m" : ""))
-      + (r.horsPile ? " ; " + r.horsPile + " étage(s) hors de la pile du mixer, ignorés" : "") + ".";
+      + (r.horsPile ? " ; " + r.horsPile + " étage(s) hors de la pile du mixer, ignorés" : "")
+      + (mains ? " ; " + mains + " retouché" + (mains > 1 ? "s" : "") + " à la main" : "") + ".";
     camFit();
     planFit();
     redessine();
