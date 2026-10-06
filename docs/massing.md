@@ -116,6 +116,15 @@ Le massing ne juge plus : il MESURE (`mesures.js`), et trois moteurs lisent ces 
 | l'**orientation** | `qualites()` | pour chaque ligne, une qualité de −1 à +1 et un état | le générateur retient (`retenir()`) |
 | les **mesures** | `mesuresMass()` | des nombres bruts, sans seuil | le jugement (`data/jugement.js`) |
 
+Les jugements du site traduits en mesures (`mesures.js — jugesSite()`, une formule du jury chacune) :
+`bordurePart` (b9, bande de 20 m), `rapportHauteur` (b11, l'existant à 50 m), `parvis` (b12, le libre
+entre une route et une façade, à 135°), `courFermee` (c18, 36 rayons à 40 m), `courAbritee` (c19, la
+route à 80 m), `zonesExt` (c22, > 200 m² contre l'école), `profondeursDistinctes` (f51), `porteAFaux`
+(f54), `repetitionPart` (f55), `chantierLibre` (i73) et `existantGarde` (h70) — sans objet tant que le
+périmètre n'a pas d'existant —, `extensionPossible` (i74, contre `V.extEmprise`), `uniteEtapes` (e47,
+le second temps contre l'école), `toitPV` (h69, `V.pvPart` ÷ `V.pvVise`). Le terrain se lit sur une
+grille de 2 m, calculée une fois ; les rayons la lisent au lieu de tester chaque emprise.
+
 Le cadre du massing : le périmètre (opposable) et notre **recul** de 5 m (choisi) à tous les
 étages, passerelles comprises · la **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 →
 AEAI 15-15), entre bâtiments — une préférence Prioritaire, bloquante seulement Imposée
