@@ -118,7 +118,8 @@ export var MESURES = [
   { id:"techGroupes",  de:"typo", n:"Groupes de locaux techniques séparés", unite:"" },
   { id:"posePlan",     de:"typo", n:"Part du programme posée dans les plans", unite:"" },
   { id:"couloirsJour", de:"typo", n:"Part des bouts de couloir sur une façade", unite:"" },
-  { id:"pubGroupe",    de:"typo", n:"Part des bandes où le public forme une suite, à un bout", unite:"" }
+  { id:"pubGroupe",    de:"typo", n:"Part des bandes où le public forme une suite, à un bout", unite:"" },
+  { id:"vestSas",      de:"typo", n:"Part des classes où l'on entre par leur vestiaire", unite:"" }
 ];
 MESURES.forEach(function(x){
   x.role = "donnee"; x.nature = "mesure"; x.sujet = "Mesures"; x.src = { t:"mesure" }; x.qui = "code";

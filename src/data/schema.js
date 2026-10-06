@@ -69,14 +69,19 @@ export var SNODE = [
   { id:"abri",      n:"Abri PC",                 f:"tec", p:"spo", k:["tech|Abri PC"] }
 ];
 
-/* Trois natures de lien, et pas une de plus :
+/* Quatre natures de lien, et pas une de plus :
      (rien)   l'adjacence est exigée ;
      opt      une mutualisation que le règlement rend possible, pas obligatoire ;
      sep      une INDÉPENDANCE exigée — le contraire d'une adjacence, et une
-              contrainte du règlement qui ne se lisait nulle part.
+              contrainte du règlement qui ne se lisait nulle part ;
+     sas      un PASSAGE OBLIGÉ : on n'entre dans `a` que par `b`, son
+              antichambre — couloir, `b`, `a`. Une adjacence plus forte, au
+              même niveau comme les autres pour le mixer ; les Typologies
+              posent `b` contre `a`, la porte de `a` dans leur mur commun.
    `q` cite le règlement, mot pour mot autant que possible. */
 export var SLINK = [
-  { a:"classes",   b:"vest_cl",    q:"à proximité de chaque classe" },
+  { a:"classes",   b:"vest_cl",    sas:1,
+    q:"à proximité de chaque classe — on entre dans la classe par son vestiaire (choix de projet)" },
   { a:"classes",   b:"wc_el",      q:"1 par classe standard, soit 18 répartis" },
   { a:"acm",       b:"depot_acm",  q:"en relation avec la salle ACM" },
 

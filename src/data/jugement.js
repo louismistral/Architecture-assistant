@@ -130,7 +130,8 @@ export var CRITERES = [
   c("d34", "D", 4, "Les plus jeunes au rez, accès direct à l'extérieur", null, null, "Broc"),
   c("d35", "D", 4, "Organisation par étage selon le cycle"),
   c("d36", "D", 4, "Pas le même plan répété à chaque étage sans réflexion", null, null, "Schlieren"),
-  c("d37", "D", 4, "Vestiaires et garderobes près de l'entrée ou des classes", null, null, "Boswil"),
+  /* au plan : le vestiaire en sas de sa classe (`schema.js`, lien `sas`) — plus que « près de » */
+  c("d37", "D", 4, "Vestiaires et garderobes près de l'entrée ou des classes", "vestSas", mn(1, 0.5), "Boswil"),
   c("d38", "D", 6, "Salle de sport intégrée ou semi-enterrée", "sportIntegre", { t:"options", v:{ 1:1, 0:0.6 } },
     "Vignettaz, Champagne"),
   /* au plan : les pièces publiques en une suite au bout de chaque bande */
