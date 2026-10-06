@@ -136,6 +136,14 @@ export var ORIENT_MASS = [
       + "— son centre au-delà de la demi-largeur de l'école dans cette direction. Le massing ne "
       + "connaît que ces volumes ; les Typologies vérifient que la scène, le foyer et les "
       + "vestiaires restent groupés de leur côté." },
+  { id:"second-est", sujet:"Public et école", tag:"prioritaire",
+    n:"Piscine et chauffage du côté public", k:"secondBon", def:0.67, min:0.5, max:1, pas:0.01,
+    unite:"de la parcelle vers le côté public — favorable au-delà",
+    k2:"secondMax", def2:0.5, min2:0, max2:1, pas2:0.01, unite2:"— défavorable en deçà",
+    d:"La piscine et le local CAD, ouvrages publics du second temps, se posent du côté public de "
+      + "la parcelle (l'azimut de « Le public d'un côté, l'école de l'autre », 90° : à droite du "
+      + "plan). Mesuré : la position de chacun sur la parcelle, de 0 (côté opposé) à 1 (bord du "
+      + "côté public) ; c'est le moins avancé qui compte." },
   { id:"cap", sujet:"Orientation générale", tag:"souhaite", admet:MOUS,
     n:"Orientation de la figure", val:"l'optimum soleil-vue, plutôt que l'axe du périmètre ou un angle libre",
     lu:"src/mass/gen.js — orientation()",
