@@ -72,7 +72,7 @@ AXES.forEach(function(a){
    `oui` (la mesure est déjà une part, de 0 à 1), `options` (une valeur par
    option), `cout` (le volume fois le
    prix au m³, contre le budget ; `nul` est le dépassement qui vaut 0). Sans
-   mesure : un critère à noter à la main. */
+   mesure : un critère non mesuré, qui ne compte pas dans la note. */
 function c(id, sx, w, n, m, f, ex){
   return { id:id, sx:sx, w:w, n:n, mesure:m || null, f:f || null, ex:ex || "" };
 }
@@ -261,36 +261,35 @@ export function scoreDe(x, m){
 }
 
 /* ---------- la note ------------------------------------------------------------------
-   `mes` : les mesures du bâtiment ; `main` : ses notes manuelles, `{ id: 0…1 }` ;
-   `moy` : la moyenne des notes manuelles posées sur les autres variantes
+   `mes` : les mesures du bâtiment — un critère sans mesure est « non mesuré »
+   et ne compte pas ; `couv` dit la part du poids qui est mesurée
    (`moyennes()`). Rend la note générale sur 100, chaque axe et chaque sous-axe
    sur 1, et, pour chaque critère, son score et d'où il vient. */
 var PLANCHER = 0.02;       /* un axe nul ne rend pas la note nulle : il l'écrase */
-var NEUTRE = 0.5;          /* un critère que personne n'a encore noté */
-export function noter(mes, main, moy){
-  mes = mes || {}; main = main || {}; moy = moy || {};
+export function noter(mes){
+  mes = mes || {};
   var crit = {};
   CRITERES.forEach(function(x){
     var s = null, de = null;
     if(!actif(x.id) || !(V["w:" + x.id] > 0)){ crit[x.id] = { s:null, de:"éteint" }; return; }
     if(x.mesure){ s = scoreDe(x, mes[x.mesure]); de = s == null ? "sans objet" : "mesure"; }
-    else if(main[x.id] != null){ s = Math.max(0, Math.min(1, +main[x.id])); de = "main"; }
-    else if(moy[x.id] != null){ s = moy[x.id]; de = "moyenne"; }
-    else { s = NEUTRE; de = "neutre"; }
+    /* un critère sans mesure ne compte pas : il n'est que « non mesuré » */
+    else de = "non mesuré";
     crit[x.id] = { s:s, de:de };
   });
   var axes = AXES.map(function(a){
     var sous = a.sous.map(function(sx){
-      var som = 0, pois = 0, lu = 0;
+      var som = 0, pois = 0, tout = 0;
       CRITERES.forEach(function(x){
         var part = x.axes[sx.id], c = crit[x.id];
-        if(!part || c.s == null) return;
+        if(!part || c.de === "éteint" || c.de === "sans objet") return;
         var w = V["w:" + x.id] * part;
+        tout += w;
+        if(c.s == null) return;
         som += w * c.s; pois += w;
-        if(c.de === "mesure" || c.de === "main") lu += w;
       });
       return { id:sx.id, n:sx.n, w:V["sx:" + sx.id], s: pois ? som / pois : null,
-               couv: pois ? lu / pois : 0 };
+               couv: tout ? pois / tout : 0 };
     });
     var som = 0, pois = 0, lu = 0, tout = 0;
     sous.forEach(function(s){
