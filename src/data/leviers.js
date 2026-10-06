@@ -38,6 +38,14 @@ export var LEVIERS = [
       + "environ 10 % de la surface brute d'une école (surface de construction, SIA 416). Le "
       + "plateau du mixer est BRUT — pièces, circulation et murs ; le Massing, lui, dessine ses "
       + "murs autour des volumes et ne reçoit que les pièces et la circulation." },
+  { id:"lev-cloisons", sujet:"Murs", onglet:"massing", src:{ t:"hypothese", a:"— SIA 416, surface de construction" },
+    n:"Part des cloisons", k:"partCloisons", def:0.06, min:0, max:0.15, pas:0.01, pct:1,
+    unite:"de la surface intérieure d'un volume",
+    etat:"au groupe · une estimation", lu:"src/mix/floors.js — avecCloisons(), flInterieur() · src/mass/model.js — aPaver()",
+    d:"Ce que les cloisons de 10 cm entre les pièces prennent à l'intérieur d'un volume — la part "
+      + "des murs moins les murs extérieurs, que le Massing dessine lui-même autour des volumes. "
+      + "Sans elle, le volume n'a la place que des pièces et de la circulation, et des pièces "
+      + "restent au bac." },
 
   /* ---- le massing ---- */
   { id:"lev-parti", sujet:"Parti", onglet:"massing", src:G,
