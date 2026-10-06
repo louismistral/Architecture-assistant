@@ -21,7 +21,7 @@ import { dec, fmt } from "../core/format.js";
 import { V, lu, severite } from "../data/cadre.js";
 import { RULES } from "../data/rules.js";
 import {
-  BLOCKS, FLOORS, TRAY, flBuilt, flCount, flName, lvlOf, trayArea, trayBlocks
+  BLOCKS, FLOORS, TRAY, flBrut, flCount, flName, lvlOf, trayArea, trayBlocks
 } from "./floors.js";
 import { isAccepted } from "./accept.js";
 import {
@@ -164,7 +164,7 @@ export function mixCheck(){
 
   /* --- plateau ------------------------------------------------------------ */
   FLOORS.forEach(function(F, k){
-    var bati = flBuilt(k);
+    var bati = flBrut(k);
     if(!(F.plate > 0) || bati <= F.plate + 1) return;
     /* La comparaison se fait en surface BÂTIE : dire « 2'168 m² utiles pour un
        plateau de 2'400 m² » donnait deux nombres qui semblaient tenir l'un dans
@@ -197,7 +197,7 @@ export function mixCheck(){
 
   /* --- art. 2.6 : deux cages d'escalier dès 900 m² de surface d'étage ------ */
   FLOORS.forEach(function(F, k){
-    var a = flBuilt(k);
+    var a = flBrut(k);
     /* Deux cages ne se posent pas ici : elles se dessinent à la typologie. Le
        seul geste qui change quelque chose au mixer est d'alléger le niveau. */
     if(a > RULES.feu.cageSeuil) add("w", "Surface d'étage de " + fmt(Math.round(a))

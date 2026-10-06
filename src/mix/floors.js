@@ -12,6 +12,7 @@
    ========================================================================= */
 import { CIRC, ITEMBYKEY, cagesDe, couloirDe, frontDe } from "../core/model.js";
 import { RULES } from "../data/rules.js";
+import { V } from "../data/leviers.js";
 import { lvRange } from "./niv.js";
 import { estLie } from "./opts.js";
 import { PMAP, aOf, grappeDe, posables, qOf } from "./prog.js";
@@ -99,6 +100,11 @@ export function flCircDe(i){
 }
 export function flCirc(i){ var c = flCircDe(i); return c.couloir + c.cages; }
 export function flBuilt(i){ return flNet(i) + flCirc(i); }
+/* Les MURS d'un niveau : la part `V.partMurs` (levier « Part des murs ») de sa
+   surface brute. Le plateau du mixer est brut — pièces, circulation, murs ; le
+   Massing dessine ses murs lui-même et ne reçoit que `flBuilt()`. */
+export function flMurs(i){ var m = V.partMurs; return flBuilt(i) * m / (1 - m); }
+export function flBrut(i){ return flBuilt(i) + flMurs(i); }
 export function flCount(i){
   var n = 0;
   BLOCKS.forEach(function(b){ if(b.fl === i) n += b.q; });
@@ -110,7 +116,7 @@ export function flCount(i){
    résultat du cahier des charges. */
 export function usable(i){
   var F = FLOORS[i];
-  return F && F.plate > 0 ? F.plate * (1 - CIRC) : Infinity;
+  return F && F.plate > 0 ? F.plate * (1 - CIRC) * (1 - V.partMurs) : Infinity;
 }
 export function trayBlocks(){ return onFloor(TRAY); }
 export function trayArea(){ return flArea(TRAY); }

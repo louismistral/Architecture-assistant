@@ -41,7 +41,7 @@ import { accept, unaccept } from "../mix/accept.js";
 import { mixCheck, mixVerdict } from "../mix/checks.js";
 import {
   FLOORS, PLATE_MAX, PLATE_MIN, TRAY,
-  addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBuilt, flCirc, flCircDe,
+  addFloorBottom, addFloorTop, areaOf, blockOf, delFloorAt, flArea, flBrut, flBuilt, flCirc, flCircDe,
   flCount, flHeight, flLibre, flName, flNet, floorCost, grappeBlocs, horsAt,
   lvlOf, move, moveGroupe, onFloor, rassembler, setPlate, split, toTray,
   trayArea, trayBlocks, usable
@@ -523,8 +523,8 @@ function floorNode(i){
   var F = FLOORS[i];
   var wrap = el("div","mix-fl");
   wrap.dataset.floor = String(i);
-  var net = flNet(i), bati = flBuilt(i), hors = horsAt(i), plate = F.plate > 0 ? F.plate : 0;
-  var over = plate > 0 && bati > plate + 1;
+  var net = flNet(i), bati = flBuilt(i), brut = flBrut(i), hors = horsAt(i), plate = F.plate > 0 ? F.plate : 0;
+  var over = plate > 0 && brut > plate + 1;
   if(over) wrap.classList.add("is-over");
 
   if(issFocus && issFocus.fl === i) wrap.classList.add("is-flagged", "is-" + issFocus.sev);
@@ -554,7 +554,7 @@ function floorNode(i){
     "+ " + fmt(Math.round(bati - net)) + " m² de circulation"
     + (bati > 0 ? " (" + Math.round((bati - net) / bati * 100) + " %)" : "")));
   meta.appendChild(document.createTextNode(
-    " = " + fmt(Math.round(bati)) + " m² bâtis"));
+    " + " + fmt(Math.round(brut - bati)) + " m² de murs = " + fmt(Math.round(brut)) + " m² bruts"));
   if(hors > 0) meta.appendChild(el("span","mix-fl__hors",
     "+ " + fmt(Math.round(hors)) + " m² hors enveloppe"));
   bar.appendChild(meta);
@@ -567,9 +567,9 @@ function floorNode(i){
   bar.appendChild(h);
 
   bar.appendChild(el("span","spacer"));
-  var pct = plate > 0 ? Math.round(bati / plate * 100) : 0;
+  var pct = plate > 0 ? Math.round(brut / plate * 100) : 0;
   var tag = el("span", "mix-fl__pct mono" + (over ? " is-over" : ""), pct + " %");
-  tag.title = "Part du plateau occupée, circulation comprise";
+  tag.title = "Part du plateau occupée, circulation et murs compris";
   bar.appendChild(tag);
 
   /* Retirer CE niveau, depuis le niveau lui-même. La conséquence est dans le

@@ -58,7 +58,7 @@ import { RULES } from "../data/rules.js";
    porter, et non d'un nombre rond. */
 import { airePosable } from "../mass/geom.js";
 import {
-  BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBuilt, flCount,
+  BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBrut, flCount,
   flNet, fuse, grade, lvlOf, nextUid, onFloor, place, setPlate, setStack, toTray, usable
 } from "./floors.js";
 import { BRUYANT, CLSRE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
@@ -354,7 +354,7 @@ export function pilesAdmissibles(){
     if(lr.min < 0 && p.f === "tec") enterrable += a;
     if(lr.max === 0) rezOblige += a;
   });
-  var k = 1 / (1 - CIRC);
+  var k = 1 / ((1 - CIRC) * (1 - V.partMurs));      /* le plateau est brut : murs compris */
   var bati = besoinNet * k, rezMin = rezOblige * k;
   var emprise = empriseMax();
   var seuil = enVigueur("soussol") ? V.sousSolMin : 0;
@@ -533,7 +533,7 @@ function tasserSommet(){
 function ajusterPlateaux(){
   var emprise = empriseMax();
   FLOORS.forEach(function(F, i){
-    var besoin = flBuilt(i);
+    var besoin = flBrut(i);
     if(besoin <= 0) return;
     var p = Math.min(Math.max(PLATE_MIN, Math.ceil(besoin / 10) * 10),
                      Math.min(PLATE_MAX, Math.ceil(emprise / 10) * 10));
