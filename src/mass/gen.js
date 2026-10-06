@@ -1096,5 +1096,5 @@ export function poser(list){
   massVols(list || []);
   if(!MASS.vol.length) return;
   degager(MASS.vol); fusionner(MASS.vol, MASS.pont);
-  architecturer(MASS.vol, MASS.lev, MASS.graine, function(v){ return dansPerimetre(v) && !chevauche(v, MASS.vol); });
+  architecturer(MASS.vol);
 }

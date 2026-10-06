@@ -72,9 +72,7 @@ export var MASS = {
   lev: {
     sport: null,    /* salle de sport : "accolee" · "part" */
     ponts: null,    /* passerelles : "oui" · "non" */
-    prof: null,     /* profondeur des corps, en m murs compris */
-    /* l'architecture des corps (`data/leviers.js` — Architecture) */
-    toit: null, pf: null, jeu: null, puits: null, entree: null, rampe: null, sous: null
+    prof: null      /* profondeur des corps, en m murs compris */
   },
   /* second temps : "auto" libre · "sep" deux volumes · "un" groupés — toujours posé */
   second: "auto",

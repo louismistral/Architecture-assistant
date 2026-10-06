@@ -405,10 +405,10 @@ function etapeParti(){
    hasard le tire dans son domaine ; éteint, la valeur est la nôtre. Toucher
    une valeur la fige. Le parti a ses boutons au-dessus — Auto est son dé. Les
    domaines, eux, sont au groupe : Paramètres & contraintes. */
-var LEV_COMPO = ["sport", "ponts"], LEV_ARCHI = ["toit", "pf", "jeu", "puits", "entree", "rampe", "sous"];
+var LEV_COMPO = ["sport", "ponts"];
 function etapeLeviers(){
   var n = 0, t = 0;
-  LEV_COMPO.concat(LEV_ARCHI, ["prof"]).forEach(function(k){ n++; if(MASS.lev[k] == null) t++; });
+  LEV_COMPO.concat(["prof"]).forEach(function(k){ n++; if(MASS.lev[k] == null) t++; });
   n++; if(MASS.second === "auto") t++;
   return etape("leviers", "4", roleNom("levier"), "ce que Shuffle massing tire",
     puce(t === n ? "tous tirés" : t + " tirés · " + (n - t) + " figés", t === n ? "soft" : "warn"),
@@ -473,8 +473,6 @@ function leviersCorps(b){
   rangee("lev-second", MASS.second === "auto", function(on){
     massSet("second", on ? "auto" : "sep"); relever();
   }, sc);
-  groupe("Architecture");
-  LEV_ARCHI.forEach(function(k){ opts(k, "lev-" + k); });
   b.appendChild(el("p", "mass-note", "Toucher un levier rejoue la volumétrie."));
   versContraintes(b);
 }
