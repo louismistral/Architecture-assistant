@@ -1110,6 +1110,26 @@ const TESTS = {
     assert.ok(M.MASS.vol.every((v) => v === A || M.lies(v, A)), M.MASS.vol.map((v) => v.id + ":" + v.bat).join(" "));
     assert.ok(M.MASS.vol.every((v) => !G.chevaucheMain(v, M.MASS.vol)), "superposition entre corps non liés");
   },
+  async rec_typo(ref){
+    const im = (p) => import(new URL(p, SRC));
+    const [{ donneesTypo }, { planifier }] = await Promise.all([im("typo/donnees.js"), im("typo/gen.js")]);
+    const e = structuredClone(ref);
+    /* au rez : a, 30 × 16, et c, 16 × 16, posé de 8 m sur le bout de a */
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                  { id:"c", x:105, y:60, a:0, bat:"b", lv:[{ i:1, w:16, d:16 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const D = donneesTypo();
+    const V = D.partis.courant.vols, A = V.find((v) => v.id === "a"), C = V.find((v) => v.id === "c");
+    /* aux plans, c se raccourcit de sa part commune (8 m), du côté de a : il ne la pave pas */
+    const ec = C.lv.find((x) => x.i === 1), ea = A.lv.find((x) => x.i === 1);
+    const u = [Math.cos(C.a), Math.sin(C.a)], centre = [C.x + u[0] * ec.dx - u[1] * (ec.dy || 0), C.y + u[1] * ec.dx + u[0] * (ec.dy || 0)];
+    assert.ok(Math.abs(ec.w * ec.d - 8 * 16) < 1e-6, "c garde 8 × 16 : " + ec.w + " × " + ec.d);
+    assert.ok(Math.abs(centre[0] - 109) < 1e-6 && Math.abs(centre[1] - 60) < 1e-6, "le centre de c glisse loin de a : " + centre);
+    assert.equal(ea.w * ea.d, 30 * 16, "a ne bouge pas");
+    const pieces = planifier(D).tous[1].F.filter((f) => f.v.id === "c").reduce((s, f) => s + f.rooms.reduce((t, r) => t + r.a, 0), 0);
+    assert.ok(pieces <= 8 * 16 + 1e-6, "pièces dans c : " + Math.round(pieces) + " m² pour 128 de libre");
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));

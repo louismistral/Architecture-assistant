@@ -19,7 +19,7 @@ import { BRUYANT, UNITE } from "../mix/niv.js";
 import { adjActive, coteDe } from "../mix/opts.js";
 import { nearestDims } from "../core/geometry.js";
 import { saveSoon } from "../mix/store.js";
-import { MASS, datumEcole, etagesDe, niveaux, partiOf } from "../mass/model.js";
+import { MASS, cedeeDe, datumEcole, etagesDe, niveaux, partiOf } from "../mass/model.js";
 import { ETAGES, TRAITS } from "../data/planches.js";
 import { volsOf } from "../mass/etat.js";
 import { TYPO } from "./etat.js";
@@ -59,9 +59,33 @@ export function donneesTypo(vols, ponts, graine){
       alt[v.id + "|" + s.e.i] = { z:Math.round((s.z0 - r) * 100) / 100, h:s.h };
     });
   });
+  /* DEUX CORPS DU MÊME BÂTIMENT POSÉS L'UN SUR L'AUTRE : le plus petit cède la
+     part commune au plus grand (`model.js — cedeeDe`). Aux plans, il se
+     RACCOURCIT d'autant, du côté où elle tombe — sur sa longueur ou sur sa
+     profondeur, selon l'axe où elle est la plus loin du centre : ses pièces ne
+     s'y posent pas, et la zone commune n'est pavée qu'une fois. Toutes les parts
+     se mesurent avant qu'aucune ne raccourcisse.
+     ponytail: une bande de même aire, au bord — juste pour un bloc posé sur le
+     bout d'une barre ; une part commune en biais laisse un peu de jeu. */
+  var parts = ailes(volsOf(vols)), coupes = [];
+  parts.forEach(function(v){
+    v.lv.forEach(function(e){ var c = cedeeDe(v, parts, e.i); if(c.aire > 0) coupes.push([e, c]); });
+  });
+  coupes.forEach(function(k){
+    var e = k[0], c = k[1], cx = e.dx || 0, cy = e.dy || 0;
+    /* hors du centre de l'étage (ses décalages), sur quel axe tombe la part ? */
+    var gu = c.u, gv = c.v;
+    if(Math.abs(gu) / e.w >= Math.abs(gv) / e.d){
+      var du = Math.min(c.aire / e.d, e.w - 1);
+      e.w -= du; e.dx = cx - (gu >= 0 ? 1 : -1) * du / 2;
+    } else {
+      var dv = Math.min(c.aire / e.w, e.d - 1);
+      e.d -= dv; e.dy = cy - (gv >= 0 ? 1 : -1) * dv / 2;
+    }
+  });
   return { floors:floors, graine:graine || TYPO.graine, verrou:fige("typologie"),
     partis:{ courant:{ n:"Massing à l'écran · " + partiOf(pid).n, real:pid,
-                       vols:ailes(volsOf(vols)), ponts:ponts || MASS.pont || [] } },
+                       vols:parts, ponts:ponts || MASS.pont || [] } },
     site:{ per:SITE.per, bat:SITE.bat, mur:RULES.haut.mur },
     liens:PROX.filter(function(l){ return adjActive(l.id); }).map(function(l){ return { a:l.a, b:l.b, q:l.q, sas:l.sas }; }),
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
