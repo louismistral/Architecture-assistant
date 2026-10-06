@@ -1279,6 +1279,11 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           : "Aucun corps ne garde plus de " + fmt(PG.VIDE, 0) + " m² de sol libre",
         "Le sol que les pièces laissent devient un dégagement sur le couloir ; au-delà de " + fmt(PG.VIDE, 0) + " m² dans un corps, le plateau ne se remplit pas : ce qui reste du niveau n\u2019y entre pas d\u2019un tenant, ou le niveau n\u2019en a pas assez — ajuster le volume au Massing, ou la répartition au Programme mixer.");
     }
+    /* public et école : une suite publique par bande, à un bout (`lirePlans — pub`) */
+    if(R.pub.n) dit(!R.pub.meles.length, R.pub.meles.length ? "Public et école mêlés : " + R.pub.meles.slice(0, 5).map(function(x){
+        return x.nom + " au " + niv(x.i).toLowerCase() + (x.n ? " (" + x.n + " pièce" + (x.n > 1 ? "s" : "") + " d\u2019école entre)" : " (au milieu de la bande)"); }).join(" ; ") + (R.pub.meles.length > 5 ? "…" : "")
+        : "Le public se tient d\u2019un côté : ses pièces se suivent au bout de chaque bande",
+      "La salle polyvalente et ses annexes — scène, foyer, vestiaires, cuisine, toilettes publiques — s\u2019ouvrent à la commune hors de l\u2019école. Une suite par bande, à un bout : on y entre par le hall ou le pignon sans longer de classe. " + R.pub.n + " bande" + (R.pub.n > 1 ? "s" : "") + " en portent.");
     dit(!sansPorte.length, sansPorte.length ? "Pièces sans porte sur la circulation : " + sansPorte.slice(0, 4).join(" ; ") + (sansPorte.length > 4 ? "…" : "")
         : "Toutes les pièces ouvrent sur un couloir", "Les pièces des bandes donnent sur le couloir ou sur le dégagement devant elles, celles du bout le ferment de leur porte, les halls le traversent ; dans un bloc, chaque pièce ouvre sur le couloir ou sur un sas qui y mène.");
     dit(true, "Les plans tiennent dans les volumes du Massing", "Chaque corps garde ses cotes, niveau par niveau ; le Shuffle ne change que l\u2019ordonnance des pièces.");

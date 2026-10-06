@@ -121,8 +121,32 @@ export function lirePlans(D){
     scene = Infinity;
     pos[kSc].forEach(function(x){ pos[kSp].forEach(function(y){ if(y.i === x.i) scene = Math.min(scene, ecart(x, y)); }); });
   }
+  /* PUBLIC ET ÉCOLE : les pièces ouvertes au public (`pub`, les chapitres
+     publics de `program.js`) forment, dans chaque bande où elles sont, UNE
+     suite qui tient un bout de la bande — on y entre par le hall ou le pignon
+     sans longer de classe. Une pièce d'école entre deux pièces publiques, ou une
+     suite publique enfermée au milieu de la bande, est un mélange. */
+  var pubBandes = 0, meles = [];
+  tous.forEach(function(r, i){ r.F.forEach(function(f){
+    if(f.fixe) return;
+    var B = {};
+    f.rooms.forEach(function(rm){
+      var cs = rm.kind === "bloc" ? rm.cel : [rm], p = cs.filter(function(c){ return c.pub; }).length;
+      (B[rm.frame] = B[rm.frame] || []).push({ x:rm.x0, k:!p ? 0 : p === cs.length ? 1 : .5 });
+    });
+    Object.keys(B).forEach(function(fr){
+      var S = B[fr].sort(function(a, b){ return a.x - b.x; }), J = [];
+      S.forEach(function(x, j){ if(x.k) J.push(j); });
+      if(!J.length) return;
+      pubBandes++;
+      var e = 0;
+      for(var j = J[0]; j <= J[J.length - 1]; j++) if(S[j].k < 1) e++;
+      if(e || (J[0] > 0 && J[J.length - 1] < S.length - 1)) meles.push({ nom:nomVol(f.v), i:i, n:e });
+    });
+  }); });
   return { PG:PG, tous:tous, pos:pos, nm:nm, am:am, non:non, acces:acces, empile:empile, feu:feu,
-           fuite:fuite, fuiteMax:fuiteMax, rompus:rompus, liens:{ n:n, ok:ok }, scene:scene, vides:vides };
+           fuite:fuite, fuiteMax:fuiteMax, rompus:rompus, liens:{ n:n, ok:ok }, scene:scene, vides:vides,
+           pub:{ n:pubBandes, meles:meles } };
 }
 
 /* ---------- les mesures ----------------------------------------------------------- */
@@ -228,7 +252,8 @@ function mesuresDe(L, D){
     grappes: nG ? r3(sG / nG) : null,
     techGroupes: T.length ? Object.keys(groupes).length : null,
     posePlan: demande ? r3(1 - L.am / demande) : null,
-    couloirsJour: bouts ? r3(jour / bouts) : null
+    couloirsJour: bouts ? r3(jour / bouts) : null,
+    pubGroupe: L.pub.n ? r3(1 - L.pub.meles.length / L.pub.n) : null
   };
 }
 

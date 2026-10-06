@@ -58,7 +58,7 @@ export function creerPG(D){
     var out = [];
     rooms.forEach(function(r){
       if(r.hors) return;
-      var base = { key:r.key, n:r.n, f:r.f, chap:chapOf(r.key) };
+      var base = { key:r.key, n:r.n, f:r.f, chap:chapOf(r.key), pub:r.pub };
       /* chaque pièce pour elle-même, même un WC de 2 m² : un lien « auprès de
          chaque classe » ne se tient qu'avec des WC répartis */
       for(var k = 0; k < r.q; k++)
