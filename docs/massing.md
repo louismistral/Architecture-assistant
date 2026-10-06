@@ -237,6 +237,34 @@ et les terrasses, le long de chaque aile pour le L, le U et la cour. Le sous-sol
 sous plusieurs corps, et la piscine et le local CAD ne se réunissent que si l'ouvrage commun
 reste sous la cote. Bloc compact et Barre, qui n'ont qu'un corps, ne tiennent plus ce programme.
 
+## Le volume loge ce que les plans pavent
+
+Le mixer ESTIME la circulation sur le front des pièces ; les Typologies la DESSINENT dans la
+section du corps — un couloir sur toute sa longueur, des bandes de pièces, un dégagement devant
+la pièce que ses proportions (`RULES.plan.piece`) arrêtent avant le fond de sa bande, des blocs
+de petites pièces autour d'un sas. Un massing taillé sur l'estimation laissait en moyenne
+730 m² par tirage « Ne tient pas dans le volume ». Chaque niveau demande donc ce que les plans
+y pavent, à la profondeur de ses corps (`model.js — aPaver`, `demande`) :
+
+```
+pièce pavée = a × b ÷ min(b, √(max(a, colonne) × ratio))      b : la bande
+niveau      = (Σ pièces pavées × D ÷ (D − couloir) + cages) × (1 + pavage) + postes aux cotes imposées
+```
+
+`b` vaut `(D − couloir) / 2` dès `RULES.plan.deuxRangs` (15 m : une classe de 6 m de bande en
+face du noyau et de son palier), `D − couloir` en dessous ; une petite pièce compte dans une
+colonne d'au moins `piece.colonne` (10 m²). `pavage` (4 %, hypothèse du groupe, `donnees.js`)
+est ce que la formule ne voit pas : un rang finit rarement sur une pièce entière. Le générateur
+la calcule à la profondeur qu'il tire ; le bilan, le contrôle `surfaces` et le remède
+« rééquilibrer » à la profondeur moyenne des corps posés. Ce n'est pas du programme : c'est de
+la circulation, et elle croît quand le corps s'amincit (le couloir pèse 2,4 ÷ D).
+
+Sur 72 tirages (seeds 1–3 du mixer × 12 partis × seeds 11 et 7 du massing) : ce qui ne tient
+pas passe de 47'500 à 15'500 m² (65 tirages communs), les pièces hors proportions de 191 à 29
+(halls traversants et grands locaux, une question des Typologies), le sol libre de 29'500 à
+37'900 m². Ce qui reste au bac est la granularité : une classe de 8 m ne rentre pas dans 5 m.
+Un U, une cour, un peigne reçoivent au moins les volumes que leur figure demande (`NMIN`).
+
 ## Passerelles et corps accolés
 
 Une passerelle est une CONNEXION `{ a, b, i }` (`MASS.pont`) : sa géométrie se déduit à chaque

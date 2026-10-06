@@ -177,8 +177,12 @@ noyaux empilés, le programme posé, pas de sol inutilisé dans un corps (`sol-v
 sur le plan par `typo/mesures.js — evaluerTypo()` —, et toutes les pièces ouvertes sur un couloir
 (`couloir-acces`, VÉRIFIÉ pièce par pièce dans les blocs : la face par où l'on entre ne touche
 aucune autre pièce). Une ligne de plus, « proportions vivables », lit `RULES.plan.piece` et
-`pmr` : ce qu'elle signale vient d'une bande trop mince (un corps de 14 m à deux rangs) ou d'un
-très grand local — c'est au Massing d'y répondre. La **trame** de placement des pièces (`trame`,
+`pmr`. Deux rangs dès `RULES.plan.deuxRangs` (15 m), un seul en deçà : une classe n'est plus
+posée dans une bande de 5,60 m. Le Massing taille ses volumes sur ce que ce pavage demande
+(`docs/massing.md` — *Le volume loge ce que les plans pavent*) ; ce qu'elle signale encore vient
+des halls traversants et des très grands locaux. `enLong()` tourne aussi une aile dont un niveau
+est carré (un sous-sol de 20,5 × 20,5 m) : il la laissait de travers, et un étage entier restait
+au bac. La **trame** de placement des pièces (`trame`,
 Imposé, 1,20 m) est déclarée au cadre mais pas encore lue : à construire.
 
 La seed est la troisième de la recherche automatique : elle y est rebattue par volume
