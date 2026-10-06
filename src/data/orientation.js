@@ -127,6 +127,15 @@ export var ORIENT_MASS = [
     d:"Les espaces collectifs sont au rez (leurs règles de niveau) : il faut au rez d'un corps "
       + "d'école une façade que rien ne masque, tournée vers le terrain de football. Le massing "
       + "ne sait pas quel corps porte le hall : il garantit que la façade existe." },
+  { id:"pub-est", sujet:"Public et école", tag:"prioritaire",
+    n:"Le public d'un côté, l'école de l'autre", k:"pubAz", def:90, min:0, max:345, pas:15,
+    unite:"° — azimut du côté public (90 : à l'est, à droite du plan)",
+    k2:"pubMele", def2:0.25, min2:0, max2:1, pas2:0.05, unite2:"de recouvrement — défavorable au-delà",
+    d:"La salle polyvalente, la piscine et le chauffage communal d'un côté, l'école de l'autre : "
+      + "une ligne droite sépare leurs emprises (recouvrement nul), et le public est du côté voulu "
+      + "— son centre au-delà de la demi-largeur de l'école dans cette direction. Le massing ne "
+      + "connaît que ces volumes ; les Typologies vérifient que la scène, le foyer et les "
+      + "vestiaires restent groupés de leur côté." },
   { id:"cap", sujet:"Orientation générale", tag:"souhaite", admet:MOUS,
     n:"Orientation de la figure", val:"l'optimum soleil-vue, plutôt que l'axe du périmètre ou un angle libre",
     lu:"src/mass/gen.js — orientation()",

@@ -102,6 +102,8 @@ export var MESURES = [
   { id:"sousSolPart",  de:"mass", n:"Part enterrée de la surface bâtie", unite:"" },
   { id:"sportIntegre", de:"mass", n:"Salle de sport accolée à l'école", unite:"oui/non" },
   { id:"secondPose",   de:"mass", n:"Part du second temps posée sur le terrain", unite:"" },
+  { id:"pubSep",       de:"mass", n:"Public et école : recouvrement des emprises, par la meilleure ligne", unite:"" },
+  { id:"pubCote",      de:"mass", n:"Public et école : écart des centres vers le côté public", unite:"m" },
   { id:"adjTenues",    de:"mix",  n:"Part des proximités exigées tenues au même niveau", unite:"" },
   { id:"bruitMixte",   de:"mix",  n:"Niveaux qui mêlent le bruyant et les classes", unite:"" },
   { id:"classesEtage", de:"mix",  n:"Part des classes au-dessus du rez", unite:"" },

@@ -23,7 +23,10 @@ export var CHAP = [
     ],
     off:[] },
 
-  { id:"sport", name:"Salle de sport double / polyvalente", short:"Sport",
+  /* `public` : ce que la commune ouvre au public hors de l'école — la salle
+     polyvalente et ses annexes (art. 2.2), la piscine et le chauffage communal.
+     L'UAPE est de l'école. Le jugement veut les deux parts nettement séparées. */
+  { id:"sport", name:"Salle de sport double / polyvalente", short:"Sport", public:1,
     sub:"Vocation de salle polyvalente pour les manifestations publiques de la commune.",
     items:[
       {n:"Salle de sport double", nb:2, u:448, w:32, h:28, split:true, f:"spo", note:"28 × 32 m, h. libre 7 m sous structure — 1 salle double minimum"},
@@ -65,7 +68,7 @@ export var CHAP = [
       {n:"Conciergerie / vestiaire personnel nett.", nb:1, u:72, f:"tec", note:"vestiaire femmes + hommes + local de nettoyage"}
     ], off:[] },
 
-  { id:"infra", name:"Infrastructures publiques et communales", short:"Infrastructures",
+  { id:"infra", name:"Infrastructures publiques et communales", short:"Infrastructures", public:1,
     sub:"Second temps, hors périmètre bâti scolaire. À représenter en pointillé sur le plan de situation 1:500, sans organisation des locaux ni dessin des façades.",
     items:[
       {n:"Piscine", nb:1, u:500, f:"pis", inset:{a:72, label:"bassin 6 × 12 m", w:12, h:6}, note:"hall, petit bassin, vestiaires, sanitaires, locaux techniques et dépôts"},

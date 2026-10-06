@@ -93,6 +93,8 @@ export var CRITERES = [
   c("b14", "B", 5, "Distances généreuses aux voisins", "distExistant", mn(15, 5), "Dorigny"),
   c("b15", "B", 6, "Vues et dégagements préservés", "vue", mx(30, 75), "Praroman"),
   c("b16", "B", 5, "Continuité avec les tracés : alignements, arbres, chemins", "alignPart", mn(1, 0), "Dorigny"),
+  Object.assign(c("pub-cote", "B", 4, "Le public du côté voulu de la parcelle — à l'est, l'école à l'ouest", "pubCote", mn(15, -15)),
+    { src:{ t:"choix" } }),
 
   /* ---- C · espaces extérieurs ---- */
   c("c18", "C", 8, "Préau délimité par les bâtiments, fermé sur 2 ou 3 côtés", null, null, "Vignettaz, Val d'Arve, Champagne"),
@@ -132,6 +134,8 @@ export var CRITERES = [
   c("d38", "D", 6, "Salle de sport intégrée ou semi-enterrée", "sportIntegre", { t:"options", v:{ 1:1, 0:0.6 } },
     "Vignettaz, Champagne"),
   c("d39", "D", 6, "Locaux ouverts à la commune, accessibles sans traverser l'école"),
+  Object.assign(c("pub-sep", "D", 6, "Public et école nettement séparés, une limite claire entre eux", "pubSep", mx(0, 0.5)),
+    { src:{ t:"choix" } }),
   c("d40", "D", 5, "Parascolaire et cantine autonomes et reliés à l'école"),
   c("d41", "D", 4, "Salle des maîtres avec vue sur le préau"),
   c("d42", "D", 5, "Un ascenseur, une ou deux cages d'escalier au plus", "noyaux", mx(2, 4), "Broc"),
@@ -209,7 +213,7 @@ CRITERES.forEach(function(x){
   x.role = "jugement"; x.qui = "groupe"; x.off = 1;
   x.sujet = SOUS[x.sx].n;
   x.onglet = "tous";
-  x.src = { t:"concours", a: x.ex ? "— " + x.ex : "" };
+  x.src = x.src || { t:"concours", a: x.ex ? "— " + x.ex : "" };
   x.k = "w:" + x.id; x.def = x.w; x.min = 0; x.max = 10; x.pas = 1;
   x.lu = "src/data/jugement.js — noter()";
 });
