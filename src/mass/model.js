@@ -471,16 +471,19 @@ export function lies(a, b){
    ponytail: paire par paire — une zone commune à TROIS corps serait comptée de
    travers ; une vraie union de polygones le jour où ça arrive. */
 function commun(a, ea, b, eb, murs){
-  var R = murs ? volRects : volInts, A = R(a, ea).map(coins), B = R(b, eb).map(coins), aire = 0, enfouie = 0;
+  var R = murs ? volRects : volInts, A = R(a, ea).map(coins), B = R(b, eb).map(coins), aire = 0, enfouie = 0, gx = 0, gy = 0;
   A.forEach(function(P){
     B.forEach(function(Q){
       var X = interConvexe(P, Q);
       if(!X.length) return;
-      aire += airePoly(X);
+      var s = airePoly(X), c = [0, 0];
+      X.forEach(function(p){ c[0] += p[0] / X.length; c[1] += p[1] / X.length; });
+      aire += s; gx += c[0] * s; gy += c[1] * s;
       if(murs) enfouie += longueurDans(P, Q) + longueurDans(Q, P);
     });
   });
-  return { aire:aire, enfouie:enfouie };
+  /* `g` : à peu près le centre de la part commune — assez pour dire de quel côté elle est */
+  return { aire:aire, enfouie:enfouie, g: aire ? [gx / aire, gy / aire] : null };
 }
 /* `haut(v, e)` : la hauteur d'un étage de corps — alors `volume` et `facade`
    (façade enfouie × hauteur) se lisent à la plus basse des deux : c'est là
@@ -503,18 +506,28 @@ export function recouvrement(vols, i, murs, haut){
    dessus en cède ; à égalité, le premier de la liste garde. Les parts cédées
    se resomment exactement au recouvrement : les typologies ne pavent la zone
    commune qu'une fois. */
-export function partCedee(v, vols, i){
+export function partCedee(v, vols, i){ return cedeeDe(v, vols, i).aire; }
+/* La même, et `u`, `v` : où elle tombe dans le repère du corps (le long de sa
+   longueur, de sa profondeur), depuis le centre de son étage — les plans
+   raccourcissent le corps de CE côté-là. */
+export function cedeeDe(v, vols, i){
   var ev = volEtage(v, i);
-  if(!ev || v.ph) return 0;
-  var av = aireEtage(ev), iv = vols.indexOf(v), c = 0;
+  if(!ev || v.ph) return { aire:0, u:0, v:0 };
+  var av = aireEtage(ev), iv = vols.indexOf(v), c = 0, u = 0, w = 0;
+  var p = local({ x:v.x, y:v.y, w:0, d:0, a:v.a }, ev.dx || 0, ev.dy || 0), ux = Math.cos(v.a), uy = Math.sin(v.a);
   vols.forEach(function(o, k){
     if(o === v || o.ph || !lies(v, o)) return;
     var eo = volEtage(o, i);
     if(!eo) return;
     var ao = aireEtage(eo);
-    if(ao > av || (ao === av && k < iv)) c += commun(v, ev, o, eo, false).aire;
+    if(!(ao > av || (ao === av && k < iv))) return;
+    var x = commun(v, ev, o, eo, false);
+    if(!x.aire) return;
+    c += x.aire;
+    u += x.aire * ((x.g[0] - p.x) * ux + (x.g[1] - p.y) * uy);
+    w += x.aire * (-(x.g[0] - p.x) * uy + (x.g[1] - p.y) * ux);
   });
-  return c;
+  return { aire:c, u: c ? u / c : 0, v: c ? w / c : 0 };
 }
 
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
