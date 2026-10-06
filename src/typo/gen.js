@@ -214,7 +214,7 @@ export function creerPG(D){
         var y = N === "A" ? y0 + cH / 2 : y1 - cH / 2;
         if(x1 - x0 < WC || !v.lv.every(function(e){
           var T = e.d - COULOIR;
-          return cH + ecartFacade(N, e, y) <= (e.d >= 14 ? T - BMIN : T) + 0.01;
+          return cH + ecartFacade(N, e, y) <= (e.d >= DEUX ? T - BMIN : T) + 0.01;
         })) return;
         var n = Math.ceil((x1 - x0 - WC) / 10);
         for(var j = 0; j <= n; j++){

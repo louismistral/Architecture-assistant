@@ -53,12 +53,14 @@ export function lirePlans(D){
       if(f.fixe) return;
       aire[grp(f.v)] = (aire[grp(f.v)] || 0) + f.L * f.D;
       f.cages.forEach(function(c){ (N[grp(f.v)] = N[grp(f.v)] || []).push(monde(f, c.bande, c.x0, c.W / 2, (c.v0 || 0) + c.H / 2)); });
-      var s2 = f.cages.map(function(c){
-        var p = monde(f, c.bande, c.x0, 0, c.v0 || 0);
-        return p[0].toFixed(1) + "," + p[1].toFixed(1) + "," + c.W.toFixed(1) + "×" + c.H.toFixed(1);
-      }).join(" ");
-      /* un corps qui porte un noyau le porte à TOUS ses niveaux, au même endroit */
-      if(PG.hotes(vols)[f.v.id]) (sig[f.v.id] = sig[f.v.id] || { v:f.v, s:{} }).s[s2] = 1;
+      var s2 = f.cages.map(function(c){ var p = monde(f, c.bande, c.x0, 0, c.v0 || 0); return [p[0], p[1], c.W, c.H]; });
+      /* un corps qui porte un noyau le porte à TOUS ses niveaux, au même endroit
+         — à 5 cm près : le même point, calculé dans le repère de deux niveaux,
+         ne s'arrondit pas toujours au même décimètre */
+      if(PG.hotes(vols)[f.v.id]){
+        var s0 = (sig[f.v.id] = sig[f.v.id] || { v:f.v, s:s2 });
+        if(s0.s.length !== s2.length || s2.some(function(q, j){ return q.some(function(x, k){ return Math.abs(x - s0.s[j][k]) > 0.05; }); })) s0.decale = 1;
+      }
     });
     Object.keys(aire).forEach(function(g){
       if(aire[g] > F0.cageSeuil && (N[g] || []).length < 2) feu.push({ g:g, i:i });
@@ -75,7 +77,7 @@ export function lirePlans(D){
       });
     });
   });
-  Object.keys(sig).forEach(function(k){ if(Object.keys(sig[k].s).length > 1) empile.push(nomVol(sig[k].v)); });
+  Object.keys(sig).forEach(function(k){ if(sig[k].decale) empile.push(nomVol(sig[k].v)); });
   /* le sol libre d'un corps au-delà du seuil (`regles.vide`, null la ligne éteinte) : un plateau vide */
   var vides = [];
   if(PG.VIDE != null) tous.forEach(function(r, i){ r.F.forEach(function(f){
