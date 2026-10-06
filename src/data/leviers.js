@@ -71,39 +71,6 @@ export var LEVIERS = [
     etat:"au rail · libre : une chance sur deux", lu:"src/mass/gen.js — relier()",
     d:"Entre corps d'école non reliés, la plus courte d'abord, jusqu'à ce que l'école tienne "
       + "d'un seul tenant. Le domaine est leur longueur." },
-  /* ---- l'architecture des corps : ce qu'un cube a de plus qu'une boîte.
-     Libre, le dé tire UNE valeur pour toute la composition ; elle se pose sur
-     chaque corps d'école (`mass/archi.js — architecturer`), et le volume
-     choisi la reprend ensuite à la main. ---- */
-  { id:"lev-toit", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Toiture", val:"plate · végétalisée · un pan · deux pans · sheds",
-    etat:"au rail · libre : une des cinq", lu:"src/mass/archi.js — architecturer()",
-    d:"La salle de sport et les ouvrages du second temps restent plats." },
-  { id:"lev-pf", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Porte-à-faux", val:"avec · sans",
-    etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
-    d:"Le dernier étage d'un corps à étages déborde de 3 m, s'il reste dans la parcelle et ne "
-      + "recouvre personne." },
-  { id:"lev-jeu", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Jeu de niveaux", val:"avec · sans",
-    etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
-    d:"Les étages glissent tour à tour de 1,5 m le long du corps, aux mêmes conditions." },
-  { id:"lev-puits", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Puits de lumière", val:"avec · sans",
-    etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
-    d:"Un lanterneau tous les 12 m sur les corps de plus de 14 m de profondeur." },
-  { id:"lev-entree", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Entrées marquées", val:"avec · sans",
-    etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
-    d:"Un auvent sur la façade de chaque corps tournée vers le centre de l'école." },
-  { id:"lev-rampe", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Rampe", val:"avec · sans",
-    etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
-    d:"Le long d'une façade du plus grand corps, à 6 % (SIA 500)." },
-  { id:"lev-sous", sujet:"Architecture", onglet:"massing", src:G,
-    n:"Sous-passages", val:"avec · sans",
-    etat:"au rail · libre : une chance sur deux", lu:"src/mass/archi.js — architecturer()",
-    d:"Le rez des corps de plus de 24 m est traversé de part en part." },
   { id:"lev-second", sujet:"Second temps", onglet:"massing", src:{ t:"reglement", a:"2.2" },
     n:"Piscine et local CAD", val:"réunis en un volume · séparés",
     etat:"au rail · libre : réunis ou séparés", lu:"src/mass/gen.js — poserSecond()",
@@ -118,13 +85,5 @@ declarer(LEVIERS);
 /* Les options d'un levier du massing, et la valeur qui veut dire « libre ». */
 export var OPTIONS = {
   sport: [{ id:"accolee", n:"Accolée" }, { id:"part", n:"À part" }],
-  ponts: [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
-  toit:  [{ id:"plat", n:"Plate" }, { id:"vert", n:"Végétalisée" }, { id:"pan", n:"Un pan" },
-          { id:"deux", n:"Deux pans" }, { id:"shed", n:"Sheds" }],
-  pf:    [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
-  jeu:   [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
-  puits: [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
-  entree:[{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
-  rampe: [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }],
-  sous:  [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }]
+  ponts: [{ id:"oui", n:"Avec" }, { id:"non", n:"Sans" }]
 };
