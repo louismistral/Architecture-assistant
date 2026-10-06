@@ -39,8 +39,8 @@ typologie à l'écran. La recherche essaie ensuite les typologies du volume rete
 Les écarts des plans se comptent À PART : ils rougissent la note (étape Évaluation du Massing,
 dont le titre dit alors quelle ligne les plans enfreignent — `rougesTypo()`), mais l'étape
 Contraintes du Massing ne lit que le massing, et l'étiquette « hors cadre » d'une variante
-ignore les ambres des plans — `typo-pose`, `noyaux-empiles`, `fuites`, `sia500` s'allument
-aujourd'hui sur presque toute composition ; ils se lisent dans `verdict.typo`.
+ignore les ambres des plans — `typo-pose` et `sol-vide` s'allument aujourd'hui sur presque
+toute composition ; ils se lisent dans `verdict.typo`.
 
 | mesure | ce qu'elle lit | critère |
 |---|---|---|
@@ -65,14 +65,12 @@ critères. Ce n'est pas un axe : elle ne change pas la note, elle la lit. Au dé
 l'autre, elle va de 51 à 63 % pour une note générale de 63 à 64 — les critères du plan pèsent
 peu dans les six axes ; leurs poids se règlent dans Paramètres.
 
-**Les écarts au cadre** (onglet typologie, sévérité lue sur le tag) : `scene-sport` (Intangible,
-rouge — la seed le change : 9 seeds sur 20 ne collent pas la scène), `typo-pose`,
-`noyaux-empiles`, `fuites` et `sia500` (Imposés, ambre). L'évacuation et l'accessibilité sont
-opposables et pourtant Imposées : le générateur pose ses noyaux sans tenir les 35 m ni desservir
-chaque sous-sol, et aucune seed n'y change rien — le noyau suit le volume. Rouges, elles
-rendaient presque toute variante invalide et vidaient la recherche. Elles repassent Intangibles
-quand les noyaux sauront les tenir. Un écart ne jette aucun volume : `genMass()` ne garde que sa
-garde du massing.
+**Les écarts au cadre** (onglet typologie, sévérité lue sur le tag) : `scene-sport`, `fuites`
+et `sia500` (Intangibles, rouges), `typo-pose` et `noyaux-empiles` (Imposés, ambre). La scène,
+la seed la change : 9 seeds sur 20 ne la collent pas. L'évacuation et l'accessibilité, les
+noyaux les tiennent (*Les noyaux*, plus bas) : sur les douze partis et vingt seeds, aucun plan
+ne les enfreint, ni ne décale un noyau d'un niveau à l'autre (`noyaux-empiles`). Un écart ne
+jette aucun volume : `genMass()` ne garde que sa garde du massing.
 
 **Le programme qui ne tient pas** : le massing dimensionnait ses volumes sur la circulation
 estimée, les plans en dessinent davantage — 680 m² par tirage en moyenne. Il demande désormais ce
@@ -83,6 +81,33 @@ la granularité d'une pièce entière en bout de bande. Noté (`posePlan`) et no
 deux pièces publiques, ou où la suite publique est enfermée au milieu de la bande
 (`lirePlans() — pub`) ; `pubGroupe` le note (d39). Le côté du public se juge au Massing
 (`pub-est`, `pubSep`, `pubCote`).
+
+## Les noyaux
+
+Un noyau est une cage d'escalier et d'ascenseur : il traverse TOUS les niveaux de son corps, au
+même point. `gen.js — hotes()` les place avant de composer les plans, bâtiment par bâtiment
+(`bat`) :
+
+- **où il peut être** : dans l'emprise commune à tous les niveaux du corps — un sous-sol de
+  20 m sous une barre de 110 m le tient au milieu de la barre —, contre la façade du côté du
+  noyau, tous les dix mètres environ, si la cage tient dans le rang à chaque niveau ;
+- **combien** : on ajoute celui qui répare le plus — un niveau sans noyau hors du rez
+  (`sia500`), un étage de plus de 900 m² à un seul, la voie d'évacuation en trop (`fuites`) —,
+  puis on en déplace un, puis on en remplace un par deux, jusqu'à ce que tout tienne. Deux
+  noyaux d'un corps restent à deux cages l'un de l'autre. À égalité, la seed choisit ;
+- **la même mesure** : `fuite(p, C)`, en équerre jusqu'au noyau le plus proche et sa limite
+  (35 m vers un, 50 m vers deux), est celle que `lirePlans()` applique au centre de chaque
+  pièce. Les pièces n'étant pas encore posées, `hotes()` la prend aux points les plus loin
+  qu'elle puisse lire : à une demi-cabine de WC du pignon, à une demi-bande de la façade.
+
+La composition pose la cage À SA PLACE dans le rang : une pièce qui ne tient pas avant elle
+laisse passer la suivante qui y tient, sinon elle passe après, et le sol laissé devant la cage
+est un dégagement. Une façade qui recule d'un niveau à l'autre laisse un écart derrière la
+cage ; le rang du noyau s'élargit d'autant.
+
+Le prix est dit : desservir les sous-sols et empiler les cages coûte du plateau — sur les douze
+partis et vingt seeds, le programme qui ne tient pas passe de 275 à 300 m² par tirage en
+moyenne (`typo-pose`).
 
 ## Chaque onglet tire chez lui
 
@@ -132,7 +157,7 @@ le mixer et le cahier des charges : le plan ne peut plus bouger sous elles.
 
 `TYPO.graine`, à côté de `MASS.graine` et de la seed du mixer, et indépendante des deux. Elle ne
 change que l'**ordonnance** : l'ordre des familles (donc quelle famille va à quel corps), celui des
-postes dans une famille, le bout où se tient le noyau d'un bâtiment à un seul noyau. Le tirage est
+postes dans une famille, la place d'un noyau quand deux places se valent. Le tirage est
 PUR (`alea(nom)`, de la seed et d'un nom) : l'écran, le contrôle et le Rendu voient le même plan.
 Même écriture que les autres seeds — base 36, retapée puis Entrée — et le bouton et le champ passent
 par un seul chemin, `rejouer()`. Elle s'enregistre avec le projet (`snapshot().typo`) ; une variante
