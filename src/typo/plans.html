@@ -103,6 +103,12 @@ body{ padding-inline:var(--s-4); }
 .room:hover,.cell:hover{fill:color-mix(in oklab,var(--plan-accent) 22%,var(--paper))}
 .cagef{fill:var(--paper)}
 .part{fill:none}
+/* le déroulé : ce que l'étape regardée n'a pas encore posé */
+.attente{fill:var(--hatch);stroke:var(--ink-soft);stroke-width:.06;stroke-dasharray:.5 .35}
+.squelette{fill:color-mix(in oklab,var(--plan-accent) 35%,var(--paper-2));stroke:none}
+.typo-deroule{ display:grid; grid-template-columns:1fr 1fr; gap:var(--s-1); }
+.typo-deroule .btn{ justify-content:flex-start; gap:var(--s-2); }
+.typo-deroule .btn .mono{ color:var(--muted-foreground); }
 /* on coupe dans les murs : ils sont pochés, plein — 40 cm dehors, 10 cm dedans ;
    un percement est un vide dans le poché */
 .gap,.vide{fill:var(--paper-2);stroke:none}
@@ -603,9 +609,11 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   if(!DATA.partis.courant.vols.length){ rien("Aucune volumétrie à dessiner : répartis d\u2019abord le programme dans le Programme mixer, puis pose les volumes dans le Massing. Les plans se dessinent ensuite ici, dans ces volumes."); return; }
   /* ce qu'on REGARDE seulement — niveau, couleurs, calques : une préférence de
      cet appareil. La seed, elle, est au projet (`typo/etat.js`). */
+  /* `etape` : le déroulé regardé, de 1 (le plateau) à 6 (le plan fini) — on
+     revient toujours au plan fini, il ne s'enregistre pas */
   var st = { niv:1, meubles:true, couleurs:true, cotes:true, site:true };
   try { var s0 = JSON.parse(localStorage.getItem("typo-saxon") || "null"); if(s0) Object.assign(st, s0); } catch(e){}
-  st.parti = "courant";
+  st.parti = "courant"; st.etape = 6;
   if(!(st.niv < DATA.floors.length)) st.niv = Math.max(0, DATA.floors.findIndex(function(f){ return f.lvl === 0; }));
   function save(){ try { localStorage.setItem("typo-saxon", JSON.stringify({ niv:st.niv, meubles:st.meubles, couleurs:st.couleurs, cotes:st.cotes, site:st.site })); } catch(e){} }
 
@@ -690,6 +698,24 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     li.appendChild(d);
     return li;
   }
+  /* LE DÉROULÉ d'un plan, dans l'ordre où le générateur le compose
+     (`gen.js`) : on le regarde étape par étape, rien ne s'y règle */
+  var ETAPES = [["Plateau", "Les volumes du niveau, réunis : là où deux ailes se touchent, pas de mur entre elles."],
+    ["Noyaux", "Escalier et ascenseur, au même point à tous les niveaux ; de préférence au bout d’une aile qui touche sa voisine."],
+    ["Couloirs", "Le squelette : un couloir par aile, et là où une aile touche le flanc d’une autre, un raccord à travers sa bande."],
+    ["Classes", "Les pièces maîtresses d’abord : les classes, sur la façade de jour, en grappes."],
+    ["Pièces liées", "Vestiaires, WC, dépôts : auprès des pièces qu’ils servent."],
+    ["Le reste", "Le programme, famille par famille ; ce qui ne tient pas reste au bac."]];
+  function derouleHtml(){
+    return '<div class="typo-deroule">' + ETAPES.map(function(e, k){
+      return '<button type="button" class="btn" data-etape="' + (k + 1) + '" aria-pressed="' + (st.etape === k + 1) + '"><span class="mono">' + (k + 1) + '</span>' + e[0] + '</button>';
+    }).join("") + '</div><p class="mass-note">' + ETAPES[st.etape - 1][1] + '</p>';
+  }
+  $("etapes").addEventListener("click", function(e){
+    var b = e.target.closest("[data-etape]");
+    if(!b) return;
+    st.etape = +b.dataset.etape; choisir(null); dessiner(false);
+  });
   function puce(txt, cls, titre){ return '<i class="chip chip--' + cls + '"' + (titre ? ' title="' + esc(titre) + '"' : "") + '>' + txt + '</i>'; }
   var LEGENDE = '<div class="typo-legend">' + FAMS.map(function(f){
     return '<span><i style="background:color-mix(in oklab,var(--f-' + f[0] + ') var(--wash),var(--paper))"></i>' + f[1] + '</span>';
@@ -762,29 +788,44 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
          touchent, le sol de l'une recouvre le mur de l'autre — pas de mur
          entre elles */
       out.sol.push('<polygon class="circ" points="' + pts(f, rectL(f, -L / 2, -D / 2, L / 2, D / 2)) + '"/>');
+      /* LE DÉROULÉ : avant les couloirs (étape 3), tout le plateau attend ;
+         ensuite, les bandes — le couloir et ses raccords sont posés */
+      if(st.etape < 6 && !f.fixe){
+        if(st.etape < 3) out.sol.push('<polygon class="attente" points="' + pts(f, rectL(f, -L / 2, -D / 2, L / 2, D / 2)) + '"/>');
+        else {
+          if(f.yc0 > -D / 2 + 0.05) out.sol.push('<polygon class="attente" points="' + pts(f, rectL(f, -L / 2, -D / 2, L / 2, f.yc0)) + '"/>');
+          if(f.yc1 < D / 2 - 0.05) out.sol.push('<polygon class="attente" points="' + pts(f, rectL(f, -L / 2, f.yc1, L / 2, D / 2)) + '"/>');
+          /* le squelette, en couleur : le couloir et les raccords qui le prolongent */
+          out.sol.push('<polygon class="squelette" points="' + pts(f, rectL(f, -L / 2, f.yc0, L / 2, f.yc1)) + '"/>');
+          (f.paliers || []).forEach(function(k){ if(k.raccord) out.sol.push('<polygon class="squelette" points="' + pts(f, rectF(f, k.frame, k.x0, 0, 0, k.W, k.H)) + '"/>'); });
+        }
+      }
       /* la circulation : ce que le corps a de plus que ses pièces et ses noyaux */
       if(!f.fixe){
         var occ = 0; f.rooms.forEach(function(r){ occ += r.a; }); f.cages.forEach(function(c){ occ += c.W * c.H; });
         circDessinee += f.L * f.D - occ;
       }
 
+      /* le bilan compte le plan fini ; le dessin, ce que l'étape regardée a posé */
+      function vu(x){ return (x.et || 6) <= st.etape; }
       f.rooms.forEach(function(r){
         if(r.kind === "bloc"){
           r.cel.forEach(function(c){
-            local1(f, r.frame, r.x0, c, c.u0, (r.v0 || 0) + c.v0, c.W, c.H, "cell", true);
+            if(vu(c)) local1(f, r.frame, r.x0, c, c.u0, (r.v0 || 0) + c.v0, c.W, c.H, "cell", true);
             pose[c.key] = (pose[c.key] || 0) + c.a;
           });
           return;
         }
-        local1(f, r.frame, r.x0, r, 0, r.v0 || 0, r.W, r.H, "room", false);
+        if(vu(r)) local1(f, r.frame, r.x0, r, 0, r.v0 || 0, r.W, r.H, "room", false);
         pose[r.key] = (pose[r.key] || 0) + r.a;
       });
       /* le sol libre d'un rang n'est pas un reste muet : un dégagement, nommé */
       (f.paliers || []).forEach(function(k){
-        if(k.W * k.H >= PG.PETIT) etiquette(f, k.frame, k.x0, 0, 0, k.W, k.H, "Dégagement", k.W * k.H, false);
+        if(k.W * k.H >= PG.PETIT && st.etape === 6) etiquette(f, k.frame, k.x0, 0, 0, k.W, k.H, "Dégagement", k.W * k.H, false);
       });
       f.cages.forEach(function(c){
         cagesA += c.W * c.H;
+        if(st.etape < 2) return;
         out.rooms.push('<polygon class="cagef" data-k="' + INFO.length + '" points="' + pts(f, rectF(f, c.bande, c.x0, 0, c.v0 || 0, c.W, c.H)) + '"/>');
         INFO.push({ lab:"Noyau · escalier et ascenseur", n:"Noyau de circulation", a:c.W * c.H, W:c.W, H:c.H, f:"" });
         meubles(f, c.bande, c.x0, cageDe(f), 0, c.v0 || 0, c.W, c.H, out.esc);
@@ -877,7 +918,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     });
 
     /* passages entre corps accolés : le couloir traverse les deux murs de pignon */
-    res.F.forEach(function(f){
+    if(st.etape >= 3) res.F.forEach(function(f){
       var ym = (f.yc0 + f.yc1) / 2;
       [-1, 1].forEach(function(sg){
         if(!PG.passage(res.F, f, sg)) return;
@@ -898,7 +939,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       var hw = (tr ? g.D : g.L) / 2, hd = (tr ? g.L : g.D) / 2;
       return { x0:u - hw, x1:u + hw, y0:w - hd, y1:w + hd };
     }
-    res.F.forEach(function(f, i){
+    if(st.etape >= 3) res.F.forEach(function(f, i){
       res.F.forEach(function(g, j){
         if(j <= i || Math.abs(Math.sin(2 * (f.a - g.a))) > .05) return;
         /* le dégagement va du côté de celui qui n'a pas de cotes imposées ;
@@ -912,6 +953,14 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           var l0 = Math.max(A[ax + "0"], B[ax + "0"]), l1 = Math.min(A[ax + "1"], B[ax + "1"]);
           if(l1 - l0 < 1) return;
           var mi = (l0 + l1) / 2, lp = Math.min(2.4, l1 - l0 - .6), r;
+          /* la porte dans l'axe de ce qui y mène (le squelette, `gen.js`) : le
+             couloir, s'il finit contre l'autre volume ; le raccord de la bande
+             qui le touche, sinon */
+          var axe = ax === "y" ? (dg.yc0 + dg.yc1) / 2 : null;
+          if(ax === "x") (dg.paliers || []).forEach(function(k){
+            if(k.raccord && (k.frame === "B") === (sg > 0)) axe = k.x0 + k.W / 2;
+          });
+          if(axe != null && axe - lp / 2 >= l0 && axe + lp / 2 <= l1) mi = axe;
           if(ax === "y"){
             var x0 = sg > 0 ? A.x1 : B.x1 + MU, x1 = sg > 0 ? B.x0 - MU : A.x0;
             r = [rectL(dg, x0, l0, x1, l1),
@@ -1177,13 +1226,15 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       '<p class="mass-note">Les volumes gardent les cotes du Massing : l\u2019agrandir là-bas, ou alléger le niveau au Programme mixer.</p>';
     var C = controle(), E = evaluation(), ol = $("etapes");
     ol.innerHTML = "";
-    ol.appendChild(etape("bilan", 1, "Bilan du niveau", fl.name, puce(fmt(100 * taux, 0) + " %", plein ? "ok" : "warn", "Part du programme du niveau posée dans le plan"), bil, !plein));
-    ol.appendChild(etape("eval", 2, "Évaluation", E ? fmt(100 * E.couv, 0) + " % du poids lu" : "aucune composition",
+    ol.appendChild(etape("deroule", 1, "Déroulé", ETAPES[st.etape - 1][0].toLowerCase(),
+      st.etape < 6 ? puce("étape " + st.etape + " / 6", "warn", "Le plan fini est à l'étape 6") : "", derouleHtml(), st.etape < 6));
+    ol.appendChild(etape("bilan", 2, "Bilan du niveau", fl.name, puce(fmt(100 * taux, 0) + " %", plein ? "ok" : "warn", "Part du programme du niveau posée dans le plan"), bil, !plein));
+    ol.appendChild(etape("eval", 3, "Évaluation", E ? fmt(100 * E.couv, 0) + " % du poids lu" : "aucune composition",
       E && E.total != null ? '<b class="mass-etape__note mono' + (E.invalide ? " is-bas" : "") + '" title="Moyenne géométrique des axes, pondérée — le bâtiment entier, plans compris">' + E.total + '/100</b>' : "",
       evaluationHtml(E), false));
-    ol.appendChild(etape("ctl", 3, "Contrôle", "toute la pile",
+    ol.appendChild(etape("ctl", 4, "Contrôle", "toute la pile",
       (C.bad ? puce(C.bad + " à revoir", "warn") : "") + puce(C.ok + " ok", "ok"), '<ul class="typo-ctl">' + C.html + '</ul>', C.bad > 0));
-    ol.appendChild(etape("fam", 4, "Familles", "les lavis du plan", "", LEGENDE, false));
+    ol.appendChild(etape("fam", 5, "Familles", "les lavis du plan", "", LEGENDE, false));
     if(recadrer || !vb) cadrer(); else echelle();
   }
 
@@ -1235,6 +1286,11 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     dit(!acces.length, acces.length ? "Niveaux sans noyau : " + acces.join(", ")
         : "Chaque niveau est desservi par un noyau escalier + ascenseur",
         acces.length ? "Ces niveaux ne sont ni accessibles ni évacuables." : "Un noyau par bâtiment et par niveau : les corps accolés se desservent par leurs couloirs ; accessible à tous (SIA 500).");
+    var isoles = (R.isoles || []).map(function(x){ return x.nom + " au " + niv(x.i).toLowerCase(); });
+    dit(!isoles.length, isoles.length ? "Couloirs qui ne rejoignent aucun noyau : " + isoles.join(", ")
+        : "Chaque couloir rejoint un noyau, d'une aile à l'autre",
+        isoles.length ? "L'aile touche sa voisine sans que son couloir y passe : la jonction n'a pas de raccord."
+          : "Les couloirs se prolongent bout à bout, ou traversent la bande de l'aile voisine par un raccord (étape 3 du déroulé).");
     dit(!empile.length, empile.length ? "Noyaux décalés d'un niveau à l'autre : " + empile.join(", ")
         : "Les noyaux s'empilent : mêmes cotes et même place à chaque niveau",
         "Escalier " + fmt(PG.NOY.volee, 2) + " m par volée, gaine d'ascenseur " + fmt(PG.NOY.asc[0], 2) + " × " + fmt(PG.NOY.asc[1], 2) + " m.");
@@ -1504,7 +1560,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   window.typoPlanches = function(){
     var st0 = Object.assign({}, st), th = document.documentElement.getAttribute("data-mode");
     document.documentElement.setAttribute("data-mode", "light");
-    Object.assign(st, { meubles:true, cotes:true, site:true, couleurs:true }); classes();
+    Object.assign(st, { meubles:true, cotes:true, site:true, couleurs:true, etape:6 }); classes();
     var out = DATA.floors.map(function(fl, i){
       st.niv = i; dessiner(false);
       return { i:i, name:fl.name, lvl:fl.lvl, h:fl.h, hs:fl.hs, prims:recolter() };
