@@ -43,8 +43,8 @@ export async function modules(){
   /* que TOUTES les lignes soient déclarées, jury compris */
   const [, cadre] = await Promise.all(["data/leviers.js", "data/cadre.js", "data/orientation.js",
                      "data/recherche.js", "data/donnees.js"].map(im));
-  const [site, geom] = await Promise.all(["data/site.js", "mass/geom.js"].map(im));
-  MODS = { M, G, F, S, St, R, L, J, E, C, CM, Va, Rech, T, XM, XX, model, cadre, site, geom };
+  const [site, geom, emp] = await Promise.all(["data/site.js", "mass/geom.js", "core/empreinte.js"].map(im));
+  MODS = { M, G, F, S, St, R, L, J, E, C, CM, Va, Rech, T, XM, XX, model, cadre, site, geom, emp };
   return MODS;
 }
 
@@ -100,6 +100,9 @@ export function bilan(perdu){
   const ev = E.evaluationCourante();
   return {
     perdu: perdu || [],
+    /* l'empreinte du code d'aujourd'hui : une variante dont la colonne `fingerprint`
+       diffère est PÉRIMÉE (le programme ou le règlement a changé depuis) */
+    empreinte: MODS.emp.empreinte(),
     mixer: {
       niveaux: F.FLOORS.map((f, i) => ({ nom:F.flName(i), net:Math.round(F.flNet(i)),
         utile:Math.round(F.usable(i)), pieces:F.flCount(i), h:F.flHeight(i) })),
@@ -146,6 +149,7 @@ const pc = (s) => s == null ? "—" : Math.round(100 * s) + " %";
 export function texte(b, complet){
   const L = [];
   if(b.perdu.length) L.push("PERDU au chargement : " + b.perdu.join(", "), "");
+  L.push("empreinte du code : " + b.empreinte, "");
   L.push("MIXER");
   b.mixer.niveaux.forEach((n) => L.push("  " + n.nom.padEnd(17) + (n.net + "/" + n.utile + " m²").padEnd(14)
     + (n.pieces + " pièces").padEnd(12) + "h=" + n.h));
@@ -197,7 +201,8 @@ function entier(x, nom){
   return n;
 }
 const graineAuHasard = () => (Math.floor(Math.random() * 0xFFFFFFFF) >>> 0) || 1;
-const FG = ".atelier/groupe.json", FE = ".atelier/etat.json";
+/* `let` : les tests les détournent, pour ne pas lire le groupe de l'espace de travail */
+let FG = ".atelier/groupe.json", FE = ".atelier/etat.json";
 function ouvrir(opt){
   const g = lireJSON(opt.groupe || FG, !!opt.groupe), e = lireJSON(opt.etat || FE, true);
   return charger(g, e);
@@ -311,8 +316,25 @@ async function verbeVariante({ pos, opt }){
   row.name = (pos[0] && pos[0].trim()) || Va.nomPropose();
   row.state = St.snapshot();
   row.tags = ["claude"];
-  ecrireJSON(opt.sortie || ".atelier/variante.json", row);
-  return sortie(row, opt, (r) => (opt.sortie || ".atelier/variante.json") + " · « " + r.name + " » · "
+  const fs = opt.sortie || ".atelier/variante.json";
+  ecrireJSON(fs, row);
+  /* `--team` et `--auteur` : la requête d'insertion entière, à passer telle
+     quelle au connecteur — recopier six kilo-octets de JSON à la main est le
+     plus sûr moyen d'en perdre un caractère. */
+  if(opt.team || opt.auteur){
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if(!UUID.test(String(opt.team)) || !UUID.test(String(opt.auteur)))
+      throw new Erreur("--team et --auteur attendent deux uuid (requête 1 du skill)");
+    const j = JSON.stringify(row);
+    let tag = "$j$"; for(let k = 0; j.includes(tag); k++) tag = "$j" + k + "$";
+    const C = "name, seed_program, seed_massing, parti, score, floors, bodies, area_required, area_placed, "
+      + "area_gross, verdict, criteria, thumbnail, fingerprint, state, tags";
+    writeFileSync(fs.replace(/\.json$/, "") + ".sql",
+      "insert into variant (team_id, author_id, " + C + ")\nselect '" + opt.team + "', '" + opt.auteur + "', "
+      + C.split(", ").map((c) => "r." + c).join(", ") + "\nfrom jsonb_populate_record(null::public.variant, "
+      + tag + j + tag + "::jsonb) r\nreturning id, name, score, tags;\n");
+  }
+  return sortie(row, opt, (r) => fs + (opt.team ? " + .sql" : "") + " · « " + r.name + " » · "
     + r.score + "/100 · massing " + JSON.stringify(r.verdict.mass) + " · mixer " + JSON.stringify(r.verdict.mix));
 }
 
@@ -328,7 +350,8 @@ async function verbeJs({ pos, opt }){
   const code = opt.fichier ? readFileSync(opt.fichier, "utf8") : pos.join(" ");
   if(!code.trim()) throw new Erreur("rien à exécuter : js \"<code>\" ou js --fichier <chemin>");
   const noms = Object.keys(m).concat(["bilan", "texte"]);
-  const f = new AsyncFunction(...noms, code);
+  /* dans un bloc : `const L = …` y masque le module L au lieu de planter */
+  const f = new AsyncFunction(...noms, "{\n" + code + "\n}");
   const r = await f(...noms.map((n) => n === "bilan" ? bilan : n === "texte" ? texte : m[n]));
   if(opt.ecrire) ecrireJSON(fe, m.St.snapshot());
   if(!opt.muet && r !== undefined) console.log(typeof r === "string" ? r : JSON.stringify(r, null, 2));
@@ -537,6 +560,7 @@ const TESTS = {
        `auto`) : on ne la lit que dans le processus qui a tiré. */
     assert.equal(b.massing.parti, M.MASS.vol.parti || M.MASS.parti);
     assert.equal(b.jugement.total, 64);
+    assert.equal(b.empreinte, (await import(new URL("core/empreinte.js", SRC))).empreinte());
   },
   async corps_minimal(ref){
     const v0 = ref.mass.vol[0];
@@ -561,10 +585,12 @@ const TESTS = {
   },
   async tirer_ordonne(){
     const f = ".atelier/test/t.json";
+    if(existsSync(f)) unlinkSync(f);   /* un état d'une course précédente porterait ses lignes */
     const b0 = await verbeTirer({ pos:[], opt:{ ordonne:true, seed:"1", graine:"11", etat:f, muet:true } });
     assert.equal(b0.massing.parti, "barres");
     const b = bilan(charger(null, lireJSON(f, true)));
     assert.equal(b.jugement.total, 64);
+    assert.equal(b.empreinte, (await import(new URL("core/empreinte.js", SRC))).empreinte());
   },
   async tirer_sans_etat(){
     const f = ".atelier/test/neuf.json";
@@ -633,6 +659,18 @@ const TESTS = {
     assert.equal("author_id" in r, false);
     assert.deepEqual(lireJSON(s, true), JSON.parse(JSON.stringify(r)));
   },
+  async variante_sql(ref){
+    const f = ".atelier/test/v-etat.json", s = ".atelier/test/v.json";
+    ecrireJSON(f, ref);
+    const team = "063c3451-3876-418b-b5a5-1da988e2c21a", moi = "65049058-9774-4e47-b23f-3d77bf6817e5";
+    await verbeVariante({ pos:["l'essai"], opt:{ etat:f, sortie:s, team, auteur:moi, muet:true } });
+    const q = readFileSync(s.replace(/\.json$/, ".sql"), "utf8");
+    assert.match(q, /^insert into variant \(team_id, author_id,/);
+    assert.ok(q.includes("'" + team + "', '" + moi + "'"));
+    const j = q.slice(q.indexOf("$j$") + 3, q.lastIndexOf("$j$"));
+    assert.equal(JSON.parse(j).name, "l'essai");
+    await assert.rejects(verbeVariante({ pos:["x"], opt:{ etat:f, sortie:s, team:"pas-un-uuid", auteur:moi, muet:true } }), Erreur);
+  },
   async js_ecrire(ref){
     const f = ".atelier/test/js.json", x0 = ref.mass.vol[0].x;
     ecrireJSON(f, ref);
@@ -644,6 +682,11 @@ const TESTS = {
     ecrireJSON(f, ref);
     writeFileSync(p, "return \"a'\\\"b\";\n");
     assert.equal(await verbeJs({ pos:[], opt:{ fichier:p, etat:f, muet:true } }), "a'\"b");
+  },
+  async js_masque_un_module(ref){
+    const f = ".atelier/test/js.json";
+    ecrireJSON(f, ref);
+    assert.equal(await verbeJs({ pos:["const L = 3; return L + M.MASS.vol.length * 0"], opt:{ etat:f, muet:true } }), 3);
   },
   async remede(ref){
     /* un corps sorti de la parcelle : « Ramener le volume 1 dans la parcelle » */
@@ -689,6 +732,7 @@ const TESTS = {
 };
 
 async function test(){
+  FG = ".atelier/test/groupe-absent.json"; FE = ".atelier/test/etat-absent.json";
   await modules();
   const ref = await etatDeReference();
   let ko = 0;
