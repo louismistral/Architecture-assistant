@@ -22,18 +22,18 @@
 import { dec, fmt } from "../core/format.js";
 import { ITEMBYKEY } from "../core/model.js";
 import { NAPPE, PER, SITE } from "../data/site.js";
-import { V, courProgramme, enVigueur, lu, recul, reculVise, severite } from "../data/cadre.js";
+import { V, courProgramme, enVigueur, lu, preauProgramme, recul, reculVise, severite } from "../data/cadre.js";
 import { feuExige, imposees } from "../data/orientation.js";
 import { noter } from "../data/jugement.js";
 import { RULES } from "../data/rules.js";
 import { PMAP } from "../mix/prog.js";
-import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
+import { FLOORS, areaOf, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
 import { airePosable, alignement, assise, attracteurs, bbox, bordDist, cibleVue, coins, dansRect, dedans, distRoute, ecart,
   ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
 import { CONTACT, MASS, aireEtage, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
-  profFacade, secondTemps, solRects, volNiv, volRects, volTitre as nomV } from "./model.js";
+  profFacade, secondTemps, solRects, volEtage, volNiv, volRects, volTitre as nomV } from "./model.js";
 import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
 export { courProgramme };
@@ -97,18 +97,20 @@ export function courUtile(vols){
     [[[-s, c], [c, s], rc.w / 2, rc.d / 2], [[s, -c], [c, s], rc.w / 2, rc.d / 2],
      [[c, s], [-s, c], rc.d / 2, rc.w / 2], [[-c, -s], [-s, c], rc.d / 2, rc.w / 2]]
       .forEach(function(f){
-        var n = f[0], t = f[1], a = 0, sx = 0, sy = 0, u, z;
+        var n = f[0], t = f[1], a = 0, sx = 0, sy = 0, u, z, P = [], lf = 0;
         for(u = -f[2] + pas / 2; u < f[2]; u += pas){
           for(z = pas / 2; z < COUR_FOND; z += pas){
             var x = rc.x + n[0] * (f[3] + z) + t[0] * u;
             var y = rc.y + n[1] * (f[3] + z) + t[1] * u;
             if(!libre(x, y)) break;
-            a += pas * pas; sx += x; sy += y;
+            a += pas * pas; sx += x; sy += y; P.push([x, y]);
           }
+          if(z > pas) lf += pas;
         }
         /* `n` : où regarde la façade de la cour ; `x, y` : son centre — le
            soleil et la rue se lisent là */
-        if(a > best.a) best = { a:a, v:vols.indexOf(v), n:n, x:sx * pas * pas / a, y:sy * pas * pas / a };
+        /* `pts` : ses points, `lf` : la façade qui la borde */
+        if(a > best.a) best = { a:a, v:vols.indexOf(v), n:n, x:sx * pas * pas / a, y:sy * pas * pas / a, pts:P, lf:lf };
       });
   }); });
   return best;
@@ -727,15 +729,19 @@ function routePts(){
 /* le terrain du périmètre hors existant, au pas, et la route la plus proche de chaque nœud */
 function grille(){
   if(GRILLE) return GRILLE;
-  var B = bbox(PER), R = routePts(), C = [], I = {};
+  /* chaque nœud a son numéro `n = i × NY + j`, une marge d'un nœud autour :
+     les voisins d'un nœud sont `n ± NY` et `n ± 1`, et les tables sont typées */
+  var B = bbox(PER), R = routePts(), C = [], NX = Math.ceil(B.w / PAS) + 3, NY = Math.ceil(B.h / PAS) + 3;
+  var I = new Int32Array(NX * NY).fill(-1);
   for(var x = B.x0 + PAS / 2; x < B.x1; x += PAS) for(var y = B.y0 + PAS / 2; y < B.y1; y += PAS){
     if(!dedans(PER, x, y) || dansExistant(x, y)) continue;
     var best = null, d = Infinity;
     R.forEach(function(p){ var q = Math.hypot(p[0] - x, p[1] - y); if(q < d){ d = q; best = p; } });
     var c = { x:x, y:y, i:Math.round((x - B.x0) / PAS), j:Math.round((y - B.y0) / PAS), route:best, dr:d };
-    I[c.i + "," + c.j] = C.length; C.push(c);
+    c.n = c.i * NY + c.j;
+    I[c.n] = C.length; C.push(c);
   }
-  return GRILLE = { C:C, I:I, B:B };
+  return GRILLE = { C:C, I:I, B:B, NX:NX, NY:NY, OFF:[NY, -NY, 1, -1] };
 }
 /* le point d'un rectangle le plus proche de (x, y), et sa distance — 0 dedans */
 function proche(rc, x, y){
@@ -747,6 +753,7 @@ function proche(rc, x, y){
 }
 /* les composantes d'un seul tenant des nœuds retenus, en m² */
 function tenants(C, I, garde){
+  var OFF = grille().OFF;
   var vu = {}, out = [];
   C.forEach(function(c, k){
     if(vu[k] || !garde(c)) return;
@@ -754,9 +761,9 @@ function tenants(C, I, garde){
     vu[k] = 1;
     while(pile.length){
       var q = C[pile.pop()]; n++; tous.push(q);
-      VOISINS4.forEach(function(d){
-        var m = I[(q.i + d[0]) + "," + (q.j + d[1])];
-        if(m != null && !vu[m] && garde(C[m])){ vu[m] = 1; pile.push(m); }
+      OFF.forEach(function(o){
+        var m = I[q.n + o];
+        if(m >= 0 && !vu[m] && garde(C[m])){ vu[m] = 1; pile.push(m); }
       });
     }
     out.push({ a:n * PAS * PAS, C:tous });
@@ -788,11 +795,14 @@ function jugesSite(vols, L, fini){
     return b;
   }
   var G = grille(), F = G.C.filter(function(c){ return !R.some(function(r){ return dansRect(r, c.x, c.y); }); });
-  var FI = {}; F.forEach(function(c, k){ FI[c.i + "," + c.j] = k; });
+  var FI = new Int32Array(G.I.length).fill(-1); F.forEach(function(c, k){ FI[c.n] = k; });
   /* lus sur la grille dans le périmètre, au vrai dehors */
-  function cle(x, y){ return (Math.floor((x - G.B.x0) / PAS) + 1) + "," + (Math.floor((y - G.B.y0) / PAS) + 1); }
-  function libre(x, y){ return FI[cle(x, y)] != null; }
-  function pris(x, y){ var k = cle(x, y); return G.I[k] != null ? FI[k] == null : occupe(x, y); }
+  function cle(x, y){
+    var i = Math.floor((x - G.B.x0) / PAS) + 1, j = Math.floor((y - G.B.y0) / PAS) + 1;
+    return i < 0 || j < 0 || i >= G.NX || j >= G.NY ? -1 : i * G.NY + j;
+  }
+  function libre(x, y){ var k = cle(x, y); return k >= 0 && FI[k] >= 0; }
+  function pris(x, y){ var k = cle(x, y); return k >= 0 && G.I[k] >= 0 ? FI[k] < 0 : occupe(x, y); }
 
   /* b9 — l'emprise d'école dans la bande de 20 m du périmètre */
   var band = 0, tot = 0;
@@ -810,7 +820,7 @@ function jugesSite(vols, L, fini){
   var hv = voisins.reduce(function(t, e){ return t + e.h; }, 0) / (voisins.length || 1);
 
   /* b12 — le parvis : le terrain libre entre une route et une façade d'école */
-  var parvis = 0;
+  var parvis = 0, pv = null;
   if(RE.length) tenants(F, FI, function(c){
     if(!c.route || c.dr > COUR_FOND) return false;
     var f = facade(c.x, c.y);
@@ -818,7 +828,7 @@ function jugesSite(vols, L, fini){
     /* ENTRE les deux : la route et la façade de part et d'autre, à 135° au moins */
     var ax = c.route[0] - c.x, ay = c.route[1] - c.y, bx = f.x - c.x, by = f.y - c.y;
     return ax * bx + ay * by < ENTRE * Math.hypot(ax, ay) * Math.hypot(bx, by);
-  }).forEach(function(t){ parvis = Math.max(parvis, t.a); });
+  }).forEach(function(t){ if(t.a > parvis){ parvis = t.a; pv = t; } });
 
   /* c18, c19 — depuis le centre de la cour utile */
   var cr = L.cour, fermee = null, abritee = null;
@@ -916,7 +926,7 @@ function jugesSite(vols, L, fini){
     if(top) toit += aireEtage(top);
   });
 
-  return {
+  return Object.assign({
     bordurePart: tot ? fini(band / tot) : null,
     rapportHauteur: voisins.length && L.hmax ? fini(L.hmax / hv) : null,
     parvis: Math.round(parvis),
@@ -929,6 +939,154 @@ function jugesSite(vols, L, fini){
     extensionPossible: RE.length ? fini(Math.min(1, ext / V.extEmprise)) : null,
     uniteEtapes: unite == null ? null : fini(unite),
     toitPV: E.length ? fini(toit * V.pvPart / V.pvVise) : null
+  }, jugesPoses(vols, L, fini, { G:G, FI:FI, RE:RE, libre:libre, cle:cle, pv:pv }));
+}
+
+/* ---------- ce que le jugement POSE pour se lire ------------------------------
+   Le terrain de sport, le parking et l'abri vélos ne sont pas des volumes : on
+   les pose ici, le temps d'une mesure, dans le terrain libre — c21, c23, c26,
+   c27, c28 — et l'on compare les étages entre eux (d36). Chaque pose prend la
+   première place qui tient, dans l'ordre de ce que le critère préfère. */
+var COUR_ECART = 30;      /* c26 : l'écart du parking à la cour qui vaut 1 */
+var ETAGE_LISTE = 0.2, ETAGE_EMPRISE = 0.1;   /* d36 : ce qui fait deux étages différents */
+function jugesPoses(vols, L, fini, T){
+  var cr = L.cour, CO = new Uint8Array(T.FI.length);
+  (cr.pts || []).forEach(function(p){ var k = T.cle(p[0], p[1]); if(k >= 0) CO[k] = 1; });
+  function horsCour(x, y){ var k = T.cle(x, y); return k >= 0 && T.FI[k] >= 0 && !CO[k]; }
+  /* un rectangle tient quand chacun de ses points au pas est retenu par `ok` */
+  function tient(rc, ok){
+    var c = Math.cos(rc.a), s = Math.sin(rc.a);
+    for(var u = -rc.w / 2 + PAS / 2; u < rc.w / 2; u += PAS)
+      for(var w = -rc.d / 2 + PAS / 2; w < rc.d / 2; w += PAS)
+        if(!ok(rc.x + u * c - w * s, rc.y + u * s + w * c)) return false;
+    return true;
+  }
+  function premier(cases, angles, w, d, ok){
+    for(var a = 0; a < angles.length; a++) for(var k = 0; k < cases.length; k++){
+      var rc = { x:cases[k].x, y:cases[k].y, w:w, d:d, a:angles[a] };
+      if(tient(rc, ok)) return rc;
+    }
+    return null;
+  }
+  var libres = T.G.C.filter(function(c){ return T.FI[c.n] >= 0; }), OFF = T.G.OFF;
+  /* le dégagement de chaque nœud libre, au pas (Manhattan : un majorant du
+     vrai) — un centre moins dégagé que la demi-largeur ne peut rien porter */
+  var DG = new Int16Array(T.FI.length), file = [];
+  libres.forEach(function(c){
+    if(OFF.some(function(o){ return T.FI[c.n + o] < 0; })){ DG[c.n] = 1; file.push(c); }
+  });
+  for(var q = 0; q < file.length; q++){
+    var c0 = file[q];
+    OFF.forEach(function(o){
+      var k = c0.n + o;
+      if(T.FI[k] >= 0 && !DG[k]){ DG[k] = DG[c0.n] + 1; file.push(T.G.C[T.G.I[k]]); }
+    });
+  }
+  function centres(L, demi){ return L.filter(function(c){ return DG[c.n] * PAS >= demi; }); }
+
+  /* c21 — le préau posé (aucun encore) et les avant-toits des façades sur la cour */
+  var preau = preauProgramme(), couvert = (cr.lf || 0) * V.avantToit;
+
+  /* c23 — le terrain de sport, hors cour, au plus près du nord-sud */
+  var A5 = [], sportAxe = 90;
+  for(var g = 0; g < 180; g += 5) A5.push(g * DEG);
+  function auNS(a){ return Math.abs(ecartAngle(2 * a, Math.PI)) / 2; }
+  A5.sort(function(p, q){ return auNS(p) - auNS(q); });
+  var sp = premier(centres(libres, V.sportExtW / 2), A5, V.sportExtL, V.sportExtW, horsCour);
+  if(sp) sportAxe = auNS(sp.a) / DEG;
+
+  /* c26 — le parking, hors cour, au plus près d'une route ; son écart à la cour */
+  var besoin = RULES.ext.voitures * RULES.ext.mPlace, pw = Math.sqrt(besoin * V.parcRatio), pd = besoin / pw;
+  var A15 = []; for(g = 0; g < 180; g += 15) A15.push(g * DEG);
+  var parc = null, bord = 0;
+  centres(libres, pd / 2).sort(function(p, q){ return p.dr - q.dr; }).some(function(c){
+    return A15.some(function(a){
+      var rc = { x:c.x, y:c.y, w:pw, d:pd, a:a };
+      if(!tient(rc, horsCour)) return false;
+      parc = rc; return true;
+    });
+  });
+  if(parc && cr.pts && cr.pts.length){
+    var dc = Infinity;
+    cr.pts.forEach(function(p){ dc = Math.min(dc, proche(parc, p[0], p[1]).d); });
+    bord = Math.min(1, dc / COUR_ECART);
+  }
+
+  /* c27 — l'entrée piétons : le milieu de la façade d'école la plus proche du parvis */
+  var ent = null;
+  if(T.pv){
+    var px = 0, py = 0;
+    T.pv.C.forEach(function(c){ px += c.x; py += c.y; });
+    px /= T.pv.C.length; py /= T.pv.C.length;
+    T.RE.forEach(function(r){
+      var c = Math.cos(r.a), s = Math.sin(r.a);
+      [[r.w / 2, 0], [-r.w / 2, 0], [0, r.d / 2], [0, -r.d / 2]].forEach(function(m){
+        var x = r.x + m[0] * c - m[1] * s, y = r.y + m[0] * s + m[1] * c, d = Math.hypot(x - px, y - py);
+        if(!ent || d < ent.d) ent = { x:x, y:y, d:d };
+      });
+    });
+  }
+  /* les accès véhicules : la route au plus près du parking, et des livraisons —
+     au plus près de l'école (ponytail: la mesure ne sait pas où sont les locaux
+     techniques ; les chercher dans les plans des Typologies) ; la distance le
+     long de la route est prise à vol d'oiseau entre les deux points de route */
+  function routeDe(x, y){
+    var b = null, d = Infinity;
+    routePts().forEach(function(p){ var q = Math.hypot(p[0] - x, p[1] - y); if(q < d){ d = q; b = p; } });
+    return b;
+  }
+  var acces = null;
+  if(ent){
+    var re = routeDe(ent.x, ent.y), V2 = [];
+    if(parc) V2.push(routeDe(parc.x, parc.y));
+    var liv = null;
+    T.RE.forEach(function(r){ var p = routeDe(r.x, r.y); if(p && (!liv || Math.hypot(p[0] - r.x, p[1] - r.y) < liv.d)) liv = { p:p, d:Math.hypot(p[0] - r.x, p[1] - r.y) }; });
+    if(liv) V2.push(liv.p);
+    V2.forEach(function(p){ if(re && p){ var d = Math.hypot(p[0] - re[0], p[1] - re[1]); acces = acces == null ? d : Math.min(acces, d); } });
+  }
+
+  /* c28 — l'abri vélos contre une façade d'école, au plus près de l'entrée */
+  var velos = null;
+  if(ent){
+    var cote = Math.sqrt(RULES.ext.velos * V.mVelo), cand = [];
+    T.RE.forEach(function(r){
+      var c = Math.cos(r.a), s = Math.sin(r.a);
+      [[[-s, c], [c, s], r.w / 2, r.d / 2], [[s, -c], [c, s], r.w / 2, r.d / 2],
+       [[c, s], [-s, c], r.d / 2, r.w / 2], [[-c, -s], [-s, c], r.d / 2, r.w / 2]].forEach(function(f){
+        for(var u = -f[2] + cote / 2; u <= f[2] - cote / 2; u += PAS){
+          var x = r.x + f[0][0] * (f[3] + cote / 2 + .1) + f[1][0] * u, y = r.y + f[0][1] * (f[3] + cote / 2 + .1) + f[1][1] * u;
+          cand.push({ x:x, y:y, a:r.a, d:Math.hypot(x - ent.x, y - ent.y) });
+        }
+      });
+    });
+    cand.sort(function(p, q){ return p.d - q.d; });
+    velos = 999;
+    cand.some(function(k){
+      if(!tient({ x:k.x, y:k.y, w:cote, d:cote, a:k.a }, T.libre)) return false;
+      velos = k.d; return true;
+    });
+  }
+
+  /* d36 — chaque étage contre celui du dessous : ses locaux, son emprise */
+  var N = horsSol().slice().sort(function(p, q){ return p.lvl - q.lvl; }), dif = 0, haut = 0;
+  function locaux(i){ var o = {}; onFloor(i).forEach(function(b){ o[b.key] = (o[b.key] || 0) + areaOf(b); }); return o; }
+  function emprise(i){ var a = 0; vols.forEach(function(v){ var e = volEtage(v, i); if(e && !v.ph) a += aireEtage(e); }); return a; }
+  for(var k = 1; k < N.length; k++){
+    var A = locaux(N[k].i), B = locaux(N[k - 1].i), ec = 0, tot = 0, cles = {};
+    Object.keys(A).concat(Object.keys(B)).forEach(function(x){ cles[x] = 1; });
+    Object.keys(cles).forEach(function(x){ ec += Math.abs((A[x] || 0) - (B[x] || 0)); tot += A[x] || 0; });
+    var e1 = emprise(N[k].i), e0 = emprise(N[k - 1].i);
+    haut++;
+    if((tot && ec / tot > ETAGE_LISTE) || (e0 && Math.abs(e1 - e0) / e0 > ETAGE_EMPRISE)) dif++;
+  }
+
+  return {
+    couvertPart: preau ? fini(Math.min(1, couvert / preau)) : null,
+    sportExtAxe: fini(sportAxe),
+    voituresBord: fini(bord),
+    accesSepares: acces == null ? null : fini(acces),
+    velosDist: velos == null ? null : fini(velos),
+    niveauxDifferents: haut ? fini(dif / haut) : null
   };
 }
 /* la boîte des parts d'un niveau, dans le repère du volume */
