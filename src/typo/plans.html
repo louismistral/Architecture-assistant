@@ -257,7 +257,7 @@ var PG = (function(){
       CAGE_A = R0.cage || 24, NOY = R0.noyau || { prof:5, volee:1.2, asc:[2.1, 2.4] },
       FEU = R0.feu || { cageSeuil:900, fuiteSimple:35, fuiteDouble:50 },
       LIEN = R0.lien || 15, MODULE = R0.module || 0.5, VIDE = R0.vide, PLAN = R0.plan || {},
-      FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6, PALIER = 1.2;
+      FRONT_MAX = 12.5, PETIT = 30, BMIN = 5.6, PALIER = 1.2, CLASSE = R0.classe;
   /* l'ordre des familles : les pièces d'une famille se posent ensemble */
   var FAMS_O = ["cla", "eau", "uap", "adm", "spo", "tec", "pis", "ext"];
   var WC = 2 * NOY.volee + 0.10 + NOY.asc[0] + CLOISON;     /* largeur du noyau */
@@ -291,6 +291,102 @@ var PG = (function(){
     return out;
   }
   function famO(u){ var k = FAMS_O.indexOf(u.f); return k < 0 ? 99 : k; }
+
+  /* UNE PIÈCE, PAS UN COULOIR (`RULES.plan.piece`). Avant, chaque pièce prenait
+     toute la profondeur de sa bande : un WC PMR de 3 m² devenait une lame de
+     0,48 × 6,20 m. La surface reste fixe ; seule la forme se règle. */
+  var PC = PLAN.piece || { ratio:2, ratioGrand:3, grand:100, larg:1.6, cabine:0.9 }, PMR = PLAN.pmr || [1.65, 1.8];
+  function ratioDe(a){ return a >= PC.grand ? PC.ratioGrand : PC.ratio; }
+  function cabine(u){ return /WC|Toilette/i.test(u.n || "") && !/PMR|individuelle/i.test(u.n || ""); }
+  /* les largeurs admises le long de la bande, [min, max] : la profondeur est
+     la surface divisée par la largeur */
+  function larges(u){
+    var a = u.a, R = ratioDe(a), l = cabine(u) ? PC.cabine : PC.larg;
+    if(/PMR/.test(u.n || "")) return [PMR[0], Math.max(PMR[0], a / PMR[1])];
+    var lo = Math.max(l, Math.sqrt(a / R));
+    return [lo, Math.max(lo, Math.min(a / l, Math.sqrt(a * R)))];
+  }
+  /* la profondeur d'une pièce dans une bande de profondeur H : toute la bande
+     si ses proportions le permettent, sinon contre la façade, et le reste
+     devant elle — un dégagement sur le couloir. Une classe garde la
+     profondeur de la ligne `classe-dim`. */
+  function profDe(u, H){
+    var p = u.a / larges(u)[0];
+    if(CLASSE && /classe/i.test(u.n || "")) p = Math.min(p, CLASSE[1]);
+    return Math.min(H, p);
+  }
+  /* UN BLOC DE PETITES PIÈCES, dans une bande de profondeur H, contre la
+     façade. Trois dispositions, on garde la plus étroite :
+     - chacune seule, un dégagement devant elle ;
+     - en colonnes : plusieurs pièces empilées s'ouvrent sur un sas qui va du
+       couloir à la façade, deux colonnes de part et d'autre ;
+     - la plus grande au fond, les autres devant elle, côte à côte, et un sas
+       entre elles pour aller à celle du fond.
+     Le sas a la largeur de l'aire de rotation s'il dessert un WC PMR (un
+     fauteuil y tourne pour entrer), `piece.sas` sinon. Chaque pièce a sa
+     porte : sur le couloir, sur le dégagement devant elle, ou sur le sas. */
+  function sasDe(L){ return L.some(function(c){ return /PMR/.test(c.n || ""); }) ? (PLAN.rotation || 1.5) : (PC.sas || 1.2); }
+  function peigne(cel, H){
+    function large(c, d){ return Math.max(larges(c)[0], c.a / d); }
+    function poser(suite){
+      var out = [], devant = [], u = 0;
+      suite.forEach(function(k, j){
+        if(k.sas){ u += k.sas; return; }
+        var v = H, sas = suite[j + 1] && suite[j + 1].sas ? 1 : suite[j - 1] && suite[j - 1].sas ? -1 : 0;
+        /* la plus grande contre la façade, les autres devant elle */
+        k.cel.forEach(function(c){ var h = c.a / k.w; v -= h; out.push(Object.assign({}, c, { u0:u, v0:v, W:k.w, H:h, sas:sas })); });
+        if(v > 0.05) devant.push({ u0:u, W:k.w, H:v });
+        u += k.w;
+      });
+      return { W:u, cel:out, devant:devant };
+    }
+    var tri = cel.slice().sort(function(p, q){ return q.a - p.a; });
+    var opts = [poser(cel.map(function(c){ return { cel:[c], w:large(c, H) }; }))];
+    /* en colonnes : une colonne grandit tant qu'une largeur convient à toutes */
+    var cols = [];
+    tri.forEach(function(c){
+      var k = cols[cols.length - 1], w = larges(c);
+      if(k){
+        var lo = Math.max(k.lo, w[0], (k.a + c.a) / H), hi = Math.min(k.hi, w[1]);
+        if(lo <= hi){ k.cel.push(c); k.a += c.a; k.lo = Math.max(k.lo, w[0]); k.hi = hi; k.w = lo; return; }
+      }
+      cols.push({ cel:[c], a:c.a, lo:w[0], hi:w[1], w:large(c, H) });
+    });
+    var pile = cols.filter(function(k){ return k.cel.length > 1; });
+    if(pile.length){
+      var suite = [];
+      for(var j = 0; j < pile.length; j += 2){
+        var deux = pile.slice(j, j + 2);
+        suite.push(deux[0], { sas:sasDe(deux[0].cel.concat(deux[1] ? deux[1].cel : [])) });
+        if(deux[1]) suite.push(deux[1]);
+      }
+      opts.push(poser(suite.concat(cols.filter(function(k){ return k.cel.length < 2; }))));
+    }
+    /* la plus grande au fond, sur toute la largeur du bloc */
+    if(tri.length > 1){
+      var B = tri[0], F = tri.slice(1), wb = larges(B), sas = sasDe(F), Wc = wb[0], wf, av;
+      for(var t = 0; t < 8; t++){
+        av = H - B.a / Wc;
+        wf = F.map(function(c){ return av > 0 ? large(c, av) : Infinity; });
+        var need = sas; wf.forEach(function(w){ need += w; });
+        if(need <= Wc + 1e-6) break;
+        Wc = need;
+      }
+      var ok = Wc <= wb[1] + 1e-6 && wf.every(function(w, k){ return w <= larges(F[k])[1] + 1e-6; });
+      if(ok){
+        var dB = B.a / Wc, out = [Object.assign({}, B, { u0:0, v0:H - dB, W:Wc, H:dB, sas:0 })], devant = [], u = 0;
+        F.forEach(function(c, k){
+          var h = c.a / wf[k];
+          out.push(Object.assign({}, c, { u0:u, v0:H - dB - h, W:wf[k], H:h, sas:0 }));
+          if(H - dB - h > 0.05) devant.push({ u0:u, W:wf[k], H:H - dB - h });
+          u += wf[k];
+        });
+        out[0].porteU = (u + Wc) / 2;
+        opts.push({ W:Wc, cel:out, devant:devant });
+      }
+    }
+    return opts.sort(function(p, q){ return p.W - q.W; })[0];
+  }
   /* la bande A (y local < 0) regarde (sin a, −cos a) ; le sud est (0, −1) */
   function bandeSud(a){ return Math.cos(a) > 0 ? "A" : "B"; }
   function lvlDe(i){ return FL[i] ? FL[i].lvl : 0; }
@@ -494,19 +590,24 @@ var PG = (function(){
     /* deux noyaux : le second ferme le bout libre, après les halls — il est à
        la même place à tous les niveaux, la longueur du corps étant la même */
     var n1 = Math.min(nc, 1), c2 = nc > 1 ? WC : 0;
+    /* la largeur d'un élément de bande à la profondeur H */
+    function larg(it, H){ return it.kind === "bloc" ? peigne(it.cel, H).W : it.a / profDe(it, H); }
+    /* au bout, une pièce ferme le couloir si elle en prend toute la profondeur
+       sans perdre ses proportions ; sinon le couloir finit sur la façade */
+    function ferme(it, k, L, b, eg, ed){
+      return ((k === 0 && eg) || (k === L.length - 1 && ed)) && it.kind !== "bloc" && profDe(it, b + c) >= b + c - 0.01;
+    }
     /* longueur d'une bande de profondeur b, ses bouts éventuellement à travers le couloir */
     function long(L, b, eg, ed){
       var s = 0;
-      L.forEach(function(it, k){
-        var e = (k === 0 && eg) || (k === L.length - 1 && ed);
-        s += it.a / (b + (e ? c : 0));
-      });
+      L.forEach(function(it, k){ s += larg(it, b + (ferme(it, k, L, b, eg, ed) ? c : 0)); });
       return s;
     }
     function regle(L){
       for(var k = 0; k < L.length; k++){ var w = o.regles[L[k].lab]; if(w) return { it:L[k], k:k, w:w }; }
       return null;
     }
+    function minProf(L){ var m = 0; L.forEach(function(it){ if(it.kind !== "bloc") m = Math.max(m, it.a / larges(it)[1]); }); return m; }
     var best = null;
     if(deux){
       var bmax = T - Math.max(BMIN, nc ? cH + PALIER : 0);
@@ -517,16 +618,20 @@ var PG = (function(){
         var b, rs = regle(IS), rn = regle(IN);
         if(rs) b = rs.it.a / rs.w - ((rs.k === 0 && eg) || (rs.k === IS.length - 1 && ed) ? c : 0);
         else if(rn) b = T - rn.it.a / rn.w;
-        else {
-          var lo = BMIN, hi = bmax;
+        /* une bande ne descend pas sous la profondeur que ses pièces demandent
+           pour rester dans leurs proportions — une classe de 72 m², 6 m */
+        var b0 = Math.max(BMIN, minProf(IS)), b1 = Math.min(bmax, T - minProf(IN));
+        if(b0 > b1){ b0 = BMIN; b1 = bmax; }
+        if(!rs && !rn){
+          var lo = b0, hi = b1;
           if(LS(lo) - LN(lo) <= 0) b = lo; else if(LS(hi) - LN(hi) >= 0) b = hi;
           else { for(var t = 0; t < 50; t++){ b = (lo + hi) / 2; if(LS(b) - LN(b) > 0) lo = b; else hi = b; } }
         }
-        b = Math.max(BMIN, Math.min(bmax, b));
+        b = Math.max(b0, Math.min(b1, b));
         var lb = Math.max(LS(b), LN(b)), pen = 0;
         IS.concat(IN).forEach(function(it, j){
           if(it.a < 50) return;
-          var p = j < IS.length ? b : T - b, w = it.a / p;
+          var p = profDe(it, j < IS.length ? b : T - b), w = it.a / p;
           if(w / p > 1.6 || p / w > 1.6) pen += 30;
         });
         var cost = lb + Math.abs(LS(b) - LN(b)) * 3 + Math.abs(b - T / 2) * 0.4 + pen;
@@ -558,10 +663,18 @@ var PG = (function(){
       function libre(){ if(gap > 0.05) paliers.push({ frame:frame, x0:x, W:gap, H:b }); x += gap; }
       list.forEach(function(it, k){
         if(k === at) libre();
-        var e = (k === 0 && eg) || (k === list.length - 1 && ed), H = b + (e ? c : 0), W = it.a / H;
-        var r = Object.assign({}, it, { frame:frame, x0:x, W:W, H:H, v0:e ? -c : 0, ext:e ? (k === 0 ? -1 : 1) : 0 });
-        if(it.kind === "bloc") r.cel = treemap(it.cel, W, H);
-        R.push(r); x += W;
+        var e = ferme(it, k, list, b, eg, ed), H = b + (e ? c : 0), r;
+        if(it.kind === "bloc"){
+          var P = peigne(it.cel, H);
+          r = Object.assign({}, it, { frame:frame, x0:x, W:P.W, H:H, v0:0, ext:0, cel:P.cel });
+          P.devant.forEach(function(d){ paliers.push({ frame:frame, x0:x + d.u0, W:d.W, H:d.H }); });
+        } else {
+          /* la pièce contre la façade, ce qui reste devant elle ouvert sur le couloir */
+          var p = profDe(it, H), W = it.a / p;
+          r = Object.assign({}, it, { frame:frame, x0:x, W:W, H:p, v0:(e ? -c : 0) + H - p, ext:e ? (k === 0 ? -1 : 1) : 0 });
+          if(H - p > 0.05) paliers.push({ frame:frame, x0:x, W:W, H:H - p });
+        }
+        R.push(r); x += r.W;
       });
       if(at >= list.length) libre();
       return x;
@@ -823,25 +936,6 @@ var PG = (function(){
 
   function oublier(){ HOTES = null; ANC = {}; }
 
-  /* treemap binaire : chaque cellule garde sa surface exacte */
-  function treemap(list, W, H){
-    var out = [];
-    (function rec(L, x, y, w, h){
-      if(L.length === 1){ out.push(Object.assign({}, L[0], { u0:x, v0:y, W:w, H:h })); return; }
-      var tot = 0; L.forEach(function(c){ tot += c.a; });
-      var best = 1, bd = Infinity, acc = 0;
-      for(var k = 1; k < L.length; k++){
-        acc += L[k - 1].a;
-        var d = Math.abs(acc - tot / 2); if(d < bd){ bd = d; best = k; }
-      }
-      var A = L.slice(0, best), B = L.slice(best), aA = 0; A.forEach(function(c){ aA += c.a; });
-      var t = aA / tot;
-      if(w * t >= 1.8 && w * (1 - t) >= 1.8 && w >= h * 0.5){ rec(A, x, y, w * t, h); rec(B, x + w * t, y, w * (1 - t), h); }
-      else { rec(A, x, y, w, h * t); rec(B, x, y + h * t, w, h * (1 - t)); }
-    })(list, 0, 0, W, H);
-    return out;
-  }
-
   /* repère d'un local → repère de l'étage : u le long de la bande, v depuis le couloir */
   function versEtage(f, frame, x0, u, v){
     if(frame === "A") return [x0 + u, f.yc0 - v];
@@ -853,7 +947,7 @@ var PG = (function(){
   return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes,
            local:local, versEtage:versEtage, versMonde:versMonde,
            COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE,
-           PETIT:PETIT, VIDE:VIDE, PLAN:PLAN };
+           PETIT:PETIT, VIDE:VIDE, PLAN:PLAN, ratioDe:ratioDe, cabine:cabine };
 })();
 if(typeof module !== "undefined") module.exports = PG;
 
@@ -1438,11 +1532,20 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
         if(r.ext && !cellule){
           /* la pièce qui ferme le couloir : sa porte dans le pignon du couloir */
           porteX(f, r.ext < 0 ? x0 + W : x0, (f.yc0 + f.yc1) / 2, Math.min(PG.PLAN.porte, PG.COULOIR - 0.6), r.ext < 0 ? -1 : 1);
+        } else if(cellule && r.sas){
+          /* une pièce d'un bloc empilé : sa porte sur le sas */
+          var dS = Math.min(PG.PLAN.porte, H - 0.3), qS = fr(f, frame, x0, u0 + (r.sas > 0 ? W : 0), v0 + H / 2);
+          porteX(f, qS[0], qS[1], dS, r.sas);
+        } else if(cellule && r.porteU != null){
+          /* la pièce du fond d'un bloc : sa porte au bout du sas */
+          var dU = Math.min(PG.PLAN.porte, W - 0.4);
+          porte(f, frame, x0, r.porteU + dU / 2, v0, dU);
         } else if(r.kind === "band" || (cellule)){
           /* la porte là où le couloir passe */
-          var dw = Math.min(PG.PLAN.porte, W - 0.4);
-          var uh = Math.max(f.zl - x0 + dw + 0.15, Math.min(u0 + W - 0.25, f.zr - x0 - 0.15));
-          if(W >= 1.1 && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, r.porteV != null ? r.porteV : Math.max(0, v0), dw);
+          /* une cabine de WC (1 m) a sa porte de 80 cm */
+          var jeu = cellule && W < 1.3 ? 0.1 : 0.2, dw = Math.min(PG.PLAN.porte, W - 2 * jeu);
+          var uh = Math.max(f.zl - x0 + dw + 0.15, Math.min(u0 + W - jeu - (cellule ? 0 : 0.05), f.zr - x0 - 0.15));
+          if(W >= (cellule ? 0.9 : 1.1) && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, r.porteV != null ? r.porteV : Math.max(0, v0), dw);
         } else if(r.kind === "full" && r.x0 > -f.L / 2 + 0.01){
           var ym = f.deux ? (f.yc0 + f.yc1) / 2 : (f.yc0 + f.yc1) / 2;
           porteX(f, r.x0, ym, Math.min(PG.PLAN.porteDouble, PG.COULOIR - 0.5), 1);
@@ -1907,18 +2010,29 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           : "La scène n\u2019est pas collée à la salle de sport" + (isFinite(dSc) ? " (" + fmt(dSc, 1) + " m)" : " (pas au même niveau)"),
         "Sur un de ses côtés, mur contre mur — une contrainte du concours.");
     }
-    /* le WC PMR : l'aire de rotation d'un fauteuil (`RULES.plan.rotation`) y
-       tient-elle ? Sa surface est fixe, ses proportions viennent du pavage */
-    var pmr = [], nPmr = 0, ROT = PG.PLAN.rotation;
+    /* DES PIÈCES, PAS DES COULOIRS : chaque pièce dans ses proportions
+       (`RULES.plan.piece`), le WC PMR à ses cotes (`RULES.plan.pmr`) ; et
+       chaque pièce d'un bloc sur le couloir, ou sur un sas qui y mène */
+    var PCx = PG.PLAN.piece, PMx = PG.PLAN.pmr, hors = [], sansPorte = [];
     tous.forEach(function(r, i){ r.F.forEach(function(f){ f.rooms.forEach(function(rm){
+      if(rm.kind === "fixe" || rm.kind === "trav") return;
       (rm.kind === "bloc" ? rm.cel : [rm]).forEach(function(c){
-        if(!/PMR/.test(c.n || "")) return;
-        nPmr++;
-        if(Math.min(c.W, c.H) < ROT - 0.01) pmr.push((c.lab || c.n) + " au " + niv(i).toLowerCase() + " (" + fmt(c.W, 2) + " × " + fmt(c.H, 2) + " m)");
+        var lo = Math.min(c.W, c.H), hi = Math.max(c.W, c.H), n = c.n || "", t = null;
+        if(/PMR/.test(n)){ if(lo < PMx[0] - 0.01 || hi < PMx[1] - 0.01) t = "moins de " + fmt(PMx[0], 2) + " × " + fmt(PMx[1], 2) + " m"; }
+        else if(hi / lo > PG.ratioDe(c.a) + 0.01) t = "1:" + fmt(hi / lo, 1);
+        else if(lo < (PG.cabine(c) ? PCx.cabine : PCx.larg) - 0.01) t = fmt(lo, 2) + " m de large";
+        if(t) hors.push((c.lab || n) + " au " + niv(i).toLowerCase() + " (" + fmt(c.W, 2) + " × " + fmt(c.H, 2) + " m, " + t + ")");
+        if(rm.kind !== "bloc") return;
+        /* la face par où l'on entre ne touche aucune autre pièce du bloc */
+        var pu = c.porteU, x0 = c.sas > 0 ? c.u0 + c.W : c.sas < 0 ? c.u0 - 0.5 : pu != null ? pu - 0.45 : c.u0,
+            x1 = c.sas ? x0 + 0.5 : pu != null ? pu + 0.45 : c.u0 + c.W, y1 = c.sas ? c.v0 + c.H : c.v0;
+        if(rm.cel.some(function(d){ return d !== c && d.u0 < x1 - 0.01 && d.u0 + d.W > x0 + 0.01 && d.v0 < y1 - 0.01; }))
+          sansPorte.push((c.lab || n) + " au " + niv(i).toLowerCase());
       });
     }); }); });
-    if(nPmr) dit(!pmr.length, pmr.length ? "WC PMR sans aire de rotation : " + pmr.slice(0, 4).join(" ; ")
-        : "Chaque WC PMR tient l\u2019aire de rotation d\u2019un fauteuil", "Un cercle libre de " + fmt(ROT * 100, 0) + " cm (SIA 500), dessiné dans la pièce. La surface ne change pas : ce sont ses proportions qui doivent le permettre.");
+    dit(!hors.length, hors.length ? hors.length + " pièce" + (hors.length > 1 ? "s" : "") + " hors proportions : " + hors.slice(0, 4).join(" ; ") + (hors.length > 4 ? "…" : "")
+        : "Chaque pièce a des proportions vivables",
+      "Le côté long au plus " + fmt(PCx.ratio, 0) + " fois le court (" + fmt(PCx.ratioGrand, 0) + " fois dès " + fmt(PCx.grand, 0) + " m²), " + fmt(PCx.larg, 2) + " m de large au moins — " + fmt(PCx.cabine, 2) + " m pour une cabine de WC ; le WC PMR " + fmt(PMx[0], 2) + " × " + fmt(PMx[1], 2) + " m, l\u2019aire de rotation de " + fmt(PG.PLAN.rotation * 100, 0) + " cm (SIA 500). La surface ne change pas : une pièce moins profonde que sa bande se pose contre la façade, un dégagement devant elle ; les petites s\u2019empilent autour d\u2019un sas. Ce qui reste hors proportions vient d\u2019une bande trop mince ou trop profonde : c\u2019est au Massing d\u2019y répondre.");
     /* le sol libre : ce que les rangs laissent quand leurs pièces sont posées */
     if(PG.VIDE != null){
       var vides = [];
@@ -1930,7 +2044,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           : "Aucun corps ne garde plus de " + fmt(PG.VIDE, 0) + " m² de sol libre",
         "Le sol que les pièces laissent devient un dégagement sur le couloir ; au-delà de " + fmt(PG.VIDE, 0) + " m² dans un corps, le plateau ne se remplit pas : ce qui reste du niveau n\u2019y entre pas d\u2019un tenant, ou le niveau n\u2019en a pas assez — ajuster le volume au Massing, ou la répartition au Programme mixer.");
     }
-    dit(true, "Toutes les pièces ouvrent sur un couloir", "Par construction : les pièces des bandes donnent sur le couloir, celles du bout le ferment de leur porte, les halls le traversent.");
+    dit(!sansPorte.length, sansPorte.length ? "Pièces sans porte sur la circulation : " + sansPorte.slice(0, 4).join(" ; ") + (sansPorte.length > 4 ? "…" : "")
+        : "Toutes les pièces ouvrent sur un couloir", "Les pièces des bandes donnent sur le couloir ou sur le dégagement devant elles, celles du bout le ferment de leur porte, les halls le traversent ; dans un bloc, chaque pièce ouvre sur le couloir ou sur un sas qui y mène.");
     dit(true, "Les plans tiennent dans les volumes du Massing", "Chaque corps garde ses cotes, niveau par niveau ; le Shuffle ne change que l\u2019ordonnance des pièces.");
     dit(true, "Couloir de " + fmt(PG.COULOIR, 2) + " m, réglé au cahier des charges", "Il finit toujours sur un noyau, un hall, un passage ou la porte de la pièce qui le ferme.");
     dit(true, "Murs extérieurs et porteurs " + fmt(PG.MUR * 100, 0) + " cm, cloisons " + fmt(PG.CLOISON * 100, 0) + " cm", "Pochés en plein : on coupe dans les murs.");

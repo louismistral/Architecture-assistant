@@ -64,7 +64,9 @@ export function donneesTypo(){
     regles:{ fusion:V.fusionDist == null ? 1 : V.fusionDist, couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
              mur:RULES.haut.mur, cloison:RULES.haut.cloison, plan:RULES.plan, traits:TRAITS, alt:alt, echelle:ETAGES.echelle, module:V.module, lien:RULES.circ.proche,
              /* le sol libre toléré dans un corps ; null, la ligne est éteinte */
-             vide:enVigueur("sol-vide") ? V.solVide : null } };
+             vide:enVigueur("sol-vide") ? V.solVide : null,
+             /* la classe : [front, profondeur] de la ligne `classe-dim` ; null, éteinte */
+             classe:enVigueur("classe-dim") ? [V.classeL, V.classeP] : null } };
 }
 
 /* LES AILES D'UN VOLUME FUSIONNÉ. Le Massing assemble les corps qui se
@@ -101,7 +103,18 @@ export function ailes(vols){
     });
     A.forEach(function(a){ out.push(a); });
   });
-  return out;
+  return out.map(enLong);
+}
+
+/* UN CORPS SE PAVE LE LONG DE SON GRAND CÔTÉ. Le plan pose le couloir selon
+   `w` : une aile plus profonde que longue (17 × 72 m, le bras d'un L) donnait
+   un couloir de 17 m et des pièces de 55 m de profondeur — des couloirs, pas
+   des pièces. On la tourne d'un quart de tour ; le volume ne change pas. */
+function enLong(v){
+  if(v.lv.some(function(e){ return e.keys || e.ext && e.ext.length || e.d <= e.w; })) return v;
+  return Object.assign({}, v, { a:v.a + Math.PI / 2, lv:v.lv.map(function(e){
+    return Object.assign({}, e, { w:e.d, d:e.w, dx:e.dy || 0, dy:-(e.dx || 0) });
+  }) });
 }
 
 /* LA SEED des Typologies : celle que rejoue « Shuffle typologie ». Elle ne
