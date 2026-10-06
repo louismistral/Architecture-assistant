@@ -137,7 +137,7 @@ export function bilan(perdu){
 }
 
 const pc = (s) => s == null ? "—" : Math.round(100 * s) + " %";
-export function texte(b){
+export function texte(b, complet){
   const L = [];
   if(b.perdu.length) L.push("PERDU au chargement : " + b.perdu.join(", "), "");
   L.push("MIXER");
@@ -162,9 +162,15 @@ export function texte(b){
   else {
     L.push("JUGEMENT " + b.jugement.total + "/100 · lu à " + pc(b.jugement.couv) + " · cadre " + b.cadre);
     b.jugement.axes.forEach((a) => L.push("  " + a.n.padEnd(52) + pc(a.s).padStart(6) + "  (poids " + a.w + ")"));
+    /* Les critères sans mesure se notent à la main dans l'app : sans `--complet`,
+       ils tiennent en une ligne — le bilan se relit à chaque essai. */
+    const lus = b.jugement.crit.filter((x) => complet || x.de === "mesure" || x.de === "main");
+    const tus = b.jugement.crit.filter((x) => !lus.includes(x));
     L.push("  critères :");
-    b.jugement.crit.forEach((x) => L.push("    " + x.id.padEnd(6) + pc(x.s).padStart(6) + "  " + x.de.padEnd(10)
+    lus.forEach((x) => L.push("    " + x.id.padEnd(10) + pc(x.s).padStart(6) + "  " + x.de.padEnd(10)
       + x.n + (x.mesure ? "  [" + x.mesure + " = " + JSON.stringify(x.valeur) + "]" : "")));
+    if(tus.length) L.push("    + " + tus.length + " sans mesure (neutre, moyenne, éteint) : "
+      + tus.map((x) => x.id).join(" "));
     b.ecarts.forEach((x) => L.push("  écart [" + x.sev + "] " + x.k + " — " + x.msg));
     L.push("  orientation :");
     Object.entries(b.qualites).forEach(([id, q]) => L.push("    " + id.padEnd(8) + q.niv.padEnd(12) + q.txt));
@@ -191,7 +197,7 @@ function ouvrir(opt){
 
 async function verbeBilan({ opt }){
   await modules();
-  return sortie(bilan(ouvrir(opt)), opt, texte);
+  return sortie(bilan(ouvrir(opt)), opt, (b) => texte(b, opt.complet));
 }
 
 /* ---------- tirer ----------
@@ -284,6 +290,65 @@ async function verbeLigne({ pos, opt }){
   if(e) ecrireJSON(fe, Object.assign({}, e, { doc: L.ecarts(true) }));
   return sortie({ cle:k, avant, apres:L.V[k], change }, opt,
     (o) => o.cle + " : " + o.avant + " → " + o.apres + (o.change ? "" : " (inchangé)"));
+}
+
+/* ---------- la variante ----------
+   La ligne de `variant` telle que l'app la pose (`enregistrer()`,
+   `net/variantes.js`), avec le tag `claude`. `team_id` et `author_id` restent
+   absents : c'est Claude qui les remplit à l'insertion, par le connecteur. */
+async function verbeVariante({ pos, opt }){
+  const { Va, St } = await modules();
+  ouvrir(opt);
+  const row = Va.resumeCourant();
+  row.name = (pos[0] && pos[0].trim()) || Va.nomPropose();
+  row.state = St.snapshot();
+  row.tags = ["claude"];
+  ecrireJSON(opt.sortie || ".atelier/variante.json", row);
+  return sortie(row, opt, (r) => (opt.sortie || ".atelier/variante.json") + " · « " + r.name + " » · "
+    + r.score + "/100 · massing " + JSON.stringify(r.verdict.mass) + " · mixer " + JSON.stringify(r.verdict.mix));
+}
+
+/* ---------- la porte de sortie ----------
+   Tout ce qu'aucun verbe ne couvre encore : du JS, avec les modules de l'app
+   sous la main, après la remise en place. Un `js` que Claude réécrit souvent
+   devient un verbe. `--fichier` évite les guillemets du shell. */
+const AsyncFunction = (async () => {}).constructor;
+async function verbeJs({ pos, opt }){
+  const m = await modules();
+  const fe = opt.etat || FE;
+  charger(lireJSON(opt.groupe || FG, !!opt.groupe), lireJSON(fe, false));
+  const code = opt.fichier ? readFileSync(opt.fichier, "utf8") : pos.join(" ");
+  if(!code.trim()) throw new Erreur("rien à exécuter : js \"<code>\" ou js --fichier <chemin>");
+  const noms = Object.keys(m).concat(["bilan", "texte"]);
+  const f = new AsyncFunction(...noms, code);
+  const r = await f(...noms.map((n) => n === "bilan" ? bilan : n === "texte" ? texte : m[n]));
+  if(opt.ecrire) ecrireJSON(fe, m.St.snapshot());
+  if(!opt.muet && r !== undefined) console.log(typeof r === "string" ? r : JSON.stringify(r, null, 2));
+  return r;
+}
+
+/* ---------- les remèdes ----------
+   Chaque alerte du contrôle porte les gestes que l'app propose pour la
+   réparer (`mix/fix.js`, `mass/fix.js`) ; le bilan en donne les noms. Ici, on
+   en joue un : `remede <code> [n]`, n le rang du remède (0 par défaut). */
+async function verbeRemede({ pos, opt }){
+  const { C, CM, St } = await modules();
+  const fe = opt.etat || FE;
+  ouvrir(opt);
+  const [code, n] = pos;
+  if(!code) throw new Erreur("remede <code> [n] — les codes et leurs remèdes sont dans le bilan");
+  const a = C.massCheck().concat(CM.mixCheck()).find((x) => x.code === code && !x.ok);
+  if(!a) throw new Erreur("aucune alerte ouverte de code " + code);
+  const k = n === undefined ? 0 : entier(n, "n");
+  const f = (a.fixes || [])[k];
+  if(!f) throw new Erreur("l'alerte " + code + " n'a pas de remède n° " + k
+    + (a.fixes && a.fixes.length ? " — " + a.fixes.map((x, i) => i + " " + x.label).join(" | ") : ""));
+  /* `false` : le remède n'avait rien à faire (la vue le dit aussi) */
+  if(await f.run() === false) throw new Erreur("le remède « " + f.label + " » n'a rien changé");
+  const b = bilan([]);
+  ecrireJSON(fe, St.snapshot());
+  if(!opt.muet) console.log("remède joué : " + f.label + "\n");
+  return sortie(b, opt, texte);
 }
 
 /* ---------- chercher ----------
@@ -429,6 +494,40 @@ const TESTS = {
     const c = await verbeLigne({ pos:[], opt:{ toutes:true, cherche:"nappe", groupe:"nope.json", etat:"nope.json", muet:true } });
     assert.ok(c.length > 0 && c.length < l.length);
   },
+  async variante(ref){
+    const f = ".atelier/test/v-etat.json", s = ".atelier/test/v.json";
+    ecrireJSON(f, ref);
+    const r = await verbeVariante({ pos:["essai"], opt:{ etat:f, sortie:s, muet:true } });
+    assert.equal(r.name, "essai");
+    assert.ok(r.state.mass.vol.length > 0);
+    assert.equal(r.criteria.v, 3);
+    assert.deepEqual(r.tags, ["claude"]);
+    assert.equal("team_id" in r, false);
+    assert.equal("author_id" in r, false);
+    assert.deepEqual(lireJSON(s, true), JSON.parse(JSON.stringify(r)));
+  },
+  async js_ecrire(ref){
+    const f = ".atelier/test/js.json", x0 = ref.mass.vol[0].x;
+    ecrireJSON(f, ref);
+    await verbeJs({ pos:["M.MASS.vol[0].x += 5"], opt:{ etat:f, ecrire:true, muet:true } });
+    assert.ok(Math.abs(lireJSON(f, true).mass.vol[0].x - (x0 + 5)) < 1e-9);
+  },
+  async js_fichier(ref){
+    const f = ".atelier/test/js.json", p = ".atelier/test/code.js";
+    ecrireJSON(f, ref);
+    writeFileSync(p, "return \"a'\\\"b\";\n");
+    assert.equal(await verbeJs({ pos:[], opt:{ fichier:p, etat:f, muet:true } }), "a'\"b");
+  },
+  async remede(ref){
+    /* un corps sorti de la parcelle : « Ramener le volume 1 dans la parcelle » */
+    const f = ".atelier/test/rem.json";
+    ref.mass.vol[0].x += 40;
+    ecrireJSON(f, ref);
+    const b = await verbeRemede({ pos:["m:perimetre:v1"], opt:{ etat:f, muet:true } });
+    assert.equal(b.massing.alertes.some((x) => x.code === "m:perimetre:v1"), false);
+    assert.equal(bilan(charger(null, lireJSON(f, true))).massing.alertes.some((x) => x.code === "m:perimetre:v1"), false);
+    await assert.rejects(verbeRemede({ pos:["m:pas-la"], opt:{ etat:f, muet:true } }), Erreur);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
@@ -448,7 +547,8 @@ async function test(){
 }
 
 /* ---------- la ligne de commande ---------- */
-const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, ligne: verbeLigne, test };
+const VERBES = { bilan: verbeBilan, tirer: verbeTirer, chercher: verbeChercher, ligne: verbeLigne,
+  remede: verbeRemede, variante: verbeVariante, js: verbeJs, test };
 
 function analyser(argv){
   const pos = [], opt = {};
