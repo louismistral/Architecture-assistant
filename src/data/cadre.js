@@ -295,6 +295,12 @@ export function courProgramme(){
   CHAP.forEach(function(c){ c.items.forEach(function(it){ if(it.f === "ext") a += it.nb * it.u; }); });
   return Math.round(a) || 500;
 }
+/* Son préau couvert au programme : l'encart de la cour (`inset.a`), lu dans le fichier. */
+export function preauProgramme(){
+  var a = 0;
+  CHAP.forEach(function(c){ c.items.forEach(function(it){ if(it.f === "ext" && it.inset) a += it.inset.a; }); });
+  return a;
+}
 /* La cour qu'une composition doit offrir : le programme, et notre marge quand
    elle est du cadre. */
 export function courExigee(){
