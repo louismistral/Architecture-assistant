@@ -1079,6 +1079,37 @@ const TESTS = {
     XM.requilibre();
     M.bilan().forEach((b) => { if(b.demande > 0 && b.pose > 0) assert.ok(Math.abs(b.ecart) / b.demande < 0.01, b.nom + " écart " + Math.round(b.ecart)); });
   },
+  async rec_main(ref){
+    const { M, G } = await modules();
+    const e = structuredClone(ref);
+    e.mass.vol = [{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] },
+                  { id:"c", x:105, y:62, a:0.3, bat:"b", lv:[{ i:1, w:20, d:20 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const [a, c] = M.MASS.vol;
+    assert.equal(G.chevaucheMain(c, M.MASS.vol), false, "liés : la main peut poser l'un sur l'autre");
+    assert.equal(G.chevauche(c, M.MASS.vol), true, "le générateur, lui, refuse toujours");
+    c.bat = "autre";
+    assert.equal(G.chevaucheMain(c, M.MASS.vol), true, "non liés : refusé");
+    assert.equal(a.id, "a");
+  },
+  async rec_fusion_garde_le_lien(ref){
+    const { M, G } = await modules();
+    const e = structuredClone(ref);
+    /* z touche p bout à bout ; p est posé sur a (même bâtiment) ; z est listé d'abord */
+    const a = 0.3, L = 20 + 2 * 0.40;
+    e.mass.vol = [{ id:"z", x:105 + Math.cos(a) * L, y:62 + Math.sin(a) * L, a, bat:"z", lv:[{ i:1, w:20, d:20 }] },
+                  { id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] },
+                  { id:"p", x:105, y:62, a, bat:"b", lv:[{ i:1, w:20, d:20 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    G.fusionner(M.MASS.vol, M.MASS.pont);
+    /* z et p, bout à bout dans le même axe, se soudent en un volume : il doit rester
+       du bâtiment de a, et rien ne doit se superposer sans lien */
+    const A = M.MASS.vol.find((v) => v.id === "a");
+    assert.ok(M.MASS.vol.every((v) => v === A || M.lies(v, A)), M.MASS.vol.map((v) => v.id + ":" + v.bat).join(" "));
+    assert.ok(M.MASS.vol.every((v) => !G.chevaucheMain(v, M.MASS.vol)), "superposition entre corps non liés");
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
