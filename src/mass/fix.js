@@ -27,7 +27,7 @@ import { acte } from "../mix/fix.js";
 import { repartir } from "../mix/shuffle.js";
 import {
   admissible, ecarter, genMass, poser, poserSecondTemps, recaler, replacerSousSol, relierCourant } from "./gen.js";
-import { MASS, aireEtage, auModule, demande, fusionne, massSet, massVols, niveaux, profBornes, profFacade, volEtage,
+import { MASS, aireEtage, auModule, demande, recouvrement, fusionne, massSet, massVols, niveaux, profBornes, profFacade, volEtage,
   volFusionne } from "./model.js";
 
 function vol(i){ return (i >= 0 && MASS.vol[i]) ? MASS.vol[i] : null; }
@@ -117,33 +117,43 @@ export function fixSousSol(){
 export function requilibre(){
   var bouge = false;
   niveaux().forEach(function(n){
-    var port = MASS.vol.filter(function(v){ return !v.ph && !!volEtage(v, n.i); });
-    if(!port.length) return;
-    var som = 0;
-    port.forEach(function(v){
-      var e = volEtage(v, n.i);
-      if(e) som += aireEtage(e);
-    });
-    if(som <= 0) return;
-    var k = Math.sqrt(demande(n.i, MASS.vol) / som);
-    if(Math.abs(k - 1) < .001) return;
-    port.forEach(function(v){
-      var e = volEtage(v, n.i);
-      if(!e) return;
-      /* un niveau fusionné se met à l'échelle d'un bloc, autour de sa part 0 :
-         les jonctions se tiennent, au prix du module */
-      // ponytail: pas d'arrondi au module sur un niveau fusionné ; recaler les parts sur le module si le contrôle s'en plaint
-      if(fusionne(e)){
-        e.w *= k; e.d *= k;
-        e.ext.forEach(function(p){ p.w *= k; p.d *= k; p.dx = (p.dx || 0) * k; p.dy = (p.dy || 0) * k; });
-        return;
-      }
-      e.w = auModule(e.w * k);
-      e.d = auModule(e.d * k);
-    });
-    bouge = true;
+    var m = passe(n);
+    /* deux corps du même bâtiment qui se recouvrent : les agrandir agrandit aussi
+       leur part commune — un passage tombe court, on en refait quelques-uns.
+       Sans recouvrement, un seul passage, comme toujours. */
+    for(var t = 0; m && t < 4 && recouvrement(MASS.vol, n.i, false).aire > 0; t++) m = passe(n);
+    if(m) bouge = true;
   });
   return bouge;
+}
+function passe(n){
+  var port = MASS.vol.filter(function(v){ return !v.ph && !!volEtage(v, n.i); });
+  if(!port.length) return false;
+  var som = 0;
+  port.forEach(function(v){
+    var e = volEtage(v, n.i);
+    if(e) som += aireEtage(e);
+  });
+  /* leur union, pas leur somme */
+  som -= recouvrement(MASS.vol, n.i, false).aire;
+  if(som <= 0) return false;
+  var k = Math.sqrt(demande(n.i, MASS.vol) / som);
+  if(Math.abs(k - 1) < .001) return false;
+  port.forEach(function(v){
+    var e = volEtage(v, n.i);
+    if(!e) return;
+    /* un niveau fusionné se met à l'échelle d'un bloc, autour de sa part 0 :
+       les jonctions se tiennent, au prix du module */
+    // ponytail: pas d'arrondi au module sur un niveau fusionné ; recaler les parts sur le module si le contrôle s'en plaint
+    if(fusionne(e)){
+      e.w *= k; e.d *= k;
+      e.ext.forEach(function(p){ p.w *= k; p.d *= k; p.dx = (p.dx || 0) * k; p.dy = (p.dy || 0) * k; });
+      return;
+    }
+    e.w = auModule(e.w * k);
+    e.d = auModule(e.d * k);
+});
+  return true;
 }
 export function fixAire(){
   return acte("Rééquilibrer les volumes sur le programme",
