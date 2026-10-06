@@ -846,6 +846,14 @@ export function chevauche(v, vols, x, y, a){
   var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a, lv: v.lv };
   return vols.some(function(o){ return o !== v && ecartVols(v, o, P, 1) < -CONTACT; });
 }
+/* LA MAIN peut poser un corps sur un corps du MÊME bâtiment — un bloc en biais
+   sur le bout d'une barre ; leur part commune ne compte qu'une fois
+   (`model.js — recouvrement`). Le générateur, lui, ne superpose jamais rien :
+   il garde `chevauche`. */
+export function chevaucheMain(v, vols, x, y, a){
+  var P = { x: x == null ? v.x : x, y: y == null ? v.y : y, a: a == null ? v.a : a, lv: v.lv };
+  return vols.some(function(o){ return o !== v && !lies(v, o) && ecartVols(v, o, P, 1) < -CONTACT; });
+}
 /* CE QUI SE TOUCHE NE FAIT QU'UN. Deux corps bout à bout, de même angle, aux
    mêmes niveaux et de même profondeur à chacun, deviennent UN volume : les deux
    pignons qui se touchaient disparaissent, leur épaisseur entre dans le corps.
@@ -855,6 +863,8 @@ export function chevauche(v, vols, x, y, a){
    Rend le nombre de fusions. `etage` : se toucher à UN étage suffit, même si
    les deux corps se recouvrent à d'autres — les morceaux d'un même corps
    qu'un solide importé a découpés (`import.js`). */
+/* deux corps du même bâtiment qui se recouvrent — la main seule en pose */
+function recouvre(a, b){ return lies(a, b) && ecartVols(a, b, null, 1) < -CONTACT; }
 function touchent(a, b, etage){
   var e = ecartVols(a, b, null, 1);
   if(e >= -CONTACT && e <= CONTACT) return true;
@@ -915,6 +925,9 @@ export function fusionner(vols, ponts, etage){
       if(!a.joint && b.joint) a.joint = b.joint;
       if(!a.bat && b.bat) a.bat = b.bat;
       if(b.main) a.main = 1;                 /* retouché à la main, d'un côté ou de l'autre */
+      /* un corps de l'autre bâtiment POSÉ sur b (`chevaucheMain`) suit b dans le nouveau :
+         délié, son recouvrement deviendrait une superposition interdite */
+      if(a.bat && b.bat && a.bat !== b.bat) vols.forEach(function(o){ if(o !== b && o.bat === b.bat && recouvre(o, b)) o.bat = a.bat; });
       (ponts || []).forEach(function(p){ if(p.a === b.id) p.a = a.id; if(p.b === b.id) p.b = a.id; });
       if(ponts) for(var q = ponts.length - 1; q >= 0; q--) if(ponts[q].a === ponts[q].b) ponts.splice(q, 1);
       vols.splice(j, 1); faits++; encore = true;
@@ -924,7 +937,7 @@ export function fusionner(vols, ponts, etage){
   var grp = vols.map(function(v, k){ return k; });
   function chef(k){ while(grp[k] !== k) k = grp[k]; return k; }
   for(var x = 0; x < vols.length; x++) for(var y = x + 1; y < vols.length; y++){
-    if(vols[x].ph || vols[y].ph || !touchent(vols[x], vols[y], etage)) continue;
+    if(vols[x].ph || vols[y].ph || !(touchent(vols[x], vols[y], etage) || recouvre(vols[x], vols[y]))) continue;
     grp[chef(y)] = chef(x);
   }
   vols.forEach(function(v, k){

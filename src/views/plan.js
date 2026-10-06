@@ -22,7 +22,7 @@ import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
 import { MASS, aireEtage, contourDe, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volFusionne,
   volHaut, volInts, volNom, volRect, volRects, vu } from "../mass/model.js";
-import { chevauche, dansPerimetre, fusionner } from "../mass/gen.js";
+import { chevaucheMain, dansPerimetre, fusionner } from "../mass/gen.js";
 import { coins, dansRect } from "../mass/geom.js";
 import { archiDe, emprise } from "../mass/archi.js";
 
@@ -219,7 +219,8 @@ function dessineVol(g, v, k){
   g.appendChild(gv);
 }
 /* une position tient : dans le périmètre, et sur personne */
-function tient(v, x, y, a){ return dansPerimetre(v, x, y, a) && !chevauche(v, MASS.vol, x, y, a); }
+/* la règle de la main : rien ne se superpose, sauf deux corps du même bâtiment */
+function tient(v, x, y, a){ return dansPerimetre(v, x, y, a) && !chevaucheMain(v, MASS.vol, x, y, a); }
 function montresDe(v){ return v.lv.filter(function(e){ return vu(e.i); }); }
 /* Le plus bas des étages donnés, hors sous-sol s'il y en a un autre : c'est
    celui qu'on pave. */
@@ -407,7 +408,7 @@ function wirePlan(){
          n'est pas pris */
       var av = { x:drag.v.x, y:drag.v.y, lv:drag.v.lv.map(function(e){ return Object.assign({}, e); }) };
       etirer(drag.v, drag.base, drag.cote, dl);
-      if(chevauche(drag.v, MASS.vol) && !drag.libre){ drag.v.x = av.x; drag.v.y = av.y; drag.v.lv = av.lv; }
+      if(chevaucheMain(drag.v, MASS.vol) && !drag.libre){ drag.v.x = av.x; drag.v.y = av.y; drag.v.lv = av.lv; }
     } else if(drag.mode === "bouge"){
       var nx = Math.round((w.x + drag.dx) * 10) / 10;
       var ny = Math.round((w.y + drag.dy) * 10) / 10;
