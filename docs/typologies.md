@@ -83,11 +83,62 @@ deux pièces publiques, ou où la suite publique est enfermée au milieu de la b
 (`lirePlans() — pub`) ; `pubGroupe` le note (d39). Le côté du public se juge au Massing
 (`pub-est`, `pubSep`, `pubCote`).
 
+## Le déroulé : le plateau d'abord, les pièces ensuite
+
+Les plans se composaient rectangle par rectangle — un couloir et deux bandes chacun — et l'on
+effaçait le mur entre deux ailes : plus de mur, mais pas de passage non plus. Dans un L, le
+couloir d'une aile butait contre les pièces de l'autre. Un plan se compose désormais dans l'ordre
+où un architecte le dessine, sur la forme ENTIÈRE du niveau (spec :
+`docs/superpowers/specs/2026-10-06-typologies-etapes-design.md`) :
+
+1. **Plateau** — `gen.js — jonctions()` relève, sur les cadres du niveau, ce qui touche quoi :
+   le bout d'une aile contre le flanc d'une autre (`T` ; le L en est un au bout d'une barre),
+   deux corps parallèles flanc contre flanc (le compact), la salle de sport par un bout ou par un
+   flanc. La piscine et le chauffage à distance, ouvrages indépendants, n'en sont pas.
+2. **Noyaux** — *Les noyaux*, plus bas.
+3. **Squelette** — les corps se composent BRANCHE AVANT RECEVEUR : le couloir de la branche
+   connu, le receveur réserve dans sa bande, dans l'axe, un **raccord** — la largeur du couloir,
+   du couloir à la façade. Flanc contre flanc, chacun a le sien, face à face, un tous les trente
+   mètres de contact ; contre la salle de sport, au milieu du contact, et la porte de la salle
+   dans son axe. Un raccord est une place réservée, comme un noyau : la pièce qui ne tient pas
+   avant lui laisse passer la suivante. Il ne se compte pas au sol vide (`sol-vide`). Là où va
+   un hall traversant, il n'a pas lieu d'être ; à cheval sur son bord, il s'y adosse.
+4. **Pièces maîtresses** — les salles de classe en tête de chaque corps, donc dans sa bande de
+   jour, celle que `soleil()` préfère : la mesure même de `classesSoleil`, partagée par
+   `mesures.js`. Après la quatrième classe d'une suite vient un WC : chacun s'accroche à la
+   DERNIÈRE classe de sa part, et les classes vont par trois ou quatre (`grappes`, d32).
+5. **Pièces liées** — vestiaires, WC, dépôts auprès de leurs pièces (inchangé).
+6. **Le reste** — famille par famille ; le bruyant (`mix/niv.js — BRUYANT`, UAPE, technique) au
+   bout de la suite, de l'autre côté du couloir plutôt que contre une classe.
+
+Quand une bande porte un raccord, la coupe entre les deux bandes est libre : bridée au milieu,
+la bande du raccord débordait pendant que l'autre restait à moitié vide. La longueur d'un corps
+se lit sur ce qui est POSÉ, pas sur l'estimation à sec (`longK`) : au millimètre près d'une place
+réservée, l'estimation la manquait et le corps sortait de son volume sans que le bac le sache.
+
+Le contrôle le vérifie : hors du rez, **chaque couloir rejoint un noyau**, d'un corps à l'autre
+par un passage bout à bout, par un raccord ou par un hall (`lirePlans() — isoles`). Sur les
+douze partis et cinq seeds, aucun n'est isolé, toutes les jonctions en T débouchent, rien ne sort
+de son volume.
+
+**Les étapes se voient** : chaque pièce porte la sienne (`et`, `etapeDe()`), et l'étape
+« Déroulé » du rail montre le plan à chacune — ce qui n'est pas encore posé en attente, hachuré ;
+le squelette en couleur. Rien ne s'y règle ; on revient toujours au plan fini, et les planches du
+Rendu le dessinent seul.
+
+Le prix est dit : sur les douze partis et cinq seeds, le jugement moyen reste celui d'avant
+(60,4 contre 60,6), les classes au soleil et les grappes gagnent presque partout, la part
+Typologie perd quelques points — le raccord prend de la bande (`posé`), un bout de couloir qui
+passe chez le voisin ne compte plus comme bout éclairé (`jour`).
+
 ## Les noyaux
 
 Un noyau est une cage d'escalier et d'ascenseur : il traverse TOUS les niveaux de son corps, au
 même point. `gen.js — hotes()` les place avant de composer les plans, bâtiment par bâtiment
-(`bat`) :
+(`bat`), et compte à chaque niveau par GROUPE DE CORPS QUI SE TOUCHENT (`touche()`) : deux
+sous-sols sous deux ailes qui ne se touchent pas ont chacun le leur — compter par bâtiment les
+croyait desservis l'un par l'autre. À égalité, un noyau va au carrefour : au bout d'une aile qui
+touche sa voisine, où il dessert les deux.
 
 - **où il peut être** : dans l'emprise commune à tous les niveaux du corps — un sous-sol de
   20 m sous une barre de 110 m le tient au milieu de la barre —, contre la façade du côté du
@@ -99,7 +150,9 @@ même point. `gen.js — hotes()` les place avant de composer les plans, bâtime
 - **la même mesure** : `fuite(p, C)`, en équerre jusqu'au noyau le plus proche et sa limite
   (35 m vers un, 50 m vers deux), est celle que `lirePlans()` applique au centre de chaque
   pièce. Les pièces n'étant pas encore posées, `hotes()` la prend aux points les plus loin
-  qu'elle puisse lire : à une demi-cabine de WC du pignon, à une demi-bande de la façade.
+  qu'elle puisse lire : à une demi-cabine de WC du pignon, à la moitié d'une petite pièce posée
+  contre la façade (`piece.larg`) — à une demi-bande, un plan franchissait la limite que les
+  noyaux croyaient tenir.
 
 La composition pose la cage À SA PLACE dans le rang : une pièce qui ne tient pas avant elle
 laisse passer la suivante qui y tient, sinon elle passe après, et le sol laissé devant la cage
@@ -131,7 +184,8 @@ volumétrie, et l'on retrouve au Massing celle qu'on y avait laissée.
 - **Puis ce qui est sorti revient là où il reste de la place**, dans n'importe quel corps du niveau,
   le sien compris. L'abri PC (750 m²) se compartimente en parts de 300 m² au plus, et une part se
   recoupe pour remplir le sol qui reste. Sans cela, un débord de quelques mètres sortait l'abri entier
-  et laissait vide la moitié d'un corps — le Massing l'avait dimensionné pour lui.
+  et laissait vide la moitié d'un corps — le Massing l'avait dimensionné pour lui. Une classe qui ne
+  tient pas avec son vestiaire en sas revient sans lui plutôt que de rester au bac.
 - **Le sol qu'un rang laisse libre est un dégagement**, nommé au plan, ouvert sur le couloir. Au-delà
   de `sol-vide` (cadre, 100 m² par corps et par niveau), le Contrôle le signale.
 - L'annexe que les plans adossaient à la salle de sport, et le sous-sol mis à la profondeur de la
@@ -141,14 +195,16 @@ volumétrie, et l'on retrouve au Massing celle qu'on y avait laissée.
 ## Un volume fusionné, un seul mur
 
 Le Massing assemble ce qui se touche en un volume de plusieurs rectangles (`docs/massing.md` — *Le
-volume n'est pas qu'un rectangle*). Les plans se composent rectangle par rectangle :
+volume n'est pas qu'un rectangle*). Les plans pavent rectangle par rectangle, mais sur un
+squelette commun (*Le déroulé*, plus haut) :
 `donnees.js — ailes()` fait de chaque part une aile, un corps du même bâtiment (`bat`) qui partage
 les noyaux des autres, suivie d'un niveau à l'autre par ce qu'elle recouvre en plan pour que son
 noyau s'empile. Tous les murs se dessinent AVANT tous les sols : là où deux ailes se touchent, le sol
 de l'une recouvre le mur de l'autre, et il n'y a plus de mur entre elles — la séparation des pièces
 est leur cloison. Deux volumes qui ne font que se toucher (la salle de sport et l'école, ou deux
 corps que le Massing n'a pas pu assembler) gardent UN mur : celui de l'autre, et ce qui les sépare
-encore (moins de `regles.fusion`, 1 m), devient un dégagement, ouvert sur une baie de passage.
+encore (moins de `regles.fusion`, 1 m), devient un dégagement, ouvert sur une baie de passage —
+dans l'axe du couloir qui y finit, ou du raccord qui y mène.
 
 **Verrouillées** (`core/verrou.js`), les Typologies se regardent : le Shuffle, la seed et la cote
 d'une pièce sont désactivés (`DATA.verrou`). Un cadenas sur les Typologies fige aussi le Massing,
@@ -170,11 +226,12 @@ Elle charge les feuilles du site (`tokens`, `base`, `controls`, `massing`), le t
 l'hôte, et en reprend les composants :
 
 - **le rail en chaîne** — Proposer en tête (Shuffle typologie, le nombre de volumes lus, la seed),
-  puis les étapes repliables, leur état à droite : 1 · Bilan du niveau (part posée, ce qui ne tient
-  pas), 2 · Évaluation (la note du bâtiment entier à cette seed, rouge s'il est invalide ; la part
+  puis les étapes repliables, leur état à droite : 1 · Déroulé (le plan à chaque étape de sa
+  composition, *Le déroulé*), 2 · Bilan du niveau (part posée, ce qui ne tient pas),
+  3 · Évaluation (la note du bâtiment entier à cette seed, rouge s'il est invalide ; la part
   Typologie ; chaque critère du plan, sa mesure et sa barre — `parent.typoEvaluation()`, refaite à
-  chaque Shuffle), 3 · Contrôle (toute la pile ; ouvert dès qu'un point est à revoir),
-  4 · Familles ; Emporter au pied (Copier le SVG) ;
+  chaque Shuffle), 4 · Contrôle (toute la pile ; ouvert dès qu'un point est à revoir),
+  5 · Familles ; Emporter au pied (Copier le SVG) ;
 - **la barre** de ce qu'on regarde — niveau, couleurs, mobilier · cotes · site, cadrage — une
   préférence de l'appareil (`localStorage`, `typo-saxon`), pas une décision de projet ;
 - **la pièce cliquée** dans une carte posée sur le plan, au coin opposé au clic : sa largeur au

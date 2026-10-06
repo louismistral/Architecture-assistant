@@ -26,9 +26,10 @@ Un plan se compose dans l'ordre où un architecte le dessine, sur la forme ENTI�
    et palier font un **carrefour** — la règle C : c'est le placement des noyaux qui le décide, pas
    une ligne de plus. Contre la salle de sport : par un pignon, le couloir y finit, la porte dans
    son axe ; par un flanc, un raccord au milieu du contact, la porte dans son axe.
-4. **Pièces maîtresses** — les classes (famille `cla`) d'abord, sur tout le plateau : réparties
-   entre les corps selon la longueur de leur façade de jour (la mesure même de `classesSoleil`,
-   `soleil()`), et dans chaque corps en tête de la bande la plus ensoleillée.
+4. **Pièces maîtresses** — les salles de classe d'abord, en tête de chaque corps, donc dans sa
+   bande de jour (la mesure même de `classesSoleil`, `soleil()`), en grappes de trois ou quatre.
+   *Essayé puis retiré* : les répartir d'abord entre les corps selon leur façade de jour — sans
+   gain au soleil (0,718 dans les deux cas), et avec un bruit multiplié par quatre.
 5. **Pièces liées** — vestiaires, WC, dépôts suivent leurs pièces mères (inchangé).
 6. **Le reste** — le programme famille par famille, au prorata de ce que chaque corps peut encore
    recevoir (inchangé) ; ce qui ne tient pas reste au bac.
