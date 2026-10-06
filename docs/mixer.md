@@ -232,3 +232,9 @@ Une source pour trois onglets :
 - **les Typologies** — elles lisent la cote de chaque poste pour la largeur de ses pièces. Leur
   éditeur (`typoRegle(key, w)`) en garde une à elles (`typo/etat.js`), qui ne remonte JAMAIS ici :
   sans quoi un réglage au plan recomposait la volumétrie (`docs/typologies.md`).
+
+**Les murs** (levier « Part des murs », `V.partMurs`, 10 % estimés : murs extérieurs de 40 cm et
+cloisons de 10 cm, surface de construction SIA 416). Le plateau du mixer est BRUT : pièces,
+circulation et murs (`flBrut()` = `flBuilt()` + `flMurs()`). `usable()`, `pilesAdmissibles()`,
+`ajusterPlateaux()` et le contrôle du plateau le lisent ; le Massing, qui dessine ses murs autour
+des volumes, ne reçoit que `flBuilt()` — les murs ne sont pas comptés deux fois.
