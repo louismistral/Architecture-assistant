@@ -213,9 +213,11 @@ export function creerPG(D){
     var LV = D ? D.floors : [], cH = NOY.prof;
     function rez(i){ return LV[i] && LV[i].lvl === 0; }
     /* les points les plus loin que lise la mesure : le centre d'une pièce est
-       à une demi-bande au moins de la façade, et presque toujours du pignon —
-       les pièces ne sont pas encore posées */
-    function lus4(v, e){ var w = Math.max(0, e.w - PC.cabine) / 2, d = Math.max(0, e.d - BMIN) / 2, dx = e.dx || 0, dy = e.dy || 0;
+       à une demi-cabine du pignon, et à la moitié d'une petite pièce posée
+       contre la façade (`PC.larg`) — pas d'une demi-bande : un local de 5 m²
+       a son centre à un mètre du mur, et le plan franchissait la limite que les
+       noyaux croyaient tenir. Les pièces ne sont pas encore posées. */
+    function lus4(v, e){ var w = Math.max(0, e.w - PC.cabine) / 2, d = Math.max(0, e.d - PC.larg) / 2, dx = e.dx || 0, dy = e.dy || 0;
       return [[-w, -d], [w, -d], [w, d], [-w, d]].map(function(q){ return local(v.x, v.y, v.a, q[0] + dx, q[1] + dy); }); }
     var G = {};
     vols.forEach(function(v){ if(!v.lv.some(function(e){ return e.keys; })) (G[v.bat || v.id] = G[v.bat || v.id] || []).push(v); });
@@ -411,10 +413,10 @@ export function creerPG(D){
        restée sans. Un vestiaire de trop reste un satellite, en bloc. */
     function sas(g, x){ g.ante = x; x.enSas = 1; }
     f.U.forEach(function(u){ u.ante = null; u.enSas = 0; });
-    f.U.forEach(function(x){ if(x.anti && x.prin && x.prin.key === x.anti && !x.prin.ante && f.U.indexOf(x.prin) >= 0) sas(x.prin, x); });
+    f.U.forEach(function(x){ if(x.anti && x.prin && x.prin.key === x.anti && !x.prin.ante && !x.prin.sansSas && f.U.indexOf(x.prin) >= 0) sas(x.prin, x); });
     f.U.forEach(function(x){
       if(!x.anti || x.enSas) return;
-      var g = f.U.filter(function(u){ return u.key === x.anti && !u.ante; })[0];
+      var g = f.U.filter(function(u){ return u.key === x.anti && !u.ante && !u.sansSas; })[0];
       if(g) sas(g, x);
     });
     var trav = [], full = [], gr = [], pe = [];
@@ -486,7 +488,10 @@ export function creerPG(D){
     /* la coupe entre les deux rangs tombe sur ce groupe : il est au bout libre */
     /* … partagé entre les deux rangs, pour que tout reste près du bout */
     var mi = deb0 + at + Math.floor(bout.length / 2);
-    var kMin = bout.length ? Math.max(0, mi - 1) : 0, kMax = bout.length ? Math.min(items.length, mi + 1) : items.length;
+    /* … sauf si une bande porte un raccord : la coupe reste libre, sinon cette
+       bande déborde pendant que l'autre reste à moitié vide */
+    var libreK = !bout.length || (o.res || []).length;
+    var kMin = libreK ? 0 : Math.max(0, mi - 1), kMax = libreK ? items.length : Math.min(items.length, mi + 1);
     var fix = 0; trav.concat(full).forEach(function(u){ fix += u.a / D; });
     /* les noyaux : leur place dans le rang du noyau, depuis l'ancre, et l'écart
        de la cage à la façade de ce niveau */
@@ -495,9 +500,20 @@ export function creerPG(D){
        raccords du squelette (`o.res`) — une aile voisine touche la bande, et
        son couloir la traverse jusqu'au nôtre. Une pièce qui ne tient pas avant
        une place laisse passer la suivante, comme devant un noyau. */
+    /* un raccord qui tombe là où va un hall traversant, au bout libre, n'a pas
+       lieu d'être : le hall, sur toute la profondeur, relie déjà les couloirs.
+       À cheval sur son bord, il s'y adosse — raccord et hall font une seule
+       ouverture. */
+    var fixT = 0; trav.forEach(function(u){ fixT += u.a / D; });
+    var bord = Lw - fix;
+    function auHall(r){
+      if(!fixT || r.x + r.W <= bord + 0.01) return r;
+      if(r.x + r.W / 2 >= bord) return null;
+      return Object.assign({}, r, { x:bord - r.W });
+    }
     function placesDe(fr, cages){
       return (cages ? K.map(function(x){ return { x:x, W:WC, cage:1 }; }) : [])
-        .concat((o.res || []).filter(function(r){ return r.frame === fr; }))
+        .concat((o.res || []).filter(function(r){ return r.frame === fr; }).map(auHall).filter(Boolean))
         .sort(function(p, q){ return p.x - q.x; });
     }
     var QN = placesDe(N, true), QS = deux ? placesDe(S, false) : QN;
@@ -648,11 +664,15 @@ export function creerPG(D){
     function milieu(list){ return Math.max(list.length ? 1 : 0, Math.floor(list.length / 2)); }
     /* les noyaux sont dans le rang nord ; un seul rang les porte tous */
     var rS = lb - longK(best.IS, deux ? bS : T, best.eg, best.ed, QS);
-    bande(best.IS, S, deux ? bS : T, 0, best.eg, best.ed, rS, QS.length ? best.IS.length : !best.eg ? 0 : milieu(best.IS), QS);
+    var pose = bande(best.IS, S, deux ? bS : T, 0, best.eg, best.ed, rS, QS.length ? best.IS.length : !best.eg ? 0 : milieu(best.IS), QS);
     if(deux){
       var INr = best.IN.slice().reverse(), rN = lb - longK(INr, bN, false, false, QN);
-      bande(INr, N, bN, 0, false, false, rN, QN.length ? INr.length : milieu(best.IN), QN);
+      pose = Math.max(pose, bande(INr, N, bN, 0, false, false, rN, QN.length ? INr.length : milieu(best.IN), QN));
     }
+    /* la longueur POSÉE fait foi : l'estimation à sec (`longK`) peut manquer, au
+       millimètre, le saut d'une place réservée — le corps débordait de son
+       volume sans que le bac le sache */
+    if(pose > lb + 0.01){ lb = pose; L = lb + fix; f.L = L; }
     var x = lb;
     trav.forEach(function(u){ var W = u.a / D; R.push(Object.assign({}, u, { kind:"trav", frame:"full", x0:x, W:W, H:D })); x += W; });
     full.forEach(function(u){ var W = u.a / D; R.push(Object.assign({}, u, { kind:"full", frame:"full", x0:x, W:W, H:D })); x += W; });
@@ -764,37 +784,10 @@ export function creerPG(D){
       var a = u.a; (u.sat || []).forEach(function(x){ a += x.a; });
       return { u:u, a:a, chap:u.chap, f:u.f };
     }).sort(function(p, q){ return (rang(p) - rang(q)) || (famO(p) - famO(q)) || (q.a - p.a); });
-    var pre = F.map(function(){ return 0; });
-    /* ÉTAPE 4 — LES PIÈCES MAÎTRESSES. Les classes d'abord, sur tout le
-       plateau : aux corps dont la bande de jour regarde le mieux le soleil — la
-       mesure même du jury (`soleil`, `classesSoleil`) —, chacun jusqu'à ce que
-       cette bande soit pleine, à leur profondeur (`classe-dim`). Elles s'y
-       posent en tête (`composer`). Ce qui n'y tient pas suit le programme,
-       famille par famille (étape 6). */
-    var PCL = CLASSE ? CLASSE[1] : 9;
-    F.map(function(f, k){
-      var an = ancre(f.v, vols), deux = f.e.d >= DEUX,
-          sA = soleil(Math.sin(f.a), -Math.cos(f.a)), sB = soleil(-Math.sin(f.a), Math.cos(f.a));
-      /* un seul rang : il est du côté du noyau (`composer`), qu'il ait le soleil ou non */
-      var s = deux ? Math.max(sA, sB) : an.N === "A" ? sA : sB;
-      return { k:k, s:s, L:f.e.w - (!deux && an.h ? an.h.xs.length * WC : 0) };
-    }).filter(function(c){ return c.s > 0; })
-      .sort(function(p, q){ return (q.s - p.s) || (p.k - q.k); })
-      .forEach(function(c){
-        var f = F[c.k], front = 0;
-        reste.filter(function(x){ return x.f === "cla"; })
-          .sort(function(p, q){ return maitre(p.u) - maitre(q.u); }).forEach(function(x){
-          var w = x.u.a / PCL;
-          if(front + w > c.L) return;
-          front += w; pre[c.k] += x.a;
-          reste.splice(reste.indexOf(x), 1);
-          f.U.push(x.u);
-          (x.u.sat || []).forEach(function(y){ y.prin = x.u; f.U.push(y); });
-        });
-      });
     /* un découpage CONTIGU de la liste (les familles restent ensemble) en
        autant de tranches que de corps, au plus près de la part de chacun —
        programmation dynamique sur les points de coupe */
+    var pre = F.map(function(){ return 0; });
     var cum = [0]; reste.forEach(function(u, j){ cum.push(cum[j] + u.a); });
     var n = reste.length, K = F.length, INF = 1e18, cout = [], dd = [];
     for(var q = 0; q <= K; q++){ cout.push(new Array(n + 1).fill(INF)); dd.push(new Array(n + 1).fill(0)); }
@@ -919,28 +912,38 @@ export function creerPG(D){
       function comp(){
         composer(f, { s:an.s, N:an.N, noyaux:K, off:off, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:e.w, regles:reg, res:resDe(f, an) });
       }
-      comp();
-      /* CE QUI NE TIENT PAS dans le volume reste au bac du niveau : la pièce
-         qui couvre le débord au plus juste, sinon la plus grande, jusqu'à ce
-         que le plan tienne. C'est au Massing ou au mixer d'y répondre. */
-      while(f.L > e.w + 0.05 && f.U.length){
+      f.comp = comp;
+      caser(f);
+    });
+    /* CE QUI NE TIENT PAS dans le volume reste au bac du niveau : la pièce
+       qui couvre le débord au plus juste, sinon la plus grande, jusqu'à ce
+       que le plan tienne. C'est au Massing ou au mixer d'y répondre. */
+    function caser(f){
+      f.comp();
+      while(f.L > f.e.w + 0.05 && f.U.length){
         /* un hall reste : c'est par lui qu'on entre */
-        var ex = (f.L - e.w) * f.D, par = f.U.filter(function(u){ return !/^Hall|foyer/i.test(u.n) && !u.enSas; });
+        var ex = (f.L - f.e.w) * f.D, par = f.U.filter(function(u){ return !/^Hall|foyer/i.test(u.n) && !u.enSas; });
         par = (par.length ? par : f.U).slice().sort(function(p, q){ return p.a - q.a; });
         var pris = par.filter(function(u){ return u.a >= ex; })[0] || par[par.length - 1];
         f.U.splice(f.U.indexOf(pris), 1);
         non.push(pris);
-        comp();
+        f.comp();
       }
-      f.comp = comp;
-    });
+    }
     /* CE QUI EST SORTI D'UN CORPS va là où il reste de la place, le sien
        compris : sortir une pièce pour un débord de quelques mètres laisse un
        vide, que les plus petites d'entre elles comblent */
     function tient(f, u){ f.U.push(u); f.comp(); if(f.L <= f.e.w + 0.05) return true; f.U.pop(); f.comp(); return false; }
-    non.slice().sort(function(p, q){ return q.a - p.a; }).forEach(function(u){
+    function reloger(F){ non.slice().sort(function(p, q){ return q.a - p.a; }).forEach(function(u){
       F.some(function(f){
         if(tient(f, u)){ non.splice(non.indexOf(u), 1); return true; }
+        /* une classe sans son vestiaire en sas plutôt qu'au bac : la classe
+           seule tient là où, avec lui, elle ne tenait pas */
+        if(SALLE.test(u.n || "") && !u.sansSas){
+          u.sansSas = 1;
+          if(tient(f, u)){ non.splice(non.indexOf(u), 1); return true; }
+          delete u.sansSas;
+        }
         /* un compartiment de l'abri se recoupe : la part qui tient se pose,
            le reste attend au bac — la surface totale ne change pas */
         if(!u.part) return false;
@@ -950,19 +953,14 @@ export function creerPG(D){
         tient(f, Object.assign({}, u, { a:lo })); u.a -= lo;
         return false;
       });
-    });
+    }); }
+    reloger(F);
     /* un receveur se recompose sur le couloir de ses branches tel qu'il est
        au bout du compte : ce qui y est revenu a pu le déplacer */
-    F.forEach(function(f){
-      if(!J.some(function(j){ return j.k === "T" && j.r === f; })) return;
-      f.comp();
-      while(f.L > f.e.w + 0.05 && f.U.length){
-        var par = f.U.filter(function(u){ return !/^Hall|foyer/i.test(u.n) && !u.enSas; });
-        par = (par.length ? par : f.U).slice().sort(function(p, q){ return p.a - q.a; });
-        var pris = par[0];
-        f.U.splice(f.U.indexOf(pris), 1); non.push(pris); f.comp();
-      }
-    });
+    F.forEach(function(f){ if(J.some(function(j){ return j.k === "T" && j.r === f; })) caser(f); });
+    /* … et ce qui en est sorti revient où il reste de la place, hors des
+       branches : leur couloir ne bouge plus */
+    reloger(F.filter(function(f){ return !J.some(function(j){ return j.k === "T" && j.b === f; }); }));
     F.forEach(function(f){
       var an = ancre(f.v, vols), dx = (f.e.dx || 0) - an.s * f.e.w / 2 + an.s * f.L / 2;
       f.dxNew = dx;
@@ -1013,7 +1011,10 @@ export function creerPG(D){
             x1 = Math.min(f.e.w / 2, Math.max.apply(null, C.map(function(q){ return q[0]; }))),
             y0 = Math.min.apply(null, C.map(function(q){ return q[1]; })), y1 = Math.max.apply(null, C.map(function(q){ return q[1]; }));
         if(x1 - x0 < COULOIR + 1) return;
-        var fr = y0 - f.e.d / 2 > -0.1 && y0 - f.e.d / 2 < CONTACT ? "B" : -f.e.d / 2 - y1 > -0.1 && -f.e.d / 2 - y1 < CONTACT ? "A" : null;
+        /* un jeu, ou un recouvrement de l'épaisseur des murs : les volumes
+           assemblés avancent l'un vers l'autre (`docs/massing.md`) */
+        var dB = y0 - f.e.d / 2, dA = -f.e.d / 2 - y1;
+        var fr = Math.abs(dB) < CONTACT ? "B" : Math.abs(dA) < CONTACT ? "A" : null;
         var n = g.fixe ? 1 : Math.max(1, Math.round((x1 - x0) / 30));
         if(fr) for(var k = 0; k < n; k++) J.push({ k:"flanc", b:f, r:g, fr:fr, xc:x0 + (k + 0.5) * (x1 - x0) / n });
       });
@@ -1041,8 +1042,10 @@ export function creerPG(D){
       if(g === f || g.fixe) return false;
       var q = dans(g, wpt);
       if(Math.abs(q[0]) <= g.L / 2 + 0.05 && q[1] > g.yc0 + 0.3 && q[1] < g.yc1 - 0.3) return true;
-      /* … ou dans le raccord qu'il lui a réservé : la bande traversée */
+      /* … ou dans le raccord qu'il lui a réservé, la bande traversée — ou dans
+         le hall qui la traverse */
       var r = dans(g, versMonde(f, sg * (f.L / 2 + CONTACT), ym));
+      if((g.rooms || []).some(function(rm){ return rm.kind === "trav" && r[0] >= rm.x0 - 0.05 && r[0] <= rm.x0 + rm.W + 0.05; })) return true;
       return (g.paliers || []).some(function(k){
         if(!k.raccord || r[0] < k.x0 - 0.05 || r[0] > k.x0 + k.W + 0.05) return false;
         return k.frame === "A" ? r[1] >= g.yc0 - k.H - 0.05 && r[1] <= g.yc0 + 0.05 : r[1] >= g.yc1 - 0.05 && r[1] <= g.yc1 + k.H + 0.05;
