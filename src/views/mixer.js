@@ -23,11 +23,11 @@
    décide ; dé éteint, la valeur est la nôtre et le tirage la respecte. Toucher
    une valeur, c'est la choisir : son dé s'éteint. Chacun se règle là où il se
    voit — le nombre de niveaux sur la pile, le plateau sur son niveau, le lien
-   d'un poste sur son bloc, les adjacences au flanc —, et les dés maîtres de
-   chaque famille sont au flanc aussi.
+   d'un poste sur son bloc —, et les dés maîtres sont à l'étape Leviers du rail.
 
-   La barre du haut ne porte que ce qui agit sur l'ENSEMBLE : Shuffle, Tout au
-   bac, et la seed qui rejoue une proposition.
+   Le rail est celui du Massing et des Typologies : « Proposer » en tête —
+   Shuffle programme, Tout au bac, la seed —, puis les étapes repliables, leur
+   état à droite : À placer, Contraintes, Leviers, Adjacences, Circulation.
    ========================================================================= */
 import { fige } from "../core/verrou.js";
 import { dec, el, fmt } from "../core/format.js";
@@ -56,13 +56,15 @@ import { SMAP } from "./schema.js";
 import { pilesAdmissibles, repartir } from "../mix/shuffle.js";
 import { saveSoon, setChip } from "../mix/store.js";
 import { sousShuffle } from "./shuffles.js";
+import { icone as ico } from "./icons.js";
+import { roleNom } from "../data/lignes.js";
 
 /* Surface d'un mètre carré, en pixels carrés. Constante pour toute la vue :
    c'est ce qui permet de comparer deux niveaux d'un coup d'œil. */
 var AIRE = 70;
 var TINY_W = 46, TINY_H = 21;
 
-var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, seedEl = null, circEl = null;
+var stackEl = null, issuesEl = null, trayEl = null, sumEl = null, circEl = null;
 var reglEl = null, adjEl = null, dernierCheck = [];
 var ghostEl = null;
 var selU = null, drag = null, wired = false;
@@ -71,75 +73,24 @@ var selU = null, drag = null, wired = false;
    ses coupables dans la pile — c'est à quoi sert `issFocus`. */
 var openIss = null, issFocus = null;
 
-/* ---------- construction du panneau --------------------------------------- */
+/* ---------- construction du panneau ---------------------------------------
+   La disposition du Massing et des Typologies : un RAIL à gauche, en chaîne —
+   « Proposer » en tête, toujours visible, puis les étapes repliables, chacune
+   portant son état à droite —, et ce qu'on regarde, la pile, tient tout le
+   reste. Le rail se refait à chaque geste (`dessineRail`). */
+var railEl = null;
 export function mixPanel(){
   var p = el("section","mix");
+  var grid = el("div","mass-grid");
+  railEl = el("aside","mass-rail");
+  grid.appendChild(railEl);
 
-  /* --- barre d'outils ----------------------------------------------------
-     Ce qui agit sur l'ENSEMBLE, et rien d'autre : proposer, vider, rejouer.
-     Les trois interrupteurs qui s'y tenaient — « Shuffle niveaux », « Grouper
-     les liés », « Voir les pièces » — sont devenus des réglages, chacun avec son
-     dé, là où ils se voient. */
-  var bar = el("div","controls mix-bar");
-
-  /* Le tirage est la seule proposition : « Répartir », son jumeau ordonné,
-     donnait la même chose à l'ordre des chapitres près, et la seed rend le
-     tirage aussi rejouable qu'un ordre fixe. */
-  var bAle = el("button","btn btn--primary","Shuffle");
-  bAle.type = "button";
-  bAle.title = "Une répartition tirée au sort, rejouable par sa seed. Les réglages "
-             + "dont le dé est éteint sont respectés.";
-  bAle.addEventListener("click", function(){ proposer(); });
-  bar.appendChild(bAle);
-
-  var bVide = el("button","btn","Tout au bac");
-  bVide.type = "button";
-  bVide.title = "Vide les niveaux pour reposer le programme à la main";
-  bVide.addEventListener("click", function(){
-    toTray(); selU = null; drawMix(); saveSoon();
-  });
-  bar.appendChild(bVide);
-
-  /* La seed est ce qui rend une proposition retrouvable : sans elle, on tire
-     dix fois et la troisième, qui était la bonne, n'existe plus. Elle ferme la
-     rangée : c'est le seul CHAMP parmi des boutons. Les gestes d'abord, ce qui
-     les rejoue ensuite. */
-  seedEl = el("div","mix-seed");
-  bar.appendChild(seedEl);
-
-  bar.appendChild(el("span","spacer"));
-  var chip = el("span","savechip");
-  bar.appendChild(chip);
-  setChip(chip);
-  p.appendChild(bar);
-  /* sous la barre : le mode auto, et les shuffles des autres onglets */
-  sousShuffle(bAle, "mixer", p);
-
-  /* --- la pile et son flanc --- */
-  var grid = el("div","mix-grid");
   var main = el("div","mix-main");
   sumEl = el("div","mix-sum");
   main.appendChild(sumEl);
   stackEl = el("div","mix-stack");
   main.appendChild(stackEl);
-
   grid.appendChild(main);
-
-  /* Le flanc, dans l'ordre où l'on s'en sert : ce que le Shuffle tire, ce qui
-     ne va pas, ce qui reste à poser, les adjacences qu'on active, et la
-     circulation qu'on lit. */
-  var side = el("aside","mix-side");
-  reglEl = el("section","mix-regl");
-  side.appendChild(reglEl);
-  issuesEl = el("section","mix-issues");
-  side.appendChild(issuesEl);
-  trayEl = el("section","mix-tray");
-  side.appendChild(trayEl);
-  adjEl = el("section","mix-adj");
-  side.appendChild(adjEl);
-  circEl = el("section","mix-circ");
-  side.appendChild(circEl);
-  grid.appendChild(side);
   p.appendChild(grid);
 
   if(!ghostEl){
@@ -152,6 +103,150 @@ export function mixPanel(){
      proposition ne serait pas rejouable. */
   if(!curSeed) seed(null);
   return p;
+}
+
+/* --- le rail : proposer, puis les étapes --------------------------------------
+   Ce qui agit sur l'ENSEMBLE en tête : le Shuffle, Tout au bac, la seed. Puis,
+   dans l'ordre où l'on s'en sert : ce qui reste à poser, ce qui ne va pas, ce
+   que tire le Shuffle, les adjacences, la circulation qu'on lit. Le corps d'une
+   étape ne se construit que si elle est ouverte. */
+var OUVERT = {};
+function dessineRail(){
+  if(!railEl) return;
+  while(railEl.firstChild) railEl.removeChild(railEl.firstChild);
+  issuesEl = trayEl = reglEl = adjEl = circEl = null;
+  dernierCheck = mixCheck();
+  railEl.appendChild(blocProposer());
+  var ol = el("ol","mass-etapes");
+  ol.appendChild(etapeBac());
+  ol.appendChild(etapeControle());
+  ol.appendChild(etapeLeviers());
+  ol.appendChild(etapeAdj());
+  ol.appendChild(etapeCirc());
+  railEl.appendChild(ol);
+}
+
+/* Une étape, comme au Massing : numéro, nom, ce qu'elle a décidé, son ÉTAT à
+   droite. `ouvrir` : ouverte par défaut, tant qu'on ne l'a ni ouverte ni fermée. */
+function etape(id, num, titre, sous, etat, corps, ouvrir){
+  var li = el("li","mass-etape mass-etape--" + id);
+  var d = el("details");
+  d.open = OUVERT[id] != null ? OUVERT[id] : !!ouvrir;
+  var s = el("summary","mass-etape__s");
+  s.appendChild(el("span","mass-etape__num mono", num));
+  var t = el("span","mass-etape__t");
+  t.appendChild(el("b", null, titre));
+  if(sous) t.appendChild(el("span", null, sous));
+  s.appendChild(t);
+  var e = el("span","mass-etape__e");
+  (Array.isArray(etat) ? etat : etat ? [etat] : []).forEach(function(x){ e.appendChild(x); });
+  s.appendChild(e);
+  s.appendChild(ico("chevron", 14));
+  d.appendChild(s);
+  var b = el("div","mass-etape__b");
+  d.appendChild(b);
+  function remplir(){ if(!d.open || b.firstChild) return; corps(b); }
+  d.addEventListener("toggle", function(){ OUVERT[id] = d.open; remplir(); });
+  remplir();
+  li.appendChild(d);
+  return li;
+}
+function puce(txt, cls, titre){
+  var c = el("i","chip chip--" + cls, txt);
+  if(titre) c.title = titre;
+  return c;
+}
+/* Le renvoi au volet Contraintes : chaque ligne qui gouverne la répartition. */
+function versContraintes(b){
+  var a = el("button","btn btn--quiet mass-renvoi","Régler ligne à ligne — volet Contraintes");
+  a.type = "button";
+  a.dataset.vue = "";
+  a.addEventListener("click", function(){ if(mixNav) mixNav("contraintes"); });
+  b.appendChild(a);
+}
+
+function blocProposer(){
+  var b = el("section","mass-prop");
+  b.appendChild(el("h2","mass-prop__h","Proposer"));
+  /* Le tirage est la seule proposition : « Répartir », son jumeau ordonné,
+     donnait la même chose à l'ordre des chapitres près, et la seed rend le
+     tirage aussi rejouable qu'un ordre fixe. */
+  var tir = el("button","btn btn--primary mass-tir");
+  tir.type = "button";
+  tir.appendChild(ico("de", 18));
+  var t = el("span","mass-tir__t");
+  t.appendChild(el("b", null, "Shuffle programme"));
+  t.appendChild(el("span", null, "autre répartition dans les étages"));
+  tir.appendChild(t);
+  tir.title = "Une répartition tirée au sort, rejouable par sa seed. Les réglages "
+            + "dont le dé est éteint sont respectés.";
+  tir.addEventListener("click", function(){ proposer(); });
+  b.appendChild(tir);
+  /* dessous : le mode auto, et les shuffles des autres onglets */
+  sousShuffle(tir, "mixer");
+
+  var nav = el("div","mass-nav");
+  var bVide = el("button","btn","Tout au bac");
+  bVide.type = "button";
+  bVide.title = "Vide les niveaux pour reposer le programme à la main";
+  bVide.addEventListener("click", function(){
+    toTray(); selU = null; drawMix(); saveSoon();
+  });
+  nav.appendChild(bVide);
+  nav.appendChild(el("span","spacer"));
+  nav.appendChild(champSeed());
+  b.appendChild(nav);
+  var chip = el("span","savechip");
+  b.appendChild(chip);
+  setChip(chip);
+  return b;
+}
+
+/* --- 1 · le bac : ce qui reste à poser. L'étape entière reçoit un bloc
+   glissé, même repliée. */
+function etapeBac(){
+  var bl = trayBlocks(), n = 0, reste = trayArea();
+  bl.forEach(function(x){ n += x.q; });
+  var li = etape("mix-bac", "1", "À placer", n ? n + " pièce" + (n > 1 ? "s" : "") + " au bac" : "tout est posé",
+    puce(reste > 0 ? fmt(Math.round(reste)) + " m²" : "posé", reste > 0 ? "warn" : "ok"),
+    function(b){ trayEl = b; drawTray(); }, reste > 0);
+  li.classList.add("mix-tray");
+  return li;
+}
+/* --- 2 · le contrôle ; un conflit ouvre l'étape d'elle-même --- */
+function etapeControle(){
+  var v = mixVerdict(dernierCheck);
+  var etat = [];
+  if(v.e) etat.push(puce(v.e + " conflit" + (v.e > 1 ? "s" : ""), "danger"));
+  if(v.w) etat.push(puce(v.w + " à vérifier", "warn"));
+  if(!v.e && !v.w) etat.push(puce("tenu", "ok"));
+  return etape("mix-controle", "2", roleNom("cadre"),
+    v.e ? "une règle enfreinte" : v.w ? "une préférence à revoir" : "rien à signaler", etat,
+    function(b){ issuesEl = b; drawIssues(); versContraintes(b); }, v.e > 0);
+}
+/* --- 3 · ce que tire le Shuffle --- */
+function etapeLeviers(){
+  var postes = postesLibres().map(function(p){ return p.key; });
+  var nLies = postes.filter(estLie).length;
+  return etape("mix-leviers", "3", roleNom("levier"), "ce que Shuffle programme tire",
+    puce(nLies + "/" + postes.length + " liés", "soft", "Postes liés sur ceux qui ont le choix"),
+    function(b){ reglEl = b; drawRegl(); versContraintes(b); });
+}
+/* --- 4 · les adjacences exigées --- */
+function etapeAdj(){
+  var ids = liens().map(lienId), nAct = ids.filter(adjActive).length;
+  var nBris = dernierCheck.filter(function(x){ return !x.ok && x.code.indexOf("adj:") === 0; }).length;
+  return etape("mix-adj", "4", "Adjacences", nAct + " exigée" + (nAct > 1 ? "s" : "") + " sur " + ids.length,
+    puce(nBris ? nBris + " rompue" + (nBris > 1 ? "s" : "") : "tenues", nBris ? "danger" : "ok"),
+    function(b){ adjEl = b; drawAdj(); });
+}
+/* --- 5 · la circulation, en lecture seule --- */
+function etapeCirc(){
+  var pile = 0;
+  for(var i = 0; i < FLOORS.length; i++) pile += flCirc(i);
+  return etape("mix-circ", "5", "Circulation", dec(COULOIR) + " m de couloir",
+    puce(fmt(Math.round(pile)) + " m²", "soft", "Circulation comptée sur cette pile"),
+    function(b){ circEl = b; drawCirc(); });
 }
 
 function proposer(){
@@ -169,7 +264,6 @@ function drawCirc(){
   if(!circEl) return;
   var s = circEl;
   while(s.firstChild) s.removeChild(s.firstChild);
-  s.appendChild(el("h3","label","Circulation"));
   var v = el("p","mix-circ__v mono", dec(COULOIR) + " m");
   v.appendChild(el("span","u", "de couloir"));
   s.appendChild(v);
@@ -279,7 +373,6 @@ function drawRegl(){
   if(!reglEl) return;
   var s = reglEl;
   while(s.firstChild) s.removeChild(s.firstChild);
-  s.appendChild(el("h3","label","Ce que tire le Shuffle"));
   s.appendChild(el("p","mix-regl__n",
     "Dé allumé, le Shuffle décide ; éteint, la valeur est la tienne et il la respecte. "
     + "Toucher une valeur la fige."));
@@ -323,6 +416,8 @@ function drawRegl(){
      au clavier, c'est ici qu'on les trouve. Un seul repli, qui dit ce qu'il
      contient. */
   var det = el("details","disclose mix-regl__det");
+  det.open = !!OUVERT.postes;
+  det.addEventListener("toggle", function(){ OUVERT.postes = det.open; });
   det.appendChild(el("summary", null, postes.length + " postes qui se lient ou se délient"));
   var pl = el("ul","mix-postes");
   postesLibres().forEach(function(p){
@@ -347,11 +442,6 @@ function drawAdj(){
   if(!adjEl) return;
   var s = adjEl;
   while(s.firstChild) s.removeChild(s.firstChild);
-  var ids = liens().map(lienId), nAct = ids.filter(adjActive).length;
-  var hd = el("div","mix-issues__hd");
-  hd.appendChild(el("h3","label","Adjacences"));
-  hd.appendChild(el("span","mono mix-adj__c", nAct + " exigée" + (nAct > 1 ? "s" : "") + " sur " + ids.length));
-  s.appendChild(hd);
   s.appendChild(el("p","mix-regl__n",
     "Chaque adjacence exigée met ses deux postes au même niveau — une seule rompue, et le "
     + "massing ne propose aucun volume. Les mutualisations ne lient rien."));
@@ -387,36 +477,38 @@ function drawAdj(){
 /* ---------- rendu --------------------------------------------------------- */
 export function drawMix(){
   if(!stackEl) return;
-  drawSeed();
   drawSum();
-  drawCirc();
   drawStack();
-  drawIssues();
-  drawTray();
-  drawRegl();
-  drawAdj();
+  dessineRail();
 }
 
-function drawSeed(){
-  if(!seedEl) return;
-  while(seedEl.firstChild) seedEl.removeChild(seedEl.firstChild);
-  var lb = seedLabel();
-  seedEl.appendChild(el("span","segcap","Seed"));
+/* La seed est ce qui rend une proposition retrouvable : sans elle, on tire dix
+   fois et la troisième, qui était la bonne, n'existe plus. */
+function champSeed(){
+  var w = el("div","mass-seed");
+  w.appendChild(el("span","segcap","Seed"));
   var inp = document.createElement("input");
-  inp.type = "text"; inp.className = "mono"; inp.value = lb;
-  inp.size = 7;
+  inp.type = "text"; inp.className = "mono"; inp.value = seedLabel();
+  inp.size = 7; inp.spellcheck = false; inp.autocomplete = "off";
   inp.setAttribute("aria-label", "Seed du tirage — retape-la pour rejouer une proposition");
   inp.title = "Retape une seed et rejoue la proposition à l’identique";
-  function rejouer(){
+  /* Entrée redessine le rail : l'ancien champ peut encore lancer son « change ». */
+  var joue = false;
+  function rejouer(clavier){
+    if(joue) return;
     var s = parseSeed(inp.value);
     if(s === null){ inp.value = seedLabel(); return; }
+    joue = true;
     seed(s);
     repartir({ alea:true, etages: dePile });
     selU = null; drawMix(); saveSoon();
+    var neuf = clavier && railEl ? railEl.querySelector(".mass-seed input") : null;
+    if(neuf) neuf.focus();
   }
-  inp.addEventListener("change", rejouer);
-  inp.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); rejouer(); } });
-  seedEl.appendChild(inp);
+  inp.addEventListener("change", function(){ rejouer(false); });
+  inp.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); rejouer(true); } });
+  w.appendChild(inp);
+  return w;
 }
 
 function drawSum(){
@@ -848,15 +940,9 @@ function blockNode(b, r){
    clique dessus, il propose le geste qui le résoudrait — ou de le laisser tel
    quel, ce qui est une décision de projet et non un oubli. */
 function drawIssues(){
+  if(!issuesEl) return;
   while(issuesEl.firstChild) issuesEl.removeChild(issuesEl.firstChild);
-  var list = mixCheck(), v = mixVerdict(list);
-  dernierCheck = list;
-  var hd = el("div","mix-issues__hd");
-  hd.appendChild(el("h3","label","Contrôle"));
-  if(v.e) hd.appendChild(el("i","chip chip--danger", v.e + " conflit" + (v.e > 1 ? "s" : "")));
-  if(v.w) hd.appendChild(el("i","chip chip--warn", v.w + " à vérifier"));
-  if(!v.e && !v.w) hd.appendChild(el("i","chip chip--ok", "rien à signaler"));
-  issuesEl.appendChild(hd);
+  var list = dernierCheck;
 
   var vifs = list.filter(function(x){ return !x.ok; });
   var assumes = list.filter(function(x){ return x.ok; });
@@ -907,6 +993,7 @@ function issList(list, assume){
       openIss = ouvre ? w.code : null;
       issFocus = ouvre ? { fl: w.fl, keys: w.keys || [], sev: w.sev } : null;
       drawIssues();
+      versContraintes(issuesEl);
       drawStack();
       var again = issuesEl.querySelector("li.is-open .mix-iss");
       if(again) again.focus({ preventScroll:true });
@@ -964,14 +1051,9 @@ function issPanel(w, assume){
 
 /* ---------- le bac -------------------------------------------------------- */
 function drawTray(){
+  if(!trayEl) return;
   while(trayEl.firstChild) trayEl.removeChild(trayEl.firstChild);
   var bl = trayBlocks();
-  var hd = el("div","mix-tray__hd");
-  hd.appendChild(el("h3","label","À placer"));
-  var n = 0;
-  bl.forEach(function(b){ n += b.q; });
-  hd.appendChild(el("span","mono", n + " pièces · " + fmt(Math.round(trayArea())) + " m²"));
-  trayEl.appendChild(hd);
 
   if(!bl.length){
     trayEl.appendChild(el("p","mix-ok","Tout le programme est posé."));
