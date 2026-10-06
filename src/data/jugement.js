@@ -83,11 +83,11 @@ export var CRITERES = [
   /* ---- B · implantation et rapport au lieu ---- */
   c("b7",  "B", 9, "Implantation évidente, lisible en un seul croquis", "orientations", mx(1, 4), "Cugy, Matran"),
   c("b8",  "B", 8, "Peu de volumes (1 ou 2) plutôt que des pavillons éclatés", "ensembles", mx(2, 6)),
-  c("b9",  "B", 7, "Volumes en bordure du site pour libérer le cœur de la parcelle", null, null, "Vignettaz, Champagne"),
+  c("b9",  "B", 7, "Volumes en bordure du site pour libérer le cœur de la parcelle", "bordurePart", mn(0.7, 0.3), "Vignettaz, Champagne"),
   c("b10", "B", 7, "Échelle adaptée : 2 à 3 niveaux en village, pas trop massif", "niveauxMax",
     { t:"bande", bon:2, haut:3, nul:2 }, "Dorigny, Boswil"),
-  c("b11", "B", 7, "Dialogue avec l'existant, sans le dominer, avec des vues vers lui", null, null, "Boswil, Praroman, Broc"),
-  c("b12", "B", 6, "Un espace public : place de village ou parvis partagé", null, null, "Broc, Boswil"),
+  c("b11", "B", 7, "Dialogue avec l'existant, sans le dominer, avec des vues vers lui", "rapportHauteur", mx(1.2, 2), "Boswil, Praroman, Broc"),
+  c("b12", "B", 6, "Un espace public : place de village ou parvis partagé", "parvis", mn(400, 100), "Broc, Boswil"),
   c("b13", "B", 7, "Adapté à la pente : peu de déblais, entrées à plusieurs niveaux", "pente", mx(1, 3),
     "Courtételle, Cugy, Praroman"),
   c("b14", "B", 5, "Distances généreuses aux voisins", "distExistant", mn(15, 5), "Dorigny"),
@@ -97,14 +97,15 @@ export var CRITERES = [
     { src:{ t:"choix" } }),
 
   /* ---- C · espaces extérieurs ---- */
-  c("c18", "C", 8, "Préau délimité par les bâtiments, fermé sur 2 ou 3 côtés", null, null, "Vignettaz, Val d'Arve, Champagne"),
-  c("c19", "C", 6, "Préau protégé de la route et du bruit", null, null, "Boswil"),
+  c("c18", "C", 8, "Préau délimité par les bâtiments, fermé sur 2 ou 3 côtés", "courFermee",
+    { t:"bande", bon:0.4, haut:0.75, nul:0.25 }, "Vignettaz, Val d'Arve, Champagne"),
+  c("c19", "C", 6, "Préau protégé de la route et du bruit", "courAbritee", mn(0.7, 0.2), "Boswil"),
   /* la cour utile se mesure à 30 m au plus devant UNE façade : elle plafonne
      vers 1'000 à 1'500 m², loin des 5 à 10 m² par élève de tout le préau */
   c("c20", "C", 7, "Préau bien dimensionné, d'un seul tenant, ni trop grand ni morcelé", "cour",
     mn(1000, 500), "Boswil"),
   c("c21", "C", 5, "Partie couverte : préau couvert ou avant-toit"),
-  c("c22", "C", 4, "Espaces différents selon les âges", null, null, "Broc"),
+  c("c22", "C", 4, "Espaces différents selon les âges", "zonesExt", mn(2, 1), "Broc"),
   c("c23", "C", 5, "Sport extérieur bien placé, orienté nord-sud", null, null, "Champagne"),
   c("c24", "C", 5, "Arbres conservés, grands arbres locaux, surfaces perméables", null, null, "Schlieren"),
   c("c25", "C", 4, "Biodiversité et eau de pluie gérée sur place", null, null, "Saint-Aubin"),
@@ -157,17 +158,17 @@ export var CRITERES = [
   c("e44", "E", 7, "Une idée forte et claire, une identité", null, null, "Cugy"),
   c("e45", "E", 5, "Une façade qui découle de la structure", null, null, "Vignettaz"),
   c("e46", "E", 5, "Des intérieurs généreux et fluides", null, null, "Matran, Praroman"),
-  c("e47", "E", 4, "Unité formelle entre les étapes de réalisation", null, null, "Vignettaz"),
+  c("e47", "E", 4, "Unité formelle entre les étapes de réalisation", "uniteEtapes", { t:"oui" }, "Vignettaz"),
   c("e48", "E", 5, "Matériaux simples et chaleureux qui vieillissent bien"),
   c("e49", "E", 6, "Lumière naturelle maîtrisée entre les corps", "jourRatio", mn(1.1, 0.5)),
   c("e50", "E", 5, "Une ambiance à l'échelle de l'enfant"),
 
   /* ---- F · structure et construction ---- */
-  c("f51", "F", 6, "Structure claire sur une trame régulière", null, null, "Praroman, Schlieren"),
+  c("f51", "F", 6, "Structure claire sur une trame régulière", "profondeursDistinctes", mx(1, 3), "Praroman, Schlieren"),
   c("f52", "F", 5, "Bois en priorité, ou bois-béton si l'incendie l'impose", null, null, "Courtételle, Cugy, Praroman"),
   c("f53", "F", 6, "Portées raisonnables : des corps de deux classes au plus", "profMax", mx(19.5, 26)),
-  c("f54", "F", 4, "Pas de prouesse structurelle injustifiée", null, null, "Schlieren"),
-  c("f55", "F", 4, "Préfabrication possible, chantier court"),
+  c("f54", "F", 4, "Pas de prouesse structurelle injustifiée", "porteAFaux", mx(0, 4), "Schlieren"),
+  c("f55", "F", 4, "Préfabrication possible, chantier court", "repetitionPart", { t:"oui" }),
   /* « peu d'éléments enterrés » (F) et « hors-sol maximal » (G) mesurent la
      même chose : un critère, partagé */
   Object.assign(c("f56", "F", 5, "Peu d'éléments enterrés, hors-sol maximal", "sousSolPart", mx(0.05, 0.20)),
@@ -190,14 +191,14 @@ export var CRITERES = [
   c("h66", "H", 4, "Protection solaire extérieure, ventilation de nuit"),
   c("h67", "H", 3, "Masse thermique : chape, terre crue, béton", null, null, "Broc"),
   c("h68", "H", 5, "Énergie grise faible : bois, compacité, peu d'enterré"),
-  c("h69", "H", 4, "Photovoltaïque en toiture, CAD ou pompe à chaleur"),
-  c("h70", "H", 3, "Réemploi de l'existant plutôt que démolition"),
+  c("h69", "H", 4, "Photovoltaïque en toiture, CAD ou pompe à chaleur", "toitPV", mn(1, 0.4)),
+  c("h70", "H", 3, "Réemploi de l'existant plutôt que démolition", "existantGarde", { t:"oui" }),
   c("h71", "H", 4, "Bonne note au contrôle de durabilité", null, null, "Schlieren"),
 
   /* ---- I · planification dans le temps ---- */
   c("i72", "I", 5, "Étapes crédibles : le second temps trouve sa place", "secondPose", { t:"oui" }, "Vignettaz, Praroman"),
-  c("i73", "I", 4, "L'école fonctionne pendant le chantier", null, null, "Saint-Aubin, Val d'Arve"),
-  c("i74", "I", 4, "Extension future sans affaiblir le projet"),
+  c("i73", "I", 4, "L'école fonctionne pendant le chantier", "chantierLibre", { t:"oui" }, "Saint-Aubin, Val d'Arve"),
+  c("i74", "I", 4, "Extension future sans affaiblir le projet", "extensionPossible", { t:"oui" }),
   c("i75", "I", 4, "Plans adaptables à d'autres pédagogies ou usages"),
 
   /* ---- J · stratégie de rendu ---- */
