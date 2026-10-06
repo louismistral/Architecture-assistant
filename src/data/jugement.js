@@ -104,14 +104,14 @@ export var CRITERES = [
      vers 1'000 à 1'500 m², loin des 5 à 10 m² par élève de tout le préau */
   c("c20", "C", 7, "Préau bien dimensionné, d'un seul tenant, ni trop grand ni morcelé", "cour",
     mn(1000, 500), "Boswil"),
-  c("c21", "C", 5, "Partie couverte : préau couvert ou avant-toit"),
+  c("c21", "C", 5, "Partie couverte : préau couvert ou avant-toit", "couvertPart", { t:"oui" }),
   c("c22", "C", 4, "Espaces différents selon les âges", "zonesExt", mn(2, 1), "Broc"),
-  c("c23", "C", 5, "Sport extérieur bien placé, orienté nord-sud", null, null, "Champagne"),
+  c("c23", "C", 5, "Sport extérieur bien placé, orienté nord-sud", "sportExtAxe", mx(15, 45), "Champagne"),
   c("c24", "C", 5, "Arbres conservés, grands arbres locaux, surfaces perméables", null, null, "Schlieren"),
   c("c25", "C", 4, "Biodiversité et eau de pluie gérée sur place", null, null, "Saint-Aubin"),
-  c("c26", "C", 6, "Voitures cachées : souterrain ou en bordure, jamais dans le préau", null, null, "Broc"),
-  c("c27", "C", 7, "Accès séparés et sûrs : piétons, vélos, livraisons, dépose"),
-  c("c28", "C", 4, "Vélos et trottinettes couverts, près des entrées"),
+  c("c26", "C", 6, "Voitures en bordure, jamais dans le préau", "voituresBord", { t:"oui" }, "Broc"),
+  c("c27", "C", 7, "Accès séparés et sûrs : piétons, vélos, livraisons, dépose", "accesSepares", mn(30, 5)),
+  c("c28", "C", 4, "Vélos et trottinettes couverts, près des entrées", "velosDist", mx(20, 60)),
   /* la réserve de terrain (ancien b17), le stationnement et l'économie de
      terrain (ancien g62) lisent la même mesure — ce que les bâtiments laissent
      du périmètre : un critère, partagé entre trois sous-axes */
@@ -130,7 +130,7 @@ export var CRITERES = [
     { axes:{ D:.5, H:.5 }, kb:"d33-plan" }),
   c("d34", "D", 4, "Les plus jeunes au rez, accès direct à l'extérieur", null, null, "Broc"),
   c("d35", "D", 4, "Organisation par étage selon le cycle"),
-  c("d36", "D", 4, "Pas le même plan répété à chaque étage sans réflexion", null, null, "Schlieren"),
+  c("d36", "D", 4, "Pas le même plan répété à chaque étage sans réflexion", "niveauxDifferents", mn(0.5, 0), "Schlieren"),
   /* au plan : le vestiaire en sas de sa classe (`schema.js`, lien `sas`) — plus que « près de » */
   c("d37", "D", 4, "Vestiaires et garderobes près de l'entrée ou des classes", "vestSas", mn(1, 0.5), "Boswil"),
   c("d38", "D", 6, "Salle de sport intégrée ou semi-enterrée", "sportIntegre", { t:"options", v:{ 1:1, 0:0.6 } },
