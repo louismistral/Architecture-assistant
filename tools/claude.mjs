@@ -971,6 +971,30 @@ const TESTS = {
     await assert.rejects(verbeVariante({ pos:["c"], opt:{ etat:f, sortie:s, team, muet:true } }), Erreur);
     assert.equal(existsSync(s), false);
   },
+  /* ---- le recouvrement dans un même bâtiment (mass/geom.js, mass/model.js) ---- */
+  async rec_inter_carres(){
+    const { geom } = await modules();
+    const P = geom.coins({ x:0, y:0, w:20, d:20, a:0 }), Q = geom.coins({ x:15, y:0, w:20, d:20, a:0 });
+    assert.ok(Math.abs(geom.airePoly(geom.interConvexe(P, Q)) - 100) < 1e-6);
+  },
+  async rec_inter_45(){
+    const { geom } = await modules();
+    const a = 10, P = geom.coins({ x:3, y:4, w:a, d:a, a:0 }), Q = geom.coins({ x:3, y:4, w:a, d:a, a:Math.PI / 4 });
+    assert.ok(Math.abs(geom.airePoly(geom.interConvexe(P, Q)) - a * a * (2 * Math.SQRT2 - 2)) < 1e-6);
+  },
+  async rec_contact_nul(){
+    const { geom } = await modules();
+    const P = geom.coins({ x:0, y:0, w:20, d:20, a:0.3 }), Q = geom.coins({ x:20 * Math.cos(0.3), y:20 * Math.sin(0.3), w:20, d:20, a:0.3 });
+    assert.equal(geom.interConvexe(P, Q).length, 0);
+    assert.ok(geom.longueurDans(P, Q) < 1e-6 && geom.longueurDans(Q, P) < 1e-6);
+  },
+  async rec_longueur_dans(){
+    const { geom } = await modules();
+    const G = geom.coins({ x:0, y:0, w:20, d:20, a:0 });
+    assert.ok(Math.abs(geom.longueurDans(geom.coins({ x:1, y:1, w:4, d:4, a:0.2 }), G) - 16) < 1e-6);
+    /* à cheval : 4 × 10 dont la moitié dedans → 4 + 5 + 5 */
+    assert.ok(Math.abs(geom.longueurDans(geom.coins({ x:10, y:0, w:10, d:4, a:0 }), G) - 14) < 1e-6);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));

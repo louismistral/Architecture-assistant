@@ -358,6 +358,44 @@ export function ecart(r1, r2){
   }
   return best;
 }
+/* ---------- ce que deux convexes partagent ---------------------------------
+   Deux corps du même bâtiment peuvent se recouvrir (un bloc posé en biais sur
+   le bout d'une barre) : ce qu'ils partagent ne compte qu'une fois. Deux
+   rectangles tournés sont deux convexes ; leur intersection en est un aussi.
+   `interConvexe` : Sutherland–Hodgman, `[]` si elle est vide ou sans aire — un
+   contact n'est pas un recouvrement. `longueurDans` : la part du contour de P
+   STRICTEMENT dans Q — un côté posé sur le bord de Q (un mur commun) n'y est
+   pas : c'est la façade de l'un prise dans l'autre. */
+var EPS = 1e-7;
+function sensDe(Q){ var a = 0, i; for(i = 0; i < Q.length; i++){ var p = Q[i], q = Q[(i + 1) % Q.length]; a += p[0] * q[1] - q[0] * p[1]; } return a >= 0 ? 1 : -1; }
+function cote(a, b, p, s){ return s * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])); }
+export function interConvexe(P, Q){
+  var s = sensDe(Q), R = P.slice(), i, k;
+  for(i = 0; i < Q.length && R.length; i++){
+    var a = Q[i], b = Q[(i + 1) % Q.length], S = R; R = [];
+    for(k = 0; k < S.length; k++){
+      var p = S[k], q = S[(k + 1) % S.length], fp = cote(a, b, p, s), fq = cote(a, b, q, s);
+      if(fp >= 0) R.push(p);
+      if((fp >= 0) !== (fq >= 0)){ var t = fp / (fp - fq); R.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+    }
+  }
+  return R.length >= 3 && airePoly(R) > EPS ? R : [];
+}
+export function longueurDans(P, Q){
+  var s = sensDe(Q), L = 0, i, k;
+  for(i = 0; i < P.length; i++){
+    var p0 = P[i], p1 = P[(i + 1) % P.length], t0 = 0, t1 = 1;
+    for(k = 0; k < Q.length && t0 < t1; k++){
+      var a = Q[k], b = Q[(k + 1) % Q.length], f0 = cote(a, b, p0, s), f1 = cote(a, b, p1, s);
+      if(f0 <= EPS && f1 <= EPS){ t1 = t0; break; }
+      if(f0 <= EPS) t0 = Math.max(t0, (EPS - f0) / (f1 - f0));
+      else if(f1 <= EPS) t1 = Math.min(t1, (EPS - f0) / (f1 - f0));
+    }
+    if(t1 > t0) L += (t1 - t0) * Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+  }
+  return L;
+}
+
 /* Recouvrement d'un rectangle et d'un polygone quelconque — l'emprise d'un
    bâtiment existant, par exemple. Approché par les coins et le centre : il ne
    s'agit pas de mesurer, mais de dire qu'il y a choc. */
