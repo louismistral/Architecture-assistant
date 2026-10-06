@@ -68,11 +68,10 @@ export function lirePlans(D){
       var C = N[grp(f.v)] || [], rez = D.floors[i].lvl === 0;
       if(!C.length){ if(!rez) acces.push({ nom:nomVol(f.v), i:i }); return; }
       if(rez) return;     /* au rez, on sort par la façade : halls et portes */
-      var lim = C.length > 1 ? F0.fuiteDouble : F0.fuiteSimple;
+      /* la mesure même qui pose les noyaux (`gen.js — fuite`) */
       f.rooms.forEach(function(rm){
-        var p = monde(f, rm.frame === "full" ? "full" : rm.frame, rm.x0, rm.W / 2, (rm.H || 0) / 2), d = Infinity;
-        C.forEach(function(c){ d = Math.min(d, Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1])); });
-        if(d - lim > fuite - fuiteMax){ fuite = d; fuiteMax = lim; }
+        var q = PG.fuite(monde(f, rm.frame === "full" ? "full" : rm.frame, rm.x0, rm.W / 2, (rm.H || 0) / 2), C);
+        if(q.d - q.lim > fuite - fuiteMax){ fuite = q.d; fuiteMax = q.lim; }
       });
     });
   });

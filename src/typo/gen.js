@@ -17,10 +17,12 @@
      dessine DEDANS, et ce qui n'y tient pas est dit non posé — jamais le
      volume ne s'allonge ;
    - la seed (`D.graine`) ne change que l'ordonnance : l'ordre des
-     familles, celui des postes dans une famille, le bout du noyau ;
+     familles, celui des postes dans une famille, la place d'un noyau quand
+     deux se valent ;
    - le couloir se place là où les deux bandes finissent ensemble ;
-   - un noyau escalier + ascenseur par bâtiment et par niveau, aux mêmes cotes
-     et au même endroit à tous les niveaux ;
+   - des noyaux escalier + ascenseur qui desservent chaque niveau hors du rez et
+     tiennent la voie d'évacuation, chacun au même point à tous les niveaux de
+     son corps ;
    - un couloir finit toujours sur quelque chose : un noyau, un hall, un passage
      vers le corps voisin, ou la porte de la pièce qui le ferme ;
    - les pièces d'une famille se suivent ; une largeur de pièce se règle au
@@ -167,64 +169,113 @@ export function creerPG(D){
   function bandeSud(a){ return Math.cos(a) > 0 ? "A" : "B"; }
   function lvlDe(i){ return FL[i] ? FL[i].lvl : 0; }
 
-  /* LES NOYAUX D'UN BÂTIMENT. Les corps d'un même bâtiment (`bat`) s'accolent
-     et leurs couloirs se prolongent : un noyau dessert tout le bâtiment au
-     niveau où il est. On en pose dans le corps le plus haut, puis dans tout
-     corps qui porte un niveau que les noyaux posés ne desservent pas, puis là
-     où l'évacuation ou le seuil de 900 m² le demandent. */
+  /* LA VOIE D'ÉVACUATION d'un point : en équerre jusqu'au noyau le plus proche
+     de `C`, et sa limite — un seul escalier ou deux (AEAI 16-15). La même
+     mesure pose les noyaux (`hotes`) et les contrôle (`mesures.js — lirePlans`). */
+  function fuite(p, C){
+    var d = Infinity;
+    C.forEach(function(c){ d = Math.min(d, Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1])); });
+    return { d:d, lim:C.length > 1 ? FEU.fuiteDouble : FEU.fuiteSimple };
+  }
+
+  /* LES NOYAUX D'UN BÂTIMENT. Un noyau est une cage d'escalier et d'ascenseur :
+     il traverse TOUS les niveaux de son corps au même point — dans ce que ses
+     niveaux ont en commun, contre la façade du côté du noyau. Les corps d'un
+     même bâtiment (`bat`) s'accolent et leurs couloirs se prolongent : un noyau
+     dessert tout le bâtiment au niveau où il est. On ajoute, un à un, celui qui
+     répare le plus — un niveau sans noyau hors du rez (SIA 500), un étage de
+     plus de 900 m² à un seul, la voie d'évacuation en trop — jusqu'à ce que
+     tout tienne. À égalité, la seed choisit. */
   var HOTES = null;
   function hotes(vols){
     if(HOTES) return HOTES;
     HOTES = {};
+    var LV = D ? D.floors : [], cH = NOY.prof;
+    function rez(i){ return LV[i] && LV[i].lvl === 0; }
+    /* les points les plus loin que lise la mesure : le centre d'une pièce est
+       à une demi-bande au moins de la façade, et presque toujours du pignon —
+       les pièces ne sont pas encore posées */
+    function lus4(v, e){ var w = Math.max(0, e.w - PC.cabine) / 2, d = Math.max(0, e.d - BMIN) / 2, dx = e.dx || 0, dy = e.dy || 0;
+      return [[-w, -d], [w, -d], [w, d], [-w, d]].map(function(q){ return local(v.x, v.y, v.a, q[0] + dx, q[1] + dy); }); }
     var G = {};
     vols.forEach(function(v){ if(!v.lv.some(function(e){ return e.keys; })) (G[v.bat || v.id] = G[v.bat || v.id] || []).push(v); });
     Object.keys(G).forEach(function(k){
-      var g = G[k], M = g.filter(function(v){ return v.lv.length > 1; });
-      if(!M.length) return;
-      M.sort(function(p, q){ return (q.lv.length - p.lv.length) || (q.lv[0].w * q.lv[0].d - p.lv[0].w * p.lv[0].d); });
-      var cx = 0, cy = 0; g.forEach(function(v){ cx += v.x / g.length; cy += v.y / g.length; });
-      var pris = [M[0]], niv = {};
-      M[0].lv.forEach(function(e){ niv[e.i] = 1; });
-      M.forEach(function(v){
-        if(pris.indexOf(v) < 0 && v.lv.some(function(e){ return !niv[e.i]; })){ pris.push(v); v.lv.forEach(function(e){ niv[e.i] = 1; }); }
+      var g = G[k], places = [], niv = {};
+      g.forEach(function(v){ v.lv.forEach(function(e){ (niv[e.i] = niv[e.i] || []).push({ v:v, e:e }); }); });
+      /* les places d'un noyau : l'emprise commune à tous les niveaux du corps,
+         tous les dix mètres environ, si la cage y tient dans le rang du noyau */
+      g.forEach(function(v){
+        var N = coteNoyau(v), x0 = -Infinity, x1 = Infinity, y0 = -Infinity, y1 = Infinity;
+        v.lv.forEach(function(e){
+          var dx = e.dx || 0, dy = e.dy || 0;
+          x0 = Math.max(x0, dx - e.w / 2); x1 = Math.min(x1, dx + e.w / 2);
+          y0 = Math.max(y0, dy - e.d / 2); y1 = Math.min(y1, dy + e.d / 2);
+        });
+        var y = N === "A" ? y0 + cH / 2 : y1 - cH / 2;
+        if(x1 - x0 < WC || !v.lv.every(function(e){
+          var T = e.d - COULOIR;
+          return cH + ecartFacade(N, e, y) <= (e.d >= 14 ? T - BMIN : T) + 0.01;
+        })) return;
+        var n = Math.ceil((x1 - x0 - WC) / 10);
+        for(var j = 0; j <= n; j++){
+          var x = x0 + WC / 2 + (n ? j * (x1 - x0 - WC) / n : 0);
+          places.push({ v:v, x:x, y:y, p:local(v.x, v.y, v.a, x, y), lv:v.lv.map(function(e){ return e.i; }), r:alea("noyau " + v.id + " " + j) });
+        }
       });
-      /* hors du rez — d'où l'on sort par la façade —, chaque point d'un niveau
-         doit tenir la voie d'évacuation jusqu'à un noyau ; chaque niveau de plus
-         de 900 m² en veut deux. On ajoute le corps le plus mal desservi tant
-         que ce n'est pas tenu. */
-      var LV = D ? D.floors : [];
-      function horsRez(i){ return !LV[i] || LV[i].lvl !== 0; }
-      function coins4(v, e){ var w = e.w / 2, d = e.d / 2, dx = e.dx || 0, dy = e.dy || 0;
-        return [[-w, -d], [w, -d], [w, d], [-w, d]].map(function(q){ return local(v.x, v.y, v.a, q[0] + dx, q[1] + dy); }); }
-      /* le corps à ajouter : celui qui, parmi les corps à étages pas encore
-         équipés, est le plus près du point le plus mal desservi */
-      function manque(){
-        var aire = {}, pire = null, pd = 0;
-        g.forEach(function(v){ v.lv.forEach(function(e){ aire[e.i] = (aire[e.i] || 0) + e.w * e.d; }); });
-        g.forEach(function(v){
-          v.lv.forEach(function(e){
-            if(!horsRez(e.i)) return;
-            var H = pris.filter(function(h){ return h.lv.some(function(x){ return x.i === e.i; }); });
-            var lim = H.length > 1 ? FEU.fuiteDouble : FEU.fuiteSimple;
-            coins4(v, e).forEach(function(c){
-              var d = Infinity;
-              H.forEach(function(h){ d = Math.min(d, Math.abs(c[0] - h.x) + Math.abs(c[1] - h.y)); });
-              var ex = Math.max(d - lim, aire[e.i] > FEU.cageSeuil && H.length < 2 ? 1 : 0);
-              if(ex <= pd) return;
-              var cand = M.filter(function(u){ return pris.indexOf(u) < 0 && u.lv.some(function(x){ return x.i === e.i; }); })
-                .sort(function(p, q){ return Math.hypot(p.x - c[0], p.y - c[1]) - Math.hypot(q.x - c[0], q.y - c[1]); })[0];
-              if(cand){ pd = ex; pire = cand; }
+      /* ce qui ne tient pas avec les noyaux `P` */
+      function manque(P){
+        var sans = 0, feu = 0, trop = 0;
+        Object.keys(niv).forEach(function(i){
+          i = +i;
+          var C = P.filter(function(q){ return q.lv.indexOf(i) >= 0; }).map(function(q){ return q.p; }), aire = 0;
+          niv[i].forEach(function(c){
+            aire += c.e.w * c.e.d;
+            if(rez(i)) return;
+            if(!C.length){ sans++; return; }
+            lus4(c.v, c.e).forEach(function(q){ var f = fuite(q, C); trop += Math.max(0, f.d - f.lim); });
+          });
+          if(aire > FEU.cageSeuil) feu += Math.max(0, 2 - C.length);
+        });
+        return sans * 1e6 + feu * 1e4 + trop;
+      }
+      /* on ajoute le noyau qui répare le plus ; quand aucun n'aide seul, on en
+         déplace un, puis on en remplace un par deux. À égalité, le premier dans
+         l'ordre de la seed. Deux noyaux d'un corps restent à deux cages l'un de
+         l'autre. */
+      places.sort(function(p, q){ return p.r - q.r; });
+      var pris = [], m = manque(pris), best, bm;
+      function loin(P, q){ return P.every(function(o){ return o.v !== q.v || Math.abs(o.x - q.x) >= 2 * WC; }); }
+      function essai(P){ var x = manque(P); if(x < bm - 1e-6){ bm = x; best = P; } }
+      for(var t = 0; m > 0 && t < 12; t++){
+        best = null; bm = m;
+        places.forEach(function(q){ if(loin(pris, q)) essai(pris.concat([q])); });
+        [1, 2].forEach(function(n){
+          if(best) return;
+          pris.forEach(function(o, i){
+            var P = pris.slice(0, i).concat(pris.slice(i + 1));
+            places.forEach(function(q){
+              if(!loin(P, q)) return;
+              if(n === 1) essai(P.concat([q]));
+              else places.forEach(function(q2){ if(q2 !== q && loin(P.concat([q]), q2)) essai(P.concat([q, q2])); });
             });
           });
         });
-        return pire;
+        if(!best) break;
+        pris = best; m = bm;
       }
-      for(var t = 0, add; t < M.length && (add = manque()); t++) pris.push(add);
-      var aire1 = 0; M[0].lv.forEach(function(e){ aire1 = Math.max(aire1, e.w * e.d); });
-      var deux = pris.length < 2 && (aire1 > FEU.cageSeuil || M[0].lv[0].w > FEU.fuiteSimple) && g.length === 1;
-      pris.forEach(function(v){ HOTES[v.id] = { n:deux ? 2 : 1, cx:cx, cy:cy, seul:pris.length < 2 }; });
+      pris.forEach(function(q){
+        var h = HOTES[q.v.id] = HOTES[q.v.id] || { xs:[], y:q.y, n:0 };
+        h.xs.push(q.x); h.n++;
+      });
     });
     return HOTES;
+  }
+  /* l'écart entre la façade du côté du noyau à ce niveau et la cage, dont le
+     centre est à `y` : la cage est au même point à tous les niveaux, la façade
+     peut reculer */
+  function ecartFacade(N, e, y){
+    var dy = e.dy || 0;
+    return N === "A" ? (y - NOY.prof / 2) - (dy - e.d / 2) : (dy + e.d / 2) - (y + NOY.prof / 2);
   }
 
   /* L'ANCRE d'un corps : le bout qui ne bouge pas quand il s'allonge, le même
@@ -260,11 +311,9 @@ export function creerPG(D){
     var h = hotes(vols)[v.id], e = refLv(v);
     var lo = (e.dx || 0) - e.w / 2, hi = (e.dx || 0) + e.w / 2, gauche = true;
     if(h){
-      var pg = local(v.x, v.y, v.a, lo, 0), pd = local(v.x, v.y, v.a, hi, 0);
-      var loin = Math.hypot(pg[0] - h.cx, pg[1] - h.cy) >= Math.hypot(pd[0] - h.cx, pd[1] - h.cy);
-      gauche = h.seul ? !loin : loin;
-      /* un bâtiment à un seul noyau : la seed choisit à quel bout il se tient */
-      if(h.seul && alea("noyau " + v.id) < 0.5) gauche = !gauche;
+      /* le bout le plus près de ses noyaux */
+      var xm = 0; h.xs.forEach(function(x){ xm += x / h.xs.length; });
+      gauche = xm - lo <= hi - xm;
     } else {
       var voisin = function(x, d){
         var p = local(v.x, v.y, v.a, x + d * 1.0, e.dy || 0);
@@ -273,7 +322,7 @@ export function creerPG(D){
       gauche = voisin(lo, -1) || !voisin(hi, 1);
     }
     var cN = coteNoyau(v);
-    return (ANC[v.id] = { x:gauche ? lo : hi, s:gauche ? 1 : -1, h:h, N:cN, fac:facadeN(v, e, cN), d:e.d, dy:e.dy || 0 });
+    return (ANC[v.id] = { x:gauche ? lo : hi, s:gauche ? 1 : -1, h:h, N:cN, d:e.d, dy:e.dy || 0 });
   }
 
   /* ---------- un corps à un niveau : le cadre ---------- */
@@ -296,7 +345,7 @@ export function creerPG(D){
       /* un hall traverse le corps s'il en a la largeur (4 m au moins) ; plus
          petit, c'est une pièce de la bande, avec sa porte sur la façade */
       if(/^Hall|foyer/i.test(u.n) && u.a / D >= 4) trav.push(u);
-      else if(u.a / (deux ? T / 2 : T) > FRONT_MAX && !u.salle && o.noyaux < 2) full.push(u);
+      else if(u.a / (deux ? T / 2 : T) > FRONT_MAX && !u.salle && o.noyaux.length < 2) full.push(u);
       else if(u.a >= PETIT) gr.push(u);
       else pe.push(u);
     });
@@ -361,11 +410,13 @@ export function creerPG(D){
     var mi = deb0 + at + Math.floor(bout.length / 2);
     var kMin = bout.length ? Math.max(0, mi - 1) : 0, kMax = bout.length ? Math.min(items.length, mi + 1) : items.length;
     var fix = 0; trav.concat(full).forEach(function(u){ fix += u.a / D; });
-    var nc = o.noyaux, cH = NOY.prof;
-    var extG = !nc && !o.passG, extD = nc < 2 && !o.passD && !full.length && !trav.length;
-    /* deux noyaux : le second ferme le bout libre, après les halls — il est à
-       la même place à tous les niveaux, la longueur du corps étant la même */
-    var n1 = Math.min(nc, 1), c2 = nc > 1 ? WC : 0;
+    /* les noyaux : leur place dans le rang du noyau, depuis l'ancre, et l'écart
+       de la cage à la façade de ce niveau */
+    var K = o.noyaux || [], nc = K.length, cH = NOY.prof, off = o.off || 0, Lw = o.L0 || 0;
+    /* un bout de couloir se ferme d'une pièce s'il ne passe pas chez le voisin
+       et qu'aucun noyau ne s'y tient */
+    var extG = !o.passG && !K.some(function(x){ return x < 0.5; }),
+        extD = !o.passD && !full.length && !trav.length && !K.some(function(x){ return x + WC > Lw - 0.5; });
     /* la largeur d'un élément de bande à la profondeur H */
     function larg(it, H){ return it.kind === "bloc" ? peigne(it.cel, H).W : it.a / profDe(it, H); }
     /* au bout, une pièce ferme le couloir si elle en prend toute la profondeur
@@ -379,6 +430,9 @@ export function creerPG(D){
       L.forEach(function(it, k){ s += larg(it, b + (ferme(it, k, L, b, eg, ed) ? c : 0)); });
       return s;
     }
+    /* … et celle du rang qui porte les noyaux `Q` : ce qui ne tient pas avant
+       un noyau passe après lui */
+    function longK(L, b, eg, ed, Q){ return Q.length ? bande(L, null, b, 0, eg, ed, 0, L.length, Q, true) : long(L, b, eg, ed); }
     function regle(L){
       for(var k = 0; k < L.length; k++){ var w = o.regles[L[k].lab]; if(w) return { it:L[k], k:k, w:w }; }
       return null;
@@ -386,11 +440,11 @@ export function creerPG(D){
     function minProf(L){ var m = 0; L.forEach(function(it){ if(it.kind !== "bloc") m = Math.max(m, it.a / larges(it)[1]); }); return m; }
     var best = null;
     if(deux){
-      var bmax = T - Math.max(BMIN, nc ? cH + PALIER : 0);
+      var bmax = T - Math.max(BMIN, nc ? cH + off + PALIER : 0);
       for(var k = kMin; k <= kMax; k++){
-        var IS = items.slice(0, k), IN = items.slice(k);
+        var IS = items.slice(0, k), IN = items.slice(k), INr = IN.slice().reverse();
         var eg = extG && IS.length > 0, ed = extD && IS.length > 0;
-        var LS = function(b){ return long(IS, b, eg, ed); }, LN = function(b){ return long(IN, T - b, false, false) + n1 * WC; };
+        var LS = function(b){ return long(IS, b, eg, ed); }, LN = function(b){ return longK(INr, T - b, false, false, K); };
         var b, rs = regle(IS), rn = regle(IN);
         if(rs) b = rs.it.a / rs.w - ((rs.k === 0 && eg) || (rs.k === IS.length - 1 && ed) ? c : 0);
         else if(rn) b = T - rn.it.a / rn.w;
@@ -416,7 +470,7 @@ export function creerPG(D){
     } else {
       var eg1 = extG && items.length > 0, ed1 = extD && items.length > 0;
       best = { k:items.length, b:T, IS:items, IN:[], eg:eg1, ed:ed1 };
-      best.lb = long(items, T, eg1, ed1) + n1 * WC;
+      best.lb = longK(items, T, eg1, ed1, K);
     }
     var bS = best.b, bN = T - bS;
     f.bb = {}; f.bb[S] = deux ? bS : T; if(deux) f.bb[N] = bN;
@@ -427,47 +481,75 @@ export function creerPG(D){
     if(!f.U.length) o.L0 = Math.max(o.L0 || 0, f.e.w);
     /* un corps ne se réduit pas à une lame : six mètres au moins, son noyau compris */
     o.L0 = Math.max(o.L0 || 0, 6, nc * WC + 3);
-    var lb = Math.max(best.lb, o.L0 ? o.L0 - fix - c2 : 0), L = lb + fix + c2;
+    var lb = Math.max(best.lb, o.L0 ? o.L0 - fix : 0), L = lb + fix;
     f.L = L;
     /* les pièces, dans le repère de l'ancre */
     var R = [];
     /* `gap` : ce qui reste quand les deux bandes ne finissent pas ensemble — un
-       palier, posé avant la pièce `at` (au noyau s'il y en a un, au milieu sinon) */
-    var paliers = [];
-    function bande(list, frame, b, x, eg, ed, gap, at){
+       palier, posé avant la pièce `at` (au bout du rang s'il porte des noyaux,
+       au milieu sinon). `Q` : les noyaux du rang, chacun à sa place — une pièce
+       qui ne tient pas avant lui laisse passer la suivante qui y tient, sinon
+       elle passe après, et le sol laissé devant lui est un dégagement. `sec` :
+       la longueur seule, rien n'est posé. */
+    var paliers = [], cages = [];
+    function bande(list, frame, b, x, eg, ed, gap, at, Q, sec){
+      var q = 0, M = [];
+      /* un élément à sa place k dans la liste : s'il ferme le couloir, sa
+         profondeur, sa largeur */
+      function mesure(k){
+        if(M[k]) return M[k];
+        var it = list[k], e = ferme(it, k, list, b, eg, ed), H = b + (e ? c : 0), m = { e:e, H:H };
+        if(it.kind === "bloc"){ m.P = peigne(it.cel, H); m.W = m.P.W; } else { m.p = profDe(it, H); m.W = it.a / m.p; }
+        return (M[k] = m);
+      }
+      function noyau(W){
+        while(q < Q.length && x + W > Q[q] + 0.01){
+          if(!sec){
+            if(Q[q] - x > 0.05) paliers.push({ frame:frame, x0:x, W:Q[q] - x, H:b });
+            cages.push({ bande:frame, x0:Q[q], v0:b - cH - off, W:WC, H:cH });
+          }
+          x = Math.max(x, Q[q]) + WC; q++;
+        }
+      }
       /* le sol qui reste dans le rang : un dégagement ouvert sur le couloir */
-      function libre(){ if(gap > 0.05) paliers.push({ frame:frame, x0:x, W:gap, H:b }); x += gap; }
-      list.forEach(function(it, k){
-        if(k === at) libre();
-        var e = ferme(it, k, list, b, eg, ed), H = b + (e ? c : 0), r;
-        if(it.kind === "bloc"){
-          var P = peigne(it.cel, H);
+      function libre(){ if(gap > 0.05 && !sec) paliers.push({ frame:frame, x0:x, W:gap, H:b }); x += gap; }
+      var reste = list.map(function(_, k){ return k; });
+      for(var n = 0; reste.length; n++){
+        if(n === at) libre();
+        var k = reste[0], m = mesure(k);
+        if(q < Q.length && x + m.W > Q[q] + 0.01 && !m.e){
+          for(var j = 1; j < reste.length; j++){
+            var mj = mesure(reste[j]);
+            if(!mj.e && x + mj.W <= Q[q] + 0.01){ k = reste[j]; m = mj; break; }
+          }
+        }
+        reste.splice(reste.indexOf(k), 1);
+        noyau(m.W);
+        if(sec){ x += m.W; continue; }
+        var it = list[k], e = m.e, H = m.H, P = m.P, p = m.p, r;
+        if(P){
           r = Object.assign({}, it, { frame:frame, x0:x, W:P.W, H:H, v0:0, ext:0, cel:P.cel });
           P.devant.forEach(function(d){ paliers.push({ frame:frame, x0:x + d.u0, W:d.W, H:d.H }); });
         } else {
           /* la pièce contre la façade, ce qui reste devant elle ouvert sur le couloir */
-          var p = profDe(it, H), W = it.a / p;
+          var W = it.a / p;
           r = Object.assign({}, it, { frame:frame, x0:x, W:W, H:p, v0:(e ? -c : 0) + H - p, ext:e ? (k === 0 ? -1 : 1) : 0 });
           if(H - p > 0.05) paliers.push({ frame:frame, x0:x, W:W, H:H - p });
         }
         R.push(r); x += r.W;
-      });
+      }
+      noyau(Infinity);
       if(at >= list.length) libre();
       return x;
     }
     function milieu(list){ return Math.max(list.length ? 1 : 0, Math.floor(list.length / 2)); }
-    var cages = [], seul = !deux && nc;
-    var rS = lb - long(best.IS, deux ? bS : T, best.eg, best.ed) - (seul ? n1 * WC : 0);
-    bande(best.IS, S, deux ? bS : T, seul ? WC : 0, best.eg, best.ed, rS, seul || !best.eg ? 0 : milieu(best.IS));
+    /* les noyaux sont dans le rang nord ; un seul rang les porte tous */
+    var KS = deux ? [] : K;
+    var rS = lb - longK(best.IS, deux ? bS : T, best.eg, best.ed, KS);
+    bande(best.IS, S, deux ? bS : T, 0, best.eg, best.ed, rS, KS.length ? best.IS.length : !best.eg ? 0 : milieu(best.IS), KS);
     if(deux){
-      if(nc) cages.push({ bande:N, x0:0, v0:bN - cH, W:WC, H:cH });
-      var rN = lb - long(best.IN, bN, false, false) - n1 * WC;
-      bande(best.IN.slice().reverse(), N, bN, nc ? WC : 0, false, false, rN, nc ? 0 : milieu(best.IN));
-      if(nc > 1) cages.push({ bande:N, x0:L - WC, v0:bN - cH, W:WC, H:cH });
-    } else if(nc){
-      /* un seul rang : le noyau au bout de la bande, côté ancre */
-      cages.push({ bande:S, x0:0, v0:T - cH, W:WC, H:cH });
-      if(nc > 1) cages.push({ bande:S, x0:L - WC, v0:T - cH, W:WC, H:cH });
+      var INr = best.IN.slice().reverse(), rN = lb - longK(INr, bN, false, false, K);
+      bande(INr, N, bN, 0, false, false, rN, nc ? INr.length : milieu(best.IN), K);
     }
     var x = lb;
     trav.forEach(function(u){ var W = u.a / D; R.push(Object.assign({}, u, { kind:"trav", frame:"full", x0:x, W:W, H:D })); x += W; });
@@ -648,12 +730,14 @@ export function creerPG(D){
       var an = ancre(f.v, vols), v = f.v, e = f.e;
       /* le corps garde ses cotes : la profondeur du niveau, et sa longueur,
          mesurée depuis le bout de l'ancre À CE NIVEAU — un retrait ou un
-         porte-à-faux reste celui du Massing. Le noyau s'empile là où les
-         niveaux le permettent ; le contrôle dit s'il reste desservi. */
+         porte-à-faux reste celui du Massing. Ses noyaux s'empilent : ils
+         sont au même point à tous ses niveaux (`hotes`). */
       f.dyNew = e.dy || 0;
-      var fa = facadeN(v, { d:f.D, dy:f.dyNew }, an.N);
-      var nc = an.h && fa.N === an.fac.N && Math.abs(fa.y - an.fac.y) < 0.01 ? an.h.n : 0;
       var deb = (e.dx || 0) - an.s * e.w / 2, fin = deb + an.s * e.w;
+      /* ses noyaux, au même point à tous ses niveaux : leur place depuis le
+         bout de l'ancre de CE niveau, et leur écart à sa façade */
+      var K = an.h ? an.h.xs.map(function(x){ return an.s * (x - deb) - WC / 2; }).sort(function(p, q){ return p - q; }) : [];
+      var off = an.h ? ecartFacade(an.N, e, an.h.y) : 0;
       function passe(x, dir){
         var p = local(v.x, v.y, v.a, x + dir * 1.0, (e.dy || 0));
         return F.some(function(g){ return g !== f && g.v.bat && g.v.bat === v.bat && dansCorps({ x:g.v.x, y:g.v.y, a:g.v.a, lv:[g.e] }, p); });
@@ -668,7 +752,7 @@ export function creerPG(D){
         debut = pr * an.s < 0;
       }
       function comp(){
-        composer(f, { s:an.s, N:an.N, noyaux:nc, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:e.w, regles:reg });
+        composer(f, { s:an.s, N:an.N, noyaux:K, off:off, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:e.w, regles:reg });
       }
       comp();
       /* CE QUI NE TIENT PAS dans le volume reste au bac du niveau : la pièce
@@ -733,7 +817,7 @@ export function creerPG(D){
     });
   }
 
-  return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes,
+  return { ancre:ancre, genNiveau:genNiveau, oublier:oublier, hotes:hotes, fuite:fuite,
            local:local, versEtage:versEtage, versMonde:versMonde, passage:passage,
            COULOIR:COULOIR, MUR:MUR, CLOISON:CLOISON, NOY:NOY, FEU:FEU, LIEN:LIEN, MODULE:MODULE,
            PETIT:PETIT, VIDE:VIDE, PLAN:PLAN, ratioDe:ratioDe, cabine:cabine };
