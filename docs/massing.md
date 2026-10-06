@@ -311,6 +311,32 @@ de sport, à ses cotes et à sa hauteur, se recolle mais reste un volume accolé
 laissent qu'un mur entre elle et l'école. Le plan trace le contour d'union, la 3D les parts sous un
 même contour, les mesures lisent la façade sur ce contour.
 
+## Deux corps du même bâtiment peuvent se recouvrir
+
+Un bloc posé en biais sur le bout d'une barre : leur union fait la jonction, sans escalier ni
+trapèze — le modèle ne connaît que des rectangles. Seule la MAIN en pose (`gen.js — chevaucheMain`,
+lue par le glisser), et seulement entre corps LIÉS (`lies()` : même `bat`, ou `joint`) ; le
+générateur ne superpose jamais rien (`chevauche`, `admissible` inchangés).
+
+Ce que les deux corps partagent ne compte qu'UNE fois, et c'est `model.js — recouvrement(vols, i,
+murs)` qui le mesure, étage par étage : le bilan, « Rééquilibrer », le contrôle « surfaces »,
+l'emprise, le volume, la façade et le terrain libre du jury, le cube du Rendu le retranchent. Deux
+corps liés ne se doivent aucune distance incendie. La part commune appartient au PLUS GRAND des deux
+(`partCedee`, `cedeeDe`) : aux plans, le plus petit est raccourci d'autant, du côté où elle tombe,
+et ne la pave pas (`typo/donnees.js`). `fusionner` garde liés deux corps posés l'un sur l'autre.
+
+À moins de `CONTACT` (0,15 m) l'un dans l'autre, deux corps se TOUCHENT : rien ne se retranche —
+la même tolérance que `touchent` et `chevaucheMain`. Hors tout, les parts d'un volume fusionné se
+comptent par inclusion–exclusion, et deux façades à fleur ne valent qu'une façade. Les ailes d'un
+même volume fusionné ne se cèdent rien aux plans.
+
+Restent à faire : le dessin (un seul contour et des murs qui ne se croisent pas au plan, la 3D,
+l'export Rhino en un solide), la relecture de `bat` à l'import de nos boîtes, une zone commune à
+trois corps (comptée paire par paire), l'emprise commune lue au seul rez (deux corps dont le plus
+bas étage hors sol est ailleurs n'en retranchent rien), un corps presque tout entier posé sur un
+autre (aux plans, il garde une aile d'un mètre), et `recoller`, qui ne recolle plus à un tiers un
+corps posé sur un autre. Spec : `docs/superpowers/specs/2026-10-06-recouvrement-design.md`.
+
 ## Le second temps occupe du terrain, donc il se dessine
 
 La piscine (500 m²) et le local de chauffage à distance (400 m²) sont des ouvrages indépendants des
@@ -373,7 +399,7 @@ cotes tombent sur le module de 0,50 m (on choisit, autour de la cote visée, cel
 surface la plus juste — quelques m² d'écart au plus, que le bilan montre) ; aucun côté sous 6 m ;
 un étage en gradin reste en gradin. Les tirettes et la poignée se dessinent par-dessus tout. Le geste n'est pas bloqué par les règles dures : le contrôle les
 signale en rouge. Déplacer et tourner ne tiennent que le PÉRIMÈTRE (`gen.js — dansPerimetre`) et une règle :
-RIEN NE SE SUPERPOSE (`chevauche`) — la main avance jusqu'au voisin, pas au-delà ; la distance
+RIEN NE SE SUPERPOSE (`chevaucheMain`), sauf deux corps du même bâtiment (voir plus haut) — la main avance jusqu'au voisin, pas au-delà ; la distance
 aux autres bâtiments et à l'existant ne la bloque pas, le contrôle la signale. CE QUI SE TOUCHE NE
 FAIT QU'UN (`fusionner`) : à moins d'un mètre, deux corps se recollent et s'assemblent en un
 volume de plusieurs rectangles ; la salle de sport devient un même bâtiment (`bat`, `joint`). En aval, un volume
