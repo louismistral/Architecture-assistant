@@ -995,6 +995,41 @@ const TESTS = {
     /* à cheval : 4 × 10 dont la moitié dedans → 4 + 5 + 5 */
     assert.ok(Math.abs(geom.longueurDans(geom.coins({ x:10, y:0, w:10, d:4, a:0 }), G) - 14) < 1e-6);
   },
+  async rec_bilan(ref){
+    const { M } = await modules();
+    /* deux corps de 20 × 20 au rez (niveau 1), intérieurs recouverts de 5 × 20 */
+    const pose = (B, A) => {
+      const e = structuredClone(ref);
+      e.mass.vol = [Object.assign({ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] }, A || {}),
+                    Object.assign({ id:"c", x:105, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] }, B || {})];
+      e.mass.pont = [];
+      charger(null, e);
+      return Math.round(M.bilan()[1].pose);
+    };
+    assert.equal(pose(), 700, "liés recouverts");
+    assert.equal(pose({ bat:"autre" }), 800, "non liés : rien ne se retranche");
+    assert.equal(pose({ x:110 }), 800, "contact");
+    assert.equal(pose({ ph:2 }), 400, "second temps ignoré");
+    /* une part fusionnée de 10 × 20 à droite de a ; c la recouvre de 5 × 20 */
+    assert.equal(pose({ x:115 }, { lv:[{ i:1, w:20, d:20, ext:[{ w:10, d:20, dx:15, dy:0 }] }] }), 900, "part fusionnée");
+  },
+  async rec_part_cedee(ref){
+    const { M } = await modules();
+    const e = structuredClone(ref);
+    /* c, plus petit (15 × 20), listé AVANT a : il cède quand même */
+    e.mass.vol = [{ id:"c", x:102.5, y:60, a:0, bat:"b", lv:[{ i:1, w:15, d:20 }] },
+                  { id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:20, d:20 }] }];
+    e.mass.pont = [];
+    charger(null, e);
+    const [c, a] = M.MASS.vol;
+    assert.ok(Math.abs(M.partCedee(c, M.MASS.vol, 1) - 100) < 1e-6);
+    assert.equal(M.partCedee(a, M.MASS.vol, 1), 0);
+    assert.ok(Math.abs(M.recouvrement(M.MASS.vol, 1, false).aire - 100) < 1e-6);
+    /* à égalité, l'ordre tranche : le premier garde */
+    c.lv[0].w = 20; c.x = 105;
+    assert.equal(M.partCedee(c, M.MASS.vol, 1), 0);
+    assert.ok(Math.abs(M.partCedee(a, M.MASS.vol, 1) - 100) < 1e-6);
+  },
   async etat_absent(){
     assert.throws(() => lireJSON("nexiste/pas.json", true),
       (e) => e instanceof Erreur && e.message.includes("nexiste/pas.json"));
