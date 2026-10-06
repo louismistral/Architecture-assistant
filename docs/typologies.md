@@ -53,6 +53,7 @@ aujourd'hui sur presque toute composition ; ils se lisent dans `verdict.typo`.
 | `techGroupes` | groupes de locaux techniques qui ne se touchent pas | d43, noté à la main jusqu'ici |
 | `posePlan` | part du programme posée dans les plans | « Tout le programme tient dans les plans », nouveau |
 | `couloirsJour` | part des bouts de couloir sur une façade | « Couloirs éclairés à leurs bouts », nouveau |
+| `pubGroupe` | part des bandes où les pièces publiques (`program.js`, chapitres `public`) forment une suite, à un bout | d39, noté à la main jusqu'ici |
 
 Les règles viennent des directives vaudoises (2002, 1-4P), de VS 400.200, de l'AEAI 16-15, des
 Raumstandards de Zurich et des rapports de jury de Broc, Vignettaz, Praroman, Matran, Cugy et
@@ -73,9 +74,15 @@ rendaient presque toute variante invalide et vidaient la recherche. Elles repass
 quand les noyaux sauront les tenir. Un écart ne jette aucun volume : `genMass()` ne garde que sa
 garde du massing.
 
-**Le programme qui ne tient pas** : 160 m² (barre) à 1'180 m² (cour) selon le parti, à toute
-seed — le massing dimensionne ses volumes sur la circulation estimée, les plans en dessinent
-davantage. Noté (`posePlan`) et notifié (`typo-pose`) ; le corriger est au massing.
+**Le programme qui ne tient pas** : le massing dimensionnait ses volumes sur la circulation
+estimée, les plans en dessinent davantage — 680 m² par tirage en moyenne. Il demande désormais ce
+que les plans pavent (`docs/massing.md`) : 250 m² par tirage (72 tirages, 45'000 → 16'400 m²),
+la granularité d'une pièce entière en bout de bande. Noté (`posePlan`) et notifié (`typo-pose`).
+
+**Public et école** : le contrôle dit, bande par bande, où une pièce d'école s'intercale entre
+deux pièces publiques, ou où la suite publique est enfermée au milieu de la bande
+(`lirePlans() — pub`) ; `pubGroupe` le note (d39). Le côté du public se juge au Massing
+(`pub-est`, `pubSep`, `pubCote`).
 
 ## Chaque onglet tire chez lui
 

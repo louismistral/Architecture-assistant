@@ -510,3 +510,9 @@ programme ressemblerait-il, physiquement, sur ce site ?
 - **La piscine et le local CAD sont dessinés dans toute variante** : l'option « non représentés »
   a disparu (une variante ancienne qui la portait revient à `auto`). Une candidate qui ne sait pas
   les poser ne passe qu'à défaut de toute autre (`secondPose()`), et le contrôle le dit en rouge.
+- **Le public d'un côté** (`orientation.js — pub-est`) : visée, elle fait accoler la salle de
+  sport au corps d'école le plus avancé vers `V.pubAz` et sur sa face de ce côté
+  (`gen.js — versPublic`), et fait balayer au second temps la marge de ce côté d'abord. Mesures
+  `pubSep`, `pubCote` (`mesures.js — publicEcole`) ; voir `docs/parametres.md`. Seed 1/11 : le
+  public est du côté est sur 12 partis sur 12 (7 sans la ligne), séparé de l'école par une ligne
+  sur 2 — la piscine et le CAD se posent où la marge le permet.

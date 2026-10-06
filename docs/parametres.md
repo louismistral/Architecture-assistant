@@ -202,6 +202,17 @@ son centre est loin de la rue (`courRoute`) ; l'UAPE, au rez, ouvre sur elle. `c
 une façade du rez que rien ne masque, vers le terrain de football, aux seuils de `vue`. Ce que le
 massing ne sait pas — quel corps porte l'UAPE ou le hall, le vent — reste à la typologie.
 
+**Le public d'un côté, l'école de l'autre** (`pub-est`, Prioritaire, notre choix) : ce qui est
+public est dit UNE fois, au chapitre (`program.js`, `public:1` — la salle polyvalente et ses
+annexes, la piscine, le chauffage communal ; l'UAPE est de l'école). `mass/mesures.js —
+publicEcole()` projette les emprises publiques et scolaires sur la direction qui les sépare le
+mieux : `pubSep`, leur recouvrement (0 : une ligne passe entre elles) ; `pubCote`, l'écart de
+leurs centres vers `pubAz` (90°, l'est — la droite du plan). Favorable sans recouvrement et le
+public au-delà de la demi-largeur de l'école, défavorable au-delà de `pubMele` (0,25) ou du
+mauvais côté. Le générateur la suit aussi en dehors de `retenir()` : la salle de sport s'accole
+d'abord du côté public, le second temps balaie d'abord cette marge. Au jury : `pub-sep` (D, 6),
+`pub-cote` (B, 4), et `d39` lit `pubGroupe` sur les plans.
+
 **La coupe par le poids** (mixer) : en bas le public, le bruit et les petits — les règles de
 niveau (`niv-uape`, `niv-refectoire`, `niv-halls`, `niv-admin`) ; en haut le calme — `cla-haut`
 et `bruit-calme`, passées Prioritaires ; la grande portée de la salle de sport jamais au milieu
