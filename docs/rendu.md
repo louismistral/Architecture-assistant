@@ -1,14 +1,33 @@
 # Rendu — les planches de chaque étape
 
 Un volet par étape du projet (`ETAPES`, `src/data/planches.js`) : Massing, Typologies,
-Tectonics, Materiality, Rendu final. Chaque volet rend ses planches en PDF, au format
-d'impression, à partir de la composition à l'écran. Seul le massing est construit.
+Tectonics, Materiality, Rendu final. Chaque volet rend ses planches à partir de la composition
+à l'écran. Seul le massing est construit.
+
+## Les formats d'export
+
+En tête de chaque carte : le format, puis le bouton. Le choix vaut pour toutes les cartes.
+
+| format | pour | ce qu'il porte |
+|---|---|---|
+| PDF | imprimer | la planche au format, sur la base du géomètre ou le gabarit s'il y en a un |
+| SVG | Illustrator | aplats, traits, textes, découpes — une page, un fichier |
+| DXF | AutoCAD, Rhino, Archicad | DXF 2000 : polylignes, hachures pleines, cercles, textes éditables |
+
+Le DXF (`dxf(t, t2)`, `core/pdf.js`) se travaille comme un dessin fait à la main : chaque
+entité garde sa couleur exacte, son épaisseur et son pointillé (un type de ligne par motif) ; un
+calque par épaisseur (`TRAIT-0.50`, `TRAIT-0.18-TIRETS`…), `HACHURE`, `TEXTE` (style `GRAS`
+pour le gras). Unités : **le millimètre sur le papier** — la planche s'ouvre à l'échelle de son
+PDF. Les découpes sont appliquées à la géométrie, rien ne déborde (exact pour une découpe
+convexe ; contre la parcelle, une surface à cheval est coupée au mieux). Une page suivante se
+pose à droite de la première. Ni la base du géomètre ni le gabarit n'y sont : seule notre
+surcouche. Le DWG est binaire et fermé : AutoCAD ouvre le DXF et l'enregistre en DWG.
 
 ```
 src/core/pdf.js          un dessin vectoriel (trace), deux sorties : SVG (écran) et PDF (impression)
 src/rendu/siteplan.js    plan de situation A2 1:500, posé sur la base du géomètre
 src/rendu/diagramme.js   planche « processus » A2 : une axonométrie par décision du générateur
-src/views/rendu.js       le volet : une carte par planche, aperçu + « Télécharger le PDF »
+src/views/rendu.js       le volet : une carte par planche, aperçu + export PDF, SVG ou DXF
 styles/rendu.css         son dessin
 ```
 

@@ -7,7 +7,7 @@
    situation, posé SUR la base du géomètre, et la planche de diagrammes.
    ========================================================================= */
 import { el } from "../core/format.js";
-import { pdfNeuf, pdfSur, telecharger } from "../core/pdf.js";
+import { dxf, pdfNeuf, pdfSur, telecharger } from "../core/pdf.js";
 import { AXO, BASE, ETAGES, ETAPES, FORMATS, MIDTERM } from "../data/planches.js";
 import { MASS } from "../mass/model.js";
 import { planSituation } from "../rendu/siteplan.js";
@@ -59,18 +59,52 @@ export function apercu(t, fond){
   return d;
 }
 
+/* Les formats d'export. Le PDF s'imprime tel quel (sur sa base s'il en a une) ;
+   le SVG s'ouvre dans Illustrator, le DXF dans AutoCAD, Rhino, Archicad —
+   polylignes, hachures, textes, à retravailler comme un dessin fait à la main,
+   sans la base du géomètre ni le gabarit. Le choix vaut pour toutes les cartes. */
+var EXPORT = "pdf";
+var SORTIES = {
+  pdf: { n:"PDF", type:"application/pdf", fichier:function(p, t, t2){ return p.fichier(t, t2); } },
+  svg: { n:"SVG", type:"image/svg+xml", fichier:function(p, t, t2){ return Promise.resolve([t, t2].filter(Boolean).map(function(x){ return x.svg(); })); } },
+  dxf: { n:"DXF", type:"application/dxf", fichier:function(p, t, t2){ return Promise.resolve(dxf(t, t2)); } }
+};
+
 function carte(p){
   var c = el("article", "rd-carte");
   var h = el("header", "rd-carte__h");
   h.appendChild(el("h2", null, p.n));
   h.appendChild(el("span", "rd-carte__s mono", p.spec));
+  /* l'export, en tête : le format, puis le bouton */
+  var act = el("div", "rd-carte__a");
+  var g = el("div", "btn-group");
+  g.setAttribute("role", "group");
+  g.setAttribute("aria-label", "Format d'export");
+  var b = el("button", "btn btn--primary");
+  b.type = "button"; b.disabled = true; b.setAttribute("data-vue", "");
+  function libelle(){
+    b.textContent = "Exporter en " + SORTIES[EXPORT].n + (EXPORT === "pdf" ? " (" + FORMATS[p.format || "A2"].n + ")" : "");
+    g.querySelectorAll(".btn").forEach(function(x){ x.setAttribute("aria-pressed", String(x.dataset.f === EXPORT)); });
+  }
+  Object.keys(SORTIES).forEach(function(f){
+    var x = el("button", "btn", SORTIES[f].n);
+    x.type = "button"; x.dataset.f = f; x.setAttribute("data-vue", "");
+    x.title = { pdf:"Pour imprimer, sur la base du géomètre ou le gabarit", svg:"Pour Illustrator : calques, aplats et textes modifiables",
+      dxf:"Pour AutoCAD, Rhino, Archicad : polylignes, hachures et textes modifiables, en mm sur le papier" }[f];
+    x.addEventListener("click", function(){
+      EXPORT = f;
+      document.querySelectorAll(".rd-carte__a").forEach(function(a){ a.libelle(); });
+    });
+    g.appendChild(x);
+  });
+  act.libelle = libelle;
+  act.appendChild(g); act.appendChild(b);
+  h.appendChild(act);
+  libelle();
   c.appendChild(h);
   var zone = el("div", "rd-carte__z");
   zone.appendChild(el("p", "rd-attente", "Calcul de la planche…"));
   c.appendChild(zone);
-  var b = el("button", "btn btn--primary", "Télécharger le PDF (" + FORMATS[p.format || "A2"].n + ")");
-  b.type = "button"; b.disabled = true;
-  c.appendChild(b);
   var note = el("p", "rd-note");
   c.appendChild(note);
   /* la page s'affiche d'abord, la planche ensuite */
@@ -89,9 +123,13 @@ function carte(p){
     }
     prete.then(function(){ b.disabled = false; });
     b.addEventListener("click", function(){
-      b.disabled = true;
-      p.fichier(t, t2).then(function(o){ telecharger(o, (p.nom || "saxon-massing-" + p.id) + "-" + graine() + ".pdf"); })
-        .catch(function(e){ note.textContent = e.message; })
+      var f = EXPORT, so = SORTIES[f], nom = (p.nom || "saxon-massing-" + p.id) + "-" + graine();
+      b.disabled = true; note.textContent = "";
+      so.fichier(p, t, t2).then(function(o){
+        /* le SVG : un fichier par page */
+        if(Array.isArray(o)) o.forEach(function(x, i){ telecharger(x, nom + (o.length > 1 ? "-p" + (i + 1) : "") + ".svg", so.type); });
+        else telecharger(o, nom + "." + f, so.type);
+      }).catch(function(e){ note.textContent = e.message; })
         .then(function(){ b.disabled = false; });
     });
   }, 30);

@@ -10,7 +10,7 @@
 .rd-carte__h{display:flex;align-items:baseline;gap:var(--s-3);flex-wrap:wrap}
 .rd-carte__h h2{margin:0;font-size:var(--t-lg);font-weight:600}
 .rd-carte__s{font-size:var(--t-xs);color:var(--muted-foreground)}
-.rd-carte .btn{align-self:flex-start}
+.rd-carte__a{display:flex;align-items:center;gap:var(--s-2);margin-inline-start:auto;flex-wrap:wrap}
 .rd-apercu{border:1px solid var(--border);background:var(--papier);line-height:0}
 .rd-apercu svg,.rd-apercu img{display:block;inline-size:100%;block-size:auto}
 .rd-carte__z{display:flex;flex-direction:column;gap:var(--s-3)}
