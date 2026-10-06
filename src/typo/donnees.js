@@ -15,6 +15,7 @@ import { SITE } from "../data/site.js";
 import { V, enVigueur } from "../data/cadre.js";
 import { BLOCKS, FLOORS, flCircDe, flHeight, flName, flNet, flShort, lvlOf } from "../mix/floors.js";
 import { PMAP, PROX, uOf } from "../mix/prog.js";
+import { BRUYANT, UNITE } from "../mix/niv.js";
 import { adjActive, coteDe } from "../mix/opts.js";
 import { nearestDims } from "../core/geometry.js";
 import { saveSoon } from "../mix/store.js";
@@ -66,6 +67,7 @@ export function donneesTypo(vols, ponts, graine){
     /* les règles que le dessin tient : la largeur du couloir réglée au cahier
        des charges, le noyau, le feu, les murs, le module, la distance d'un lien */
     regles:{ fusion:V.fusionDist == null ? 1 : V.fusionDist, couloir:COULOIR, cage:RULES.circ.cage, noyau:RULES.circ.noyau, feu:RULES.feu,
+             salle:UNITE.source, bruyant:BRUYANT.source,
              mur:RULES.haut.mur, cloison:RULES.haut.cloison, plan:RULES.plan, traits:TRAITS, alt:alt, echelle:ETAGES.echelle, module:V.module, lien:RULES.circ.proche,
              /* le sol libre toléré dans un corps ; null, la ligne est éteinte */
              vide:enVigueur("sol-vide") ? V.solVide : null,

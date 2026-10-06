@@ -17,7 +17,7 @@
    Un écart ne jette aucun volume — le générateur du massing ne voit pas les
    plans — : il rend la variante invalide (Intangible) ou le notifie (Imposé).
    ========================================================================= */
-import { planifier } from "./gen.js";
+import { planifier, soleil } from "./gen.js";
 import { donneesTypo } from "./donnees.js";
 import { enVigueur, severite } from "../data/cadre.js";
 import { BRUYANT, CLSRE, UNITE } from "../mix/niv.js";
@@ -78,6 +78,34 @@ export function lirePlans(D){
     });
   });
   Object.keys(sig).forEach(function(k){ if(sig[k].decale) empile.push(nomVol(sig[k].v)); });
+  /* LE SQUELETTE TIENT : hors du rez, chaque corps rejoint un noyau par ses
+     couloirs — d'un corps à l'autre par un passage, bout à bout ou par le
+     raccord d'une jonction (`gen.js — passage`). Le contrôle des noyaux compte
+     par bâtiment : il SUPPOSE que les corps accolés se desservent ; ceci le
+     vérifie. Un bâtiment sans noyau du tout, `acces` le dit déjà. */
+  var isoles = [];
+  tous.forEach(function(r, i){
+    if(D.floors[i].lvl === 0) return;
+    var F = r.F.filter(function(f){ return !f.fixe; }), pere = F.map(function(_, j){ return j; });
+    function racine(j){ while(pere[j] !== j) j = pere[j] = pere[pere[j]]; return j; }
+    F.forEach(function(f, j){ [-1, 1].forEach(function(sg){
+      var g = PG.passage(r.F, f, sg), k = F.indexOf(g);
+      if(k >= 0) pere[racine(k)] = racine(j);
+    }); });
+    /* flanc contre flanc : les deux raccords se font face */
+    (r.J || []).forEach(function(x){
+      var j = F.indexOf(x.b), k = F.indexOf(x.r);
+      if(x.k !== "flanc" || j < 0 || k < 0) return;
+      var ok = [x.b, x.r].every(function(f){ return (f.paliers || []).some(function(p){ return p.raccord; }); });
+      if(ok) pere[racine(k)] = racine(j);
+    });
+    var sert = {};
+    F.forEach(function(f, j){ if(f.cages.length) sert[racine(j)] = 1; });
+    F.forEach(function(f, j){
+      if(f.rooms.length && !sert[racine(j)] && F.some(function(g){ return g.cages.length && grp(g.v) === grp(f.v); }))
+        isoles.push({ nom:nomVol(f.v), i:i });
+    });
+  });
   /* le sol libre d'un corps au-delà du seuil (`regles.vide`, null la ligne éteinte) : un plateau vide */
   var vides = [];
   if(PG.VIDE != null) tous.forEach(function(r, i){ r.F.forEach(function(f){
@@ -157,19 +185,13 @@ export function lirePlans(D){
     var m = colle ? Math.min(rm.v0 + rm.H, v.v0 + v.H) - Math.max(rm.v0, v.v0) : 0;
     if(m >= PG.PLAN.porte + 0.2) sas.ok++; else sas.sans.push({ lab:rm.lab || rm.n, i:i });
   }); }); });
-  return { PG:PG, tous:tous, pos:pos, nm:nm, am:am, sas:sas, non:non, acces:acces, empile:empile, feu:feu,
+  return { PG:PG, tous:tous, pos:pos, nm:nm, am:am, sas:sas, non:non, acces:acces, isoles:isoles, empile:empile, feu:feu,
            fuite:fuite, fuiteMax:fuiteMax, rompus:rompus, liens:{ n:n, ok:ok }, scene:scene, vides:vides,
            pub:{ n:pubBandes, meles:meles } };
 }
 
 /* ---------- les mesures ----------------------------------------------------------- */
 
-/* L'azimut d'une façade (y du site vers le nord) : 1 de l'est au sud-sud-ouest,
-   ½ du sud-ouest à l'ouest, 0 au nord. */
-function soleil(nx, ny){
-  var az = (Math.atan2(nx, ny) * 180 / Math.PI + 360) % 360;
-  return az >= 67.5 && az <= 202.5 ? 1 : az > 202.5 && az <= 292.5 ? 0.5 : 0;
-}
 /* la bande A regarde (sin a, −cos a), la B l'opposée ; une pièce traversante
    prend la meilleure de ses deux façades */
 function soleilPiece(f, rm){
