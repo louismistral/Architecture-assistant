@@ -61,7 +61,7 @@ import { reculVise } from "../data/cadre.js";
 import { RULES } from "../data/rules.js";
 import { PER, RHINO, SITE } from "../data/site.js";
 import { coins, ligneRecul, terrain, unionRects } from "./geom.js";
-import { MASS, dessinDe, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, postesDe, volNom } from "./model.js";
+import { MASS, dessinDe, recouvreLie, etagesDe, fusionne, niveaux, partiOf, partsDe, pontEtage, postesDe, volNom } from "./model.js";
 import { PMAP } from "../mix/prog.js";
 import { CALQUE, SEP, chemin, couleur } from "../data/calques.js";
 import { archiDe, faces } from "./archi.js";
@@ -220,18 +220,25 @@ export function piecesMassing(o){
     function g(keys){ return chemin(CALQUE.volume, chapDe(keys, n.i), "Niveau_" + nomNiveau(n)); }
     MASS.vol.forEach(function(v, k){
       if(v.ph) return;
+      var pose = recouvreLie(v, MASS.vol);
       etagesDe(v).forEach(function(s){
         if(s.e.i !== n.i) return;
         corps.push(de(v, N.length > 1 ? N.indexOf(n) / (N.length - 1) : 0, function(){
           var nom = nomObj(volNom(v, k)) + "_" + nomNiveau(n), D = dessinDe(v, s.e, MASS.vol);
-          if(D && D.garde.length) massif(nom, g(s.e.keys), D.emprise, s.z0, s.z1);
+          /* découpé : un corps simple qui cède, et à qui il reste quelque chose — tout
+             entier dans l'autre, ou fusionné (ses parts se recouvrent de leur mur
+             commun, l'import ne les recollerait pas), il garde sa boîte, son prisme */
+          var coupe = D && D.garde.length && D.emprise.length && !fusionne(s.e);
+          if(coupe) massif(nom, g(s.e.keys), D.emprise, s.z0, s.z1);
           else if(fusionne(s.e)) prisme(nom, g(s.e.keys), v, s.e, s.z0, s.z1);
           else boite(nom, g(s.e.keys), s.rc, s.z0, s.z1);
-          /* ce que la géométrie ne dit pas, et que l'import relit : le corps, son
-             bâtiment, et la boîte d'origine de celui qu'on a découpé */
+          /* ce que la géométrie ne dit pas, et que l'import relit — pour les seuls corps
+             posés sur un corps de leur bâtiment : le corps, son bâtiment, et la boîte
+             d'origine de celui qu'on a découpé. Les autres reviennent comme avant. */
+          if(!pose) return;
           obj.us = { "Saxon corps":v.id };
           if(v.bat) obj.us["Saxon bat"] = v.bat;
-          if(D && D.garde.length) obj.us["Saxon boites"] = JSON.stringify(s.rcs.map(function(r){
+          if(coupe) obj.us["Saxon boites"] = JSON.stringify(s.rcs.map(function(r){
             return { x:r.x, y:r.y, w:r.w, d:r.d, a:r.a, z0:s.z0, z1:s.z1 }; }));
         }));
         nEt++;

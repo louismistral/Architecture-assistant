@@ -542,6 +542,15 @@ export function recouvrement(vols, i, murs, haut){
   }
   return { aire:aire, enfouie:enfouie, volume:volume, facade:facade };
 }
+/* `v` est-il posé, à un étage au moins, sur un corps de son bâtiment ? */
+export function recouvreLie(v, vols){
+  return !v.ph && vols.some(function(o){
+    return o !== v && !o.ph && lies(v, o) && v.lv.some(function(e){
+      var eo = volEtage(o, e.i);
+      return !!eo && serecouvrent(v, e, o, eo);
+    });
+  });
+}
 /* L'EMPRISE COMMUNE, vue du ciel : chaque corps par son plus bas étage hors sol
    (`etageBas`, celui de `volSol`) — un corps qui ne commence qu'au R+1, posé au-dessus
    du bout d'un autre, la partage aussi. Quand les deux posent au rez, c'est
@@ -587,14 +596,20 @@ export function cedeeDe(v, vols, i){
    hors tout privée de la leur ; `cel(P)` : une cellule de son programme privée de
    leurs intérieurs, `celBords(P)` ce qui reste de son contour ; `murs` : ses murs privés des intérieurs de TOUS les autres et
    de l'emprise de ceux qui gardent ; `bords` : son contour privé de l'emprise des
-   autres. Morceaux convexes et disjoints : réunis, ceux de la paire font l'union. */
+   autres. Morceaux convexes et disjoints : réunis, ceux de la paire font l'union.
+   Deux étages à deux altitudes (une hauteur propre, une assise à part) ne font pas
+   un prisme d'union : ils gardent chacun leur boîte. */
 export function dessinDe(v, e, vols){
   if(!e || v.ph) return null;
-  var G = [], A = [];
+  var G = [], A = [], zv = null;
+  function z(o, eo){ var s = etagesDe(o, vols).filter(function(x){ return x.e === eo; })[0]; return s ? [s.z0, s.z1] : [NaN, NaN]; }
   vols.forEach(function(o){
     if(o === v || o.ph || !lies(v, o)) return;
     var eo = volEtage(o, e.i);
     if(!eo || !serecouvrent(v, e, o, eo)) return;
+    var zo = z(o, eo);
+    zv = zv || z(v, e);
+    if(!(Math.abs(zo[0] - zv[0]) <= .05 && Math.abs(zo[1] - zv[1]) <= .05)) return;
     A.push([o, eo]);
     if(garde(o, eo, v, e, vols)) G.push([o, eo]);
   });

@@ -1277,6 +1277,34 @@ const TESTS = {
     T(C).filter((t) => t.every((i) => C.v[i][2] === haut)).forEach((t) => { const g = [0, 1].map((k) => t.reduce((s, i) => s + C.v[i][k] / 3, 0));
       assert.equal(geom.interConvexe([[g[0] - .1, g[1] - .1], [g[0] + .1, g[1] - .1], [g[0] + .1, g[1] + .1], [g[0] - .1, g[1] + .1]], geom.enveloppe(pa)).length, 0, "dans le grand"); });
   },
+  /* la relecture de la phase 2 : ce qui retombe sur l'ancien chemin */
+  async rec_export_replis(ref){
+    const { M } = await modules();
+    const X = await import(new URL("mass/export.js", SRC));
+    const objets = (vol) => {
+      const e = structuredClone(ref);
+      if(vol){ e.mass.vol = vol; e.mass.pont = []; }
+      charger(null, e);
+      return X.piecesMassing({ date:new Date(0) }).objets;
+    };
+    /* sans recouvrement : aucune chaîne d'objet, l'aller-retour reste celui d'avant */
+    assert.ok(objets(null).every((o) => !o.us), "une composition sans recouvrement ne porte aucune chaîne");
+    /* tout entier dans l'autre : sa boîte, pas un maillage vide */
+    const O = objets([{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                      { id:"c", x:90, y:60, a:0.3, bat:"b", lv:[{ i:1, w:8, d:8 }] }]);
+    const C = O.find((o) => o.us && o.us["Saxon corps"] === "c");
+    assert.ok(C && C.v.length === 8 && !C.us["Saxon boites"], "le corps englouti garde sa boîte");
+    /* fusionné : son prisme, comme avant */
+    const F = objets([{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16 }] },
+                      { id:"c", x:111, y:62, a:0.3, bat:"b", lv:[{ i:1, w:10, d:10, ext:[{ w:10, d:10, dx:10, dy:0 }] }] }]);
+    assert.ok(!F.find((o) => o.us && o.us["Saxon corps"] === "c").us["Saxon boites"], "un volume fusionné ne se découpe pas");
+    /* deux étages liés à deux altitudes : chacun se dessine comme avant */
+    objets([{ id:"a", x:90, y:60, a:0, bat:"b", lv:[{ i:1, w:30, d:16, h:9 }] },
+            { id:"c", x:106, y:63, a:0.4, bat:"b", lv:[{ i:1, w:16, d:16 }] }]);
+    const [a, c] = M.MASS.vol;
+    assert.equal(M.dessinDe(c, c.lv[0], M.MASS.vol), null, "hauteurs différentes : pas de découpe");
+    assert.equal(M.dessinDe(a, a.lv[0], M.MASS.vol), null);
+  },
   async rec_rhino_lien(ref){
     let rh;
     try{ rh = await rhino3dm(); }catch(_){ return; }
