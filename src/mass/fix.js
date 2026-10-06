@@ -152,7 +152,7 @@ function passe(n){
     }
     e.w = auModule(e.w * k);
     e.d = auModule(e.d * k);
-});
+  });
   return true;
 }
 export function fixAire(){
