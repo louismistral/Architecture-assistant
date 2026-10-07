@@ -1,0 +1,588 @@
+{
+  "areas": {},
+  "couloir": null,
+  "lvls": [
+    -1,
+    0,
+    1,
+    2
+  ],
+  "plates": [
+    1160,
+    3020,
+    1900,
+    1110
+  ],
+  "blocks": [
+    {
+      "k": "ext|Cour d'école avec préau couvert",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "infra|Local chauffage CAD",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Réfectoire",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "sport|Cuisine",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|Salles de classe standard",
+      "q": 9,
+      "f": 2
+    },
+    {
+      "k": "ecole|Salles de classe standard",
+      "q": 9,
+      "f": 3
+    },
+    {
+      "k": "sport|Salle de sport double",
+      "q": 2,
+      "f": 1
+    },
+    {
+      "k": "tech|Abri PC",
+      "q": 1,
+      "f": 0
+    },
+    {
+      "k": "infra|Piscine",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|Salle de classe de réserve",
+      "q": 3,
+      "f": 2
+    },
+    {
+      "k": "sport|Local engins de sports",
+      "q": 2,
+      "f": 1
+    },
+    {
+      "k": "sport|Hall d'entrée / foyer",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Salles d'activité",
+      "q": 2,
+      "f": 1
+    },
+    {
+      "k": "ecole|Salles d'appui / soutien",
+      "q": 2,
+      "f": 2
+    },
+    {
+      "k": "ecole|Salles d'appui / soutien",
+      "q": 2,
+      "f": 3
+    },
+    {
+      "k": "ecole|Salle ACM",
+      "q": 2,
+      "f": 2
+    },
+    {
+      "k": "ecole|Salle de dédoublement",
+      "q": 2,
+      "f": 2
+    },
+    {
+      "k": "tech|Local technique",
+      "q": 1,
+      "f": 0
+    },
+    {
+      "k": "ecole|Hall d'entrée",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|Dépôt matériel ACM",
+      "q": 2,
+      "f": 2
+    },
+    {
+      "k": "ecole|Salle des maîtres",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "tech|Conciergerie / vestiaire personnel nett.",
+      "q": 1,
+      "f": 0
+    },
+    {
+      "k": "ecole|Salle de réunion",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|Bureau direction et admin.",
+      "q": 2,
+      "f": 1
+    },
+    {
+      "k": "ecole|Local pédago-thérapeutique",
+      "q": 1,
+      "f": 2
+    },
+    {
+      "k": "ecole|Salle détente / allaitement",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Hall UAPE",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Salle de pause",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Local de rangement",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Bureau de direction",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "sport|Toilettes publiques",
+      "q": 6,
+      "f": 1
+    },
+    {
+      "k": "sport|Local de nettoyage",
+      "q": 1,
+      "f": 0
+    },
+    {
+      "k": "ecole|Local reproduction",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "uape|Toilettes UAPE",
+      "q": 4,
+      "f": 1
+    },
+    {
+      "k": "uape|Économat",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "sport|Toilette individuelle",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|WC PMR",
+      "q": 1,
+      "f": 2
+    },
+    {
+      "k": "sport|Local de rangement",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "sport|Vestiaires élèves",
+      "q": 4,
+      "f": 1
+    },
+    {
+      "k": "sport|Scène",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "sport|Vestiaires professeurs",
+      "q": 2,
+      "f": 1
+    },
+    {
+      "k": "ecole|WC garçons",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|WC garçons",
+      "q": 4,
+      "f": 2
+    },
+    {
+      "k": "ecole|WC garçons",
+      "q": 4,
+      "f": 3
+    },
+    {
+      "k": "ecole|WC filles",
+      "q": 1,
+      "f": 1
+    },
+    {
+      "k": "ecole|WC filles",
+      "q": 4,
+      "f": 2
+    },
+    {
+      "k": "ecole|WC filles",
+      "q": 4,
+      "f": 3
+    },
+    {
+      "k": "ecole|Vestiaires de classe",
+      "q": 9,
+      "f": 2
+    },
+    {
+      "k": "ecole|Vestiaires de classe",
+      "q": 9,
+      "f": 3
+    }
+  ],
+  "accepts": [],
+  "opts": {
+    "v": 2,
+    "pile": 0,
+    "lie": {},
+    "cotes": {}
+  },
+  "mass": {
+    "parti": "auto",
+    "graine": 7919,
+    "lev": {
+      "sport": null,
+      "ponts": null,
+      "prof": null
+    },
+    "second": "sep",
+    "mono": 0,
+    "pile": "-1,0,1,2|{}",
+    "etages": null,
+    "pont": [],
+    "vol": [
+      {
+        "id": "b1",
+        "x": 112.81976744235139,
+        "y": 84.13261059760289,
+        "a": -0.9621451167679815,
+        "fix": 0,
+        "key": null,
+        "ph": 0,
+        "nom": null,
+        "joint": null,
+        "bat": "bA",
+        "ar": null,
+        "lv": [
+          {
+            "i": 0,
+            "w": 24.5,
+            "d": 16,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 1,
+            "w": 24.5,
+            "d": 16,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 2,
+            "w": 24.5,
+            "d": 16,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 3,
+            "w": 32,
+            "d": 16,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          }
+        ],
+        "par": "ia"
+      },
+      {
+        "id": "b2",
+        "x": 67.43573491238007,
+        "y": 70.00058246105606,
+        "a": 0.6086512100269155,
+        "fix": 0,
+        "key": null,
+        "ph": 0,
+        "nom": null,
+        "joint": null,
+        "bat": "bA",
+        "ar": null,
+        "lv": [
+          {
+            "i": 1,
+            "w": 47.5,
+            "d": 16,
+            "dx": 13.25,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 2,
+            "w": 49.5,
+            "d": 16,
+            "dx": 12.25,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 3,
+            "w": 12.5,
+            "d": 16,
+            "dx": 30.75,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          }
+        ],
+        "par": "ia"
+      },
+      {
+        "id": "b3",
+        "x": 107.66027890091063,
+        "y": 55.24484203977067,
+        "a": 0.6086512100269155,
+        "fix": 0,
+        "key": null,
+        "ph": 0,
+        "nom": null,
+        "joint": null,
+        "bat": "bA",
+        "ar": null,
+        "lv": [
+          {
+            "i": 0,
+            "w": 56.5,
+            "d": 16,
+            "dx": 0.25,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 1,
+            "w": 57,
+            "d": 16,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 2,
+            "w": 51,
+            "d": 16,
+            "dx": 3,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          },
+          {
+            "i": 3,
+            "w": 33.5,
+            "d": 16,
+            "dx": 14.43576870836356,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": null,
+            "ext": null
+          }
+        ],
+        "par": "ia"
+      },
+      {
+        "id": "vsport",
+        "x": 143.84733593491853,
+        "y": 50.540416993936205,
+        "a": -0.9621451167679811,
+        "fix": 1,
+        "key": "sport|Salle de sport double",
+        "ph": 0,
+        "nom": null,
+        "joint": "b3",
+        "bat": null,
+        "ar": null,
+        "lv": [
+          {
+            "i": 1,
+            "w": 32,
+            "d": 28,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 0,
+            "keys": [
+              "sport|Salle de sport double"
+            ],
+            "ext": null
+          }
+        ]
+      },
+      {
+        "id": "ph1",
+        "x": 130,
+        "y": 22,
+        "a": 0.5286057039102925,
+        "fix": 0,
+        "key": null,
+        "ph": 2,
+        "nom": "Local chauffage CAD",
+        "joint": null,
+        "bat": null,
+        "ar": null,
+        "lv": [
+          {
+            "i": 1,
+            "w": 20,
+            "d": 20,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 6.2,
+            "keys": [
+              "infra|Local chauffage CAD"
+            ],
+            "ext": null
+          }
+        ]
+      },
+      {
+        "id": "ph2",
+        "x": 100,
+        "y": 26,
+        "a": 0.5286057039102925,
+        "fix": 0,
+        "key": null,
+        "ph": 2,
+        "nom": "Piscine",
+        "joint": null,
+        "bat": null,
+        "ar": null,
+        "lv": [
+          {
+            "i": 1,
+            "w": 24.5,
+            "d": 20.5,
+            "dx": 0,
+            "dy": 0,
+            "w0": null,
+            "d0": null,
+            "dx0": null,
+            "dy0": null,
+            "h": 5,
+            "keys": [
+              "infra|Piscine"
+            ],
+            "ext": null
+          }
+        ]
+      }
+    ]
+  },
+  "typo": {
+    "graine": 1,
+    "cotes": {}
+  },
+  "doc": {},
+  "verrous": {},
+  "updatedAt": 1791393201621
+}
