@@ -43,8 +43,8 @@ var SPORT = "sport|Salle de sport double";
 export var NIV = [
   { id:"niv-sport", re:/Salle de sport double/, grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
     n:"Salle de sport double au rez", msg:"7 m de hauteur libre sous structure — la salle double ne peut être qu'au rez" },
-  { id:"niv-abri", re:/Abri PC/, lvl:{ min:-9, max:0 }, tag:"intangible", src:r("2.10"),
-    n:"Abri PC au rez ou en sous-sol", msg:"Abri PC au rez ou en sous-sol, accès et dalle de protection" },
+  { id:"niv-abri", re:/Abri PC/, lvl:{ min:-9, max:-1 }, tag:"intangible", src:r("2.10"),
+    n:"Abri PC au sous-sol", msg:"Abri PC au sous-sol, accès et dalle de protection" },
   { id:"niv-cad", re:/Local chauffage CAD/, grade:1, tag:"intangible", src:r("2.10"),
     n:"Local CAD de plain-pied", msg:"Accessible de plain-pied par camion, hauteur libre 5,20 m" },
   { id:"niv-piscine", re:/Piscine/, grade:1, tag:"prioritaire", admet:TOUS, src:r("2.10"),
@@ -161,10 +161,10 @@ export var CADRE_MASS = [
     d:"Le programme la veut attenante à la salle de sport : la salle est toujours accolée à "
       + "l'école, et les Typologies posent la scène contre l'un de ses murs." },
   { id:"abri", sujet:"Sous-sol", tag:"intangible", src:r("2.10"), qui:"code",
-    n:"Abri PC au moins partiellement enterré", val:"au sous-sol, ou au rez d'un corps posé sur la pente",
+    n:"Abri PC au sous-sol", val:"au sous-sol, jamais au rez ni à l'étage",
     lu:"src/mass/mesures.js — ecarts()",
-    d:"Le niveau de l'abri est décidé au mixer ; s'il est au rez, un corps qui le porte doit "
-      + "s'enterrer d'un mètre dans la pente." },
+    d:"Le niveau de l'abri est décidé au mixer (`niv-abri`) ; le Massing signale une "
+      + "composition qui l'en sort." },
   { id:"surfaces", sujet:"Programme", tag:"intangible", src:{ t:"programme" }, qui:"code",
     n:"Chaque niveau loge sa surface", val:"à 2 % près, 5 m² au moins",
     lu:"src/mass/partis.js — programme() · src/mass/mesures.js — ecarts()",
