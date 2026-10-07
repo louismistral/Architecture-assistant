@@ -205,18 +205,12 @@ export function ecarts(vols, vite, Q){
       dit("scene-sport", k, "La salle de sport ne touche pas l'école : la scène ne peut pas lui être collée.");
   });
 
-  /* l'abri PC, au moins partiellement enterré */
+  /* l'abri PC, au sous-sol */
   if(!stop()){
     var ab = abriNiv();
-    if(ab >= 0 && lvlOf(ab) > 0)
-      dit("abri", -1, "L'abri PC est à l'étage : il doit être au moins partiellement "
-        + "enterré. C'est au mixer qu'il se descend.", 1);
-    else if(ab >= 0 && lvlOf(ab) === 0){
-      var pente = ecole(vols).some(function(v){
-        return !v.fix && assiseEff(v, vols).d >= 1; });
-      if(!pente) dit("abri", -1, "L'abri PC est au rez, et aucun corps ne s'enterre d'un "
-        + "mètre dans la pente : il doit être au moins partiellement enterré.");
-    }
+    if(ab >= 0 && lvlOf(ab) >= 0)
+      dit("abri", -1, "L'abri PC est " + (lvlOf(ab) ? "à l'étage" : "au rez") + " : il doit être au sous-sol. "
+        + "C'est au mixer qu'il se descend.", 1);
   }
 
   /* chaque niveau loge sa surface — la règle première */
