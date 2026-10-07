@@ -178,6 +178,8 @@ export var MESURES = [
   { id:"couloirsJour", de:"typo", n:"Part des bouts de couloir sur une façade", unite:"" },
   { id:"pubGroupe",    de:"typo", n:"Part des bandes où le public forme une suite, à un bout", unite:"" },
   { id:"vestSas",      de:"typo", n:"Part des classes où l'on entre par leur vestiaire", unite:"" },
+  { id:"doubleRive",   de:"typo", n:"Part du linéaire de corps dont le couloir dessert ses deux rives", unite:"" },
+  { id:"sanitairesEmpiles", de:"typo", n:"Part des WC d'étage posés sur un WC du dessous", unite:"" },
   { id:"classesDouble", de:"typo", n:"Part des classes à façades dans deux directions", unite:"" },
   { id:"classesProp",  de:"typo", n:"Part des classes du carré à 1 × 1,35", unite:"" },
   { id:"vitrageFacade", de:"typo", n:"Baie requise (1/5 du sol) ÷ façade de la classe, en moyenne", unite:"" },

@@ -223,7 +223,8 @@ export var CADRE_TYPO = [
   { id:"couloir-acces", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Toutes les pièces ont accès à un couloir", val:"une porte sur la circulation, pour chaque pièce",
     lu:"src/typo/gen.js — composer(), contrôle",
-    d:"Aucune pièce ne se traverse pour en atteindre une autre." },
+    d:"Aucune pièce ne se traverse pour en atteindre une autre, sauf si c'est voulu : une enfilade, "
+      + "une antichambre (le vestiaire en sas)." },
   { id:"sol-vide", sujet:"Circulation", tag:"impose", admet:DURS, off:1, src:CHOIX, qui:"groupe",
     n:"Pas de sol inutilisé dans un corps", k:"solVide", def:100, min:0, max:300, pas:5,
     unite:"m² de sol libre au plus, par corps et par niveau",
@@ -251,8 +252,94 @@ export var CADRE_TYPO = [
     lu:"src/typo/mesures.js — ecartsTypo()",
     d:"Le règlement chiffre chaque local ; une pièce que le plan ne loge pas manque au projet. "
       + "Notifiée et non opposable : le massing dimensionne ses volumes sur la circulation estimée, "
-      + "et les plans en dessinent davantage. Le jury la note aussi (« Tout le programme tient dans les plans »)." }
+      + "et les plans en dessinent davantage. Le jury la note aussi (« Tout le programme tient dans les plans »)." },
+
+  /* LES RÈGLES DE PLAN — trente règles du métier (docs/typologies.md — *Les
+     règles de plan*). Celles qu'une mesure du plan lit ont un seuil et un écart
+     (`typo/mesures.js — ecartsDe()`) ; les autres attendent leur mesure (`lu`
+     « à construire »). La règle 1 est `couloir-acces`, la 8 `classesSoleil`. */
+  P("plan-couloir-bout", "Circulation", "Un couloir mène quelque part", {
+    k:"couloirBout", def:0.6, min:0, max:1, pas:0.05, unite:"des bouts de couloir sur une façade, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), couloirsJour",
+    d:"Pas de cul-de-sac long : chaque couloir finit sur une lumière, une vue ou une destination." }),
+  P("plan-largeur", "Circulation", "La largeur d'un couloir dit son importance", {
+    val:"la circulation principale plus large que celle de service", lu:"à construire — src/typo/gen.js (un seul COULOIR)" }),
+  P("plan-double-rive", "Circulation", "Un couloir dessert ses deux rives", {
+    k:"doubleRive", def:0.7, min:0, max:1, pas:0.05, unite:"du linéaire de corps à deux rangs, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), doubleRive",
+    d:"On n'additionne pas les couloirs : des pièces de part et d'autre, quand la profondeur le permet." }),
+  P("plan-escalier-lisible", "Circulation", "Les escaliers se lisent depuis l'entrée",
+    { val:"comprendre le bâtiment sans signalétique", lu:"à construire" }),
+  P("plan-hierarchie", "Circulation", "Public, puis semi-public, puis privé", {
+    val:"d'un espace privé à un autre sans repasser par le public",
+    lu:"à construire — pubGroupe (d39) n'en lit que le public" }),
+  P("plan-facade-vie", "Lumière", "Pièces de vie en façade, servantes au centre ou au nord", {
+    val:"technique, rangement et sanitaires au centre ou au nord", lu:"à construire" }),
+  P("plan-classes-orient", "Lumière", "Classes orientées à l'est, au sud-est ou au nord", {
+    k:"classesOrient", def:0.5, min:0, max:1, pas:0.05, unite:"des classes bien orientées, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), classesSoleil (E à SSO, SO à O pour moitié)",
+    d:"Lumière stable, pas de surchauffe l'après-midi." }),
+  P("plan-lumiere-gauche", "Lumière", "Dans une classe, la lumière vient de la gauche", {
+    val:"jamais de face ni de dos par rapport au tableau", lu:"à construire — le plan ne pose pas de tableau" }),
+  P("plan-aveugle", "Lumière", "Une pièce sans fenêtre se justifie", {
+    k:"aveugleMax", def:0.1, min:0, max:1, pas:0.05, unite:"de la surface de séjour sans façade, au plus",
+    lu:"src/typo/mesures.js — ecartsDe(), aveugles" }),
+  P("plan-murs-porteurs", "Structure", "Les murs porteurs se superposent", {
+    k:"mursPorteurs", def:0.7, min:0, max:1, pas:0.05, unite:"des murs d'étage sur un mur du dessous, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), mursEmpiles",
+    d:"Sinon il faut des reprises coûteuses." }),
+  P("plan-trame", "Structure", "Une trame récurrente, des exceptions rares", {
+    k:"trameMin", def:0.5, min:0, max:1, pas:0.05, unite:"des murs en façade sur la trame structurelle, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), murTrame" }),
+  P("plan-gaines", "Structure", "Les gaines techniques s'empilent et se regroupent", {
+    k:"gainesMax", def:2, min:1, max:6, pas:1, unite:"groupes de locaux techniques, au plus",
+    lu:"src/typo/mesures.js — ecartsDe(), techGroupes" }),
+  P("plan-sanitaires", "Structure", "Les sanitaires s'empilent, près des gaines", {
+    k:"sanitEmpiles", def:0.7, min:0, max:1, pas:0.05, unite:"des WC d'étage sur un WC du dessous, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), sanitairesEmpiles" }),
+  P("plan-residuel", "Pièces", "Pas d'angle aigu ni de pièce résiduelle", {
+    val:"des pièces rectangulaires, meublables",
+    lu:"tenu par construction — src/typo/gen.js pave en rectangles ; le sol libre, `sol-vide`" }),
+  P("plan-proportions", "Pièces", "Des proportions de 1:1 à 1:2", {
+    val:"le côté long au plus " + RULES.plan.piece.ratio + " fois le court",
+    lu:"src/typo/plans.html — contrôle « proportions vivables » (RULES.plan.piece)",
+    d:"Une pièce trop étirée devient un couloir." }),
+  P("plan-meuble", "Pièces", "Chaque pièce se meuble", {
+    val:"vérifié avec du mobilier dessiné", lu:"à construire — le mobilier est dessiné, pas vérifié" }),
+  P("plan-portes", "Pièces", "Les portes ne se battent pas", {
+    val:"ni entre elles, ni contre un interrupteur ou un radiateur", lu:"à construire" }),
+  P("plan-porte-angle", "Pièces", "Une porte près d'un angle", {
+    val:"pas au milieu d'un mur : de la surface murale libre", lu:"à construire" }),
+  P("plan-adjacences", "Relations", "Les espaces qui travaillent ensemble sont adjacents", {
+    k:"adjPlan", def:0.75, min:0, max:1, pas:0.05, unite:"des liens du schéma tenus au plan, au moins",
+    lu:"src/typo/mesures.js — ecartsDe(), liensPlan",
+    d:"La salle des maîtres voit le préau (maitresCour, d41), les vestiaires sont entre l'extérieur et la salle de gym." }),
+  P("plan-surveillance", "Usage", "L'entrée se surveille depuis l'administration", { lu:"à construire" }),
+  P("plan-recoins", "Usage", "Pas de recoin invisible", {
+    val:"dans les circulations et les sanitaires des élèves", lu:"à construire" }),
+  P("plan-flux", "Usage", "Les flux sont séparés", {
+    val:"élèves, livraisons, usagers externes", lu:"à construire — au Massing, accesSepares (c27)" }),
+  P("plan-hors-heures", "Usage", "Ce qui sert hors des heures scolaires s'isole", {
+    val:"la salle de gym le soir, sans ouvrir l'école", lu:"à construire" }),
+  P("plan-deux-fuites", "Incendie", "Deux directions de fuite dans un long couloir", {
+    val:"même quand la norme ne l'impose pas encore", lu:"à construire — `fuites` ne lit que la distance" }),
+  P("plan-circ-utile", "Circulation", "Peu de circulation pour la surface utile", {
+    k:"circUtileMax", def:0.25, min:0.1, max:0.5, pas:0.01, unite:"de circulation ÷ surface utile, au plus",
+    lu:"src/typo/mesures.js — ecartsDe(), circPlan",
+    d:"Environ 20 à 25 % pour une école." }),
+  P("plan-diagramme", "Lisibilité", "Le plan se résume en un diagramme", {
+    val:"une barre, un peigne, une cour, un carré", lu:"mesuré au Massing — unGeste (e44) ; jugé par j76" }),
+  P("plan-facade", "Lisibilité", "La façade découle du plan", { lu:"se juge, ne se mesure pas" }),
+  P("plan-entree", "Lisibilité", "L'entrée est un événement", {
+    val:"un retrait, un couvert ou un volume plus haut", lu:"à construire" }),
+  P("plan-topographie", "Site", "Le plan tire parti de la pente", {
+    val:"un accès par plusieurs niveaux", lu:"jugé au Massing — b13 (pente)" })
 ];
+/* une règle de plan : Imposée, désactivable, notre choix */
+function P(id, sujet, n, o){
+  return Object.assign({ id:id, sujet:sujet, tag:"impose", admet:DURS, off:1, src:{ t:"choix", a:"— règles de plan" },
+                         qui:"groupe", n:n }, o);
+}
 CADRE_TYPO.forEach(function(x){ x.role = "cadre"; x.onglet = "typologie"; });
 
 /* ---------- ce que le massing ne sait pas encore lire ------------------------------
