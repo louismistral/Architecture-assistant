@@ -73,6 +73,18 @@ toute composition ; ils se lisent dans `verdict.typo`.
 | `mursEmpiles` | part des murs d'étage à `juge.empile` m d'un mur du dessous | f-murs |
 | `adaptable` | moyenne : part des classes à la profondeur la plus courante, `mursEmpiles` | i75, noté à la main jusqu'ici |
 
+| `circUnique` | part des niveaux hors sol dont les couloirs forment UN réseau (`relies()`) | d29, avec `anglesPlancher` du Massing (`mass/mesures.js — joindre()`) |
+| `chapitresGroupes` | par niveau, part de la surface d'un chapitre dans son plus grand groupe, couloir franchi | d35 |
+| `murTrame` | part des murs entre pièces en façade sur la trame (`trameStruct`, 7,2 m), depuis un bout | e45 |
+| `videsPossibles` | part des étages où un dégagement de 20 m² recouvre `juge.vide` m² de dégagement ou de hall du dessous | e-vides |
+| `allegeEnfant` | l'allège des fenêtres (`RULES.plan.fenetre`) | e50 |
+
+Des critères ne lisent que d'autres critères (`moy`, calculés après eux dans `noter()`) : g61
+(économie de moyens), h71 (contrôle de durabilité), j76 (schéma lisible). Ils comptent deux
+fois : poids faible. h65, j79 et j80 sont livrés éteints (`eteint`) : h65 et j80 fusionnés dans
+h-vitrage et d-pose, j79 sans vue intérieure au Rendu. Le Massing mesure `unGeste` (e44),
+`situationLisible` (j77) et `coupeLisible` (j78, sur les coupes de `rendu/final.js — vues()`).
+
 Une **façade libre** est un côté de pièce sur le bord de son corps qu'aucun corps voisin du niveau
 ne couvre (`mesures.js — salles()`) : deux ailes qui se touchent par le flanc s'aveuglent. Les
 seuils sont des hypothèses de projet, `RULES.plan.juge` ; les bornes des scores, des cases du jury.
