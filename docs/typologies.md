@@ -101,10 +101,15 @@ Raumstandards de Zurich et des rapports de jury de Broc, Vignettaz, Praroman, Ma
 Suhr. Ne sont retenues que celles que la SEED déplace : une règle que le volume seul décide — la
 profondeur d'une classe, le front des vestiaires — ne départage pas deux typologies.
 
-La **part Typologie** (`jugement.js — scoreTypo()`) est la moyenne, au poids de chacun, de ces
-critères. Ce n'est pas un axe : elle ne change pas la note, elle la lit. Sur la composition de
-référence, d'une seed à l'autre, elle va de 60 à 64 % pour une note générale de 78 — les critères du plan pèsent
-peu dans les six axes ; leurs poids se règlent dans Paramètres.
+**Deux notes, Massing et Typologies** (`jugement.js — noter()`, `NOTES`). Un critère va à la
+note de sa mesure : celles du plan (`de:"typo"`) à la Typologie, les autres au Massing (`x.note`).
+Chacune a les mêmes axes, poids et moyenne géométrique ; un axe sans critère de sa note n'y compte
+pas. `noter()` rend la note Massing (`total`, `axes`) et la Typologie à côté (`typo`). Le
+générateur du Massing classe par la sienne — la seed typologie ne la bouge plus ; la recherche des
+typologies (`net/recherche.js — meilleureTypo()`) par la sienne. d29 est coupé en deux : les angles
+d'emprise au Massing, la circulation unique (`d29-circ`) aux plans ; g61 et h71 ne moyennent que des
+critères du Massing. Sur la composition de référence : Massing 81, Typologies de 57 à 64 d'une seed
+à l'autre.
 
 **Les écarts au cadre** (onglet typologie, sévérité lue sur le tag) : `scene-sport`, `fuites`
 et `sia500` (Intangibles, rouges), `typo-pose` et `noyaux-empiles` (Imposés, ambre). La scène,
