@@ -1,0 +1,166 @@
+empreinte du code : p14q2sjn.rbxmwbl.s1eg4vxz.tx6a4ox.d1knklk6
+
+MIXER
+  Sous-sol         952/917 m²    4 pièces    h=3.2
+  Rez-de-chaussée  2391/2372 m²  38 pièces   h=7.4
+  1ᵉʳ étage        892/957 m²    35 pièces   h=3.2
+  2ᵉ étage         1390/1447 m²  39 pièces   h=3.2
+  bac : 0 m²
+  verdict : {"e":0,"w":5,"ok":0,"n":5}
+  [w] nappe — Nappe phréatique relevée à 462,25 m : la marge sous le terrain naturel va de 1,0 m à l'ouest à 4,5 m à l'est — un sous-sol excavé demande 3,00 m de couverture, il n'est tenable qu'au tiers est du périmètre  → Combler le sous-sol
+  [w] cage:-1 — Surface d'étage de 1’157 m² au sous-sol : deux cages d'escalier compartimentées exigées
+  [w] cage:0 — Surface d'étage de 2’995 m² au rez-de-chaussée : deux cages d'escalier compartimentées exigées
+  [w] cage:1 — Surface d'étage de 1’210 m² au 1ᵉʳ étage : deux cages d'escalier compartimentées exigées
+  [w] cage:2 — Surface d'étage de 1’821 m² au 2ᵉ étage : deux cages d'escalier compartimentées exigées
+
+MASSING · auto · demandé 7479 · posé 7478
+  niveau 0 Sous-sol         demandé 1305 · posé 1302 · écart -3
+  niveau 1 Rez-de-chaussée  demandé 2940 · posé 2942 · écart +2
+  niveau 2 1ᵉʳ étage        demandé 1282 · posé 1279 · écart -3
+  niveau 3 2ᵉ étage         demandé 1952 · posé 1956 · écart +4
+  corps b1 x=112.82 y=84.13 a=-0.96 bât bA
+    étage 0 24.5×15.5
+    étage 1 24.5×15.5
+    étage 2 24.5×15.5
+    étage 3 32×15.5
+  corps b2 x=76.96 y=84.43 a=0.61 bât bA
+    étage 1 50.5×15.5 décalé 11.75,0
+    étage 2 28×15.5 décalé 23,0
+    étage 3 44×15.5 décalé 15,-2
+  corps b3 x=107.66 y=55.24 a=0.61 bât bA
+    étage 0 59.5×15.5 décalé -1.25,0
+    étage 1 57×15.5
+    étage 2 30×15.5 décalé 13.5,0
+    étage 3 57×15.5 décalé -6,0
+  corps vsport x=143.85 y=50.54 a=-0.96
+    étage 1 32×28 · sport|Salle de sport double
+  corps b7 « Local chauffage CAD et Piscine » x=122 y=22 a=-0.26
+    étage 1 41×22 · infra|Local chauffage CAD, infra|Piscine
+  verdict : {"e":0,"w":3,"i":8,"ok":0,"sev":"w"}
+  [w] m:recul:b2 — Volume 2 est à 4,25 m de la limite ; le recul est de 5,00 m.  → Ramener le volume 2 dans la parcelle | Écarter les volumes
+  [w] m:recul:b7 — Local chauffage CAD et Piscine est à 0,70 m de la limite ; le recul est de 5,00 m.  → Ramener local chauffage cad et piscine dans la parcelle | Écarter les volumes
+  [i] m:nappe:b1 — Sous volume 1, 3,10 m de terrain au-dessus de la nappe : le sous-sol tient.
+  [i] m:pente:b2 — Volume 2 couvre 1,24 m de dénivelé — 464,01 à 465,21 m sur mer.
+  [i] m:pente:b3 — Volume 3 couvre 1,27 m de dénivelé — 464,61 à 465,88 m sur mer.
+  [w] m:nappe:b3 — Sous volume 3, 2,90 m de terrain au-dessus de la nappe (462,25 m), pour 3,00 m souhaités. Un sous-sol excavé n’est tenable qu’au tiers est du site.  → Creuser sous le volume le mieux placé | Proposer une autre implantation
+  [i] m:cage:b3:0 — Volume 3 fait 922 m² au sous-sol : deux cages d'escalier compartimentées, qui se dessineront à la typologie.
+  [i] m:pente:vsport — Salle de sport couvre 1,32 m de dénivelé — 465,42 à 466,58 m sur mer.
+  [i] m:pente:b7 — Local chauffage CAD et Piscine couvre 1,30 m de dénivelé — 464,82 à 466,12 m sur mer.
+  [i] m:cage:b7:1 — Local chauffage CAD et Piscine fait 902 m² au rez-de-chaussée : deux cages d'escalier compartimentées, qui se dessineront à la typologie.
+  [i] m:cour — La cour offre 1’060 m² utiles devant volume 3 — 620 m² au moins.
+
+JUGEMENT 87/100 · lu à 82 % · cadre choisi enfreint
+  Insertion dans le site, relations à l'existant        95 %  (poids 20)
+  Qualités fonctionnelles, structurelles, spatiales     85 %  (poids 20)
+  Expression architecturale, adéquation au thème        92 %  (poids 15)
+  Aménagements extérieurs, accès, circulations          77 %  (poids 15)
+  Économie générale                                     81 %  (poids 15)
+  Environnement, durabilité, énergie                    93 %  (poids 15)
+  critères :
+    b7         100 %  mesure    Implantation évidente, lisible en un seul croquis  [orientations = 1]
+    b8         100 %  mesure    Peu de volumes (1 ou 2) plutôt que des pavillons éclatés  [ensembles = 1]
+    b10        100 %  mesure    Échelle adaptée : 2 à 3 niveaux en village, pas trop massif  [niveauxMax = 3]
+    b11        100 %  mesure    Dialogue avec l'existant, sans le dominer, avec des vues vers lui  [rapportHauteur = 1.11]
+    b12        100 %  mesure    Un espace public : place de village ou parvis partagé  [parvis = 1136]
+    b13         87 %  mesure    Adapté à la pente : peu de déblais, entrées à plusieurs niveaux  [pente = 1.27]
+    b14         84 %  mesure    Distances généreuses aux voisins  [distExistant = 13.41]
+    b15         86 %  mesure    Vues et dégagements préservés  [vue = 36.35]
+    b16        100 %  mesure    Continuité avec les tracés : alignements, arbres, chemins  [alignPart = 1]
+    pub-cote   100 %  mesure    Le public du côté voulu de la parcelle — à l'est, l'école à l'ouest  [pubCote = 32.28]
+    c18         76 %  mesure    Préau délimité par les bâtiments, fermé sur 2 ou 3 côtés  [courFermee = 0.81]
+    c19        100 %  mesure    Préau protégé de la route et du bruit  [courAbritee = 0.96]
+    c20        100 %  mesure    Préau bien dimensionné, d'un seul tenant, ni trop grand ni morcelé  [cour = 1060]
+    c21         53 %  mesure    Partie couverte : préau couvert ou avant-toit  [couvertPart = 0.53]
+    c22          0 %  mesure    Espaces différents selon les âges  [zonesExt = 1]
+    c23        100 %  mesure    Sport extérieur bien placé, orienté nord-sud  [sportExtAxe = 0]
+    c26         44 %  mesure    Voitures en bordure, jamais dans le préau  [voituresBord = 0.44]
+    c27        100 %  mesure    Accès séparés et sûrs : piétons, vélos, livraisons, dépose  [accesSepares = 41.15]
+    c28        100 %  mesure    Vélos et trottinettes couverts, près des entrées  [velosDist = 4.43]
+    j-terrain   64 %  mesure    Faible emprise : du terrain pour la cour, 70 places, une extension  [terrainMarge = 6454]
+    d29        100 %  mesure    Plans simples, lisibles et flexibles : peu d'angles d'emprise  [anglesPlancher = 2.23]
+    d29-circ    67 %  mesure    Plans lisibles : une seule circulation par niveau  [circUnique = 0.667]
+    d30         70 %  mesure    Une entrée principale claire, côté route  [entreeRoute = 0.7]
+    d-hall      55 %  mesure    Un hall au centre, qui distribue tout  [hallCentre = 0.545]
+    d31         17 %  mesure    Circulations qui servent d'espaces d'apprentissage  [couloirApprendre = 28.3]
+    d32         24 %  mesure    Grappes de classes reliables, espaces de travail partagés  [grappes = 0.471]
+    d33          0 %  mesure    Classes éclairées naturellement, bien orientées  [classesSoleil = 0.471]
+    d-double    59 %  mesure    Classes éclairées de deux côtés  [classesDouble = 0.176]
+    d-prop       0 %  mesure    Classes bien proportionnées, du carré à 1 × 1,35  [classesProp = 0]
+    d-aveugle   89 %  mesure    Pas de pièce de séjour sans fenêtre  [aveugles = 0.027]
+    d-espace   100 %  mesure    Un espace partagé devant chaque grappe  [espaceGrappe = 1]
+    d-appui      0 %  mesure    Salles d'appui entre deux classes  [appuiEntre = 0]
+    d35         90 %  mesure    Organisation par chapitre : les locaux d'un même chapitre côte à côte  [chapitresGroupes = 0.896]
+    d36        100 %  mesure    Pas le même plan répété à chaque étage sans réflexion  [niveauxDifferents = 1]
+    d37         43 %  mesure    Vestiaires et garderobes près de l'entrée ou des classes  [vestSas = 0.714]
+    d38        100 %  mesure    Salle de sport intégrée ou semi-enterrée  [sportIntegre = 1]
+    d39        100 %  mesure    Locaux ouverts à la commune, accessibles sans traverser l'école  [pubGroupe = 1]
+    pub-sep    100 %  mesure    Public et école nettement séparés, une limite claire entre eux  [pubSep = 0]
+    d40         67 %  mesure    Parascolaire et cantine autonomes et reliés à l'école  [uapeAutonome = 0.667]
+    d42         50 %  mesure    Un ascenseur, une ou deux cages d'escalier au plus  [noyaux = 3]
+    d43         67 %  mesure    Locaux techniques regroupés, accessibles aux livraisons  [techGroupes = 2]
+    prox         0 %  mesure    Les proximités du schéma fonctionnel sont tenues  [liensPlan = 0.5]
+    calme      100 %  mesure    Le bruyant séparé du calme  [murBruyant = 0]
+    etage      100 %  mesure    Les classes à l'étage, l'accueil au rez  [classesEtage = 1]
+    degre        0 %  mesure    Un degré par niveau  [classesNiveauMax = 17]
+    d-pose       0 %  mesure    Tout le programme tient dans les plans  [posePlan = 0.887]
+    d-jour      47 %  mesure    Couloirs éclairés naturellement à leurs bouts  [couloirsJour = 0.467]
+    d-sombre    53 %  mesure    Pas de couloir sombre au milieu  [couloirSombre = 14]
+    e44        100 %  mesure    Une idée forte et claire, une identité  [unGeste = 1]
+    e45          6 %  mesure    Une façade qui découle de la structure  [murTrame = 0.231]
+    e46        100 %  mesure    Des intérieurs généreux et fluides  [communEleve = 3.74]
+    e-niches    97 %  mesure    Des niches le long du couloir  [niches = 2.936]
+    e-vides    100 %  mesure    Des vues d'un étage à l'autre : double hauteur, vide, patio  [videsPossibles = 1]
+    e47         67 %  mesure    Unité formelle entre les étapes de réalisation  [uniteEtapes = 0.67]
+    e49        100 %  mesure    Lumière naturelle maîtrisée entre les corps  [jourRatio = 1.59]
+    e50         50 %  mesure    Une ambiance à l'échelle de l'enfant  [allegeEnfant = 0.9]
+    f51        100 %  mesure    Structure claire sur une trame régulière  [profondeursDistinctes = 1]
+    f53        100 %  mesure    Portées raisonnables : des corps de deux classes au plus  [profMax = 16.3]
+    f54          0 %  mesure    Pas de prouesse structurelle injustifiée  [porteAFaux = 33]
+    f55        100 %  mesure    Préfabrication possible, chantier court  [repetitionPart = 1]
+    f56         20 %  mesure    Peu d'éléments enterrés, hors-sol maximal  [sousSolPart = 0.17]
+    f-murs      25 %  mesure    Les murs les uns sur les autres  [mursEmpiles = 0.175]
+    j-nappe     95 %  mesure    Un sous-sol hors de la nappe  [couverture = 2.9]
+    cout       100 %  mesure    Coût dans le budget  [volume = 31410]
+    g58        100 %  mesure    Volume compact, peu de façade par m² de plancher  [compa = 0.63]
+    g59         53 %  mesure    Circulations limitées, mais utiles  [circPlan = 0.297]
+    g61         73 %  mesure    Économie de moyens
+    h-vitrage  100 %  mesure    Pas trop de vitrage : la baie requise tient dans la façade  [vitrageFacade = 0.39]
+    h69        100 %  mesure    Photovoltaïque en toiture, CAD ou pompe à chaleur  [toitPV = 2.22]
+    h71         73 %  mesure    Bonne note au contrôle de durabilité
+    i72        100 %  mesure    Étapes crédibles : le second temps trouve sa place  [secondPose = 1]
+    i74        100 %  mesure    Extension future sans affaiblir le projet  [extensionPossible = 1]
+    i75         21 %  mesure    Plans adaptables à d'autres pédagogies ou usages  [adaptable = 0.205]
+    i-grappes  100 %  mesure    Chaque grappe a son propre accès depuis l'escalier  [accesGrappe = 1]
+    j76        100 %  mesure    Un schéma conceptuel lisible en 5 secondes
+    j77         67 %  mesure    Un plan de situation qui montre le préau et l'espace public  [situationLisible = 0.67]
+    j78        100 %  mesure    Une coupe qui montre la pente et l'existant  [coupeLisible = 1]
+    + 17 sans mesure (neutre, moyenne, éteint) : b9 c24 c25 d41 e48 f52 f57 g63 h64 h65 h66 h67 h68 h70 i73 j79 j80
+  écart [w] recul — Volume 2 est à 4,25 m de la limite ; le recul est de 5,00 m.
+  écart [w] recul — Local chauffage CAD et Piscine est à 0,70 m de la limite ; le recul est de 5,00 m.
+  écart [w] typo-pose — 8 pièces ne tiennent pas dans les plans — 634 m² (sous-sol 42 m², rez-de-chaussée 232 m², 1ᵉʳ étage 144 m², 2ᵉ étage 216 m²)
+  écart [w] sol-vide — Sol inutilisé : B3 au sous-sol (195 m²), B3 au rez-de-chaussée (157 m²), B2 au rez-de-chaussée (163 m²), B3 au 2ᵉ étage (119 m²), B2 au 2ᵉ étage (193 m²)
+  orientation :
+    dims    favorable   3 volumes sur 3 dans les domaines
+    distv   favorable   2 écarts sur 2 à 6,00 m au moins
+    dist    favorable   2 écarts sur 2 à 5,00 m au moins
+    vue     neutre      façades longues à 36° du terrain de football
+    cla-soleilneutre      9 % des façades de classes à l'est, 41 % au sud, 9 % au couchant
+    sport-norddéfavorable façade longue à 55° du nord
+    cour-suddéfavorable la cour s'ouvre à 145° du sud
+    cour-routefavorable   centre de la cour à 28 m de la rue
+    collectif-vueneutre      une façade libre du rez à 41° du terrain de football
+    jour    favorable   tous les vis-à-vis tiennent 1,10 × la hauteur
+    pub-est neutre      une ligne sépare public et école ; le public à 32 m vers 90° (demi-école : 38 m)
+    second-estfavorable   piscine et CAD à 69 % de la parcelle vers 90°
+    compa   favorable   0,63 m² de façade par m² de plancher
+    align   favorable   4 corps sur 4 rangés sur le site ou un voisin
+    nivalignfavorable   tous les rez de l'école à la même altitude
+    pente   neutre      jusqu'à 1,27 m entre le rez et le terrain sous une emprise
+    elan    favorable   jusqu'à 3,70 fois plus long que large
+    socle   défavorable le plus petit niveau porte 53 % de celui du dessus (volume 3)
+    connex  favorable   l'école tient d'un seul tenant
+    nappe   défavorable 2,90 m de terrain au-dessus de la nappe sous volume 3, pour 3,00 m souhaités
+    terrain favorable   6’440 m² libres pour 2’250 m² de cour et de 70 places
+    recul   défavorable à 0,70 m de la limite au plus près
+    cour    favorable   1’060 m² utiles
+    facade  favorable   corps de classes de 15,50 m de profondeur au plus
