@@ -30,9 +30,11 @@ import { PMAP } from "../mix/prog.js";
 import { FLOORS, areaOf, lvlOf, onFloor } from "../mix/floors.js";
 import { mesuresMix } from "../mix/mesures.js";
 import { evaluerTypo } from "../typo/mesures.js";
+import { FINAL } from "../data/planches.js";
+import { vues } from "../rendu/final.js";
 import { airePosable, alignement, assise, attracteurs, bbox, bordDist, cibleVue, coins, dansRect, dedans, distRoute, ecart,
-  ecartAngle, ecartPoly, margeAu, visAVis } from "./geom.js";
-import { CONTACT, MASS, aireEtage, recouvrement, recouvrementSol, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
+  ecartAngle, ecartPoly, margeAu, terrain, visAVis } from "./geom.js";
+import { CONTACT, MASS, aireEtage, contourDe, recouvrement, recouvrementSol, assiseEff, bilan, demande, etagesDe, hauteurEtage, horsModule, horsSol, niveaux, partsDe, pontRect, postesDe,
   profFacade, secondTemps, solRects, volEtage, volNiv, volRects, volTitre as nomV } from "./model.js";
 import { assiseVol, ecartSols, ecartVols, empSol, lies, obstaclesPres, rectsHors } from "./gen.js";
 
@@ -682,8 +684,41 @@ export function couverture(vols){
              + nomV(vols[qui], qui).toLowerCase() + ", pour " + dec(R) + " m souhaités" };
 }
 
+/* j78 — la meilleure des deux coupes du Rendu (`vues()`) : la pente qu'elle
+   montre sur le bâti et `FINAL.terrain` de chaque côté, rapportée au plus grand
+   dénivelé sous une emprise (`pente`) ; l'existant qu'elle traverse, prolongée
+   de `coupeExist` m. Moyenne des deux. */
+function coupeLisible(vols, L){
+  var W = vues(vols);
+  if(!W) return null;
+  var pts = [];
+  ecole(vols).forEach(function(v){ solRects(v).forEach(function(r){ pts = pts.concat(coins(r)); }); });
+  var best = null;
+  W.liste.filter(function(x){ return x.coupe; }).forEach(function(x){
+    var a = x.a, o = x.o, lo = Infinity, hi = -Infinity, zl = Infinity, zh = -Infinity, ex = 0, s;
+    pts.forEach(function(p){ var t = (p[0] - o[0]) * a[0] + (p[1] - o[1]) * a[1]; lo = Math.min(lo, t); hi = Math.max(hi, t); });
+    for(s = lo - FINAL.terrain; s <= hi + FINAL.terrain; s += 1){
+      var z = terrain(o[0] + a[0] * s, o[1] + a[1] * s); zl = Math.min(zl, z); zh = Math.max(zh, z);
+    }
+    var E = RULES.plan.juge.coupeExist;
+    for(s = lo - E; s <= hi + E && !ex; s += 1){
+      var q = [o[0] + a[0] * s, o[1] + a[1] * s];
+      ex = existants().some(function(e){ return dedans(e.P, q[0], q[1]); }) ? 1 : 0;
+    }
+    var p = L.pente > 0.05 ? Math.min(1, (zh - zl) / L.pente) : 1, sc = (p + ex) / 2;
+    if(!best || sc > best) best = sc;
+  });
+  return best == null ? null : Math.round(best * 100) / 100;
+}
+
 /* Combien d'ensembles l'école fait-elle : corps accolés et passerelles relient. */
 export function ensembles(E, ponts){
+  var f = groupes(E, ponts), n = 0;
+  E.forEach(function(v){ if(f(v.id) === v.id) n++; });
+  return n;
+}
+/* `f(id)` : le volume de tête de l'ensemble d'un volume */
+function groupes(E, ponts){
   var P = {};
   function f(x){ while(P[x] !== x) x = P[x] = P[P[x]]; return x; }
   function u(a, b){ if(P[a] !== undefined && P[b] !== undefined) P[f(a)] = f(b); }
@@ -694,9 +729,7 @@ export function ensembles(E, ponts){
     if(v.bat){ if(chef[v.bat]) u(v.id, chef[v.bat]); else chef[v.bat] = v.id; }
   });
   ponts.forEach(function(p){ u(p.a, p.b); });
-  var n = 0;
-  E.forEach(function(v){ if(f(v.id) === v.id) n++; });
-  return n;
+  return f;
 }
 
 /* ---------- 3. LES MESURES BRUTES -----------------------------------------------
@@ -886,13 +919,14 @@ function jugesSite(vols, L, fini){
   }
 
   /* f51, f55 — les profondeurs des corps d'école, au demi-mètre */
-  var prof = {}, plancher = {}, ptot = 0;
+  var prof = {}, plancher = {}, ptot = 0, plv = {}, angles = 0;
   CO.forEach(function(v){
+    angles += contourDe(v, v.lv.filter(function(e){ return lvlOf(e.i) === 0; })[0] || v.lv[0]).loops.reduce(function(n, l){ return n + l.length; }, 0);
     v.lv.forEach(function(e){
       if(lvlOf(e.i) < 0) return;
       partsDe(e).forEach(function(p){
         var d = Math.round(Math.min(p.w, p.d) * 2) / 2, a = p.w * p.d;
-        plancher[d] = (plancher[d] || 0) + a; ptot += a;
+        plancher[d] = (plancher[d] || 0) + a; ptot += a; plv[v.id] = (plv[v.id] || 0) + a;
       });
     });
     solRects(v).forEach(function(r){
@@ -951,8 +985,17 @@ function jugesSite(vols, L, fini){
     if(top) toit += aireEtage(top);
   });
 
+  /* e44 — le plancher du plus grand ensemble, divisé par les orientations */
+  var tete = groupes(CO, vols.ponts || []), ens = {}, geste = 0;
+  CO.forEach(function(v){ ens[tete(v.id)] = (ens[tete(v.id)] || 0) + (plv[v.id] || 0); });
+  Object.keys(ens).forEach(function(k){ geste = Math.max(geste, ens[k]); });
+
   return Object.assign({
-    bordurePart: tot ? fini(band / tot) : null,
+    anglesPlancher: ptot ? fini(1000 * angles / ptot) : null,
+    unGeste: ptot && L.dirs ? fini(geste / ptot / L.dirs) : null,
+    /* j77 — la cour, le parvis ; le plan de situation ne les dessine pas encore (0) */
+    situationLisible: fini(((L.cour.a >= V.courMin) + (parvis >= V["jb:b12"]) + 0) / 3),
+    coupeLisible: coupeLisible(vols, L),
     rapportHauteur: voisins.length && L.hmax ? fini(L.hmax / hv) : null,
     parvis: Math.round(parvis),
     courFermee: fermee == null ? null : fini(fermee), courAbritee: abritee == null ? null : fini(abritee),
@@ -1154,7 +1197,11 @@ function typoDe(vols, graine){
   catch(e){ console.error(e); return { mes:{}, ecarts:[] }; }
 }
 function joindre(ev, T, main, moy){
-  var mes = Object.assign({}, ev.mes, T.mes);
+  var mes = Object.assign({}, ev.mes, T.mes), A = RULES.plan.juge.angles;
+  /* d29 — peu d'angles d'emprise (massing), une circulation par niveau (plans) */
+  var pa = mes.anglesPlancher == null ? null : Math.max(0, Math.min(1, (A[1] - mes.anglesPlancher) / (A[1] - A[0])));
+  var lis = [pa, mes.circUnique].filter(function(x){ return x != null; });
+  mes.lisibilite = lis.length ? lis.reduce(function(a, b){ return a + b; }, 0) / lis.length : null;
   var E = ev.ecarts.filter(function(x){ return x.c !== "typo"; }).concat(T.ecarts);
   return { mes:mes, qualites:ev.qualites, ecarts:E,
            invalide: E.some(function(x){ return x.sev === "e" && !x.pile; }),

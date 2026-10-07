@@ -473,7 +473,7 @@ function critere(x, J){
   var parts = Object.keys(x.axes);
   o.val = x.mesure ? (MESURES.filter(function(m){ return m.m === x.mesure; })[0] || { n:x.mesure }).n
     + (parts.length > 1 ? " — partagé " + parts.map(function(k){ return k + " " + Math.round(x.axes[k] * 100) + " %"; }).join(", ") : "")
-    : "non mesuré — ne compte pas dans la note";
+    : x.moy ? "moyenne de " + x.moy.join(", ") : "non mesuré — ne compte pas dans la note";
   var c = J && J.crit[x.id];
   if(c && c.s != null){
     var src = "mesuré";

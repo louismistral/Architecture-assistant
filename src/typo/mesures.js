@@ -19,7 +19,7 @@
    ========================================================================= */
 import { planifier, soleil } from "./gen.js";
 import { donneesTypo } from "./donnees.js";
-import { enVigueur, severite } from "../data/cadre.js";
+import { V, enVigueur, severite } from "../data/cadre.js";
 import { BRUYANT, CLSRE, UNITE } from "../mix/niv.js";
 import { dec } from "../core/format.js";
 import { RULES } from "../data/rules.js";
@@ -353,6 +353,18 @@ function couloirs(L){
   }); });
   return out;
 }
+/* les dégagements (paliers hors raccord) d'un corps, en rectangles de son étage */
+function degagements(f){
+  return (f.paliers || []).filter(function(k){ return !k.raccord; }).map(function(k){
+    var y0 = k.frame === "A" ? f.yc0 - k.H : k.frame === "B" ? f.yc1 : -f.D / 2;
+    return { f:f, x0:k.x0, x1:k.x0 + k.W, y0:y0, y1:y0 + k.H, a:k.W * k.H };
+  });
+}
+function dansRectF(r, w){
+  var f = r.f, c = Math.cos(-f.a), s = Math.sin(-f.a), dx = w[0] - f.cx, dy = w[1] - f.cy;
+  var x = dx * c - dy * s, y = dx * s + dy * c;
+  return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
+}
 function moy(T){ return T.length ? r3(T.reduce(function(s, x){ return s + x; }, 0) / T.length) : null; }
 function part(T, ok){ return T.length ? r3(T.filter(ok).length / T.length) : null; }
 
@@ -449,6 +461,65 @@ function mesuresPlan(L, D, vols, suites){
   var commun = aN2;
   Sa.forEach(function(p){ if(/^Hall|foyer/.test(p.n)) commun += p.a; });
   /* --- la structure : les murs empilés, des classes à la même profondeur --- */
+  /* --- d29 : une seule circulation par niveau hors sol --- */
+  var hs = L.tous.map(function(r, i){ return { r:r, i:i }; }).filter(function(x){ return niv(x.i) >= 0; });
+  var unique = part(hs, function(x){
+    var F = x.r.F.filter(function(f){ return !f.fixe && f.rooms.length; }), rac = relies(PG, x.r, F), R = {};
+    F.forEach(function(_, j){ R[rac(j)] = 1; });
+    return Object.keys(R).length <= 1;
+  });
+  /* --- d35 : les locaux d'un chapitre côte à côte, couloir franchi ; par niveau,
+     la part de sa surface dans son plus grand groupe --- */
+  var gC = 0, aC = 0, pres = 2 * PG.MUR + PG.COULOIR + 0.05;
+  D.floors.forEach(function(_, i){
+    var C = {};
+    Sa.forEach(function(p){ if(p.i === i && p.key) (C[chap(p.key)] = C[chap(p.key)] || []).push(p); });
+    Object.keys(C).forEach(function(k){
+      var T = C[k], pere = T.map(function(_, j){ return j; }), som = {};
+      function rac(j){ while(pere[j] !== j) j = pere[j] = pere[pere[j]]; return j; }
+      T.forEach(function(x, j){ T.forEach(function(y, m){ if(m > j && ecart(x, y) <= pres) pere[rac(m)] = rac(j); }); });
+      var tot = 0, max = 0;
+      T.forEach(function(x, j){ som[rac(j)] = (som[rac(j)] || 0) + x.a; tot += x.a; });
+      Object.keys(som).forEach(function(r){ max = Math.max(max, som[r]); });
+      gC += max; aC += tot;
+    });
+  });
+  /* --- e45 : les murs entre pièces en façade, sur la trame, depuis un bout du corps --- */
+  var T0 = V.trameStruct, nT = 0, okT = 0;
+  L.tous.forEach(function(r){ r.F.forEach(function(f){
+    if(f.fixe) return;
+    ["A", "B"].forEach(function(fr){
+      var X = Sa.filter(function(p){ return p.f === f && p.rm.frame === fr && (p.y0 <= -f.D / 2 + 0.05 || p.y1 >= f.D / 2 - 0.05); })
+        .map(function(p){ return p.x0; }).sort(function(a, b){ return a - b; }).slice(1);
+      if(!X.length) return;
+      /* la trame part de l'un ou l'autre bout : le meilleur */
+      okT += Math.max.apply(null, [-f.L / 2, f.L / 2].map(function(b){
+        return X.filter(function(x){ var d = ((Math.abs(x - b) % T0) + T0) % T0; return Math.min(d, T0 - d) <= J.trameTol; }).length;
+      }));
+      nT += X.length;
+    });
+  }); });
+  /* --- e-vides : là où la dalle pourrait s'ouvrir sur un dégagement ou le hall du dessous --- */
+  var zones = L.tous.map(function(r, i){
+    var Z = [];
+    r.F.forEach(function(f){ if(!f.fixe) degagements(f).forEach(function(k){ Z.push(k); }); });
+    Sa.forEach(function(p){ if(p.i === i && /^Hall|foyer/.test(p.n)) Z.push(p); });
+    return Z;
+  });
+  var etg = L.tous.map(function(_, i){ return i; }).filter(function(i){ return niv(i) > 0; });
+  var vides = part(etg, function(i){
+    var j = D.floors.findIndex(function(g){ return g.lvl === niv(i) - 1; });
+    if(j < 0) return false;
+    return zones[i].some(function(k){
+      if(k.a < J.espace) return false;
+      var a = 0;
+      for(var x = k.x0 + 0.5; x < k.x1; x++) for(var y = k.y0 + 0.5; y < k.y1; y++){
+        var w = PG.versMonde(k.f, x, y);
+        if(zones[j].some(function(z){ return dansRectF(z, w); })) a++;
+      }
+      return a >= J.vide;
+    });
+  });
   var empile = murEmpile(L, D, Sa), prof = {}, pm = 0;
   cls.forEach(function(p){ var k = Math.round(10 * (p.y1 - p.y0)); prof[k] = (prof[k] || 0) + 1; pm = Math.max(pm, prof[k]); });
   return {
@@ -461,7 +532,10 @@ function mesuresPlan(L, D, vols, suites){
     entreeRoute: entree, hallCentre: centre, uapeAutonome: uape, maitresCour: vue,
     communEleve: Math.round(100 * commun / RULES.ecole.eleves) / 100,
     mursEmpiles: empile == null ? null : r3(empile),
-    adaptable: cls.length && empile != null ? r3((pm / cls.length + empile) / 2) : null
+    adaptable: cls.length && empile != null ? r3((pm / cls.length + empile) / 2) : null,
+    circUnique: unique, chapitresGroupes: aC ? r3(gC / aC) : null,
+    murTrame: nT ? r3(okT / nT) : null, videsPossibles: vides,
+    allegeEnfant: RULES.plan.fenetre.allege
   };
 }
 
