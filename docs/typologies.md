@@ -55,6 +55,34 @@ toute composition ; ils se lisent dans `verdict.typo`.
 | `couloirsJour` | part des bouts de couloir sur une façade | « Couloirs éclairés à leurs bouts », nouveau |
 | `pubGroupe` | part des bandes où les pièces publiques (`program.js`, chapitres `public`) forment une suite, à un bout | d39, noté à la main jusqu'ici |
 | `vestSas` | part des classes standard qu'on entre par leur vestiaire (lien `sas`) | d37, noté à la main jusqu'ici |
+| `classesDouble` | part des classes dont les façades libres regardent dans deux directions | d-double |
+| `classesProp` | part des classes du carré à 1 × `juge.classeRatio` (1,35) | d-prop |
+| `vitrageFacade` | baie requise (`juge.vitrage`, 1/5 du sol) ÷ façade libre × hauteur, en moyenne | h-vitrage |
+| `aveugles` | part de la surface de séjour (classes, bureaux, salles, réfectoire) sans façade libre | d-aveugle |
+| `espaceGrappe` | part des grappes (3 classes et plus) qu'un dégagement de `juge.espace` m² longe | d-espace |
+| `accesGrappe` | part des grappes d'étage qu'on atteint du noyau du corps sans longer une autre | i-grappes |
+| `appuiEntre` | part des salles d'appui contre deux salles, dont une classe | d-appui |
+| `couloirApprendre` | dégagements meublables et couloir plus large que le courant, par classe, aux étages de classes | d31, noté à la main jusqu'ici |
+| `niches` | dégagements meublables (`juge.meuble` de côté) par `juge.niche` m de couloir | e-niches |
+| `couloirSombre` | mètres de couloir à plus de `juge.sombre` m d'un bout éclairé, d'un dégagement sur façade, d'un hall | d-sombre |
+| `entreeRoute` | part des pièces du rez plus loin de la route que le hall de l'école | d30, noté à la main jusqu'ici |
+| `hallCentre` | moyenne : ailes du rez reliées au corps du hall, proximité du hall au centre des classes | d-hall |
+| `uapeAutonome` | moyenne : un hall UAPE sur façade au rez, réfectoire contre cuisine, même bâtiment que les classes | d40, noté à la main jusqu'ici |
+| `maitresCour` | la salle des maîtres, au rez ou au 1er, voit la cour (`courUtile`) à `juge.vueCour` m, sans corps entre | d41, noté à la main jusqu'ici |
+| `communEleve` | halls et dégagements meublables par élève (`RULES.ecole.eleves`) | e46, noté à la main jusqu'ici |
+| `mursEmpiles` | part des murs d'étage à `juge.empile` m d'un mur du dessous | f-murs |
+| `adaptable` | moyenne : part des classes à la profondeur la plus courante, `mursEmpiles` | i75, noté à la main jusqu'ici |
+
+Une **façade libre** est un côté de pièce sur le bord de son corps qu'aucun corps voisin du niveau
+ne couvre (`mesures.js — salles()`) : deux ailes qui se touchent par le flanc s'aveuglent. Les
+seuils sont des hypothèses de projet, `RULES.plan.juge` ; les bornes des scores, des cases du jury.
+`e-vides` (double hauteur, vide, patio) est déclaré sans mesure : le générateur ne dessine pas de
+vides, il ne compte pas dans la note.
+
+Ce qu'elles montrent déjà : les murs presque jamais empilés (`mursEmpiles` 25 à 38 %, le
+générateur ne les cherche pas) ; le compact aveugle 33 à 40 % de sa surface de séjour, ses ailes
+se touchant par le flanc. Avec ces critères, la composition de référence passe du parti libre au
+L (jugement 75 → 78, lu à 72 %).
 
 Les règles viennent des directives vaudoises (2002, 1-4P), de VS 400.200, de l'AEAI 16-15, des
 Raumstandards de Zurich et des rapports de jury de Broc, Vignettaz, Praroman, Matran, Cugy et
@@ -62,8 +90,8 @@ Suhr. Ne sont retenues que celles que la SEED déplace : une règle que le volum
 profondeur d'une classe, le front des vestiaires — ne départage pas deux typologies.
 
 La **part Typologie** (`jugement.js — scoreTypo()`) est la moyenne, au poids de chacun, de ces
-critères. Ce n'est pas un axe : elle ne change pas la note, elle la lit. Au départ, d'une seed à
-l'autre, elle va de 51 à 63 % pour une note générale de 63 à 64 — les critères du plan pèsent
+critères. Ce n'est pas un axe : elle ne change pas la note, elle la lit. Sur la composition de
+référence, d'une seed à l'autre, elle va de 60 à 64 % pour une note générale de 78 — les critères du plan pèsent
 peu dans les six axes ; leurs poids se règlent dans Paramètres.
 
 **Les écarts au cadre** (onglet typologie, sévérité lue sur le tag) : `scene-sport`, `fuites`
