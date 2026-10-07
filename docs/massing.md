@@ -139,7 +139,7 @@ Le cadre du massing : le périmètre (opposable) et notre **recul** de 5 m (choi
 étages, passerelles comprises · la **distance incendie** `RULES.dist.entre`, 5 m (art. 2.3 →
 AEAI 15-15), entre bâtiments — une préférence Prioritaire, bloquante seulement Imposée
 (`feuVise()`, `feuExige()`) · deux volumes qui se touchent n'en font qu'un · la salle de sport
-28 × 32 m, rien au-dessus · l'abri PC au moins partiellement enterré · chaque niveau loge sa
+28 × 32 m, rien au-dessus · l'abri PC au sous-sol · chaque niveau loge sa
 surface · la cour du programme, et notre cour utile de 620 m² · les classes en façade
 (`profFacade()`, deux salles de 9 m et leur couloir : 20,5 m) · le module de 0,50 m. Chaque ligne a
 son tag ; celles de notre choix se désactivent ou s'assouplissent en orientation.
