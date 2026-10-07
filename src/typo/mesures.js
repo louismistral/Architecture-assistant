@@ -541,7 +541,7 @@ function mesuresPlan(L, D, vols, suites){
 
 function mesuresDe(L, D, vols){
   var PG = L.PG, MUR = PG.MUR;
-  var nCl = 0, sol = 0, circ = 0, bati = 0, bruit = 0, nG = 0, sG = 0, bouts = 0, jour = 0, suites = [];
+  var nCl = 0, sol = 0, circ = 0, bati = 0, bruit = 0, nG = 0, sG = 0, bouts = 0, jour = 0, suites = [], lin = 0, lin2 = 0;
   L.tous.forEach(function(r, i){
     r.F.forEach(function(f){
       /* un corps sans pièce à ce niveau n'est ni du bâti servi ni un couloir */
@@ -550,6 +550,8 @@ function mesuresDe(L, D, vols){
       if(f.fixe) return;
       var occ = 0;
       f.rooms.forEach(function(rm){ occ += rm.a; });
+      /* le couloir dessert-il ses deux rives ? */
+      if(f.rooms.length){ lin += f.L; if(f.rooms.some(function(rm){ return rm.frame === "B"; })) lin2 += f.L; }
       circ += f.L * f.D - occ;
       /* les classes et leur façade de jour */
       f.rooms.forEach(function(rm){ if(rm.kind !== "bloc" && UNITE.test(rm.n)){ nCl++; sol += soleilPiece(f, rm); } });
@@ -594,6 +596,14 @@ function mesuresDe(L, D, vols){
   /* le programme demandé, niveau par niveau — ce qui est hors volume n'y entre pas */
   var demande = 0;
   D.floors.forEach(function(fl){ fl.rooms.forEach(function(r){ if(!r.hors) demande += r.q * r.u; }); });
+  /* les WC d'étage posés sur un WC du niveau du dessous */
+  var wc = 0, wcOk = 0;
+  Object.keys(L.pos).forEach(function(k){ if(/\|WC/.test(k)) L.pos[k].forEach(function(x){
+    var j = D.floors.findIndex(function(g){ return g.lvl === D.floors[x.i].lvl - 1; });
+    if(D.floors[x.i].lvl <= 0 || j < 0) return;
+    wc++;
+    if(Object.keys(L.pos).some(function(q){ return /\|WC/.test(q) && L.pos[q].some(function(y){ return y.i === j && ecart(x, y) <= J.empile; }); })) wcOk++;
+  }); });
   var noyaux = 0, H = PG.hotes(D.partis.courant.vols);
   Object.keys(H).forEach(function(k){ noyaux += H[k].n; });
   return Object.assign(mesuresPlan(L, D, vols, suites), {
@@ -607,13 +617,16 @@ function mesuresDe(L, D, vols){
     posePlan: demande ? r3(1 - L.am / demande) : null,
     couloirsJour: bouts ? r3(jour / bouts) : null,
     pubGroupe: L.pub.n ? r3(1 - L.pub.meles.length / L.pub.n) : null,
-    vestSas: L.sas.n ? r3(L.sas.ok / L.sas.n) : null
+    vestSas: L.sas.n ? r3(L.sas.ok / L.sas.n) : null,
+    doubleRive: lin ? r3(lin2 / lin) : null,
+    sanitairesEmpiles: wc ? r3(wcOk / wc) : null
   });
 }
 
 /* ---------- les écarts au cadre ---------------------------------------------------- */
-function ecartsDe(L, D){
+function ecartsDe(L, D, m){
   var out = [];
+  function pc(x){ return Math.round(100 * x) + " %"; }
   function niv(i){ return D.floors[i].name.toLowerCase(); }
   function dit(k, msg){ if(enVigueur(k)) out.push({ k:k, v:-1, v2:-1, msg:msg, pile:0, sev:severite(k), c:"typo" }); }
   if(L.nm) dit("typo-pose", L.nm + " pièce" + (L.nm > 1 ? "s" : "") + " ne tien" + (L.nm > 1 ? "nent" : "t")
@@ -630,6 +643,21 @@ function ecartsDe(L, D){
   if(L.empile.length) dit("noyaux-empiles", "Noyaux décalés d'un niveau à l'autre : " + L.empile.join(", "));
   if(L.scene != null && L.scene > 2 * L.PG.MUR + 0.05) dit("scene-sport", "Au plan, la scène n'est pas collée à la salle de sport"
     + (isFinite(L.scene) ? " (" + dec(L.scene, 1) + " m)" : " (pas au même niveau)"));
+  /* les règles de plan qu'une mesure lit (cadre.js — `plan-*`) */
+  [["plan-couloir-bout", m.couloirsJour, V.couloirBout, 1, "Bouts de couloir sur une façade"],
+   ["plan-double-rive", m.doubleRive, V.doubleRive, 1, "Corps dont le couloir dessert ses deux rives"],
+   ["plan-classes-orient", m.classesSoleil, V.classesOrient, 1, "Classes bien orientées"],
+   ["plan-aveugle", m.aveugles, V.aveugleMax, -1, "Surface de séjour sans façade"],
+   ["plan-murs-porteurs", m.mursEmpiles, V.mursPorteurs, 1, "Murs d'étage sur un mur du dessous"],
+   ["plan-trame", m.murTrame, V.trameMin, 1, "Murs en façade sur la trame"],
+   ["plan-sanitaires", m.sanitairesEmpiles, V.sanitEmpiles, 1, "WC d'étage sur un WC du dessous"],
+   ["plan-adjacences", m.liensPlan, V.adjPlan, 1, "Liens du schéma tenus au plan"],
+   ["plan-circ-utile", m.circPlan == null || m.circPlan >= 1 ? null : m.circPlan / (1 - m.circPlan), V.circUtileMax, -1,
+    "Circulation ÷ surface utile"]
+  ].forEach(function(e){
+    if(e[1] != null && (e[1] - e[2]) * e[3] < -1e-9) dit(e[0], e[4] + " : " + pc(e[1]) + ", pour " + pc(e[2]) + (e[3] > 0 ? " au moins" : " au plus"));
+  });
+  if(m.techGroupes > V.gainesMax) dit("plan-gaines", m.techGroupes + " groupes de locaux techniques, pour " + V.gainesMax + " au plus");
   return out;
 }
 
@@ -645,5 +673,6 @@ export function typoVerdict(E){
    typologie `graine`, celle à l'écran par défaut. */
 export function evaluerTypo(vols, ponts, graine){
   var D = donneesTypo(vols, ponts, graine), L = lirePlans(D);
-  return { mes:mesuresDe(L, D, vols), ecarts:ecartsDe(L, D) };
+  var mes = mesuresDe(L, D, vols);
+  return { mes:mes, ecarts:ecartsDe(L, D, mes) };
 }
