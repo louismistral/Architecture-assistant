@@ -196,7 +196,6 @@ export var MESURES = [
   { id:"mursEmpiles",  de:"typo", n:"Part des murs d'étage posés sur un mur du dessous", unite:"" },
   { id:"adaptable",    de:"typo", n:"Classes à la même profondeur et murs empilés, en moyenne", unite:"" },
   { id:"circUnique",   de:"typo", n:"Part des niveaux hors sol à une seule circulation", unite:"" },
-  { id:"lisibilite",   de:"mass", n:"Angles d'emprise par 1000 m² (4 → 1, 12 → 0) et circulation unique, en moyenne", unite:"" },
   { id:"anglesPlancher", de:"mass", n:"Angles des emprises de l'école par 1000 m² de plancher", unite:"" },
   { id:"chapitresGroupes", de:"typo", n:"Part de la surface de chaque chapitre dans son groupe principal, par niveau", unite:"" },
   { id:"unGeste",      de:"mass", n:"Plancher du plus grand ensemble ÷ plancher total ÷ orientations", unite:"" },

@@ -128,11 +128,10 @@ export var RULES = {
        couloir, meublable dès `meuble` m de côté ; la cour vue à `vueCour` m ;
        un mur porté par celui du dessous à `empile` m près, sur la trame à `trameTol`
        m près ; une dalle qui peut s'ouvrir sur `vide` m² de dégagement du
-       dessous ; un plan lisible jusqu'à `angles[0]` angles d'emprise par 1000 m²
-       de plancher, illisible dès `angles[1]` ; la coupe prolongée de `coupeExist`
+       dessous ; la coupe prolongée de `coupeExist`
        m pour trouver l'existant. */
     juge: { classeRatio: 1.35, vitrage: 0.20, espace: 20, sombre: 15, niche: 30, meuble: 2.0,
-            vueCour: 40, empile: 0.30, trameTol: 0.30, vide: 12, angles: [4, 12], coupeExist: 50 }
+            vueCour: 40, empile: 0.30, trameTol: 0.30, vide: 12, coupeExist: 50 }
   },
 
   /* --- circulation ------------------------------------------------------- */

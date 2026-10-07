@@ -119,8 +119,9 @@ export var CRITERES = [
     "terrainMarge", mn(7000, 5500), "Praroman"), { axes:{ C:.4, G:.4, B:.2 } }),
 
   /* ---- D · organisation et fonctionnement ---- */
-  /* peu d'angles d'emprise, une seule circulation par niveau (`mass/mesures.js — joindre()`) */
-  c("d29", "D", 7, "Plans simples, lisibles et flexibles", "lisibilite", { t:"oui" }, "Champagne, Matran"),
+  /* lisible : peu d'angles d'emprise (Massing), une seule circulation par niveau (plans) */
+  c("d29", "D", 7, "Plans simples, lisibles et flexibles : peu d'angles d'emprise", "anglesPlancher", mx(4, 12), "Champagne, Matran"),
+  c("d29-circ", "D", 7, "Plans lisibles : une seule circulation par niveau", "circUnique", { t:"oui" }, "Champagne, Matran"),
   /* au plan des Typologies : le hall, de toutes les pièces du rez, la plus proche de la route */
   c("d30", "D", 6, "Une entrée principale claire, côté route", "entreeRoute", { t:"oui" }, "Praroman"),
   c("d-hall", "D", 5, "Un hall au centre, qui distribue tout", "hallCentre", { t:"oui" }),
@@ -204,7 +205,7 @@ export var CRITERES = [
   c("g59", "G", 5, "Circulations limitées, mais utiles", "circPlan", mx(0.25, 0.35)),
   /* la moyenne de cinq critères déjà notés : ils comptent deux fois, poids faible */
   Object.assign(c("g61", "G", 3, "Économie de moyens", null, { t:"oui" }, "Schlieren"),
-    { moy:["g58", "g59", "f56", "b8", "d42"] }),
+    { moy:["g58", "f56", "b8"] }),
   c("g63", "G", 4, "Entretien et exploitation peu coûteux"),
 
   /* ---- H · énergie et durabilité ---- */
@@ -220,7 +221,7 @@ export var CRITERES = [
   c("h70", "H", 3, "Réemploi de l'existant plutôt que démolition", "existantGarde", { t:"oui" }),
   /* à la façon d'un contrôle SNBS, la moyenne de critères déjà notés : poids faible */
   Object.assign(c("h71", "H", 3, "Bonne note au contrôle de durabilité", null, { t:"oui" }, "Schlieren"),
-    { moy:["g58", "f56", "h69", "h70", "c25", "d33", "h-vitrage"] }),
+    { moy:["g58", "f56", "h69", "h70", "c25"] }),
 
   /* ---- I · planification dans le temps ---- */
   c("i72", "I", 5, "Étapes crédibles : le second temps trouve sa place", "secondPose", { t:"oui" }, "Vignettaz, Praroman"),
@@ -243,9 +244,18 @@ export var CRITERES = [
   Object.assign(c("j80", "J", 4, "Des tableaux de surfaces justes et vérifiables"), { eteint:1 })
 ];
 
+/* DEUX NOTES : celle du Massing et celle des Typologies. Un critère va à la
+   note de sa mesure — celles du plan (`MESURES`, `de:"typo"`) à la Typologie,
+   les autres au Massing ; un critère qui en lit d'autres (`moy`) ne lit que
+   ceux de sa note. */
+var TYPO_M = {};
+MESURES.forEach(function(m){ if(m.de === "typo") TYPO_M[m.m] = 1; });
+export var NOTES = [{ id:"mass", n:"Massing" }, { id:"typo", n:"Typologies" }];
+
 /* Chaque critère devient une ligne : son poids, sa fonction et son
    interrupteur sont des cases de `V`, du jury. */
 CRITERES.forEach(function(x){
+  x.note = TYPO_M[x.mesure] ? "typo" : "mass";
   if(!x.axes){ x.axes = {}; x.axes[x.sx] = 1; }
   x.role = "jugement"; x.qui = "groupe"; x.off = 1;
   x.sujet = SOUS[x.sx].n;
@@ -318,12 +328,17 @@ export function noter(mes){
     var S = x.moy.map(function(id){ return crit[id] && crit[id].s; }).filter(function(s){ return s != null; });
     crit[x.id] = S.length ? { s:S.reduce(function(a, b){ return a + b; }, 0) / S.length, de:"mesure" } : { s:null, de:"sans objet" };
   });
+  return Object.assign(agreger(crit, "mass"), { crit:crit, typo:agreger(crit, "typo") });
+}
+/* Une note — les critères de `note` seuls — : par sous-axe, par axe, puis la
+   moyenne géométrique des axes. Un axe sans critère de cette note ne compte pas. */
+function agreger(crit, note){
   var axes = AXES.map(function(a){
     var sous = a.sous.map(function(sx){
       var som = 0, pois = 0, tout = 0;
       CRITERES.forEach(function(x){
         var part = x.axes[sx.id], c = crit[x.id];
-        if(!part || c.de === "éteint" || c.de === "sans objet") return;
+        if(!part || x.note !== note || c.de === "éteint" || c.de === "sans objet") return;
         var w = V["w:" + x.id] * part;
         tout += w;
         if(c.s == null) return;
@@ -350,7 +365,7 @@ export function noter(mes){
     ln += a.w * Math.log(Math.max(PLANCHER, a.s)); W += a.w; lu += a.w * a.couv;
   });
   return { total: W ? Math.round(100 * Math.exp(ln / W)) : null,
-           couv: tout ? lu / tout : 0, axes:axes, crit:crit };
+           couv: tout ? lu / tout : 0, axes:axes };
 }
 /* La moyenne, critère par critère, des notes manuelles de plusieurs variantes :
    ce que reçoit une variante qu'on n'a pas notée. */
@@ -363,22 +378,8 @@ export function moyennes(liste){
   for(var k in som) o[k] = som[k] / n[k];
   return o;
 }
-/* LA PART TYPOLOGIE : la moyenne, au poids de chacun, des critères qui lisent
-   le plan des Typologies (`MESURES`, `de:"typo"`). Ce n'est pas un axe : elle
-   ne change pas la note, elle la lit — pour un même volume, la bonne et la
-   mauvaise typologie. null quand aucun critère du plan n'a été lu. */
-var TYPO_M = {};
-MESURES.forEach(function(m){ if(m.de === "typo") TYPO_M[m.m] = 1; });
-export function scoreTypo(j){
-  if(!j) return null;
-  var som = 0, pois = 0;
-  CRITERES.forEach(function(x){
-    var c = j.crit[x.id];
-    if(!TYPO_M[x.mesure] || !c || c.s == null) return;
-    som += V["w:" + x.id] * c.s; pois += V["w:" + x.id];
-  });
-  return pois ? som / pois : null;
-}
+/* LA NOTE TYPOLOGIES, de 0 à 1 — null quand aucun critère du plan n'a été lu. */
+export function scoreTypo(j){ return j && j.typo && j.typo.total != null ? j.typo.total / 100 : null; }
 /* Le rang d'une variante sur un axe : son score, ou null. `j` est un résultat
    de `noter()`. */
 export function scoreAxe(j, id){
