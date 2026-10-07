@@ -128,6 +128,41 @@ deux pièces publiques, ou où la suite publique est enfermée au milieu de la b
 (`lirePlans() — pub`) ; `pubGroupe` le note (d39). Le côté du public se juge au Massing
 (`pub-est`, `pubSep`, `pubCote`).
 
+## Les règles de plan
+
+Trente règles du métier — circulation, lumière, structure, pièces, usage, lisibilité — sont des
+lignes du cadre, onglet typologie, **Imposées** (`cadre.js — CADRE_TYPO`, `plan-*`) : chacune se
+règle, se désactive ou s'assouplit dans Paramètres. Le générateur ne les cherche pas encore ; le
+plan les MESURE, et un écart se notifie (ambre) dans `verdict.typo`, sans toucher la note.
+
+| règle | ligne | lue par |
+|---|---|---|
+| 1 on ne traverse pas une pièce, sauf enfilade ou antichambre | `couloir-acces` | contrôle |
+| 2 un couloir mène quelque part | `plan-couloir-bout` | `couloirsJour` ≥ 60 % |
+| 4 un couloir dessert ses deux rives | `plan-double-rive` | `doubleRive` ≥ 70 %, nouvelle |
+| 8 classes à l'est, au sud-est | `plan-classes-orient` | `classesSoleil` ≥ 50 % (E à SSO, gardée) |
+| 10 une pièce sans fenêtre se justifie | `plan-aveugle` | `aveugles` ≤ 10 % |
+| 11 les murs porteurs se superposent | `plan-murs-porteurs` | `mursEmpiles` ≥ 70 % |
+| 12 une trame récurrente | `plan-trame` | `murTrame` ≥ 50 % |
+| 13 les gaines se regroupent | `plan-gaines` | `techGroupes` ≤ 2 |
+| 14 les sanitaires s'empilent | `plan-sanitaires` | `sanitairesEmpiles` ≥ 70 %, nouvelle |
+| 15 pas de pièce résiduelle | `plan-residuel` | tenu : le plan pave en rectangles |
+| 16 proportions 1:1 à 1:2 | `plan-proportions` | contrôle de la page (`RULES.plan.piece`) |
+| 20 les espaces liés sont adjacents | `plan-adjacences` | `liensPlan` ≥ 75 % |
+| 26 circulation ÷ utile, 20 à 25 % | `plan-circ-utile` | `circPlan` ramené à l'utile ≤ 25 % |
+| 27 un seul diagramme | `plan-diagramme` | au Massing, `unGeste` (e44) |
+| 30 la pente | `plan-topographie` | au Massing, b13 |
+
+Les autres (3, 5, 6, 7, 9, 17, 18, 19, 21 à 25, 28, 29) sont déclarées, `lu` « à construire » :
+le plan ne sait pas encore les lire — une seule largeur de couloir, pas de tableau, de radiateur
+ni d'interrupteur, une porte que rien ne situe dans son mur. La 28, la façade qui découle du plan,
+se juge et ne se mesure pas.
+
+Ce qu'elles montrent : sur la composition de référence, cinq seeds, les murs empilés (24 à 42 %),
+la trame (8 à 18 %), les WC empilés (0 à 29 %) et la circulation ÷ utile (35 à 52 %) sont en écart
+partout — le générateur ne les cherche pas. C'est le prochain chantier : les faire OBÉIR au
+générateur, règle par règle.
+
 ## Le déroulé : le plateau d'abord, les pièces ensuite
 
 Les plans se composaient rectangle par rectangle — un couloir et deux bandes chacun — et l'on
