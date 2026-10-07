@@ -504,8 +504,8 @@ function jugement(cle, niv, resume){
   var t = el("div", "pr-axes");
   var h = el("div", "pr-axes__h");
   h.appendChild(el("b", "pr-axes__n mono", J && J.total != null ? String(J.total) : "—"));
-  h.appendChild(el("span", null, J ? "/100 — la composition à l'écran, vue par le jury · " + Math.round(J.couv * 100)
-    + " % du poids lu, mesuré ou noté" : "aucune composition posée"));
+  h.appendChild(el("span", null, J ? "/100 Massing · " + (J.typo.total == null ? "—" : J.typo.total) + "/100 Typologies — la composition à l'écran, vue par le jury · "
+    + Math.round(J.couv * 100) + " % du poids du Massing lu" : "aucune composition posée"));
   t.appendChild(h);
   AXES.forEach(function(a){
     var aj = J ? J.axes.filter(function(x){ return x.id === a.id; })[0] : null;
@@ -524,7 +524,7 @@ function jugement(cle, niv, resume){
     r.appendChild(el("span", "pr-axe__s mono", aj ? pct(aj.s) : "—"));
     t.appendChild(r);
   });
-  t.appendChild(el("p", "pr-note", "Note générale : moyenne GÉOMÉTRIQUE des axes, pondérée — un axe faible "
+  t.appendChild(el("p", "pr-note", "Deux notes, Massing et Typologies : un critère va à celle de sa mesure. Les barres des axes sont celles du Massing. Chaque note : moyenne GÉOMÉTRIQUE des axes, pondérée — un axe faible "
     + "ne se rachète pas par les autres. Dans un axe, les sous-axes et leurs critères se compensent. Un "
     + "critère sans mesure reçoit la note posée à la main sur la variante, sinon la moyenne des notes "
     + "posées sur les autres, sinon 0,5."));

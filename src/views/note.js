@@ -1,7 +1,7 @@
 /* ============================================================================
    LA NOTE D'UN BÂTIMENT — une seule façon de la montrer
 
-   La note générale sur 100, en grand ; puis chaque axe du jugement, sa barre
+   Les deux notes sur 100, Massing et Typologies, en grand ; puis chaque axe du jugement, sa barre
    et son score ; puis, repliés, les sous-axes et leurs critères — d'où vient
    chaque score : mesuré, ou non mesuré — un critère sans mesure ne compte
    pas dans la note.
@@ -10,7 +10,7 @@
    d'avant les mesures n'a que sa note enregistrée : `o.ancienne`.
    ========================================================================= */
 import { el } from "../core/format.js";
-import { AXES, CRITERES } from "../data/jugement.js";
+import { AXES, CRITERES, NOTES } from "../data/jugement.js";
 
 var DE = { mesure:"mesuré", "non mesuré":"non mesuré", "sans objet":"sans objet", "éteint":"éteint" };
 
@@ -28,12 +28,20 @@ export function noteVue(j, o){
   var s = el("div", "vm-noteb");
   var tete = el("div", "vm-note");
   var col = el("div", "vm-note__g");
-  col.appendChild(el("span", "label", "Jugement"));
+  col.appendChild(el("span", "label", "Massing"));
   var total = j ? j.total : o.ancienne;
   var gros = el("b", "vm-note__n mono" + (total != null ? " is-haut" : ""), total == null ? "—" : String(total));
   if(total != null) gros.appendChild(el("span", "vm-note__s", "/100"));
   col.appendChild(gros);
   tete.appendChild(col);
+  if(j){
+    var ct = el("div", "vm-note__g"), tt = j.typo.total;
+    ct.appendChild(el("span", "label", "Typologies"));
+    var gt = el("b", "vm-note__n mono" + (tt != null ? " is-haut" : ""), tt == null ? "—" : String(tt));
+    if(tt != null) gt.appendChild(el("span", "vm-note__s", "/100"));
+    ct.appendChild(gt);
+    tete.appendChild(ct);
+  }
   tete.appendChild(el("p", null, o.texte || (j
     ? "Le bâtiment vu par le jury, par ses seules mesures et les notes posées à la main : "
       + Math.round(j.couv * 100) + " % du poids est lu. Moyenne géométrique des axes — un axe faible "
@@ -42,8 +50,12 @@ export function noteVue(j, o){
   s.appendChild(tete);
   if(!j) return s;
 
+  NOTES.forEach(function(nt){
+  var J = nt.id === "typo" ? j.typo : j;
+  s.appendChild(el("h5", "vm-rang label", nt.n));
   AXES.forEach(function(a){
-    var aj = j.axes.filter(function(x){ return x.id === a.id; })[0];
+    var aj = J.axes.filter(function(x){ return x.id === a.id; })[0];
+    if(aj.s == null && !CRITERES.some(function(x){ return x.note === nt.id && a.sous.some(function(sx){ return x.axes[sx.id]; }); })) return;
     var d = el("details", "vm-axe");
     var sm = el("summary", "vm-axe__h");
     sm.appendChild(el("span", "vm-axe__n", a.n));
@@ -52,7 +64,7 @@ export function noteVue(j, o){
     d.appendChild(sm);
     aj.sous.forEach(function(sx){
       if(a.sous.length > 1) d.appendChild(el("h5", "vm-rang label", sx.n + " — " + pct(sx.s)));
-      CRITERES.filter(function(x){ return x.axes[sx.id]; }).forEach(function(x){
+      CRITERES.filter(function(x){ return x.axes[sx.id] && x.note === nt.id; }).forEach(function(x){
         var c = j.crit[x.id], r = el("div", "vm-c");
         r.appendChild(el("i", "chip chip--" + (c.de === "mesure" ? (c.s >= .75 ? "ok" : c.s >= .4 ? "soft" : "warn") : "soft"),
           c.s == null ? DE[c.de] || c.de : pct(c.s)));
@@ -62,6 +74,7 @@ export function noteVue(j, o){
       });
     });
     s.appendChild(d);
+  });
   });
   return s;
 }

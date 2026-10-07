@@ -421,8 +421,11 @@ function carte(v){
   var sc = noteDe(v, MOY);
   var note = el("b", "vc__note mono" + (aJour(v) ? "" : " is-vieux"), sc == null ? "—" : String(sc));
   if(sc != null) note.classList.add(invalide(v) ? "is-bas" : "is-haut");
-  note.title = aJour(v) ? "Note du jugement, sur 100" : "Note d'un ancien juge — « Reload » la refait";
+  note.title = aJour(v) ? "Note Massing, sur 100" : "Note d'un ancien juge — « Reload » la refait";
   t.appendChild(note);
+  /* la note Typologies, à côté de celle du Massing */
+  var ty = scoreTypo(jugementDe(v, MOY));
+  if(ty != null){ var nt = el("b", "vc__note mono", String(Math.round(100 * ty))); nt.title = "Note Typologies, sur 100"; t.appendChild(nt); }
   d.appendChild(t);
 
   var meta = el("p", "vc__meta");
@@ -581,16 +584,16 @@ function partiReel(v){ return (v.thumbnail && v.thumbnail.parti) || v.parti || "
    c'est trop long à dire, combien de choses. Les trois réglages suivent le
    compte (`net/prefs.js`). Le vocabulaire est celui des listes qu'on connaît
    — Linear, Notion : un tri, des filtres qui se cumulent, une recherche. */
-/* La note générale, puis un sous-classement par axe du jugement : le plus
+/* La note Massing, puis un sous-classement par axe du Massing : le plus
    économique, le mieux inséré… Tout se relit sur les mesures, au poids du jour. */
 var TRIS = [
-  { k:"score",  n:"Note",            asc:"la moins bonne d'abord", desc:"la meilleure d'abord" }
+  { k:"score",  n:"Note Massing",    asc:"la moins bonne d'abord", desc:"la meilleure d'abord" }
 ].concat(AXES.map(function(a){
   return { k:"ax:" + a.id, n:"Axe — " + a.n.split(",")[0].toLowerCase(),
            asc:"la moins bonne d'abord", desc:"la meilleure d'abord" };
 })).concat([
-  /* la part du plan des Typologies : pour un même volume, la bonne typologie d'abord */
-  { k:"typo",   n:"Typologie",       asc:"la moins bonne d'abord", desc:"la meilleure d'abord" },
+  /* la note Typologies : pour un même volume, la bonne typologie d'abord */
+  { k:"typo",   n:"Note Typologies", asc:"la moins bonne d'abord", desc:"la meilleure d'abord" },
   { k:"date",   n:"Date",            asc:"la plus ancienne d'abord", desc:"la plus récente d'abord" },
   { k:"name",   n:"Nom",             asc:"A → Z", desc:"Z → A" },
   { k:"author", n:"Auteur",          asc:"A → Z", desc:"Z → A" },

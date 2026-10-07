@@ -1230,7 +1230,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       st.etape < 6 ? puce("étape " + st.etape + " / 6", "warn", "Le plan fini est à l'étape 6") : "", derouleHtml(), st.etape < 6));
     ol.appendChild(etape("bilan", 2, "Bilan du niveau", fl.name, puce(fmt(100 * taux, 0) + " %", plein ? "ok" : "warn", "Part du programme du niveau posée dans le plan"), bil, !plein));
     ol.appendChild(etape("eval", 3, "Évaluation", E ? fmt(100 * E.couv, 0) + " % du poids lu" : "aucune composition",
-      E && E.total != null ? '<b class="mass-etape__note mono' + (E.invalide ? " is-bas" : "") + '" title="Moyenne géométrique des axes, pondérée — le bâtiment entier, plans compris">' + E.total + '/100</b>' : "",
+      E && E.total != null ? '<b class="mass-etape__note mono' + (E.invalide ? " is-bas" : "") + '" title="La note Typologies : moyenne géométrique des axes, pondérée, sur les seuls critères du plan">' + E.total + '/100</b>' : "",
       evaluationHtml(E), false));
     ol.appendChild(etape("ctl", 4, "Contrôle", "toute la pile",
       (C.bad ? puce(C.bad + " à revoir", "warn") : "") + puce(C.ok + " ok", "ok"), '<ul class="typo-ctl">' + C.html + '</ul>', C.bad > 0));
@@ -1239,8 +1239,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   }
 
   /* ---------- l'évaluation : ce que vaut le bâtiment, plans compris ----------
-     La note du jury pour le bâtiment entier à cette seed, la part Typologie, et
-     chaque critère que le plan mesure. Le projet la calcule
+     La note Typologies à cette seed, et chaque critère que le plan mesure. Le projet la calcule
      (`views/render.js — typoEvaluation()`) : la même que le Massing et les
      variantes. Un Shuffle typologie la refait. */
   var EV = null;
@@ -1254,13 +1253,12 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   }
   function evaluationHtml(E){
     if(!E) return '<p class="mass-note">Aucune composition posée.</p>';
-    var h = '<div class="mass-axe" title="La moyenne, au poids de chacun, des critères que le plan mesure : pour un même volume, la bonne et la mauvaise typologie.">' +
-      '<span class="mass-axe__n"><b>Typologie</b></span>' + jauge(E.typo) + '</div>';
+    var h = "";
     E.crit.forEach(function(c){
       h += '<div class="mass-axe" title="' + esc(c.n) + ' — ' + esc(c.val) + '"><span class="mass-axe__n">' + esc(c.n) +
         '<small class="mono typo-mes">' + esc(c.val) + '</small></span>' + jauge(c.s) + '</div>';
     });
-    return h + '<p class="mass-note">Les critères que le plan mesure, notés par le jury ; la note générale lit aussi le programme et la volumétrie. Poids et seuils : Paramètres &amp; contraintes, rubrique Évaluation.</p>';
+    return h + '<p class="mass-note">Les critères que le plan mesure : la note Typologies, à part de celle du Massing — pour un même volume, la bonne et la mauvaise typologie. Poids et seuils : Paramètres &amp; contraintes, rubrique Évaluation.</p>';
   }
 
   /* ---------- le contrôle : toute la pile, pas seulement le niveau montré ---------- */

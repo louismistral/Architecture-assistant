@@ -89,7 +89,7 @@ function meilleureTypo(n){
   var moy = moyennesMain(), best = null;
   for(var t = 0; t < n; t++){
     TYPO.graine = auHasard();
-    var ev = renoterTypo(ev0, MASS.vol, moy), e = typoVerdict(ev.ecarts).e, s = ev.jugement.total;
+    var ev = renoterTypo(ev0, MASS.vol, moy), e = typoVerdict(ev.ecarts).e, s = ev.jugement.typo.total;
     if(!best || e < best.e || (e === best.e && s > best.s)) best = { g:TYPO.graine, e:e, s:s };
   }
   TYPO.graine = best.g;

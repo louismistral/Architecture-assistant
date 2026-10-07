@@ -1197,11 +1197,7 @@ function typoDe(vols, graine){
   catch(e){ console.error(e); return { mes:{}, ecarts:[] }; }
 }
 function joindre(ev, T, main, moy){
-  var mes = Object.assign({}, ev.mes, T.mes), A = RULES.plan.juge.angles;
-  /* d29 — peu d'angles d'emprise (massing), une circulation par niveau (plans) */
-  var pa = mes.anglesPlancher == null ? null : Math.max(0, Math.min(1, (A[1] - mes.anglesPlancher) / (A[1] - A[0])));
-  var lis = [pa, mes.circUnique].filter(function(x){ return x != null; });
-  mes.lisibilite = lis.length ? lis.reduce(function(a, b){ return a + b; }, 0) / lis.length : null;
+  var mes = Object.assign({}, ev.mes, T.mes);
   var E = ev.ecarts.filter(function(x){ return x.c !== "typo"; }).concat(T.ecarts);
   return { mes:mes, qualites:ev.qualites, ecarts:E,
            invalide: E.some(function(x){ return x.sev === "e" && !x.pile; }),

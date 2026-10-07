@@ -12,7 +12,7 @@ import { donneesTypo, typoGraine, typoRegle } from "../typo/donnees.js";
 import { creerPG } from "../typo/gen.js";
 import { lirePlans } from "../typo/mesures.js";
 import { evaluationCourante } from "../mass/mesures.js";
-import { CRITERES, noter, scoreTypo } from "../data/jugement.js";
+import { CRITERES, noter } from "../data/jugement.js";
 import { MESURES } from "../data/donnees.js";
 import { moyennesMain } from "../net/variantes.js";
 import { icone } from "./icons.js";
@@ -201,8 +201,8 @@ function typoEvaluation(){
   if(!ev) return null;
   var j = noter(ev.mes, null, moyennesMain()), M = {};
   MESURES.forEach(function(m){ if(m.de === "typo") M[m.m] = m; });
-  return { total:j.total, couv:j.couv, invalide:ev.invalide, typo:scoreTypo(j),
-    crit:CRITERES.filter(function(x){ return M[x.mesure]; }).map(function(x){
+  return { total:j.typo.total, couv:j.typo.couv, invalide:ev.invalide,
+    crit:CRITERES.filter(function(x){ return x.note === "typo"; }).map(function(x){
       var v = ev.mes[x.mesure], u = M[x.mesure].unite;
       return { n:x.n, s:j.crit[x.id].s, val:v == null ? "—" : String(v).replace(".", ",") + (u ? " " + u : "") };
     }) };
