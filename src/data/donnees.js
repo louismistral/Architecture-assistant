@@ -173,7 +173,24 @@ export var MESURES = [
   { id:"posePlan",     de:"typo", n:"Part du programme posée dans les plans", unite:"" },
   { id:"couloirsJour", de:"typo", n:"Part des bouts de couloir sur une façade", unite:"" },
   { id:"pubGroupe",    de:"typo", n:"Part des bandes où le public forme une suite, à un bout", unite:"" },
-  { id:"vestSas",      de:"typo", n:"Part des classes où l'on entre par leur vestiaire", unite:"" }
+  { id:"vestSas",      de:"typo", n:"Part des classes où l'on entre par leur vestiaire", unite:"" },
+  { id:"classesDouble", de:"typo", n:"Part des classes à façades dans deux directions", unite:"" },
+  { id:"classesProp",  de:"typo", n:"Part des classes du carré à 1 × 1,35", unite:"" },
+  { id:"vitrageFacade", de:"typo", n:"Baie requise (1/5 du sol) ÷ façade de la classe, en moyenne", unite:"" },
+  { id:"aveugles",     de:"typo", n:"Part de la surface de séjour sans façade", unite:"" },
+  { id:"espaceGrappe", de:"typo", n:"Part des grappes avec un élargissement de 20 m² sur leur couloir", unite:"" },
+  { id:"accesGrappe",  de:"typo", n:"Part des grappes d'étage atteintes de l'escalier sans en longer une autre", unite:"" },
+  { id:"appuiEntre",   de:"typo", n:"Part des salles d'appui entre deux salles, dont une classe", unite:"" },
+  { id:"couloirApprendre", de:"typo", n:"Surface de couloir meublable par classe, aux étages de classes", unite:"m²" },
+  { id:"niches",       de:"typo", n:"Élargissements meublables par 30 m de couloir", unite:"" },
+  { id:"couloirSombre", de:"typo", n:"Couloir à plus de 15 m de toute lumière", unite:"m" },
+  { id:"entreeRoute",  de:"typo", n:"Part des pièces du rez plus loin de la route que le hall", unite:"" },
+  { id:"hallCentre",   de:"typo", n:"Hall : ailes du rez qu'il dessert, proximité du centre des classes", unite:"" },
+  { id:"uapeAutonome", de:"typo", n:"UAPE : entrée au rez, réfectoire contre la cuisine, bâtiment de l'école", unite:"" },
+  { id:"maitresCour",  de:"typo", n:"Salle des maîtres au rez ou au 1er, la cour vue à 40 m", unite:"" },
+  { id:"communEleve",  de:"typo", n:"Halls et élargissements meublables par élève", unite:"m²" },
+  { id:"mursEmpiles",  de:"typo", n:"Part des murs d'étage posés sur un mur du dessous", unite:"" },
+  { id:"adaptable",    de:"typo", n:"Classes à la même profondeur et murs empilés, en moyenne", unite:"" }
 ];
 MESURES.forEach(function(x){
   x.role = "donnee"; x.nature = "mesure"; x.sujet = "Mesures"; x.src = { t:"mesure" }; x.qui = "code";

@@ -120,14 +120,23 @@ export var CRITERES = [
 
   /* ---- D · organisation et fonctionnement ---- */
   c("d29", "D", 7, "Plans simples, lisibles et flexibles", null, null, "Champagne, Matran"),
-  c("d30", "D", 6, "Une entrée principale claire, un hall généreux", null, null, "Praroman"),
-  c("d31", "D", 6, "Circulations qui servent d'espaces d'apprentissage", null, null, "Schlieren"),
+  /* au plan des Typologies : le hall, de toutes les pièces du rez, la plus proche de la route */
+  c("d30", "D", 6, "Une entrée principale claire, côté route", "entreeRoute", { t:"oui" }, "Praroman"),
+  c("d-hall", "D", 5, "Un hall au centre, qui distribue tout", "hallCentre", { t:"oui" }),
+  /* les élargissements meublables et le couloir plus large que le courant, par classe */
+  c("d31", "D", 6, "Circulations qui servent d'espaces d'apprentissage", "couloirApprendre",
+    { t:"bande", bon:10, haut:20, nul:10 }, "Schlieren"),
   /* les grappes : des suites de 3 ou 4 classes contiguës, lues sur le plan des Typologies */
   c("d32", "D", 6, "Grappes de classes reliables, espaces de travail partagés", "grappes", mn(1, 0.3), "Schlieren, Raumstandards Zurich"),
   /* la classe elle-même, sur le plan : sa façade de jour à l'est ou au sud */
   Object.assign(c("d33", "D", 7, "Classes éclairées naturellement, bien orientées", "classesSoleil", mn(0.9, 0.5),
     "directives vaudoises 2002, Matran"),
     { axes:{ D:.5, H:.5 }, kb:"d33-plan" }),
+  c("d-double", "D", 6, "Classes éclairées de deux côtés", "classesDouble", mn(0.3, 0)),
+  c("d-prop", "D", 4, "Classes bien proportionnées, du carré à 1 × 1,35", "classesProp", mn(1, 0.5)),
+  c("d-aveugle", "D", 5, "Pas de pièce de séjour sans fenêtre", "aveugles", mx(0, 0.25)),
+  c("d-espace", "D", 6, "Un espace partagé devant chaque grappe", "espaceGrappe", mn(1, 0), "Schlieren"),
+  c("d-appui", "D", 5, "Salles d'appui entre deux classes", "appuiEntre", mn(1, 0)),
   c("d34", "D", 4, "Les plus jeunes au rez, accès direct à l'extérieur", null, null, "Broc"),
   c("d35", "D", 4, "Organisation par étage selon le cycle"),
   c("d36", "D", 4, "Pas le même plan répété à chaque étage sans réflexion", "niveauxDifferents", mn(0.5, 0), "Schlieren"),
@@ -139,8 +148,9 @@ export var CRITERES = [
   c("d39", "D", 6, "Locaux ouverts à la commune, accessibles sans traverser l'école", "pubGroupe", mn(1, 0.5)),
   Object.assign(c("pub-sep", "D", 6, "Public et école nettement séparés, une limite claire entre eux", "pubSep", mx(0, 0.5)),
     { src:{ t:"choix" } }),
-  c("d40", "D", 5, "Parascolaire et cantine autonomes et reliés à l'école"),
-  c("d41", "D", 4, "Salle des maîtres avec vue sur le préau"),
+  /* au plan : son entrée au rez, le réfectoire contre la cuisine, le bâtiment de l'école */
+  c("d40", "D", 5, "Parascolaire et cantine autonomes et reliés à l'école", "uapeAutonome", { t:"oui" }),
+  c("d41", "D", 4, "Salle des maîtres avec vue sur le préau", "maitresCour", { t:"oui" }),
   c("d42", "D", 5, "Un ascenseur, une ou deux cages d'escalier au plus", "noyaux", mx(2, 4), "Broc"),
   c("d43", "D", 4, "Locaux techniques regroupés, accessibles aux livraisons", "techGroupes", mx(1, 4), "Broc"),
   /* au plan : bord à bord, au même niveau — le mixer ne disait que « au même niveau » */
@@ -153,11 +163,16 @@ export var CRITERES = [
   c("d-pose", "D", 9, "Tout le programme tient dans les plans", "posePlan", mn(1, 0.9)),
   c("d-jour", "D", 5, "Couloirs éclairés naturellement à leurs bouts", "couloirsJour", mn(1, 0),
     "Raumstandards Zurich, Cugy"),
+  c("d-sombre", "D", 4, "Pas de couloir sombre au milieu", "couloirSombre", mx(0, 30)),
 
   /* ---- E · architecture et expression ---- */
   c("e44", "E", 7, "Une idée forte et claire, une identité", null, null, "Cugy"),
   c("e45", "E", 5, "Une façade qui découle de la structure", null, null, "Vignettaz"),
-  c("e46", "E", 5, "Des intérieurs généreux et fluides", null, null, "Matran, Praroman"),
+  /* halls et élargissements meublables, par élève */
+  c("e46", "E", 5, "Des intérieurs généreux et fluides", "communEleve", mn(1.5, 0.5), "Matran, Praroman"),
+  c("e-niches", "E", 4, "Des niches le long du couloir", "niches", mn(3, 1)),
+  /* le générateur ne dessine pas encore de vides : non mesuré, il ne compte pas */
+  c("e-vides", "E", 4, "Des vues d'un étage à l'autre : double hauteur, vide, patio"),
   c("e47", "E", 4, "Unité formelle entre les étapes de réalisation", "uniteEtapes", { t:"oui" }, "Vignettaz"),
   c("e48", "E", 5, "Matériaux simples et chaleureux qui vieillissent bien"),
   c("e49", "E", 6, "Lumière naturelle maîtrisée entre les corps", "jourRatio", mn(1.1, 0.5)),
@@ -174,6 +189,7 @@ export var CRITERES = [
   Object.assign(c("f56", "F", 5, "Peu d'éléments enterrés, hors-sol maximal", "sousSolPart", mx(0.05, 0.20)),
     { axes:{ F:.4, G:.6 } }),
   c("f57", "F", 3, "Démontage et réemploi possibles"),
+  c("f-murs", "F", 4, "Les murs les uns sur les autres", "mursEmpiles", mn(0.7, 0)),
   c("j-nappe", "F", 5, "Un sous-sol hors de la nappe", "couverture", mn(RULES.dist.couverture, 1)),
 
   /* ---- G · économie ---- */
@@ -188,6 +204,8 @@ export var CRITERES = [
   /* ---- H · énergie et durabilité ---- */
   c("h64", "H", 5, "Minergie-P, Minergie-ECO ou SNBS"),
   c("h65", "H", 4, "Façades vitrées à 30–40 %, contre la surchauffe", null, null, "Broc"),
+  /* la baie qu'exige le sol de la classe, sur la façade qu'elle a */
+  c("h-vitrage", "H", 4, "Pas trop de vitrage : la baie requise tient dans la façade", "vitrageFacade", mx(0.4, 0.8)),
   c("h66", "H", 4, "Protection solaire extérieure, ventilation de nuit"),
   c("h67", "H", 3, "Masse thermique : chape, terre crue, béton", null, null, "Broc"),
   c("h68", "H", 5, "Énergie grise faible : bois, compacité, peu d'enterré"),
@@ -199,7 +217,9 @@ export var CRITERES = [
   c("i72", "I", 5, "Étapes crédibles : le second temps trouve sa place", "secondPose", { t:"oui" }, "Vignettaz, Praroman"),
   c("i73", "I", 4, "L'école fonctionne pendant le chantier", "chantierLibre", { t:"oui" }, "Saint-Aubin, Val d'Arve"),
   c("i74", "I", 4, "Extension future sans affaiblir le projet", "extensionPossible", { t:"oui" }),
-  c("i75", "I", 4, "Plans adaptables à d'autres pédagogies ou usages"),
+  /* des classes à la même profondeur, des murs empilés */
+  c("i75", "I", 4, "Plans adaptables à d'autres pédagogies ou usages", "adaptable", { t:"oui" }),
+  c("i-grappes", "I", 3, "Chaque grappe a son propre accès depuis l'escalier", "accesGrappe", mn(1, 0.5)),
 
   /* ---- J · stratégie de rendu ---- */
   c("j76", "J", 5, "Un schéma conceptuel lisible en 5 secondes"),

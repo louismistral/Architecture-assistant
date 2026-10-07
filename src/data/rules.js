@@ -120,7 +120,15 @@ export var RULES = {
     /* la cotation, en m sur le plan : le blanc entre le dessin et une ligne
        d'attache, la première chaîne au-delà de la façade, l'écart entre deux
        chaînes, la hauteur du texte */
-    cotes: { ecart: 0.40, premier: 1.60, pas: 1.20, texte: 0.50 }
+    cotes: { ecart: 0.40, premier: 1.60, pas: 1.20, texte: 0.50 },
+    /* CE QUE LE JURY LIT SUR LE PLAN (`typo/mesures.js`), hypothèses de projet :
+       une classe entre le carré et `classeRatio` ; une baie de `vitrage` de son
+       sol (OPB, 1/5) ; un espace de grappe de `espace` m² au moins ; un couloir
+       sombre au-delà de `sombre` m de toute lumière ; une niche par `niche` m de
+       couloir, meublable dès `meuble` m de côté ; la cour vue à `vueCour` m ;
+       un mur porté par celui du dessous à `empile` m près. */
+    juge: { classeRatio: 1.35, vitrage: 0.20, espace: 20, sombre: 15, niche: 30, meuble: 2.0,
+            vueCour: 40, empile: 0.30 }
   },
 
   /* --- circulation ------------------------------------------------------- */
