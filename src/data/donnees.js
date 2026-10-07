@@ -42,6 +42,10 @@ export var HYPOTHESES = [
     d:"Calé pour que la variante de départ tombe à peu près au budget du règlement ("
       + nb(RULES.budget / 1e6) + " M CHF, art. 1.9). Une hypothèse du JURY : elle chiffre le "
       + "volume mesuré, elle ne change aucune variante — la changer renote sans rien regénérer." },
+  { id:"trame-struct", sujet:"Structure", onglet:"typologie", src:H, qui:"groupe", jury:1,
+    n:"Trame structurelle", k:"trameStruct", def:7.2, min:2.4, max:12, pas:0.3, unite:"m",
+    lu:"src/typo/mesures.js — murTrame", d:"Le pas des porteurs en façade : e45 compte les murs "
+      + "entre pièces qui tombent dessus. Pas le module de 0,50 m — le générateur le tient toujours." },
   { id:"pavage", sujet:"Circulation", onglet:"massing", src:H, qui:"groupe",
     n:"Reste du pavage des plans", k:"pavage", def:4, min:0, max:20, pas:1,
     unite:"% de plus que la section des plans", lu:"src/mass/model.js — aPaver()",
@@ -190,7 +194,17 @@ export var MESURES = [
   { id:"maitresCour",  de:"typo", n:"Salle des maîtres au rez ou au 1er, la cour vue à 40 m", unite:"" },
   { id:"communEleve",  de:"typo", n:"Halls et élargissements meublables par élève", unite:"m²" },
   { id:"mursEmpiles",  de:"typo", n:"Part des murs d'étage posés sur un mur du dessous", unite:"" },
-  { id:"adaptable",    de:"typo", n:"Classes à la même profondeur et murs empilés, en moyenne", unite:"" }
+  { id:"adaptable",    de:"typo", n:"Classes à la même profondeur et murs empilés, en moyenne", unite:"" },
+  { id:"circUnique",   de:"typo", n:"Part des niveaux hors sol à une seule circulation", unite:"" },
+  { id:"lisibilite",   de:"mass", n:"Angles d'emprise par 1000 m² (4 → 1, 12 → 0) et circulation unique, en moyenne", unite:"" },
+  { id:"anglesPlancher", de:"mass", n:"Angles des emprises de l'école par 1000 m² de plancher", unite:"" },
+  { id:"chapitresGroupes", de:"typo", n:"Part de la surface de chaque chapitre dans son groupe principal, par niveau", unite:"" },
+  { id:"unGeste",      de:"mass", n:"Plancher du plus grand ensemble ÷ plancher total ÷ orientations", unite:"" },
+  { id:"murTrame",     de:"typo", n:"Part des murs en façade sur la trame structurelle", unite:"" },
+  { id:"videsPossibles", de:"typo", n:"Part des étages où un dégagement recouvre 12 m² de dégagement ou de hall du dessous", unite:"" },
+  { id:"allegeEnfant", de:"typo", n:"Hauteur d'allège des fenêtres", unite:"m" },
+  { id:"situationLisible", de:"mass", n:"Cour au minimum, parvis de 400 m², dessinés au plan de situation", unite:"" },
+  { id:"coupeLisible", de:"mass", n:"La meilleure coupe : la pente qu'elle montre, l'existant qu'elle traverse", unite:"" }
 ];
 MESURES.forEach(function(x){
   x.role = "donnee"; x.nature = "mesure"; x.sujet = "Mesures"; x.src = { t:"mesure" }; x.qui = "code";

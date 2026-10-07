@@ -217,7 +217,8 @@ export function declarer(liste){
     /* une seconde valeur — la borne haute d'un domaine, un seuil défavorable */
     if(l.k2 && l.def2 !== undefined) valeur(l.k2, l.def2, { min:l.min2, max:l.max2 }, jury || l.jury);
     if(l.tag) valeur("t:" + l.id, l.tag, { parmi: l.admet || [l.tag] });
-    if(l.off !== undefined) valeur("on:" + l.id, 1, { min:0, max:1 }, jury);
+    /* `eteint` : une ligne livrée éteinte, qu'on rallume à la main */
+    if(l.off !== undefined) valeur("on:" + l.id, l.eteint ? 0 : 1, { min:0, max:1 }, jury);
   });
 }
 export function ligne(id){ return PAR_ID[id] || null; }

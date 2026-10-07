@@ -119,7 +119,8 @@ export var CRITERES = [
     "terrainMarge", mn(7000, 5500), "Praroman"), { axes:{ C:.4, G:.4, B:.2 } }),
 
   /* ---- D · organisation et fonctionnement ---- */
-  c("d29", "D", 7, "Plans simples, lisibles et flexibles", null, null, "Champagne, Matran"),
+  /* peu d'angles d'emprise, une seule circulation par niveau (`mass/mesures.js — joindre()`) */
+  c("d29", "D", 7, "Plans simples, lisibles et flexibles", "lisibilite", { t:"oui" }, "Champagne, Matran"),
   /* au plan des Typologies : le hall, de toutes les pièces du rez, la plus proche de la route */
   c("d30", "D", 6, "Une entrée principale claire, côté route", "entreeRoute", { t:"oui" }, "Praroman"),
   c("d-hall", "D", 5, "Un hall au centre, qui distribue tout", "hallCentre", { t:"oui" }),
@@ -137,8 +138,7 @@ export var CRITERES = [
   c("d-aveugle", "D", 5, "Pas de pièce de séjour sans fenêtre", "aveugles", mx(0, 0.25)),
   c("d-espace", "D", 6, "Un espace partagé devant chaque grappe", "espaceGrappe", mn(1, 0), "Schlieren"),
   c("d-appui", "D", 5, "Salles d'appui entre deux classes", "appuiEntre", mn(1, 0)),
-  c("d34", "D", 4, "Les plus jeunes au rez, accès direct à l'extérieur", null, null, "Broc"),
-  c("d35", "D", 4, "Organisation par étage selon le cycle"),
+  c("d35", "D", 4, "Organisation par chapitre : les locaux d'un même chapitre côte à côte", "chapitresGroupes", { t:"oui" }),
   c("d36", "D", 4, "Pas le même plan répété à chaque étage sans réflexion", "niveauxDifferents", mn(0.5, 0), "Schlieren"),
   /* au plan : le vestiaire en sas de sa classe (`schema.js`, lien `sas`) — plus que « près de » */
   c("d37", "D", 4, "Vestiaires et garderobes près de l'entrée ou des classes", "vestSas", mn(1, 0.5), "Boswil"),
@@ -160,23 +160,27 @@ export var CRITERES = [
   c("etage", "D", 4, "Les classes à l'étage, l'accueil au rez", "classesEtage", mn(1, 0.5)),
   c("degre", "D", 5, "Un degré par niveau", "classesNiveauMax", mx(11, 16)),
   /* ce que le plan des Typologies ne loge pas dans le volume : au jury, comme au contrôle */
-  c("d-pose", "D", 9, "Tout le programme tient dans les plans", "posePlan", mn(1, 0.9)),
+  /* il porte aussi le poids de j80 : le tableau des surfaces ne peut s'écarter du programme que par là */
+  c("d-pose", "D", 10, "Tout le programme tient dans les plans", "posePlan", mn(1, 0.9)),
   c("d-jour", "D", 5, "Couloirs éclairés naturellement à leurs bouts", "couloirsJour", mn(1, 0),
     "Raumstandards Zurich, Cugy"),
   c("d-sombre", "D", 4, "Pas de couloir sombre au milieu", "couloirSombre", mx(0, 30)),
 
   /* ---- E · architecture et expression ---- */
-  c("e44", "E", 7, "Une idée forte et claire, une identité", null, null, "Cugy"),
-  c("e45", "E", 5, "Une façade qui découle de la structure", null, null, "Vignettaz"),
+  /* PROXY : la simplicité du geste, pas sa force — à valider par paires */
+  c("e44", "E", 7, "Une idée forte et claire, une identité", "unGeste", mn(0.8, 0.25), "Cugy"),
+  /* les murs en façade sur la trame (`donnees.js — trameStruct`) ; f-murs dit s'ils s'empilent */
+  c("e45", "E", 5, "Une façade qui découle de la structure", "murTrame", mn(0.7, 0.2), "Vignettaz"),
   /* halls et élargissements meublables, par élève */
   c("e46", "E", 5, "Des intérieurs généreux et fluides", "communEleve", mn(1.5, 0.5), "Matran, Praroman"),
   c("e-niches", "E", 4, "Des niches le long du couloir", "niches", mn(3, 1)),
-  /* le générateur ne dessine pas encore de vides : non mesuré, il ne compte pas */
-  c("e-vides", "E", 4, "Des vues d'un étage à l'autre : double hauteur, vide, patio"),
+  /* le générateur ne dessine pas de vide : on lit où la dalle POURRAIT s'ouvrir */
+  c("e-vides", "E", 4, "Des vues d'un étage à l'autre : double hauteur, vide, patio", "videsPossibles", mn(0.5, 0)),
   c("e47", "E", 4, "Unité formelle entre les étapes de réalisation", "uniteEtapes", { t:"oui" }, "Vignettaz"),
   c("e48", "E", 5, "Matériaux simples et chaleureux qui vieillissent bien"),
   c("e49", "E", 6, "Lumière naturelle maîtrisée entre les corps", "jourRatio", mn(1.1, 0.5)),
-  c("e50", "E", 5, "Une ambiance à l'échelle de l'enfant"),
+  /* des fenêtres où l'enfant assis voit dehors : l'allège des plans (`RULES.plan.fenetre`) */
+  c("e50", "E", 5, "Une ambiance à l'échelle de l'enfant", "allegeEnfant", mx(0.7, 1.1)),
 
   /* ---- F · structure et construction ---- */
   c("f51", "F", 6, "Structure claire sur une trame régulière", "profondeursDistinctes", mx(1, 3), "Praroman, Schlieren"),
@@ -198,20 +202,25 @@ export var CRITERES = [
     { axes:{ G:.5, H:.5 } }),
   /* la circulation DESSINÉE aux Typologies, et non plus son estimation */
   c("g59", "G", 5, "Circulations limitées, mais utiles", "circPlan", mx(0.25, 0.35)),
-  c("g61", "G", 4, "Économie de moyens", null, null, "Schlieren"),
+  /* la moyenne de cinq critères déjà notés : ils comptent deux fois, poids faible */
+  Object.assign(c("g61", "G", 3, "Économie de moyens", null, { t:"oui" }, "Schlieren"),
+    { moy:["g58", "g59", "f56", "b8", "d42"] }),
   c("g63", "G", 4, "Entretien et exploitation peu coûteux"),
 
   /* ---- H · énergie et durabilité ---- */
   c("h64", "H", 5, "Minergie-P, Minergie-ECO ou SNBS"),
-  c("h65", "H", 4, "Façades vitrées à 30–40 %, contre la surchauffe", null, null, "Broc"),
-  /* la baie qu'exige le sol de la classe, sur la façade qu'elle a */
-  c("h-vitrage", "H", 4, "Pas trop de vitrage : la baie requise tient dans la façade", "vitrageFacade", mx(0.4, 0.8)),
+  /* fusionné dans h-vitrage, qui le mesure au plan : éteint */
+  Object.assign(c("h65", "H", 4, "Façades vitrées à 30–40 %, contre la surchauffe", null, null, "Broc"), { eteint:1 }),
+  /* la baie qu'exige le sol de la classe, sur la façade qu'elle a — avec le poids de h65 */
+  c("h-vitrage", "H", 8, "Pas trop de vitrage : la baie requise tient dans la façade", "vitrageFacade", mx(0.4, 0.8)),
   c("h66", "H", 4, "Protection solaire extérieure, ventilation de nuit"),
   c("h67", "H", 3, "Masse thermique : chape, terre crue, béton", null, null, "Broc"),
   c("h68", "H", 5, "Énergie grise faible : bois, compacité, peu d'enterré"),
   c("h69", "H", 4, "Photovoltaïque en toiture, CAD ou pompe à chaleur", "toitPV", mn(1, 0.4)),
   c("h70", "H", 3, "Réemploi de l'existant plutôt que démolition", "existantGarde", { t:"oui" }),
-  c("h71", "H", 4, "Bonne note au contrôle de durabilité", null, null, "Schlieren"),
+  /* à la façon d'un contrôle SNBS, la moyenne de critères déjà notés : poids faible */
+  Object.assign(c("h71", "H", 3, "Bonne note au contrôle de durabilité", null, { t:"oui" }, "Schlieren"),
+    { moy:["g58", "f56", "h69", "h70", "c25", "d33", "h-vitrage"] }),
 
   /* ---- I · planification dans le temps ---- */
   c("i72", "I", 5, "Étapes crédibles : le second temps trouve sa place", "secondPose", { t:"oui" }, "Vignettaz, Praroman"),
@@ -222,11 +231,16 @@ export var CRITERES = [
   c("i-grappes", "I", 3, "Chaque grappe a son propre accès depuis l'escalier", "accesGrappe", mn(1, 0.5)),
 
   /* ---- J · stratégie de rendu ---- */
-  c("j76", "J", 5, "Un schéma conceptuel lisible en 5 secondes"),
-  c("j77", "J", 4, "Un plan de situation qui montre le préau et l'espace public"),
-  c("j78", "J", 4, "Une coupe qui montre la pente et l'existant"),
-  c("j79", "J", 3, "Une vue intérieure de l'espace d'apprentissage"),
-  c("j80", "J", 4, "Des tableaux de surfaces justes et vérifiables")
+  /* PROXY : le cadre « Schemes » du midterm et la planche 5 portent toujours les
+     diagrammes (`rendu/diagramme.js`) — un bâtiment simple donne un schéma simple */
+  Object.assign(c("j76", "J", 5, "Un schéma conceptuel lisible en 5 secondes", null, { t:"oui" }),
+    { moy:["b7", "b8", "d29"] }),
+  c("j77", "J", 4, "Un plan de situation qui montre le préau et l'espace public", "situationLisible", { t:"oui" }),
+  c("j78", "J", 4, "Une coupe qui montre la pente et l'existant", "coupeLisible", { t:"oui" }),
+  /* le Rendu ne produit pas de vue intérieure : 0 partout, éteint jusque-là */
+  Object.assign(c("j79", "J", 3, "Une vue intérieure de l'espace d'apprentissage"), { eteint:1 }),
+  /* fusionné dans d-pose : une surface de programme ne change jamais */
+  Object.assign(c("j80", "J", 4, "Des tableaux de surfaces justes et vérifiables"), { eteint:1 })
 ];
 
 /* Chaque critère devient une ligne : son poids, sa fonction et son
@@ -254,7 +268,7 @@ CRITERES.forEach(function(x){
 var PAR_ID = {};
 CRITERES.forEach(function(x){ PAR_ID[x.id] = x; });
 export function critere(id){ return PAR_ID[id] || null; }
-export function manuel(x){ return !x.mesure; }
+export function manuel(x){ return !x.mesure && !x.moy; }
 
 /* ---------- la fonction de score --------------------------------------------------
    Rend un nombre de 0 à 1, ou null quand la mesure manque — un bâtiment sans
@@ -292,10 +306,17 @@ export function noter(mes){
   CRITERES.forEach(function(x){
     var s = null, de = null;
     if(!actif(x.id) || !(V["w:" + x.id] > 0)){ crit[x.id] = { s:null, de:"éteint" }; return; }
+    if(x.moy) return;
     if(x.mesure){ s = scoreDe(x, mes[x.mesure]); de = s == null ? "sans objet" : "mesure"; }
     /* un critère sans mesure ne compte pas : il n'est que « non mesuré » */
     else de = "non mesuré";
     crit[x.id] = { s:s, de:de };
+  });
+  /* un critère qui lit d'autres critères (`moy`) : la moyenne de leurs scores, après eux */
+  CRITERES.forEach(function(x){
+    if(!x.moy || crit[x.id]) return;
+    var S = x.moy.map(function(id){ return crit[id] && crit[id].s; }).filter(function(s){ return s != null; });
+    crit[x.id] = S.length ? { s:S.reduce(function(a, b){ return a + b; }, 0) / S.length, de:"mesure" } : { s:null, de:"sans objet" };
   });
   var axes = AXES.map(function(a){
     var sous = a.sous.map(function(sx){
