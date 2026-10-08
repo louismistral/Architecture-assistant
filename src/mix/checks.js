@@ -83,11 +83,15 @@ export function mixCheck(){
     { code:"bac", fix: fixReste(), keys: tb.map(function(b){ return b.key; }) });
 
   /* --- règles de niveau --------------------------------------------------- */
+  /* Une alerte par poste et par niveau : la salle de pause de l'UAPE est à la
+     fois de l'UAPE et de l'administration, et deux règles proposaient le même
+     geste deux fois. La première de la table, la plus précise, parle. */
+  var nivVu = {};
   BLOCKS.forEach(function(b){
     if(b.fl === TRAY || b.fl >= FLOORS.length) return;
     var p = PMAP[b.key], lv = lvlOf(b.fl);
     NIV.forEach(function(rl){
-      if(!nivHit(rl, p) || !lu(rl.id)) return;
+      if(nivVu[p.key + "@" + b.fl] || !nivHit(rl, p) || !lu(rl.id)) return;
       var bad = false;
       if(rl.lvl){ if(lv < rl.lvl.min || lv > rl.lvl.max) bad = true; }
       else if(rl.grade){ if(lv !== 0) bad = true; }
@@ -97,6 +101,7 @@ export function mixCheck(){
         if(ref.length && ref.indexOf(b.fl) < 0) bad = true;
       }
       if(!bad) return;
+      nivVu[p.key + "@" + b.fl] = 1;
       /* Le remède d'une règle de niveau est toujours le même geste : ramener le
          poste là où la règle l'admet. Pour une règle « au même niveau que », la
          cible est le niveau de son ancre. */
