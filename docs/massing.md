@@ -553,8 +553,11 @@ Chaque solide est désormais un **corps libre** (`v.libre`, `mass/libre.js`,
 - **Les niveaux sont les planchers du fichier.** Le rez est le plus bas qui n'est pas enterré
   (1,50 m sous le terrain au centre du solide) ; en dessous, des sous-sols. Un solide que
   traverse un plancher, et dont le toit tombe sur un plafond (à 10 cm), porte un étage par
-  niveau ; sinon c'est UN étage de grande hauteur (la salle de sport, la piscine). Les solides qui
-  se touchent ou se superposent font un bâtiment (`bat`).
+  niveau — un plancher d'un solide de SON chapitre : deux toits alignés d'une salle de sport et
+  d'une école ne coupent pas la salle ; sinon c'est UN étage de grande hauteur (la salle de sport,
+  la piscine). Les ouvrages du second temps ne font pas de niveau : posés plus bas ou plus haut,
+  ils prennent le plus proche. Les solides qui se touchent ou se superposent font un bâtiment
+  (`bat`). Deux variantes dans un fichier (`Volume 01`, `Volume 02`) : la première seule.
 - **La pile du mixer suit** (`poserLibres`) : ses niveaux et ses plateaux sont ceux du fichier,
   et le programme s'y répartit par chapitre (`docs/mixer.md`).
 - **Son intérieur se découpe en rectangles, chacun dans son axe** (`e.rects`, `decouper`) : la
@@ -566,7 +569,9 @@ Chaque solide est désormais un **corps libre** (`v.libre`, `mass/libre.js`,
   à la 3D (dessus triangulé par oreilles) et à l'export ; les rectangles à ce qui raisonne en
   rectangles — distances, recul, ensoleillement, plans des Typologies.
 - **L'app ne le retaille jamais** : ni tirettes, ni cotes, ni étages en plus, ni architecture
-  (`archiDe` est vide), ni `requilibre`, `fusionner`, `recoller`. Il se déplace et se tourne ; sa
+  (`archiDe` est vide), ni `requilibre`, `fusionner`, `recoller` ; et aucun remède du contrôle
+  n'est proposé sur un volume de Rhino (`fix.js — deRhino`) — ni recaler, ni écarter, ni creuser
+  le sous-sol, ni reposer le second temps. Il se déplace et se tourne ; sa
   forme se retouche dans Rhino. **Les contrôles le jugent tel quel** : une cote hors du module, un
   recul de 4,25 m, une salle de sport de 32,20 × 28,20 m le disent.
 - **Il repart tel qu'il est revenu** : l'export écrit un solide par corps libre, du pied de son
@@ -574,7 +579,7 @@ Chaque solide est désormais un **corps libre** (`v.libre`, `mass/libre.js`,
   l'aller et retour est identique au centimètre (`node tools/claude.mjs test`, `rhino_libre`).
 - Ne passe pas : un solide qui n'est pas un prisme droit (un toit en pente) est refusé avec son
   nom ; un solide plus étroit que ses deux murs aussi. Une cour d'un seul solide (un trou) : le
-  contour extérieur seul, pour l'instant. Les sommets d'un maillage Rhino sont en simple
+  contour extérieur seul, pour l'instant — l'import le dit, il faut la dessiner en plusieurs solides. Les sommets d'un maillage Rhino sont en simple
   précision : sur ce repère, 2 à 3 cm² d'écart par 100 m².
 
 ### Les corps du générateur, relus

@@ -31,6 +31,11 @@ import { MASS, aireEtage, auModule, demande, recouvrement, fusionne, massSet, ma
   volFusionne } from "./model.js";
 
 function vol(i){ return (i >= 0 && MASS.vol[i]) ? MASS.vol[i] : null; }
+/* UN VOLUME DE RHINO (des corps libres, `model.js — estLibre`) est tel que Rhino
+   l'a dessiné : aucun remède ne le déplace, ne le recompose ni ne le retaille —
+   ni recaler, ni écarter, ni creuser, ni reposer le second temps. Le contrôle dit
+   l'écart ; on le corrige dans Rhino. */
+function deRhino(){ return MASS.vol.some(function(v){ return v.libre; }); }
 /* Ce qu'on rejoue quand la géométrie d'un volume a changé : rien ne garantit
    qu'il tienne encore, et un remède ne doit pas laisser une composition pire
    qu'il ne l'a trouvée. */
@@ -47,12 +52,13 @@ function tenir(v, avant){
    les énonce. */
 export function fixRecaler(i){
   var v = vol(i);
-  if(!v) return null;
+  if(!v || deRhino()) return null;
   return acte("Ramener " + nomDe(v, i) + " dans la parcelle",
     "à la position admissible la plus proche — recul de 5 m, six mètres des voisins",
     function(){ return recaler(v, MASS.vol); });
 }
 export function fixEcarter(){
+  if(deRhino()) return null;
   return acte("Écarter les volumes",
     "toute la composition se desserre jusqu'aux distances exigées, puis se recale",
     function(){ ecarter(MASS.vol); return true; });
@@ -96,6 +102,7 @@ export function fixCarrer(i){
 
 /* ---------- les passerelles ------------------------------------------------ */
 export function fixRelier(){
+  if(deRhino()) return null;
   return acte("Recomposer les passerelles",
     "entre les corps d'école qui se font face, la plus courte d'abord",
     function(){ return relierCourant(); });
@@ -103,6 +110,7 @@ export function fixRelier(){
 
 /* ---------- le sous-sol ----------------------------------------------------- */
 export function fixSousSol(){
+  if(deRhino()) return null;
   return acte("Creuser sous le volume le mieux placé",
     "le sous-sol passe sous le corps dont le terrain est le plus haut : c'est là "
     + "que la couverture sur la nappe suffit",
@@ -157,6 +165,7 @@ function passe(n){
   return true;
 }
 export function fixAire(){
+  if(deRhino()) return null;
   return acte("Rééquilibrer les volumes sur le programme",
     "chaque niveau se repartage entre les corps qui le portent, à surface totale exacte",
     function(){ return requilibre(); });
@@ -164,7 +173,7 @@ export function fixAire(){
 
 /* ---------- les ouvrages du second temps ------------------------------------ */
 export function fixSecond(mode, lb, hint){
-  if(MASS.second === mode) return null;
+  if(MASS.second === mode || deRhino()) return null;
   return acte(lb, hint, function(){
     massSet("second", mode);
     poserSecondTemps(MASS.vol);
@@ -172,6 +181,7 @@ export function fixSecond(mode, lb, hint){
   });
 }
 export function fixReposerSecond(){
+  if(deRhino()) return null;
   return acte("Chercher une autre place",
     "on rebalaie la parcelle du bord vers le cœur",
     function(){ return poserSecondTemps(MASS.vol); });

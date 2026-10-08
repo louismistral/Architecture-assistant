@@ -111,7 +111,9 @@ export function axesDe(P){
     if(L < 1e-6) continue;
     var a = Math.atan2(q[1] - p[1], q[0] - p[0]), m = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2);
     var g = G.filter(function(x){ var d = Math.abs(x.a - m); return Math.min(d, Math.PI / 2 - d) < .5 * Math.PI / 180; })[0];
-    if(g){ g.s += m * L; g.L += L; g.a = g.s / g.L; } else G.push({ a:m, s:m * L, L:L });
+    /* 0° et 89,999° sont la même direction : on ramène l'angle près du groupe avant de le peser */
+    if(g){ m -= Math.round((m - g.a) / (Math.PI / 2)) * (Math.PI / 2); g.s += m * L; g.L += L; g.a = g.s / g.L; }
+    else G.push({ a:m, s:m * L, L:L });
   }
   return G.sort(function(x, y){ return y.L - x.L; }).map(function(x){ return { a:x.a, L:x.L }; });
 }

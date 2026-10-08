@@ -69,9 +69,9 @@ au dessin, à la 3D et à l'export.
   `etagesDe`, `assiseEff`, `datumEcole`, `mursDe`, `dessinDe`, `pontRect`.
 - `mass/etat.js — volsOf` : les nouveaux champs survivent.
 - `mass/gen.js`, `mass/fix.js` : rien ne retaille un corps libre.
-- `mass/mesures.js`, `mass/checks.js` : les mesures propres aux barres du générateur (module,
-  élancement, profondeurs de parts, porte-à-faux) se taisent sur un corps libre ; `normale()`
-  lit l'angle du rectangle.
+- `mass/mesures.js`, `mass/checks.js` : rien ne se tait — le module, la salle de sport aux
+  cotes exactes, le recul jugent le corps libre tel quel (décision 4) ; `normale()` lit l'angle du
+  rectangle. Aucun remède ne le déplace ni ne le recompose (`fix.js — deRhino`).
 - Les vues (`plan.js`, `vue3d.js`, `massing.js`), l'export `.3dm`, les vignettes, `claude.mjs`
   dessinent le polygone ; les poignées qui retaillent se cachent.
 - `mix/shuffle.js` : les chapitres des corps libres restreignent les niveaux d'un poste

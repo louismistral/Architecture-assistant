@@ -1226,7 +1226,8 @@ function importer(fichier){
          : r.mode === "boites" ? ", lus boîte par boîte" : ", découpés par leurs toits"
          + (r.mode === "classe" ? " — étages comptés à " + dec(RULES.haut.libre.cla + RULES.haut.dalle) + " m" : ""))
       + (r.horsPile ? " ; " + r.horsPile + " étage(s) hors de la pile du mixer, ignorés" : "")
-      + (mains ? " ; " + mains + " retouché" + (mains > 1 ? "s" : "") + " à la main" : "") + ".";
+      + (mains ? " ; " + mains + " retouché" + (mains > 1 ? "s" : "") + " à la main" : "")
+      + (r.cours && r.cours.length ? " ; « " + r.cours.join(" », « ") + " » a une cour : elle revient pleine, dessine-la en plusieurs solides" : "") + ".";
     camFit();
     planFit();
     redessine();

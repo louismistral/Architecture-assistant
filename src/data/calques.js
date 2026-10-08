@@ -91,7 +91,8 @@ export var CHAPITRES = [
 /* Le calque Volume, numéroté ou non (`3D::Projet::Volume`, `3D::Projet::Volume 01`). */
 export function estVolume(ch){
   var V = CALQUE.volume;
-  return ch === V || ch.indexOf(V + SEP) === 0 || new RegExp("^" + V.replace(/::/g, SEP) + "[ _-]?\\w*(" + SEP + "|$)").test(ch);
+  /* `Volume` suivi d'un numéro seulement — pas `Volume_old`, ni `Volumes` */
+  return ch === V || ch.indexOf(V + SEP) === 0 || new RegExp("^" + V + "[ _-]?\\d+(" + SEP + "|$)").test(ch);
 }
 export function chapDuCalque(ch){
   var S = ch.split(SEP).slice(3);

@@ -98,6 +98,11 @@ export function solides3dm(rh, octets){
     if(estVolume(ch)){ lu[k] = 1; conv = true; }
     if(ch === "Architecture" || ch === CALQUE.architecture) passe[k] = 1;
   }
+  /* deux variantes dans un fichier (`Volume 01`, `Volume 02`) : la première seule,
+     sans quoi elles se superposeraient */
+  var racines = Object.keys(lu).map(function(k){ return chem[k].split("::").slice(0, 3).join("::"); })
+    .filter(function(r, i, A){ return A.indexOf(r) === i; }).sort();
+  Object.keys(lu).forEach(function(k){ if(chem[k].split("::").slice(0, 3).join("::") !== racines[0]) delete lu[k]; });
   for(k = 0; k < O.count; k++){
     var at = O.get(k).attributes();
     if(conv ? !lu[at.layerIndex] : passe[at.layerIndex]) continue;
@@ -714,13 +719,16 @@ export function corpsLibres(solides){
     if(!D.rects.length) throw new Error(nom + " est plus étroit que ses deux murs : rien ne s'y loge.");
     return { T:T, p:p, D:D, c:centre(p.poly) };
   });
-  var Z = [];
-  S.map(function(s){ return s.p.z0; }).sort(function(a, b){ return a - b; })
+  /* les niveaux sont ceux de l'école : un ouvrage du second temps (la piscine,
+     posée plus bas) n'en fait pas — il prend le plus proche */
+  var Z = [], ecole = S.filter(function(s){ return s.T.chap !== "infra"; });
+  if(!ecole.length) ecole = S;
+  ecole.map(function(s){ return s.p.z0; }).sort(function(a, b){ return a - b; })
    .forEach(function(z){ if(!Z.length || z - Z[Z.length - 1] > TOL) Z.push(z); });
   function niv(z){ var k = 0; Z.forEach(function(x, i){ if(Math.abs(x - z) < Math.abs(Z[k] - z)) k = i; }); return k; }
   var rez = -1;
   Z.forEach(function(z, k){
-    if(rez < 0 && S.some(function(s){ return niv(s.p.z0) === k && s.p.z0 >= terrain(s.c[0], s.c[1]) - ENTERRE; })) rez = k;
+    if(rez < 0 && ecole.some(function(s){ return niv(s.p.z0) === k && s.p.z0 >= terrain(s.c[0], s.c[1]) - ENTERRE; })) rez = k;
   });
   if(rez < 0) rez = Z.length - 1;
   var nsub = rez, nup = Z.length - 1 - rez;
@@ -728,11 +736,15 @@ export function corpsLibres(solides){
     throw new Error(Z.length + " niveaux dans le fichier (" + nsub + " sous-sols, " + nup + " étages) : le mixer en porte au plus "
       + SUB_MAX + " sous le rez et " + UP_MAX + " au-dessus.");
   var vols = S.map(function(s, k){
-    var p = s.p, z1 = p.z1;
-    var dedans = Z.filter(function(z){ return z > p.z0 + .5 && z < z1 - .5; });
+    var p = s.p, z1 = p.z1, meme = S.filter(function(o){ return o !== s && o.T.chap === s.T.chap; });
+    /* un plancher le traverse : celui d'un solide de son chapitre (deux toits alignés
+       d'une salle de sport et d'une école ne coupent pas la salle) */
+    var dedans = Z.filter(function(z){
+      return z > p.z0 + .5 && z < z1 - .5 && meme.some(function(o){ return Math.abs(o.p.z0 - z) <= TOL; });
+    });
     var plafond = Z.some(function(z){ return Math.abs(z - z1) <= .1; })
-               || S.some(function(o){ return o !== s && Math.abs(o.p.z1 - z1) <= .1; });
-    var B = [p.z0].concat(dedans.length && plafond ? dedans : [], [z1]);
+               || meme.some(function(o){ return Math.abs(o.p.z1 - z1) <= .1; });
+    var B = [p.z0].concat(dedans.length && plafond && s.T.chap !== "infra" ? dedans : [], [z1]);
     var R = s.D.rects.slice().sort(function(a, b){ return b.w * b.d - a.w * a.d; });
     var v = { id:"L" + (k + 1), libre:1, x:s.c[0], y:s.c[1], a:demiTour(R[0].a) };
     var L = versLocal(v), poly = p.poly.map(L);
@@ -762,7 +774,9 @@ export function corpsLibres(solides){
   /* les plateaux du mixer : l'emprise hors tout de chaque niveau */
   var plates = Z.map(function(){ return 0; });
   vols.forEach(function(v){ if(!v.ph) v.lv.forEach(function(e){ plates[e.lvl + rez] += airePoly(e.poly); }); });
-  return { vols:vols, mode:"libre", nsub:nsub, nup:nup, plates:plates.map(Math.round),
+  /* un solide à cour (un trou) revient plein : le dire, il faut le dessiner en deux */
+  var cours = S.filter(function(s){ return s.p.trous; }).map(function(s){ return s.T.nom || "un solide"; });
+  return { vols:vols, mode:"libre", nsub:nsub, nup:nup, plates:plates.map(Math.round), cours:cours,
            corps:vols.length, couvert:Math.min.apply(null, S.map(function(s){ return s.D.couvert; })) };
 }
 /* un angle de rectangle dans ]−90°, 90°] : un demi-tour ne le change pas */
@@ -781,7 +795,7 @@ function demiTour(a){
 export function poserLibres(r){
   setStack(r.nsub, r.nup, r.plates);
   r.vols.forEach(function(v){ v.lv.forEach(function(e){ e.i = idxOfLvl(e.lvl); delete e.lvl; }); });
-  repartir({ garder:true, chapitres:chapNivDe(r.vols) });
+  repartir({ garder:true, chapitres:chapNivDe(r.vols) || {} });
   sportLibre(r.vols);
   secondLibre(r.vols);
   return r.vols;

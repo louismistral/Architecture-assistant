@@ -527,6 +527,7 @@ async function verbeImporter({ pos, opt }){
                 horsPile:r.horsPile || 0, parent:sol.variante || null };
   if(!opt.muet && !opt.json) console.log("importé : " + b.importe.corps + " corps (" + r.mode + "), "
     + b.importe.humain + " touché(s) par un humain, " + b.importe.ia + " par une IA" + (b.importe.horsPile ? ", " + b.importe.horsPile + " étage(s) hors pile ignorés" : "")
+    + (r.cours && r.cours.length ? ", " + r.cours.join(", ") + " : une cour revient pleine" : "")
     + " · variante mère : " + (b.importe.parent || "aucune") + (b.importe.parent ? " — passe --parent " + b.importe.parent + " à `variante`" : "") + "\n");
   return sortie(b, opt, texte);
 }
@@ -897,11 +898,14 @@ const TESTS = {
     solide("Ecole_haut", "Ecole", [[60, 60], [100, 60], [100, 80], [60, 80]], z + 3, z + 9);
     solide("Ecole_toit", "Ecole", [[60, 82], [80, 82], [80, 100], [60, 100]], z + 6, z + 9);
     solide("UAPE", "UAPE", U, z, z + 3);
-    solide("Salle", "Salle de sport", H, z, z + 7);
+    /* son toit tombe sur celui de l'école : elle ne se coupe pas pour autant */
+    solide("Salle", "Salle de sport", H, z, z + 9);
+    /* la piscine, posée plus bas que l'école : elle ne fait pas un niveau */
+    solide("Piscine", "Public et communale", [[150, 60], [170, 60], [170, 85], [150, 85]], z - 1, z + 5.2);
     solide("Technique", "Conciergerie et technique", H, z - 3, z);
     const sol = I.solides3dm(rh, doc.toByteArray()), r = I.volsDe3dm(sol);
     assert.equal(r.mode, "libre");
-    assert.equal(r.vols.length, 6);
+    assert.equal(r.vols.length, 7);
     assert.deepEqual([r.nsub, r.nup], [1, 2]);
     I.poserLibres(r);
     M.massVols(r.vols);
@@ -923,7 +927,9 @@ const TESTS = {
     assert.ok(Math.abs(M.contourDe(vU, vU.lv[0]).aire - 320) < .1, "contour de l'UAPE : " + M.contourDe(vU, vU.lv[0]).aire + " " + JSON.stringify(vU.lv[0].poly));
     /* la salle de sport, à sa hauteur ; le sous-sol, sous elle */
     const vs = r.vols.find((v) => v.fix);
-    assert.ok(vs && vs.id === "vsport" && Math.abs(vs.lv[0].h - 7) < .01, "salle de sport");
+    assert.ok(vs && vs.id === "vsport" && vs.lv.length === 1 && Math.abs(vs.lv[0].h - 9) < .01, "salle de sport");
+    const vp = r.vols.find((v) => v.ph === 2);
+    assert.ok(vp && F.lvlOf(vp.lv[0].i) === 0 && Math.abs(vp.lv[0].h - 6.2) < .01, "piscine");
     assert.equal(F.lvlOf(par("Technique").lv[0].i), -1);
     /* le mixer : chaque chapitre sur les niveaux de ses solides */
     const ok = { ecole:[1, 2, 3], uape:[1], tech:[0], sport:[1] };
