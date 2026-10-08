@@ -412,10 +412,13 @@ export function creerPG(D){
        un vestiaire dont la mère est sortie du corps (au bac) va à une classe
        restée sans. Un vestiaire de trop reste un satellite, en bloc. */
     function sas(g, x){ g.ante = x; x.enSas = 1; }
-    f.U.forEach(function(u){ u.ante = null; u.enSas = 0; });
-    f.U.forEach(function(x){ if(x.anti && x.prin && x.prin.key === x.anti && !x.prin.ante && !x.prin.sansSas && f.U.indexOf(x.prin) >= 0) sas(x.prin, x); });
+    /* LE PLAN EN CLUSTER (`o.cluster`) : pas de sas — les vestiaires de la
+       grappe sont ouverts (`ouvert`) sur son espace commun, en un bloc après sa
+       dernière classe (Zurich, Wallrüti, Steinacker…) */
+    f.U.forEach(function(u){ u.ante = null; u.enSas = 0; u.ouvert = o.cluster && u.anti ? 1 : 0; });
+    if(!o.cluster) f.U.forEach(function(x){ if(x.anti && x.prin && x.prin.key === x.anti && !x.prin.ante && !x.prin.sansSas && f.U.indexOf(x.prin) >= 0) sas(x.prin, x); });
     f.U.forEach(function(x){
-      if(!x.anti || x.enSas) return;
+      if(o.cluster || !x.anti || x.enSas) return;
       var g = f.U.filter(function(u){ return u.key === x.anti && !u.ante && !u.sansSas; })[0];
       if(g) sas(g, x);
     });
@@ -459,7 +462,11 @@ export function creerPG(D){
       if(u.a < PETIT){ seuls.push(u); return; }
       items.push(piece(u));
       suite(u);
-      if(++n2 >= 1 && attente.length) vider();
+      /* en cluster, le bloc attend la fin de la grappe : la troisième classe
+         quand un WC attend (il suit la dernière classe de sa part), la quatrième
+         sinon */
+      n2 = SALLE.test(u.n || "") ? n2 + 1 : 0;
+      if(attente.length && (!o.cluster || !n2 || n2 >= 4 || (n2 >= 3 && attente.some(function(x){ return !x.anti; })))) vider();
     });
     vider();
     blocsDe(seuls.sort(function(p, q){ return (famO(p) - famO(q)) || (q.a - p.a); })).forEach(function(b){ items.push(b); });
@@ -504,6 +511,7 @@ export function creerPG(D){
        lieu d'être : le hall, sur toute la profondeur, relie déjà les couloirs.
        À cheval sur son bord, il s'y adosse — raccord et hall font une seule
        ouverture. */
+    var ESPACE = (PLAN.juge || {}).espace;
     var fixT = 0; trav.forEach(function(u){ fixT += u.a / D; });
     var bord = Lw - fix;
     function auHall(r){
@@ -522,7 +530,16 @@ export function creerPG(D){
     var extG = !o.passG && !K.some(function(x){ return x < 0.5; }),
         extD = !o.passD && !full.length && !trav.length && !K.some(function(x){ return x + WC > Lw - 0.5; });
     /* la largeur d'un élément de bande à la profondeur H */
-    function larg(it, H){ return it.kind === "bloc" ? peigne(it.cel, H).W : it.a / profDe(it, H) + anteW(it, H); }
+    function larg(it, H){ return it.kind === "bloc" ? blocDe(it, H).P.W : it.a / profDe(it, H) + anteW(it, H); }
+    /* un bloc à la profondeur H. Ouvert (des vestiaires de cluster), il laisse
+       devant lui, sur le couloir, l'ESPACE DE GRAPPE : `juge.espace` m² au
+       moins, sur la moitié de la bande au plus — `dv` sa profondeur */
+    function blocDe(it, H){
+      var dv = 0, P = peigne(it.cel, H);
+      if(o.cluster && it.cel.some(function(x){ return x.ouvert; }))
+        for(var t = 0; t < 6; t++){ dv = Math.min(H / 2, Math.max(dv, ESPACE / P.W)); P = peigne(it.cel, H - dv); }
+      return { P:P, dv:dv };
+    }
     /* le front du vestiaire en sas d'une classe, contre la façade comme elle */
     function anteW(it, H){ return it.ante ? it.ante.a / profDe(it.ante, H) : 0; }
     /* au bout, une pièce ferme le couloir si elle en prend toute la profondeur
@@ -606,7 +623,7 @@ export function creerPG(D){
       function mesure(k){
         if(M[k]) return M[k];
         var it = list[k], e = ferme(it, k, list, b, eg, ed), H = b + (e ? c : 0), m = { e:e, H:H };
-        if(it.kind === "bloc"){ m.P = peigne(it.cel, H); m.W = m.P.W; } else { m.p = profDe(it, H); m.W = it.a / m.p + anteW(it, H); }
+        if(it.kind === "bloc"){ var bk = blocDe(it, H); m.P = bk.P; m.dv = bk.dv; m.W = m.P.W; } else { m.p = profDe(it, H); m.W = it.a / m.p + anteW(it, H); }
         return (M[k] = m);
       }
       /* une place réservée : un noyau, ou un raccord — le couloir de l'aile
@@ -639,8 +656,10 @@ export function creerPG(D){
         if(sec){ x += m.W; continue; }
         var it = list[k], e = m.e, H = m.H, P = m.P, p = m.p, r;
         if(P){
-          r = Object.assign({}, it, { frame:frame, x0:x, W:P.W, H:H, v0:0, ext:0, cel:P.cel });
-          P.devant.forEach(function(d){ paliers.push({ frame:frame, x0:x + d.u0, W:d.W, H:d.H }); });
+          var dv = m.dv;
+          r = Object.assign({}, it, { frame:frame, x0:x, W:P.W, H:H - dv, v0:dv, ext:0, cel:P.cel });
+          if(dv) paliers.push({ frame:frame, x0:x, W:P.W, H:dv, grappe:1 });
+          P.devant.forEach(function(d){ paliers.push({ frame:frame, x0:x + d.u0, W:d.W, H:d.H, v0:dv || undefined }); });
         } else {
           /* la pièce contre la façade, ce qui reste devant elle ouvert sur le couloir */
           var W = it.a / p;
@@ -699,6 +718,9 @@ export function creerPG(D){
     /* l'ordre des familles, tiré de la seed : il décide quelle famille va à
        quel corps, et dans quel ordre elles se suivent le long du couloir */
     GR = D0.graine || 1;
+    /* LE TYPE DE PLAN, tiré de la seed (`RULES.plan.cluster`) : le même à tous
+       les niveaux, l'alea étant pur */
+    var cluster = alea("cluster") < (PLAN.cluster || 0);
     FAMS_O = FAMS0.slice().sort(function(p, q){ return alea("fam " + p) - alea("fam " + q); });
     var fl = D0.floors[i], vols = D0.partis[parti].vols;
     var F = [], fixes = [], non = [];
@@ -719,7 +741,7 @@ export function creerPG(D){
     var U = unites(fl.rooms.filter(function(r){
       return !fixes.some(function(f){ return f.e.keys.indexOf(r.key) >= 0; });
     }));
-    if(!F.length){ U.forEach(function(u){ non.push(u); }); return { F:fixes, non:non, fl:fl }; }
+    if(!F.length){ U.forEach(function(u){ non.push(u); }); return { F:fixes, non:non, fl:fl, cluster:cluster }; }
 
     /* LA RÉPARTITION entre les corps du niveau : le sport près de la salle,
        l'UAPE loin d'elle, le reste famille par famille, au prorata de ce que
@@ -910,7 +932,7 @@ export function creerPG(D){
         debut = pr * an.s < 0;
       }
       function comp(){
-        composer(f, { s:an.s, N:an.N, noyaux:K, off:off, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:e.w, regles:reg, res:resDe(f, an) });
+        composer(f, { s:an.s, N:an.N, noyaux:K, off:off, salleDebut:debut, passG:passe(deb, -an.s), passD:passe(fin, an.s), L0:e.w, regles:reg, res:resDe(f, an), cluster:cluster });
       }
       f.comp = comp;
       caser(f);
@@ -966,7 +988,7 @@ export function creerPG(D){
       f.dxNew = dx;
       var p = local(f.v.x, f.v.y, f.v.a, dx, f.dyNew); f.cx = p[0]; f.cy = p[1];
     });
-    return { F:F.concat(fixes), non:non, fl:fl, J:J };
+    return { F:F.concat(fixes), non:non, fl:fl, J:J, cluster:cluster };
   }
 
   /* un point du site dans le repère d'un corps (son centre, son axe) */

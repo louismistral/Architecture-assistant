@@ -160,6 +160,7 @@ body{ padding-inline:var(--s-4); }
       </button>
       <div class="mass-nav">
         <span class="mass-nav__r" id="cadre-l"></span>
+        <span class="segcap" id="type-plan"></span>
         <div class="mass-seed">
           <span class="segcap">Seed</span>
           <input type="text" id="seed" class="mono" size="7" spellcheck="false" autocomplete="off"
@@ -830,7 +831,8 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
       });
       /* le sol libre d'un rang n'est pas un reste muet : un dégagement, nommé */
       (f.paliers || []).forEach(function(k){
-        if(k.W * k.H >= PG.PETIT && st.etape === 6) etiquette(f, k.frame, k.x0, 0, 0, k.W, k.H, "Dégagement", k.W * k.H, false);
+        if((k.grappe || k.W * k.H >= PG.PETIT) && st.etape === 6)
+          etiquette(f, k.frame, k.x0, 0, k.v0 || 0, k.W, k.H, k.grappe ? "Espace de grappe" : "Dégagement", k.W * k.H, false);
       });
       f.cages.forEach(function(c){
         cagesA += c.W * c.H;
@@ -846,8 +848,11 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
 
       /* ---- un local : fond, cloisons, ouvertures, mobilier, étiquette ---- */
       function local1(f, frame, x0, r, u0, v0, W, H, cls, cellule){
-        var trav = r.kind === "trav";
-        out.rooms.push('<polygon class="' + cls + ' fam-' + (r.f || "tec") + '" data-chap="' + (r.chap || String(r.key || "").split("|")[0]) + '" data-k="' + INFO.length + '"' + (trav ? ' style="stroke:none"' : "") + ' points="' + pts(f, rectF(f, frame, x0, u0, v0, W, H)) + '"/>');
+        var trav = r.kind === "trav", R4 = rectF(f, frame, x0, u0, v0, W, H);
+        out.rooms.push('<polygon class="' + cls + ' fam-' + (r.f || "tec") + '" data-chap="' + (r.chap || String(r.key || "").split("|")[0]) + '" data-k="' + INFO.length + '"' + (trav || r.ouvert ? ' style="stroke:none"' : "") + ' points="' + pts(f, R4) + '"/>');
+        /* un vestiaire de cluster est ouvert sur l'espace de sa grappe : pas de
+           cloison de ce côté-là (le premier de `rectF`, côté couloir) */
+        if(r.ouvert) out.part.push('<polyline class="part" points="' + pts(f, [R4[1], R4[2], R4[3], R4[0]]) + '"/>');
         INFO.push({ lab:r.lab || r.n, n:r.n, a:r.a, W:W, H:H, f:r.f,
                     regle:r.kind === "band" && !r.antichambre ? { id:f.v.id, i:f.e.i, lab:r.lab, a:r.a, ext:!!r.ext, key:r.key } : null });
         if(trav){
@@ -893,7 +898,7 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
           /* une cabine de WC (1 m) a sa porte de 80 cm */
           var jeu = cellule && W < 1.3 ? 0.1 : 0.2, dw = Math.min(PG.PLAN.porte, W - 2 * jeu);
           var uh = Math.max(f.zl - x0 + dw + 0.15, Math.min(u0 + W - jeu - (cellule ? 0 : 0.05), f.zr - x0 - 0.15));
-          if(W >= (cellule ? 0.9 : 1.1) && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, r.porteV != null ? r.porteV : Math.max(0, v0), dw);
+          if(!r.ouvert && W >= (cellule ? 0.9 : 1.1) && uh - dw >= u0 - 0.01 && uh <= u0 + W + 0.01) porte(f, frame, x0, uh, r.porteV != null ? r.porteV : Math.max(0, v0), dw);
         } else if(r.kind === "full" && r.x0 > -f.L / 2 + 0.01){
           var ym = f.deux ? (f.yc0 + f.yc1) / 2 : (f.yc0 + f.yc1) / 2;
           porteX(f, r.x0, ym, Math.min(PG.PLAN.porteDouble, PG.COULOIR - 0.5), 1);
@@ -1207,10 +1212,11 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
     $("titre").textContent = "Plan · " + fl.name;
     $("sous").textContent = res.F.length + " corps · h " + fmt(fl.h, 2) + " m";
     seedIn.value = seedTxt();
+    $("type-plan").textContent = "Plan : " + (res.cluster ? "cluster" : "couloir");
     $("cartouche").innerHTML = '<div>Projet</div><div>Centre scolaire de Saxon</div><div>Étape</div><div>05 Typologies</div>' +
       '<div>Parti</div><div>' + esc(P0.n) + '</div><div>Niveau</div><div>' + esc(fl.name) + ' · h ' + fmt(fl.h, 2) + ' m</div>' +
       '<div>Échelle</div><div id="c-ech"></div><div>Coupe</div><div>à ' + fmt(PG.PLAN.coupe, 2) + ' m du sol</div>' +
-      '<div>Seed</div><div>' + seedTxt() + '</div>';
+      '<div>Seed</div><div>' + seedTxt() + '</div><div>Plan</div><div>' + (res.cluster ? "cluster" : "couloir") + '</div>';
 
     var demande = 0, posé = 0, rows = [];
     fl.rooms.forEach(function(r){

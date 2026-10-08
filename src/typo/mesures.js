@@ -186,12 +186,23 @@ export function lirePlans(D){
   }); });
   /* LE VESTIAIRE EN SAS : les pièces qu'un lien `sas` dit s'entrer par leur
      antichambre (les classes standard), et celles qui s'y entrent vraiment —
-     l'antichambre contre elle, un mur commun assez long pour la porte */
+     l'antichambre contre elle, un mur commun assez long pour la porte. En
+     plan cluster, le vestiaire est dans l'espace de la grappe : la classe le
+     tient si un bloc ouvert (`ouvert`) borde sa suite de classes, même bande */
   var meres = {}, sas = { n:0, ok:0, sans:[] };
   (D.liens || []).forEach(function(l){ if(l.sas) meres[l.a] = 1; });
+  function ouvert(rm){ return rm && rm.kind === "bloc" && rm.cel.some(function(c){ return c.ouvert; }); }
+  function grappeOuverte(f, rm){
+    var B = f.rooms.filter(function(x){ return x.frame === rm.frame; }).sort(function(p, q){ return p.x0 - q.x0; }), k = B.indexOf(rm);
+    return [-1, 1].some(function(d){
+      for(var j = k + d; B[j] && B[j].kind === "band" && meres[B[j].key]; j += d);
+      return ouvert(B[j]);
+    });
+  }
   tous.forEach(function(r, i){ r.F.forEach(function(f){ f.rooms.forEach(function(rm){
     if(rm.kind !== "band" || !meres[rm.key]) return;
     sas.n++;
+    if(r.cluster){ if(grappeOuverte(f, rm)) sas.ok++; else sas.sans.push({ lab:rm.lab || rm.n, i:i }); return; }
     var v = rm.vest, colle = v && v.frame === rm.frame && (Math.abs(v.x0 - rm.x0 - rm.W) < 0.05 || Math.abs(rm.x0 - v.x0 - v.W) < 0.05);
     var m = colle ? Math.min(rm.v0 + rm.H, v.v0 + v.H) - Math.max(rm.v0, v.v0) : 0;
     if(m >= PG.PLAN.porte + 0.2) sas.ok++; else sas.sans.push({ lab:rm.lab || rm.n, i:i });
@@ -332,7 +343,7 @@ function couloirs(L){
       if(Math.min(k.W, k.H) >= J.meuble) niches.push(k);
       /* sur la façade : il prend toute la profondeur de sa bande */
       var b = k.frame === "A" ? f.yc0 + f.D / 2 : f.D / 2 - f.yc1;
-      if(k.H >= b - 0.05) src.push([k.x0, k.x0 + k.W]);
+      if((k.v0 || 0) + k.H >= b - 0.05) src.push([k.x0, k.x0 + k.W]);
     });
     f.rooms.forEach(function(rm){ if(rm.kind === "trav") src.push([rm.x0, rm.x0 + rm.W]); });
     [-1, 1].forEach(function(sg){
@@ -356,7 +367,7 @@ function couloirs(L){
 /* les dégagements (paliers hors raccord) d'un corps, en rectangles de son étage */
 function degagements(f){
   return (f.paliers || []).filter(function(k){ return !k.raccord; }).map(function(k){
-    var y0 = k.frame === "A" ? f.yc0 - k.H : k.frame === "B" ? f.yc1 : -f.D / 2;
+    var v = k.v0 || 0, y0 = k.frame === "A" ? f.yc0 - v - k.H : k.frame === "B" ? f.yc1 + v : -f.D / 2;
     return { f:f, x0:k.x0, x1:k.x0 + k.W, y0:y0, y1:y0 + k.H, a:k.W * k.H };
   });
 }
@@ -561,16 +572,25 @@ function mesuresDe(L, D, vols){
       /* les grappes, bande par bande : un noyau, un bloc, une autre pièce coupent la suite */
       ["A", "B"].forEach(function(fr){
         var B = f.rooms.filter(function(rm){ return rm.frame === fr; }).sort(function(p, q){ return p.x0 - q.x0; });
-        var K = f.cages.filter(function(c){ return c.bande === fr; }), run = 0, fin = null, deb = 0;
-        function clore(){ if(run){ sG += grappe(run) * run; nG += run; suites.push({ i:i, f:f, x0:deb, x1:fin, n:run }); } run = 0; }
+        /* le bloc ouvert d'un cluster ferme sa grappe : la suite se lit vers lui
+           et s'étend à lui — l'espace de la grappe est devant (`espaceGrappe`) */
+        function ouv(rm){ return rm.kind === "bloc" && rm.cel.some(function(c){ return c.ouvert; }); }
+        var kb = B.findIndex(ouv), kc = B.findIndex(function(rm){ return rm.kind === "band" && UNITE.test(rm.n); });
+        if(kb >= 0 && kb < kc) B.reverse();
+        var K = f.cages.filter(function(c){ return c.bande === fr; }), run = 0, prev = null, x0 = 0, x1 = 0;
+        function tient(rm){ x0 = Math.min(x0, rm.x0); x1 = Math.max(x1, rm.x0 + rm.W); }
+        function clore(){ if(run){ sG += grappe(run) * run; nG += run; suites.push({ i:i, f:f, x0:x0, x1:x1, n:run }); } run = 0; }
         B.forEach(function(rm){
           /* le vestiaire en sas fait partie de sa classe : il ne coupe pas la suite */
           if(rm.antichambre) return;
+          if(ouv(rm)){ if(run) tient(rm); clore(); prev = rm; return; }
           var cl = rm.kind === "band" && UNITE.test(rm.n);
-          var coupe = fin != null && K.some(function(c){ return c.x0 + c.W > fin - 0.05 && c.x0 < rm.x0 + 0.05; });
+          /* un noyau entre la pièce d'avant et celle-ci */
+          var g0 = prev && Math.min(prev.x0 + prev.W, rm.x0 + rm.W), g1 = prev && Math.max(prev.x0, rm.x0);
+          var coupe = prev && K.some(function(c){ return c.x0 + c.W > g0 - 0.05 && c.x0 < g1 + 0.05; });
           if(!cl || coupe) clore();
-          if(cl && !run++) deb = rm.x0;
-          fin = rm.x0 + rm.W;
+          if(cl){ if(!run++){ x0 = rm.x0; x1 = rm.x0 + rm.W; } else tient(rm); }
+          prev = rm;
         });
         clore();
       });
