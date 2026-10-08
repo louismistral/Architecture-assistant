@@ -286,6 +286,27 @@ corps que le Massing n'a pas pu assembler) gardent UN mur : celui de l'autre, et
 encore (moins de `regles.fusion`, 1 m), devient un dégagement, ouvert sur une baie de passage —
 dans l'axe du couloir qui y finit, ou du raccord qui y mène.
 
+## Un volume de Rhino : chaque chapitre dans ses solides
+
+Un massing dessiné dans Rhino revient en **corps libres** (`docs/massing.md`) : chaque solide tel
+qu'il est, avec le chapitre de son sous-calque, et son intérieur découpé en rectangles, chacun dans
+son axe. `ailes()` fait de chaque rectangle une aile (marquée `deLibre`), à tous les niveaux du
+solide — ses rectangles sont les mêmes d'un niveau à l'autre, son noyau s'empile —, et chaque
+étage d'aile porte son chapitre (`e.chap`). Deux ailes d'un corps libre peuvent se recouvrir (une
+aile en biais posée sur une barre) : elles se cèdent leur part commune (`cedeeDe`), pavée une fois.
+
+`gen.js — genNiveau` ne pose alors une pièce **que dans une aile de son chapitre** :
+
+- le découpage contigu se fait chapitre par chapitre (`trancher`), chacun entre les seules ailes
+  de son chapitre, à la part de chacune ; un chapitre sans aile au niveau va aux ailes sans
+  chapitre s'il y en a, sinon au bac du niveau ;
+- un groupe de grandes pièces liées ne réunit que des pièces d'un même chapitre — sans quoi un lien
+  du schéma entre la salle de sport et l'UAPE emmenait l'UAPE dans le solide du sport ;
+- les petites pièces liées suivent leurs mères, et un relogement (`reloger`) reste dans le chapitre.
+
+Sans chapitre (un massing du générateur), rien ne change : les snapshots de *Vérifier* restent les
+mêmes au chiffre près.
+
 **Verrouillées** (`core/verrou.js`), les Typologies se regardent : le Shuffle, la seed et la cote
 d'une pièce sont désactivés (`DATA.verrou`). Un cadenas sur les Typologies fige aussi le Massing,
 le mixer et le cahier des charges : le plan ne peut plus bouger sous elles.

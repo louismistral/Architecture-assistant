@@ -264,7 +264,7 @@ de rôle) est un nombre écrit en dur, et c'est un défaut.
   voisin, à côté de la règle qu'il répare. La mécanique qu'il rejoue reste dans `gen.js`.
 - **Les familles et leurs couleurs** : `src/data/families.js` + `styles/tokens.css`.
 - **Le relevé du géomètre** : `src/data/site.js`, engendré — voir `docs/releve.md`.
-- **Un calque, une épaisseur, la couleur d'un acteur** : `src/data/calques.js` seul —
+- **Un calque, une épaisseur, la couleur d'un acteur, le chapitre qu'un sous-calque désigne** : `src/data/calques.js` seul —
   tout export et tout import le lisent (`mass/export.js`, `mass/import.js`, `core/pdf.js — dxf()`).
 - **Un réglage du mixer et son dé** (la pile et son dé, le lien d'un poste, les cotes ; les
   adjacences exigées, toujours actives) : `src/mix/opts.js` seul ; `shuffle.js` le lit, la vue le montre là où il se voit.

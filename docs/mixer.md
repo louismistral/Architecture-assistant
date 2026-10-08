@@ -58,6 +58,29 @@ une, l'orientation « pile compacte » préférant les plus basses. **Une varian
 C'est pourquoi le **dé de la pile est allumé par défaut** : l'éteindre avant d'avoir composé
 la pile revient à proposer une école de plain-pied de 3'400 m² d'emprise.
 
+## Un massing de Rhino dit où va chaque chapitre
+
+Un volume dessiné dans Rhino revient tel qu'il est (`docs/massing.md`, *Les corps libres*), et
+chaque solide porte le chapitre de son sous-calque. **La pile suit le volume** :
+`import.js — poserLibres()` pose les niveaux et les plateaux du fichier (`setStack`), puis répartit
+avec `repartir({ garder:true, chapitres })` — la pile et ses plateaux restent ceux qu'on a posés.
+
+- **Les niveaux d'un poste** (`shuffle.js — rangeOf`) : ceux où son chapitre a des solides. S'il
+  n'en reste aucun que sa règle de niveau admette, ceux du dessin — c'est lui qui décide, le
+  contrôle dira la règle.
+- **La place d'un chapitre sur un niveau** (`libreChap`) : la surface intérieure de ses solides,
+  hors couloirs, moins ce qu'il y porte déjà. Elle borne la pose (`poser`) et la note de place.
+- **Remplir le volume** (`remplirChapitres`) : la note préfère les classes en haut, et vestiaires
+  et WC les suivent — un niveau débordait quand son voisin restait à moitié vide. Chaque niveau
+  d'un chapitre se remplit donc dans la MÊME proportion que les autres : une unité passe d'un
+  niveau à l'autre tant que le passage rapproche les deux de leur part, la plus grande d'abord,
+  puis les sanitaires se refont sur les classes.
+
+Les chapitres se lisent chez le massing (`mass/model.js — chapNivDe`, enregistré par
+`setChapitres`) : un « Shuffle programme » sur un volume de Rhino les tient toujours, et garde la
+pile et les plateaux du fichier même si leur dé est allumé — ses étages sont ceux du volume ; un
+« Shuffle massing », qui remplace le volume, les libère. Sans corps libre, rien ne change.
+
 ## Le plateau suit la répartition — si son dé est allumé
 
 Comme la hauteur de niveau suit le programme qu'il porte. Le plateau sert de CAPACITÉ
