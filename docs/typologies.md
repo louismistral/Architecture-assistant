@@ -363,7 +363,7 @@ La seed est la troisième de la recherche automatique : elle y est rebattue par 
 ## Le vestiaire en sas
 
 Le lien classes–vestiaires est un passage obligé (`schema.js`, `sas:1`) : couloir → vestiaire →
-classe. Les 18 vestiaires de classe vont aux 18 classes **standard** ; les classes de réserve
+classe — en plan couloir ; en plan cluster, le vestiaire est dans l'espace de la grappe (plus bas). Les 18 vestiaires de classe vont aux 18 classes **standard** ; les classes de réserve
 et de dédoublement n'en ont pas au programme.
 
 - **un élément de bande** : `composer()` donne à chaque classe UN des vestiaires qui la suivent
@@ -383,6 +383,38 @@ et de dédoublement n'en ont pas au programme.
 Le prix est dit : le dégagement devant chaque vestiaire et les WC qui ne s'empilent plus avec
 lui (un bloc à part) allongent les bandes — sur la composition de référence, la part posée
 passe de 93-96 % à 91-95 % d'une seed à l'autre.
+
+## Le plan en cluster
+
+La seed tire l'un de deux plans : le **plan couloir**, où chaque classe s'entre par son vestiaire,
+et le **plan cluster** — trois ou quatre classes autour d'un espace commun éclairé, la
+*Lernzone* zurichoise, où sont leurs vestiaires. Les deux se jugent aux mêmes critères.
+
+- **la règle** : `RULES.plan.cluster` (0,5), la part des seeds qui tirent un cluster ;
+  `gen.js — genNiveau()` tire `alea("cluster")`, pur, donc le même type à tous les niveaux.
+  Le résultat le porte (`cluster`), la page l'affiche à côté de la seed et dans la cartouche ;
+- **la composition** (`composer()`, `o.cluster`) : pas de sas. Les vestiaires et les WC de la
+  grappe attendent sa troisième classe (quand un WC attend), sinon sa quatrième, et forment
+  UN bloc après elle : C C C [vestiaires + WC]. Les vestiaires y sont `ouvert` ;
+- **l'espace de grappe** : le bloc ouvert se pose contre la façade, moins profond que sa bande
+  (`blocDe()`), et laisse sur le couloir un palier (`grappe:1`) de `juge.espace` m² au moins,
+  sur la moitié de la bande au plus. Le dessin l'appelle « Espace de grappe » ; les vestiaires
+  n'ont ni cloison ni porte de son côté. Un palier peut désormais commencer en retrait du
+  couloir (`v0`) : les dégagements devant les cellules du bloc ;
+- **la mesure** : `vestSas` compte, en cluster, la classe dont la suite de classes bute sur un
+  bloc ouvert, même bande (`lirePlans() — grappeOuverte()`) ; `grappes` lit la suite jusqu'au
+  bloc qui la ferme, et `espaceGrappe` y trouve l'espace devant lui.
+
+Les références : les écoles en cluster de Suisse alémanique — Oberwinterthur Wallrüti,
+Winterthur Steinacker, Schwerzenbach, Berg, Effretikon Rosswinkel, Pratteln Fröschmatt, Berne
+Goumoëns, Birrwil, Viège Schulhaus im Sand, Riehen Hebelschulhaus — et, côté romand, les
+concours de Châtel-St-Denis, Riaz, Fribourg Vignettaz, Meinier, Cugy, Praroman, Le Mont
+Champs d'Aullie et Genève Liotard.
+
+Le prix est dit : sur la composition de référence, vingt seeds (dix de chaque type), la part
+Typologie est la même (55,3 % en cluster, 55,2 % en couloir), les grappes de 3 ou 4 passent de
+43 à 70 %, la part posée de 88,7 à 89,2 %, `vestSas` 97 % contre 99 %, `espaceGrappe` 100 %
+des deux côtés ; aucun couloir isolé. Les plans couloir n'ont pas bougé d'un chiffre.
 
 ## Le dessin suit les conventions d'un plan d'architecte
 
