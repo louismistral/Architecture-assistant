@@ -53,13 +53,15 @@
 import { RULES } from "../data/rules.js";
 import { RHINO } from "../data/site.js";
 import { ITEMBYKEY } from "../core/model.js";
-import { FLOORS, lvlOf, onFloor } from "../mix/floors.js";
+import { FLOORS, SUB_MAX, UP_MAX, idxOfLvl, lvlOf, onFloor, setStack } from "../mix/floors.js";
 import { PMAP } from "../mix/prog.js";
+import { repartir } from "../mix/shuffle.js";
 import { V } from "../data/cadre.js";
-import { assise, dansRect, ecart, terrain } from "./geom.js";
-import { CONTACT, etagesDe, fusionne, hauteurEtage, niveaux, secondTemps, volRect } from "./model.js";
+import { airePoly, assise, dansRect, ecart, terrain } from "./geom.js";
+import { CONTACT, chapNivDe, etagesDe, fusionne, hauteurEtage, niveaux, secondTemps, volRect, volRects } from "./model.js";
 import { ecartVols, fusionner } from "./gen.js";
-import { CALQUE, SEP, acteurDe } from "../data/calques.js";
+import { centre, decouper, prisme, rentrer, versLocal } from "./libre.js";
+import { CALQUE, acteurDe, chapDuCalque, estVolume } from "../data/calques.js";
 
 var TOL = .05;        /* m : deux altitudes plus proches sont la même */
 var MIETTE = 1;       /* m : un côté plus court est un reste de découpe */
@@ -90,10 +92,10 @@ export function solides3dm(rh, octets){
   /* ce qu'on relit : le calque Volume de la convention, s'il y est ; sinon
      tout, sauf l'habillage d'un massing exporté d'ici (un toit, un auvent ne
      sont pas des étages) */
-  var L = doc.layers(), lu = {}, passe = {}, conv = false;
+  var L = doc.layers(), lu = {}, passe = {}, conv = false, chem = {};
   for(k = 0; k < L.count; k++){
-    var ch = L.get(k).fullPath || L.get(k).name;
-    if(ch === CALQUE.volume || ch.indexOf(CALQUE.volume + SEP) === 0){ lu[k] = 1; conv = true; }
+    var ch = chem[k] = L.get(k).fullPath || L.get(k).name;
+    if(estVolume(ch)){ lu[k] = 1; conv = true; }
     if(ch === "Architecture" || ch === CALQUE.architecture) passe[k] = 1;
   }
   for(k = 0; k < O.count; k++){
@@ -107,6 +109,10 @@ export function solides3dm(rh, octets){
     T.corps = at.getUserString("Saxon corps") || null;
     T.bat = at.getUserString("Saxon bat") || null;
     T.boites = at.getUserString("Saxon boites") || null;
+    /* le programme que dit son calque, et son nom dans Rhino */
+    T.chap = chapDuCalque(chem[at.layerIndex] || "");
+    T.nom = at.name || null;
+    T.libre = !!at.getUserString("Saxon libre");
     if(g instanceof rh.Mesh) maille(g);
     else if(g instanceof rh.Extrusion) maille(g.getMesh(rh.MeshType.Any));
     else if(g instanceof rh.Brep){
@@ -114,7 +120,7 @@ export function solides3dm(rh, octets){
       for(j = 0; j < F.count; j++) maille(F.get(j).getMesh(rh.MeshType.Any));
     }
   }
-  var vs = doc.strings().getvalue("Saxon variante");
+  var vs = doc.strings().getvalue("Saxon variante"), app = !!doc.strings().getvalue("Saxon massing");
   doc.delete();
   /* rhino3dm ne maille pas : il relit les maillages de rendu que Rhino a
      enregistrés. Un fichier « Save small » n'en a pas. */
@@ -124,6 +130,7 @@ export function solides3dm(rh, octets){
   if(!out.length) throw new Error("Aucun solide " + (conv ? "sur le calque " + CALQUE.volume : "dans le fichier")
     + " : ni Brep, ni extrusion, ni maillage.");
   out.variante = vs || null;
+  out.app = app;
   return out;
 }
 
@@ -133,6 +140,10 @@ export function solides3dm(rh, octets){
    exactement. Sinon (une union booléenne, des formes libres), on lit le
    solide par ses toits. */
 export function volsDe3dm(solides){
+  /* un fichier qui ne sort pas de l'app (dessiné dans Rhino), ou qui porte un corps
+     libre exporté d'ici, revient TEL QU'IL EST ; ce que l'app a exporté se relit
+     comme elle l'avait posé */
+  if(!solides.app || solides.some(function(T){ return T.libre; })) return corpsLibres(solides);
   /* un étage fusionné exporté d'ici (un L, un U) est un prisme droit : il se
      relit en boîtes, que `fusionner()` recolle */
   var B = solides.map(function(T){
@@ -680,4 +691,126 @@ function parBoites(B){
   droit(vols);
   second(vols);
   return { vols:vols, mode:"boites", boites:B.length, ponts:ponts.length, horsPile:horsPile };
+}
+
+/* ---------- des solides → des corps LIBRES -----------------------------------
+   Chaque solide est un corps, tel qu'il est dessiné (`libre.js`) : son contour,
+   son plancher à son altitude, sa hauteur, son chapitre. Rien n'est empilé,
+   fusionné, recoté, ni reposé sur le terrain ; les solides qui se touchent font
+   un bâtiment.
+   LES NIVEAUX sont les altitudes de plancher des solides. Le rez est le plus bas
+   qui n'est pas enterré (`ENTERRE` sous le terrain au centre du solide) ; ceux
+   d'en dessous sont des sous-sols. Un solide que traverse un plancher, et dont
+   le toit tombe sur un plafond (à 10 cm), porte un étage par niveau ; sinon,
+   c'est UN étage de grande hauteur — la salle de sport, la piscine.
+   La pile du mixer n'est pas touchée ici : `poserLibres()` la pose. */
+var ENTERRE = 1.5;
+export function corpsLibres(solides){
+  var mur = RULES.haut.mur;
+  var S = solides.map(function(T, k){
+    var nom = "« " + (T.nom || "objet " + (k + 1)) + " »", p = prisme(T);
+    if(!p) throw new Error(nom + " n'est pas un prisme droit (un toit en pente, une face en biais) : il ne peut pas revenir tel quel.");
+    var D = decouper(rentrer(p.poly, mur));
+    if(!D.rects.length) throw new Error(nom + " est plus étroit que ses deux murs : rien ne s'y loge.");
+    return { T:T, p:p, D:D, c:centre(p.poly) };
+  });
+  var Z = [];
+  S.map(function(s){ return s.p.z0; }).sort(function(a, b){ return a - b; })
+   .forEach(function(z){ if(!Z.length || z - Z[Z.length - 1] > TOL) Z.push(z); });
+  function niv(z){ var k = 0; Z.forEach(function(x, i){ if(Math.abs(x - z) < Math.abs(Z[k] - z)) k = i; }); return k; }
+  var rez = -1;
+  Z.forEach(function(z, k){
+    if(rez < 0 && S.some(function(s){ return niv(s.p.z0) === k && s.p.z0 >= terrain(s.c[0], s.c[1]) - ENTERRE; })) rez = k;
+  });
+  if(rez < 0) rez = Z.length - 1;
+  var nsub = rez, nup = Z.length - 1 - rez;
+  if(nsub > SUB_MAX || nup > UP_MAX)
+    throw new Error(Z.length + " niveaux dans le fichier (" + nsub + " sous-sols, " + nup + " étages) : le mixer en porte au plus "
+      + SUB_MAX + " sous le rez et " + UP_MAX + " au-dessus.");
+  var vols = S.map(function(s, k){
+    var p = s.p, z1 = p.z1;
+    var dedans = Z.filter(function(z){ return z > p.z0 + .5 && z < z1 - .5; });
+    var plafond = Z.some(function(z){ return Math.abs(z - z1) <= .1; })
+               || S.some(function(o){ return o !== s && Math.abs(o.p.z1 - z1) <= .1; });
+    var B = [p.z0].concat(dedans.length && plafond ? dedans : [], [z1]);
+    var R = s.D.rects.slice().sort(function(a, b){ return b.w * b.d - a.w * a.d; });
+    var v = { id:"L" + (k + 1), libre:1, x:s.c[0], y:s.c[1], a:demiTour(R[0].a) };
+    var L = versLocal(v), poly = p.poly.map(L);
+    var rects = R.map(function(r){ var q = L([r.x, r.y]); return { dx:q[0], dy:q[1], w:r.w, d:r.d, a:demiTour(r.a - v.a) }; });
+    v.lv = B.slice(0, -1).map(function(z, j){
+      return { lvl:niv(z) - rez, z0:z, h:B[j + 1] - z, chap:s.T.chap || null, poly:poly, rects:rects,
+               aire:s.D.aire, couvert:s.D.couvert, w:rects[0].w, d:rects[0].d, dx:rects[0].dx, dy:rects[0].dy };
+    });
+    if(s.T.nom) v.nom = s.T.nom.replace(/_/g, " ");
+    if(s.T.par && s.T.par !== "algo") v.par = s.T.par;
+    if(s.T.chap === "infra") v.ph = 2;
+    return v;
+  });
+  /* les bâtiments : ce qui se touche, ou se superpose, à des hauteurs qui se rejoignent */
+  var chef = vols.map(function(_, i){ return i; });
+  function c(i){ while(chef[i] !== i) i = chef[i] = chef[chef[i]]; return i; }
+  function hors(s){ return s.D.rects.map(function(r){ return { x:r.x, y:r.y, w:r.w + 2 * mur, d:r.d + 2 * mur, a:r.a }; }); }
+  var H = S.map(hors);
+  S.forEach(function(a, i){ S.forEach(function(b, j){
+    if(j <= i || a.p.z0 > b.p.z1 + TOL || b.p.z0 > a.p.z1 + TOL) return;
+    if(H[i].some(function(r){ return H[j].some(function(q){ return ecart(r, q) <= CONTACT; }); })) chef[c(j)] = c(i);
+  }); });
+  vols.forEach(function(v, i){
+    var g = c(i);
+    if(vols.some(function(o, j){ return j !== i && c(j) === g; }) && !v.ph) v.bat = "bL" + (g + 1);
+  });
+  /* les plateaux du mixer : l'emprise hors tout de chaque niveau */
+  var plates = Z.map(function(){ return 0; });
+  vols.forEach(function(v){ if(!v.ph) v.lv.forEach(function(e){ plates[e.lvl + rez] += airePoly(e.poly); }); });
+  return { vols:vols, mode:"libre", nsub:nsub, nup:nup, plates:plates.map(Math.round),
+           corps:vols.length, couvert:Math.min.apply(null, S.map(function(s){ return s.D.couvert; })) };
+}
+/* un angle de rectangle dans ]−90°, 90°] : un demi-tour ne le change pas */
+function demiTour(a){
+  while(a > Math.PI / 2 + 1e-9) a -= Math.PI;
+  while(a <= -Math.PI / 2 + 1e-9) a += Math.PI;
+  return a;
+}
+
+/* LA PILE SUIT LE VOLUME : les niveaux du fichier deviennent ceux du mixer, et
+   le programme s'y répartit — chaque chapitre sur les niveaux où son calque a
+   des solides, dans la place qu'ils lui donnent (`mix/shuffle.js — rangeOf`).
+   Puis ce que le règlement nomme : la salle de sport, dans le solide de son
+   chapitre qui a ses cotes ; les ouvrages du second temps, dans le solide des
+   infrastructures. Rend les corps, prêts pour `massVols()`. */
+export function poserLibres(r){
+  setStack(r.nsub, r.nup, r.plates);
+  r.vols.forEach(function(v){ v.lv.forEach(function(e){ e.i = idxOfLvl(e.lvl); delete e.lvl; }); });
+  repartir({ garder:true, chapitres:chapNivDe(r.vols) });
+  sportLibre(r.vols);
+  secondLibre(r.vols);
+  return r.vols;
+}
+function sportLibre(vols){
+  var imp = null;
+  FLOORS.forEach(function(F, i){
+    onFloor(i).forEach(function(b){
+      var p = PMAP[b.key], it = ITEMBYKEY[b.key];
+      if(p && p.solid && it && it.w && it.h) imp = { key:b.key, i:i, lo:Math.min(it.w, it.h), hi:Math.max(it.w, it.h) };
+    });
+  });
+  if(!imp) return;
+  var v = vols.filter(function(v){
+    var e = v.lv.filter(function(x){ return x.i === imp.i; })[0];
+    return !v.ph && e && e.chap === "sport" && Math.abs(e.d - imp.lo) <= 1.1 && Math.abs(e.w - imp.hi) <= 1.1;
+  })[0];
+  if(!v) return;
+  v.fix = 1; v.key = imp.key; v.id = "vsport";
+  v.lv.forEach(function(e){ if(e.i === imp.i) e.keys = [imp.key]; });
+}
+function secondLibre(vols){
+  var S = secondTemps(), P = vols.filter(function(v){ return v.ph === 2; });
+  if(!S.length || !P.length) return;
+  /* un seul solide : il loge tout ; sinon chacun l'ouvrage de sa surface */
+  P.forEach(function(v){
+    var e = v.lv[0], L = P.length === 1 ? S : S.filter(function(x){ return Math.abs(x.a - e.aire) <= .05 * x.a; });
+    if(!L.length) return;
+    e.keys = L.map(function(x){ return x.key; });
+    if(!v.nom) v.nom = L.map(function(x){ return x.n; }).join(" et ");
+  });
 }

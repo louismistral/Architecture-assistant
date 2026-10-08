@@ -222,7 +222,7 @@ export function massCheck(){
       if(!v.ph) return;
       var e2 = v.lv[0];
       (e2.keys || []).forEach(function(k){ pose2[k] = 1; });
-      aire2[v.id] = { v:v, pose:e2.w * e2.d, dem:e2.a };
+      aire2[v.id] = { v:v, pose:aireEtage(e2), dem:e2.a };
     });
     var manque2 = S2.filter(function(x){ return !pose2[x.key]; });
     if(manque2.length){

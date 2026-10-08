@@ -58,7 +58,7 @@ import { RULES } from "../data/rules.js";
    porter, et non d'un nombre rond. */
 import { airePosable } from "../mass/geom.js";
 import {
-  BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBrut, flCount,
+  BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, areaOf, delFloorAt, flBrut, flCount,
   flNet, fuse, grade, lvlOf, nextUid, onFloor, place, setPlate, setStack, toTray, usable
 } from "./floors.js";
 import { BRUYANT, CLASSE, CLSRE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
@@ -76,7 +76,36 @@ export function rangeOf(p){
   if(lo > hi){ var z = grade(); lo = z; hi = z; }
   var out = [];
   for(var i = lo; i <= hi; i++) out.push(i);
+  /* un massing de Rhino dit où va chaque chapitre : ses niveaux seulement — et
+     s'il n'en reste aucun que la règle admette, ceux du dessin : c'est lui qui
+     décide, le contrôle dira la règle */
+  var m = chapDe(p);
+  if(m){
+    var s = Object.keys(m).map(Number).sort(function(a, b){ return a - b; });
+    var x = out.filter(function(f){ return s.indexOf(f) >= 0; });
+    out = x.length ? x : s;
+  }
   return out;
+}
+/* LES CHAPITRES D'UN MASSING DE RHINO. Ses solides sont rangés sur un calque par
+   chapitre (`data/calques.js — chapDuCalque`) : le dessin dit quel programme va
+   dans quel solide. `{ chapitre: { niveau: surface intérieure } }`, lu chez le
+   massing (`mass/model.js` l'enregistre : il n'est pas importé d'ici) ; null,
+   la répartition est libre. */
+var chapitres = function(){ return null; }, CH = null;
+export function setChapitres(f){ chapitres = f; }
+function chapDe(p){
+  var M = CH || chapitres(), q = PMAP[p.key];
+  return M && q && M[q.chapId] || null;
+}
+/* La place qui reste à un chapitre sur un niveau : sa surface intérieure, hors
+   couloirs, moins ce qu'il y porte déjà. */
+function libreChap(p, f){
+  var m = chapDe(p);
+  if(!m) return Infinity;
+  var c = PMAP[p.key].chapId, pris = 0;
+  onFloor(f).forEach(function(b){ if(PMAP[b.key].chapId === c) pris += areaOf(b); });
+  return (m[f] || 0) * (1 - CIRC) - pris;
 }
 function libre(i){ return usable(i) - flNet(i); }
 
@@ -136,7 +165,7 @@ function noteNiveau(p, f, pose){
   /* 1 — la place. Elle ne décide plus à elle seule, mais elle décide encore :
      poser six cents mètres carrés là où il en reste cinquante n'est pas une
      variante, c'est une erreur qu'il faudra défaire. */
-  var l = libre(f);
+  var l = Math.min(libre(f), libreChap(p, f));
   if(l <= 0) s -= force("place") * V.placePoids;
   else s += force("place") * V.placePoids * Math.min(1, l / Math.max(1, besoin));
 
@@ -232,7 +261,7 @@ function poser(p, cand, alea, pose){
   } else {
     for(i = 0; i < notes.length && rest > 0; i++){
       var f = notes[i].f;
-      var tient = durs[f] ? rest : (u > 0 ? Math.floor(Math.max(0, libre(f)) / u) : rest);
+      var tient = durs[f] ? rest : (u > 0 ? Math.floor(Math.max(0, Math.min(libre(f), libreChap(p, f))) / u) : rest);
       var n = Math.min(rest, Math.max(0, tient));
       if(n <= 0) continue;
       want[f] = (want[f] || 0) + n;
@@ -264,6 +293,52 @@ function poser(p, cand, alea, pose){
    sanitaires ne se dessine pas. Aucun article ne l'écrit : c'est notre choix,
    la ligne `wc` du cadre choisi — éteinte, les sanitaires se répartissent
    comme le reste. */
+/* REMPLIR LE VOLUME. Un massing de Rhino donne à chaque chapitre une place par
+   niveau ; la note du mixer préfère pourtant les classes en haut, et vestiaires
+   et WC les suivent : un niveau déborde quand son voisin reste à moitié vide.
+   Chaque niveau d'un chapitre se remplit donc dans la MÊME proportion que les
+   autres — sa part du chapitre est celle que le dessin lui donne. Tant qu'une
+   unité qui passe d'un niveau à l'autre rapproche les deux de leur part, elle
+   passe — la plus grande d'abord —, puis les sanitaires se refont sur les
+   classes. Les sanitaires eux-mêmes ne bougent pas ici : `equilibrerWC` les suit. */
+function remplirChapitres(){
+  if(!CH) return;
+  var suit = enVigueur("wc") ? [WCG, WCF, VESTC] : [];
+  for(var tour = 0; tour < 300; tour++){
+    var best = null;
+    Object.keys(CH).forEach(function(c){
+      var m = CH[c], N = Object.keys(m).map(Number), pris = {}, tot = 0, place = 0;
+      N.forEach(function(f){
+        pris[f] = 0;
+        onFloor(f).forEach(function(b){ if(PMAP[b.key].chapId === c) pris[f] += areaOf(b); });
+        tot += pris[f]; place += m[f];
+      });
+      if(N.length < 2 || !place) return;
+      function ecart(f){ return pris[f] - tot * m[f] / place; }
+      N.forEach(function(fo){
+        if(ecart(fo) <= 0) return;
+        N.forEach(function(fu){
+          if(fu === fo || ecart(fu) >= 0) return;
+          onFloor(fo).forEach(function(b){
+            var p = PMAP[b.key], u = uOf(b.key);
+            if(p.chapId !== c || p.solid || estLie(b.key) || !(u > 0)) return;
+            if(suit.some(function(re){ return re.test(p.n); }) || rangeOf(p).indexOf(fu) < 0) return;
+            var o1 = ecart(fo), o2 = ecart(fu), gain = Math.abs(o1) + Math.abs(o2) - Math.abs(o1 - u) - Math.abs(o2 + u);
+            if(!best || gain > best.gain + 1e-6 || (Math.abs(gain - best.gain) <= 1e-6 && u > best.u))
+              best = { key:b.key, fo:fo, fu:fu, u:u, gain:gain };
+          });
+        });
+      });
+    });
+    if(!best || best.gain < 1) return;
+    var want = {};
+    BLOCKS.forEach(function(b){ if(b.key === best.key && b.fl !== TRAY) want[b.fl] = (want[b.fl] || 0) + b.q; });
+    want[best.fo]--; want[best.fu] = (want[best.fu] || 0) + 1;
+    place(best.key, want);
+    equilibrerWC();
+  }
+}
+
 function equilibrerWC(){
   if(!enVigueur("wc")) return;
   var cls = [], use = [], gars = [], i, tc = 0, impair = 0;
@@ -442,8 +517,12 @@ function plateauxDeLaPile(){
 /* ---------- la répartition ------------------------------------------------ */
 export function repartir(opts){
   var alea = !!(opts && opts.alea);
-  if(opts && opts.etages) proposerPile(alea);
-  else plateauxDeLaPile();
+  CH = (opts && opts.chapitres) || chapitres();
+  /* `garder` : la pile ET ses plateaux sont ceux qu'on a posés. Un massing de
+     Rhino (`CH`) les impose toujours : ses étages sont ceux du fichier. */
+  var etages = opts && opts.etages && !CH;
+  if(etages) proposerPile(alea);
+  else if(!(opts && opts.garder) && !CH) plateauxDeLaPile();
 
   toTray();
   var pose = {};                      /* key → niveaux retenus */
@@ -491,13 +570,14 @@ export function repartir(opts){
   enAttente.forEach(suivre);
 
   equilibrerWC();
+  remplirChapitres();
 
   /* Un dernier étage VIDE n'est pas un étage : la pile en annonçait un que rien
      n'occupait, et le massing allait ensuite chercher une emprise pour un
      niveau de zéro mètre carré. On ne rogne que la pile qu'on vient de
      proposer — celle que l'utilisateur a composée à la main lui appartient,
      même vide. */
-  if(opts && opts.etages){
+  if(etages){
     while(FLOORS.length > 1 && FLOORS[FLOORS.length - 1].lvl > 0
           && flCount(FLOORS.length - 1) === 0){
       delFloorAt(FLOORS.length - 1);
@@ -505,6 +585,7 @@ export function repartir(opts){
     tasserSommet();
   }
   ajusterPlateaux();
+  CH = null;
 }
 
 /* Un dernier étage qui ne porte que ses sanitaires n'est pas un étage : c'est

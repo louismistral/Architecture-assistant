@@ -754,9 +754,6 @@ export function creerPG(D){
        celles du sport d'abord, celles de l'UAPE en dernier, le reste famille
        par famille entre les deux */
     F.sort(function(p, q){ return (d(p) - d(q)) || String(p.v.id).localeCompare(String(q.v.id)); });
-    var cap = F.map(function(f){ return f.e.w * f.e.d; }), capT = 0, tot = 0;
-    cap.forEach(function(x){ capT += x; });
-    U.forEach(function(u){ tot += u.a; });
     /* un très grand local (l'abri PC, 3 × 200 places) se compartimente en
        parts de 300 m² au plus : d'un seul bloc, il allait tout entier à un
        corps, et quand il n'y tenait pas il en sortait tout entier — laissant
@@ -790,6 +787,9 @@ export function creerPG(D){
     petitsLies.forEach(function(u){ u.sat1 = 1; u.tard = 1; });
     /* les grandes pièces liées entre elles voyagent ensemble : composantes du
        graphe des liens, la plus grande pièce en tête (au plus 600 m²) */
+    /* des corps qui ont un chapitre (un massing de Rhino) : un groupe ne réunit que
+       des pièces du même chapitre — il ira tout entier dans un corps */
+    var parChap = F.some(function(f){ return f.e.chap; });
     var vu = {}, lies2 = U.filter(function(u){ return !u.tard && lie[u.key]; });
     lies2.slice().sort(function(p, q){ return q.a - p.a; }).forEach(function(g){
       if(vu[g.lab + g.key] || !lie[g.key]) return;
@@ -797,6 +797,7 @@ export function creerPG(D){
       for(var t = 0; t < groupe.length; t++){
         lies2.forEach(function(h){
           if(vu[h.lab + h.key] || !lie[groupe[t].key] || lie[groupe[t].key].indexOf(h.key) < 0 || aire + h.a > 600) return;
+          if(parChap && h.chap !== g.chap) return;
           vu[h.lab + h.key] = 1; groupe.push(h); aire += h.a;
         });
       }
@@ -809,31 +810,54 @@ export function creerPG(D){
     /* un découpage CONTIGU de la liste (les familles restent ensemble) en
        autant de tranches que de corps, au plus près de la part de chacun —
        programmation dynamique sur les points de coupe */
-    var pre = F.map(function(){ return 0; });
-    var cum = [0]; reste.forEach(function(u, j){ cum.push(cum[j] + u.a); });
-    var n = reste.length, K = F.length, INF = 1e18, cout = [], dd = [];
-    for(var q = 0; q <= K; q++){ cout.push(new Array(n + 1).fill(INF)); dd.push(new Array(n + 1).fill(0)); }
-    cout[0][0] = 0;
-    for(q = 1; q <= K; q++){
-      var cible = cap[q - 1] / capT * tot - pre[q - 1];
-      for(var j = 0; j <= n; j++){
-        for(var t = 0; t <= j; t++){
-          if(cout[q - 1][t] >= INF) continue;
-          var ec = (cum[j] - cum[t]) - cible, c2 = cout[q - 1][t] + ec * ec;
-          if(c2 < cout[q][j]){ cout[q][j] = c2; dd[q][j] = t; }
+    /* `tot` : tout ce que ces corps logeront, les petites pièces liées comprises,
+       qui les suivent après coup */
+    function trancher(Fq, R, tot){
+      var cap = Fq.map(function(f){ return f.e.w * f.e.d; }), capT = 0;
+      cap.forEach(function(x){ capT += x; });
+      var cum = [0]; R.forEach(function(u, j){ cum.push(cum[j] + u.a); });
+      var n = R.length, K = Fq.length, INF = 1e18, cout = [], dd = [], q, j, t;
+      for(q = 0; q <= K; q++){ cout.push(new Array(n + 1).fill(INF)); dd.push(new Array(n + 1).fill(0)); }
+      cout[0][0] = 0;
+      for(q = 1; q <= K; q++){
+        var cible = cap[q - 1] / capT * tot;
+        for(j = 0; j <= n; j++){
+          for(t = 0; t <= j; t++){
+            if(cout[q - 1][t] >= INF) continue;
+            var ec = (cum[j] - cum[t]) - cible, c2 = cout[q - 1][t] + ec * ec;
+            if(c2 < cout[q][j]){ cout[q][j] = c2; dd[q][j] = t; }
+          }
         }
       }
-    }
-    var fin2 = n;
-    for(q = K; q >= 1; q--){
-      var t0 = dd[q][fin2];
-      for(var j2 = t0; j2 < fin2; j2++){
-        var pu = reste[j2].u;
-        F[q - 1].U.push(pu);
-        (pu.sat || []).forEach(function(x){ x.prin = pu; F[q - 1].U.push(x); });
+      var fin2 = n;
+      for(q = K; q >= 1; q--){
+        var t0 = dd[q][fin2];
+        for(var j2 = t0; j2 < fin2; j2++){
+          var pu = R[j2].u, fq = Fq[q - 1];
+          fq.U.push(pu);
+          (pu.sat || []).forEach(function(x){ x.prin = pu; fq.U.push(x); });
+        }
+        fin2 = t0;
       }
-      fin2 = t0;
     }
+    /* UN MASSING DE RHINO dit quel chapitre loge quel solide (`e.chap`, son
+       calque) : le découpage se fait chapitre par chapitre, chacun entre les
+       seuls corps de son chapitre. Un chapitre sans corps à ce niveau va aux
+       corps sans chapitre s'il y en a, sinon au bac du niveau. */
+    function totDe(c){ var t = 0; U.forEach(function(u){ if(c == null || u.chap === c) t += u.a; }); return t; }
+    if(!parChap) trancher(F, reste, totDe(null));
+    else {
+      var parC = {};
+      reste.forEach(function(r){ (parC[r.chap] = parC[r.chap] || []).push(r); });
+      Object.keys(parC).forEach(function(c){
+        var Fc = F.filter(function(f){ return f.e.chap === c; });
+        if(!Fc.length) Fc = F.filter(function(f){ return !f.e.chap; });
+        if(Fc.length){ trancher(Fc, parC[c], totDe(c)); return; }
+        parC[c].forEach(function(r){ non.push(r.u); (r.u.sat || []).forEach(function(x){ non.push(x); }); });
+      });
+    }
+    /* un corps qui a un chapitre ne loge que le sien */
+    function okChap(f, u){ return !f.e.chap || f.e.chap === u.chap; }
 
     /* LES PETITES PIÈCES LIÉES, poste par poste : réparties entre les corps au
        prorata de leurs pièces mères, une au moins par corps qui en a, puis
@@ -846,7 +870,11 @@ export function creerPG(D){
     Object.keys(parCle).sort(function(p, q){ return parCle[q][0].a - parCle[p][0].a; }).forEach(function(k){
       var L = parCle[k], meres = F.map(function(f){ return f.U.filter(function(g){ return plusGrand(L[0], g); }); });
       var tot2 = 0; meres.forEach(function(m){ tot2 += m.length; });
-      if(!tot2){ F[0].U = F[0].U.concat(L); return; }
+      if(!tot2){
+        var F0 = F.filter(function(f){ return okChap(f, L[0]); })[0];
+        if(F0) F0.U = F0.U.concat(L); else L.forEach(function(u){ non.push(u); });
+        return;
+      }
       var part = meres.map(function(m){ return m.length ? 1 : 0; }), libre = L.length;
       part.forEach(function(x){ libre -= x; });
       if(libre < 0){ part = meres.map(function(){ return 0; }); libre = L.length;
@@ -958,6 +986,7 @@ export function creerPG(D){
     function tient(f, u){ f.U.push(u); f.comp(); if(f.L <= f.e.w + 0.05) return true; f.U.pop(); f.comp(); return false; }
     function reloger(F){ non.slice().sort(function(p, q){ return q.a - p.a; }).forEach(function(u){
       F.some(function(f){
+        if(!okChap(f, u)) return false;
         if(tient(f, u)){ non.splice(non.indexOf(u), 1); return true; }
         /* une classe sans son vestiaire en sas plutôt qu'au bac : la classe
            seule tient là où, avec lui, elle ne tenait pas */

@@ -37,7 +37,7 @@ import { requilibre } from "../mass/fix.js";
 import { dansPerimetre, empSol, genMass, poser, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { dm3Massing } from "../mass/export.js";
-import { solides3dm, volsDe3dm } from "../mass/import.js";
+import { poserLibres, solides3dm, volsDe3dm } from "../mass/import.js";
 import { RHINO } from "../data/site.js";
 import { evaluationCourante, rougesTypo } from "../mass/mesures.js";
 import { V, reculVise } from "../data/cadre.js";
@@ -45,10 +45,11 @@ import { OPTIONS } from "../data/leviers.js";
 import { noter } from "../data/jugement.js";
 import { actif, ligne, roleDe, roleNom } from "../data/lignes.js";
 import {
-  MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, horsEnveloppe,
+  MASS, PARTIS, auModule, bilan, bilanTotal, empreintePile, etagesDe, horsEnveloppe,
   massLev, massSet, massVols, niveaux, partiOf, plageVue, profFacade,
-  volHaut, volNiv, volNom
+  volAire, volHaut, volNiv, volNom
 } from "../mass/model.js";
+import { CHAP } from "../data/program.js";
 import { moyennesMain, setSource, source } from "../net/variantes.js";
 import { deBtn } from "./mixer.js";
 import { icone } from "./icons.js";
@@ -680,6 +681,20 @@ function carteSel(v){
   h.appendChild(x);
   b.appendChild(h);
 
+  /* UN CORPS LIBRE, un solide de Rhino : il est tel qu'il a été dessiné. Il se
+     déplace et se tourne ; sa forme, ses étages et son architecture se
+     retouchent dans Rhino. */
+  if(v.libre){
+    var e0 = v.lv.slice().sort(function(p, q){ return p.i - q.i; })[0], S = etagesDe(v);
+    var ch = CHAP.filter(function(c){ return c.id === e0.chap; })[0];
+    b.appendChild(el("p", "mass-sel__l mono", "de Rhino · " + (ch ? ch.short : "sans chapitre") + " · "
+      + fmt(Math.round(empSol(v))) + " m² au sol · " + fmt(Math.round(volAire(v))) + " m² utiles · "
+      + v.lv.length + " niv. · " + dec(S[0].z0 - RHINO.z0) + " → " + dec(S[S.length - 1].z1 - RHINO.z0) + " m"));
+    b.appendChild(el("p", "mass-note", "Sa forme, sa hauteur et son calque viennent de Rhino : on la retouche là-bas, puis on réimporte."
+      + (e0.couvert < .995 ? " Ses plans couvrent " + Math.round(100 * e0.couvert) + " % de son intérieur : un côté en biais laisse une frange." : "")));
+    return b;
+  }
+
   var rc = rectSol(v), fu = v.lv.some(function(e){ return e.ext && e.ext.length; });
   /* un volume fusionné n'a pas deux cotes : il dit ses ailes */
   b.appendChild(el("p", "mass-sel__l mono", (fu ? "fusionné · " + ((basDe(v).ext || []).length + 1) + " ailes"
@@ -1162,9 +1177,10 @@ function blocEmporter(){
     f.addEventListener("change", function(){ if(f.files[0]) importer(f.files[0]); });
     var i = el("button", "btn", "Importer (.3dm)");
     i.type = "button";
-    i.title = "Remplace la volumétrie : seul le calque 3D::Projet::Volume est relu s’il existe. Des "
-      + "boîtes par étage se relisent telles quelles, un solide unifié se découpe par ses toits ; la "
-      + "couleur dit qui l’a touché : gris, un humain.";
+    i.title = "Remplace la volumétrie : seul le calque 3D::Projet::Volume (ou Volume 01…) est relu s’il existe. "
+      + "Chaque solide revient tel quel — son contour, son altitude, sa hauteur — et son sous-calque dit son "
+      + "programme (Ecole, UAPE, Salle de sport…) ; la pile du mixer suit ses niveaux. La couleur dit qui "
+      + "l’a touché : gris, un humain.";
     t.title = "Repère du relevé DOC/site_plan.3dm, en centimètres, Z = 0 à " + dec(RHINO.z0, 0)
       + " m : le fichier s’y pose en place. Calques de la convention : 3D::Projet::Volume, par "
       + "chapitre et par niveau, en orange (l’algorithme), bleu (une IA) ou gris (un humain) ; le périmètre et le recul de " + dec(reculVise(), 0)
@@ -1198,13 +1214,16 @@ function importer(fichier){
       + MASS.vol.length + " volumes) par celle de « " + fichier.name + " » ("
       + n + " volume" + (n > 1 ? "s" : "") + ") ? Elle sera perdue si elle n’est pas "
       + "enregistrée dans une variante.")) return;
+    /* des solides de Rhino, tels quels : la pile du mixer suit, le programme s'y répartit */
+    if(r.mode === "libre") poserLibres(r);
     massVols(r.vols);
     MASS.pile = empreintePile();
     /* le fichier dit de quelle variante il part : celle qu'on en tirera sera sa fille */
     setSource(sol.variante);
     var mains = r.vols.filter(function(v){ return v.par === "humain"; }).length;
     statutRhino = "« " + fichier.name + " » : " + n + " volume" + (n > 1 ? "s" : "")
-      + (r.mode === "boites" ? ", lus boîte par boîte" : ", découpés par leurs toits"
+      + (r.mode === "libre" ? ", tels quels — " + niveaux().length + " niveaux, le programme réparti par calque"
+         : r.mode === "boites" ? ", lus boîte par boîte" : ", découpés par leurs toits"
          + (r.mode === "classe" ? " — étages comptés à " + dec(RULES.haut.libre.cla + RULES.haut.dalle) + " m" : ""))
       + (r.horsPile ? " ; " + r.horsPile + " étage(s) hors de la pile du mixer, ignorés" : "")
       + (mains ? " ; " + mains + " retouché" + (mains > 1 ? "s" : "") + " à la main" : "") + ".";

@@ -52,6 +52,17 @@ export function volsOf(vols){
        (`data/calques.js — ACTEURS`). La clé n'existe pas sinon, pour que
        l'instantané d'un tirage ne change pas. */
     if(v.par) o.par = v.par;
+    /* un corps LIBRE, un solide de Rhino tel qu'il est (`model.js — estLibre`) :
+       son contour, son altitude, son chapitre et sa découpe survivent */
+    if(v.libre){
+      o.libre = 1;
+      o.lv.forEach(function(x, k){
+        var e = v.lv[k];
+        Object.assign(x, { z0:e.z0, chap:e.chap || null, aire:e.aire, couvert:e.couvert,
+          poly:e.poly.map(function(p){ return [p[0], p[1]]; }),
+          rects:e.rects.map(function(p){ return { dx:p.dx, dy:p.dy, w:p.w, d:p.d, a:p.a || 0 }; }) });
+      });
+    }
     return o;
   });
 }

@@ -127,7 +127,8 @@ export function requilibre(){
   return bouge;
 }
 function passe(n){
-  var port = MASS.vol.filter(function(v){ return !v.ph && !!volEtage(v, n.i); });
+  /* un corps libre est tel que Rhino l'a dessiné : on ne le retaille pas */
+  var port = MASS.vol.filter(function(v){ return !v.ph && !v.libre && !!volEtage(v, n.i); });
   if(!port.length) return false;
   var som = 0;
   port.forEach(function(v){

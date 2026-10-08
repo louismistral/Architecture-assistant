@@ -26,7 +26,8 @@ import { STRIDE, cssRGB, themeKey, glDraw, glDrawStatic, glInit, glLibere, glSta
   orbitEye, orbitMVP } from "../core/gl.js";
 import { PER, SITE } from "../data/site.js";
 import { lvlOf } from "../mix/floors.js";
-import { coins, dedans, grille, terrain } from "../mass/geom.js";
+import { coins, dedans, grille, moins, terrain } from "../mass/geom.js";
+import { trianguler } from "../mass/libre.js";
 import { archiDe, faces } from "../mass/archi.js";
 import { MASS, assiseDe, cellules, dessinDe, etagesDe, famTok, filtreDe, fusionne, mursDe, niveaux, pontEtage,
   solRects, volInts, volRects, vu } from "../mass/model.js";
@@ -244,6 +245,21 @@ function boiteLibre(M, P, z0, z1, c, a, edge){
   if(edge) ligne(M, P, function(){ return z1; }, edge, true);
 }
 
+/* Un CORPS LIBRE (un solide de Rhino) : son contour tel qu'il est, extrudé — les
+   côtés, un dessus en triangles (`trianguler`, juste pour une forme concave), et
+   les arêtes du contour. */
+function prismeLibre(M, P, z0, z1, c, a, edge){
+  var i;
+  for(i = 0; i < P.length; i++){
+    var A = P[i], B = P[(i + 1) % P.length];
+    quad(M, [A[0], A[1], z0], [B[0], B[1], z0], [B[0], B[1], z1], [A[0], A[1], z1], c, a);
+  }
+  trianguler(P).forEach(function(t){
+    tri(M, [P[t[0]][0], P[t[0]][1], z1], [P[t[1]][0], P[t[1]][1], z1], [P[t[2]][0], P[t[2]][1], z1], c, a);
+  });
+  if(edge) aretesP(M, P, z0, z1, edge);
+}
+
 /* ---------- les volumes, refaits à chaque image ----------------------------- */
 function volMesh(){
   var M = Mesh();
@@ -271,7 +287,7 @@ function volMesh(){
          quand même sa profondeur, et l'on retrouverait le moucheté noir que la
          boîte-enveloppe donnait déjà. */
       var op = v.ph ? .40 : undefined;
-      var fu = fusionne(e), D = dessinDe(v, e, MASS.vol), zt = z0 + h - .12;
+      var fu = fusionne(e), lib = !!e.poly, D = dessinDe(v, e, MASS.vol), zt = z0 + h - .12;
       /* POSÉ SUR UN CORPS DU MÊME BÂTIMENT : des prismes convexes qui ne recouvrent
          rien de ce que l'autre garde — ni boîtes qui s'interpénètrent, ni dessus qui
          se disputent le pixel —, et les seules arêtes du contour d'union */
@@ -295,7 +311,8 @@ function volMesh(){
         var cm = n.lvl < 0 ? cEnt : (v.ph ? teinte("--site-mono", .40) : cMono);
         /* un volume fusionné : une boîte par part, sans arêtes — leurs faces
            communes sont dans la masse —, et les arêtes du seul contour */
-        if(fu){
+        if(lib) s.contour.loops.forEach(function(L){ prismeLibre(M, L, z0, zt, cm, 1, edge); });
+        else if(fu){
           s.rcs.forEach(function(r){ boite(M, coins(r), z0, z0 + h - .12, cm, 1, null); });
           s.contour.loops.forEach(function(L){ aretesP(M, L, z0, z0 + h - .12, edge); });
         }
@@ -303,19 +320,24 @@ function volMesh(){
       } else {
         /* Le programme dans la surface UTILE, les murs de 50 cm autour, en
            blanc de maquette : ce que le volume a de plus que ses mètres carrés. */
-        volInts(v, e).forEach(function(ri){
+        /* les rectangles d'un corps libre peuvent se recouvrir (une aile en biais) :
+           chacun ne pave que ce que les précédents laissent */
+        var RI = volInts(v, e);
+        RI.forEach(function(ri, k){
+        var avant = lib ? RI.slice(0, k).map(coins) : [];
         cellules(e.i, ri.w, ri.d, filtreDe(v, e)).forEach(function(c){
           var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
           var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
                       y: ri.y + cx * Math.sin(ri.a) + cy * Math.cos(ri.a),
                       w: c.w, d: c.d, a: ri.a };
-          boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f), op), 1, null);
+          if(avant.length) moins(coins(sub), avant).forEach(function(Q){ boiteLibre(M, Q, z0, zt, teinte(famTok(c.f), op), 1, null); });
+          else boite(M, coins(sub), z0, z0 + h - .12, teinte(famTok(c.f), op), 1, null);
         });
         });
         mursDe(v, e).forEach(function(m){
           boite(M, coins(m), z0, z0 + h - .12, v.ph ? teinte("--site-mono", .40) : cMono, 1, null);
         });
-        if(fu) s.contour.loops.forEach(function(L){ aretesP(M, L, z0, z0 + h - .12, edge); });
+        if(fu || lib) s.contour.loops.forEach(function(L){ aretesP(M, L, z0, z0 + h - .12, edge); });
         else aretes(M, q, z0, z0 + h - .12, edge);
       }
     });

@@ -52,8 +52,8 @@ BLOCKS
   Textes
 3D
   Projet
-    Volume                LE SEUL CALQUE RELU par l'import du massing
-      <Chapitre>          Ecole, Sport, UAPE, Technique, Infrastructures
+    Volume                LE SEUL CALQUE RELU par l'import du massing (ou Volume 01, numéroté)
+      <Chapitre>          Ecole, Sport, UAPE, Technique, Infrastructures — LE PROGRAMME du solide
         Niveau_<nom>      un maillage fermé par étage de chaque corps
         Second_temps      la piscine, le local CAD
     Architecture          toits, auvents, rampes — exportés, pas relus
@@ -68,6 +68,12 @@ AUTRE                     ce qui n'a pas encore sa place
   temps), sinon celui qui porte le plus de surface au niveau, hors postes qui ont leur propre
   corps. Un corps du massing porte sa part de chaque poste du niveau ; le chapitre dit donc ce
   qui domine l'étage, pas ce qu'il contient seul.
+- **Le sous-calque d'un solide dessiné dans Rhino est son programme** : `Ecole`, `UAPE`,
+  `Salle de sport`, `Public et communale`, `Conciergerie et technique` — un mot du nom suffit,
+  sans accents ni capitales (`calques.js — CHAPITRES`, `chapDuCalque`). À l'import, le solide
+  revient tel qu'il est (`docs/massing.md`, *Les corps libres*), le mixer pose ce chapitre sur
+  ses niveaux et les Typologies ne le pavent que de ce chapitre. Un solide sur `Volume` sans
+  sous-calque reconnu n'a pas de chapitre : tout peut y aller.
 - **Les épaisseurs** : chaque trait d'une planche va au sous-calque de la taille la plus proche
   de son épaisseur ; un XS clair est un XXS. L'épaisseur est celle du calque, plus celle du
   trait : six tailles au lieu d'un calque par épaisseur rencontrée (une vingtaine sur une
@@ -106,7 +112,7 @@ main qui l'a choisie. Seulement dans les fichiers échangés ; l'app garde ses c
 
 | fichier | sens | état |
 |---|---|---|
-| `.3dm` du Massing (`mass/export.js`, `mass/import.js`) | aller et retour | ✔ calques, couleur de l'acteur, variante source |
+| `.3dm` du Massing (`mass/export.js`, `mass/import.js`) | aller et retour | ✔ calques, couleur de l'acteur, variante source ; un solide dessiné dans Rhino revient tel quel, son chapitre avec lui |
 | DXF des planches (`core/pdf.js — dxf()`) | aller | ✔ `2D$Courbes$…`, `2D$Hatchs`, `2D$Textes`, en oranges |
 | SVG des planches | aller | ✘ — ni calques ni plages : un calque Illustrator est un groupe, et regrouper par calque changerait l'ordre de dessin (un aplat blanc qui masque un trait passerait dessous). À faire si l'on en a besoin, sur une planche qui n'utilise pas de masque |
 | plans des Typologies | aller et retour | proposition plus bas |

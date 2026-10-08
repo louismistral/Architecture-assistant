@@ -34,6 +34,7 @@ import { BLOCKS, FLOORS, areaOf, avecCloisons, flInterieur, flHeight, flName, fl
   from "../mix/floors.js";
 import { PMAP, uOf } from "../mix/prog.js";
 import { coteDe, toutesCotes } from "../mix/opts.js";
+import { setChapitres } from "../mix/shuffle.js";
 import { aire, airePoly, assise, coins, diffRects, ecart, ecartAngle, horsDe, interConvexe, local, longueurCommune, longueurDans, moins, unionRects } from "./geom.js";
 
 /* ---------- les partis ------------------------------------------------------
@@ -375,23 +376,60 @@ export function volRect(v, e){
    jonction, leurs intérieurs se touchent, le mur commun a disparu. Sans
    `ext`, tout se lit comme avant. */
 export function partsDe(e){
+  /* un étage LIBRE (un solide de Rhino, `libre.js`) : son intérieur découpé, chaque
+     rectangle dans son axe (`a`, depuis celui du corps) */
+  if(e.rects) return e.rects.map(function(p){ return { w:p.w, d:p.d, dx:p.dx, dy:p.dy, a:p.a || 0 }; });
   var dx = e.dx || 0, dy = e.dy || 0, P = [{ w:e.w, d:e.d, dx:dx, dy:dy }];
   (e.ext || []).forEach(function(p){ P.push({ w:p.w, d:p.d, dx:dx + (p.dx || 0), dy:dy + (p.dy || 0) }); });
   return P;
 }
 export function fusionne(e){ return !!(e && e.ext && e.ext.length); }
-export function volFusionne(v){ return v.lv.some(fusionne); }
+/* un corps libre se lit comme un fusionné : plusieurs parts, rien à retailler d'un bloc */
+export function volFusionne(v){ return !!v.libre || v.lv.some(fusionne); }
 /* Les emprises de chaque part, murs compris — elles se recouvrent de
    l'épaisseur du mur commun disparu —, et leurs intérieurs. */
 export function volRects(v, e){
   var m = 2 * RULES.haut.mur;
-  return partsDe(e).map(function(p){ return local({ x:v.x, y:v.y, w:p.w + m, d:p.d + m, a:v.a }, p.dx, p.dy); });
+  return partsDe(e).map(function(p){ return partSite(v, p, m); });
 }
 export function volInts(v, e){
-  return partsDe(e).map(function(p){ return local({ x:v.x, y:v.y, w:p.w, d:p.d, a:v.a }, p.dx, p.dy); });
+  return partsDe(e).map(function(p){ return partSite(v, p, 0); });
 }
+/* une part au site : son centre dans le repère du corps, son angle à elle */
+function partSite(v, p, m){
+  var r = local({ x:v.x, y:v.y, w:p.w + m, d:p.d + m, a:v.a }, p.dx, p.dy);
+  if(p.a) r.a += p.a;
+  return r;
+}
+/* UN CORPS LIBRE : un solide de Rhino, tel qu'il est (`mass/libre.js`,
+   `mass/import.js — corpsLibres`). Son contour exact (`e.poly`), son plancher à
+   son altitude (`e.z0`), sa hauteur (`e.h`), sa surface intérieure (`e.aire`) ;
+   ses rectangles (`e.rects`) ne servent qu'à ce qui raisonne en rectangles. L'app
+   ne le retaille jamais. */
+export function estLibre(v){ return !!(v && v.libre); }
+export function polyLibre(v, e){
+  var c = Math.cos(v.a), s = Math.sin(v.a);
+  return e.poly.map(function(p){ return [v.x + p[0] * c - p[1] * s, v.y + p[0] * s + p[1] * c]; });
+}
+/* Où va chaque chapitre, d'après les corps libres : `{ chapitre: { niveau: m² intérieurs } }`,
+   ou null s'il n'y en a pas — le mixer le lit (`mix/shuffle.js — setChapitres`). */
+export function chapNivDe(vols){
+  var M = null;
+  (vols || []).forEach(function(v){
+    if(!v.libre) return;
+    v.lv.forEach(function(e){
+      if(!e.chap || e.i == null) return;
+      M = M || {};
+      var m = M[e.chap] = M[e.chap] || {};
+      m[e.i] = (m[e.i] || 0) + e.aire;
+    });
+  });
+  return M;
+}
+setChapitres(function(){ return chapNivDe(MASS.vol); });
 /* La surface UTILE d'un niveau : la somme de ses parts, qui ne se recouvrent pas. */
 export function aireEtage(e){
+  if(e.rects) return e.aire;
   var a = 0;
   partsDe(e).forEach(function(p){ a += p.w * p.d; });
   return a;
@@ -405,6 +443,11 @@ function versSite(v){
    cour tournent à l'envers), son aire et son périmètre — la façade réelle,
    sans le mur commun. */
 export function contourDe(v, e){
+  if(e.poly){
+    var P = polyLibre(v, e), L = 0;
+    P.forEach(function(p, i){ var q = P[(i + 1) % P.length]; L += Math.hypot(q[0] - p[0], q[1] - p[1]); });
+    return { loops:[P], aire:airePoly(P), perim:L };
+  }
   if(!fusionne(e)){
     var r = volRect(v, e);
     return { loops:[coins(r)], aire:r.w * r.d, perim:2 * (r.w + r.d) };
@@ -600,7 +643,8 @@ export function cedeeDe(v, vols, i){
    Deux étages à deux altitudes (une hauteur propre, une assise à part) ne font pas
    un prisme d'union : ils gardent chacun leur boîte. */
 export function dessinDe(v, e, vols){
-  if(!e || v.ph) return null;
+  /* un corps libre se dessine par son contour, tel quel */
+  if(!e || v.ph || v.libre) return null;
   var G = [], A = [], zv = null;
   function z(o, eo){ var s = etagesDe(o, vols).filter(function(x){ return x.e === eo; })[0]; return s ? [s.z0, s.z1] : [NaN, NaN]; }
   vols.forEach(function(o){
@@ -628,6 +672,14 @@ export function dessinDe(v, e, vols){
 /* Les quatre bandes de mur d'un étage, pour le dessin : deux longs pans pleine
    largeur, deux pignons entre eux, 50 cm vers l'intérieur de l'emprise. */
 export function mursDe(v, e){
+  /* un corps libre : une bande par côté du contour, vers l'intérieur */
+  if(e.poly){
+    var P = polyLibre(v, e), mm = RULES.haut.mur;
+    return P.map(function(p, i){
+      var q = P[(i + 1) % P.length], L = Math.hypot(q[0] - p[0], q[1] - p[1]), a = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      return { x:(p[0] + q[0]) / 2 - Math.sin(a) * mm / 2, y:(p[1] + q[1]) / 2 + Math.cos(a) * mm / 2, w:L, d:mm, a:a };
+    });
+  }
   if(fusionne(e)){
     /* un volume fusionné : ce que le contour couvre et qu'aucun intérieur ne
        couvre — le mur commun d'une jonction n'y est plus */
@@ -654,7 +706,7 @@ export function mursDe(v, e){
 export function pontRect(p, vols){
   var A = null, B = null;
   (vols || MASS.vol).forEach(function(v){ if(v.id === p.a) A = v; if(v.id === p.b) B = v; });
-  if(!A || !B) return null;
+  if(!A || !B || A.libre || B.libre) return null;
   var ea = volEtage(A, p.i), eb = volEtage(B, p.i);
   if(!ea || !eb) return null;
   var ra = volRect(A, ea), rb = volRect(B, eb);
@@ -709,6 +761,7 @@ export function solRects(v){
   return volRects(v, etageBas(v) || v.lv[0]);
 }
 export function volCoins(v){
+  if(v.libre){ var e = etageBas(v) || v.lv[0]; return polyLibre(v, e); }
   var r = volSol(v);
   return r ? coins(r) : [];
 }
@@ -773,6 +826,9 @@ export function volNiv(v){
    sienne : il n'est pas de l'école. */
 function aligne(){ return vise("nivalign"); }
 export function datumEcole(vols){
+  /* des corps libres : leur rez est où le fichier le pose */
+  var L = rezLibre(vols);
+  if(L != null) return L;
   var z = 0, A = 0;
   vols.forEach(function(v){
     if(v.ph) return;
@@ -784,8 +840,25 @@ export function datumEcole(vols){
    commune de l'école. `d` est le terrassement : l'écart entre le plus haut et
    le plus bas de son terrain ET de son rez — le dénivelé sous l'emprise quand
    le rez suit le terrain, davantage quand l'altitude commune l'en écarte. */
+function rezLibre(vols){
+  var z = null;
+  (vols || []).forEach(function(v){
+    if(!v.libre || v.ph) return;
+    v.lv.forEach(function(e){ if(lvlOf(e.i) === 0 && (z == null || e.z0 < z)) z = e.z0; });
+  });
+  return z;
+}
 export function assiseEff(v, vols){
   var t = assiseDe(solRects(v)), z = t.z;
+  /* un corps libre : son plus bas étage hors sol, à son altitude */
+  if(v.libre){
+    var b = etageBas(v);
+    z = (b || v.lv[0]).z0;
+    /* posé sur un autre corps (il commence à l'étage) ou tout enterré : il ne
+       touche pas le terrain, il n'a pas de terrassement à lui */
+    if(!b || lvlOf(b.i) > 0) return { z:z, lo:z, hi:z, d:0, terrain:t.z };
+    return { z:z, lo:t.lo, hi:t.hi, d:Math.max(t.hi, z) - Math.min(t.lo, z), terrain:t.z };
+  }
   if(!v.ph && aligne()){
     var d0 = datumEcole(vols || (MASS.vol.indexOf(v) >= 0 ? MASS.vol : [v]));
     if(d0 != null) z = d0;
@@ -807,6 +880,8 @@ export function etagesDe(v, vols){
     var n = N[e.i];
     if(!n) return;
     var h = hauteurEtage(e, n);
+    /* un étage libre est où le fichier le pose */
+    if(e.z0 != null) z = e.z0;
     /* `rc` la part 0, `rcs` toutes, `contour` leur union */
     out.push({ e:e, n:n, rc:volRect(v, e), rcs:volRects(v, e), contour:contourDe(v, e), z0:z, z1:z + h, h:h });
     z += h;

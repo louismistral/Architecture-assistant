@@ -514,14 +514,70 @@ piecesMassing()` dit ce que contient le fichier, en pur ; `dm3Massing()` l'écri
 ### Importer
 
 « Importer (.3dm) » relit un fichier dans le même repère, **remplace** la
-volumétrie après confirmation, et la note se recalcule. **Seul `3D::Projet::Volume`** et ses
-sous-calques sont relus quand le fichier les a : on rend son document de travail entier, relevé
-et aides compris. Un fichier sans ce calque se lit tout entier, `Architecture` mise à part. La
-couleur d'un objet dit qui a touché le corps (`v.par`), et la variante nommée
-dans le fichier devient la mère de la suivante (`docs/echange.md`). Le jugement ne lit que des mesures, et
-les mesures ne lisent que des volumes `{ x, y, a, lv }` : `mass/import.js` RECONSTRUIT donc ces
-volumes, et la note ne dépend plus de qui a dessiné le bâtiment. L'unité est celle que le
-fichier déclare ; le calque `Architecture` n'est pas relu (un auvent n'est pas un étage).
+volumétrie après confirmation, et la note se recalcule. **Seul `3D::Projet::Volume`** (ou
+`Volume 01`, numéroté) et ses sous-calques sont relus quand le fichier les a : on rend son
+document de travail entier, relevé et aides compris. Un fichier sans ce calque se lit tout entier,
+`Architecture` mise à part. La couleur d'un objet dit qui a touché le corps (`v.par`), et la
+variante nommée dans le fichier devient la mère de la suivante (`docs/echange.md`). L'unité est
+celle que le fichier déclare.
+
+**Deux chemins, selon d'où vient le fichier** (`volsDe3dm`) :
+
+- **un fichier dessiné dans Rhino** — tout fichier qui ne porte pas la marque `Saxon massing`
+  de l'export d'ici, ou qui porte un corps libre — revient **TEL QU'IL EST**, en corps libres
+  (ci-dessous) ;
+- **un fichier exporté d'ici** se relit comme l'app l'avait posé, en corps du générateur : boîtes,
+  prismes, solide unifié, comme suit.
+
+### Les corps libres : un solide de Rhino tel qu'il est
+
+L'ancien import RECONSTRUISAIT des corps du générateur : il empilait des solides différents,
+plaquait chaque étage sur la pile du mixer (un niveau absent : l'étage jeté en silence),
+reposait tout sur le terrain, fusionnait, devinait la salle de sport à ses cotes. Un massing
+dessiné à la main revenait méconnaissable — sous-sol et 2e étage perdus, la salle de sport à
+10,20 m, des L recoupés en rectangles qui débordaient. Spec :
+`docs/superpowers/specs/2026-10-08-corps-libres-design.md`.
+
+Chaque solide est désormais un **corps libre** (`v.libre`, `mass/libre.js`,
+`import.js — corpsLibres`) : jamais empilé avec un autre, jamais fusionné ni recoté.
+
+- **Son contour exact**, hors tout (`e.poly`, dans le repère du corps : le déplacer ou le
+  tourner l'emporte) — n'importe quel polygone, angles quelconques. Son **plancher à son
+  altitude** (`e.z0`, absolue : Rhino 0 = 465 m), sa **hauteur** (`e.h`), sa surface intérieure
+  exacte (`e.aire`, le polygone rentré du mur). `etagesDe()` les prend tels quels : ni terrain, ni
+  altitude commune de l'école.
+- **Son chapitre**, celui de son sous-calque (`e.chap`, `data/calques.js — chapDuCalque`) :
+  `Ecole`, `UAPE`, `Salle de sport`, `Public et communale`, `Conciergerie et technique` —
+  un mot du nom suffit. `infra` fait un ouvrage du second temps (`ph:2`) ; le solide `sport`
+  qui a les cotes de la salle double la porte (`fix`, `vsport`).
+- **Les niveaux sont les planchers du fichier.** Le rez est le plus bas qui n'est pas enterré
+  (1,50 m sous le terrain au centre du solide) ; en dessous, des sous-sols. Un solide que
+  traverse un plancher, et dont le toit tombe sur un plafond (à 10 cm), porte un étage par
+  niveau ; sinon c'est UN étage de grande hauteur (la salle de sport, la piscine). Les solides qui
+  se touchent ou se superposent font un bâtiment (`bat`).
+- **La pile du mixer suit** (`poserLibres`) : ses niveaux et ses plateaux sont ceux du fichier,
+  et le programme s'y répartit par chapitre (`docs/mixer.md`).
+- **Son intérieur se découpe en rectangles, chacun dans son axe** (`e.rects`, `decouper`) : la
+  grille des sommets dans l'axe de chaque groupe de côtés, puis, tant qu'il en reste, le
+  rectangle qui couvre le plus de neuf, tous axes confondus. Exacte pour toute forme orthogonale,
+  en autant d'orientations qu'on veut — une aile en biais posée sur une barre fait deux
+  rectangles qui se recouvrent, comme deux corps d'un même bâtiment. Un côté en biais laisse une
+  frange, que la carte du corps dit (`couvert`). Le polygone sert au contour, à l'aire, au dessin,
+  à la 3D (dessus triangulé par oreilles) et à l'export ; les rectangles à ce qui raisonne en
+  rectangles — distances, recul, ensoleillement, plans des Typologies.
+- **L'app ne le retaille jamais** : ni tirettes, ni cotes, ni étages en plus, ni architecture
+  (`archiDe` est vide), ni `requilibre`, `fusionner`, `recoller`. Il se déplace et se tourne ; sa
+  forme se retouche dans Rhino. **Les contrôles le jugent tel quel** : une cote hors du module, un
+  recul de 4,25 m, une salle de sport de 32,20 × 28,20 m le disent.
+- **Il repart tel qu'il est revenu** : l'export écrit un solide par corps libre, du pied de son
+  plus bas étage à la tête du plus haut, sur le calque de son chapitre, marqué `Saxon libre` —
+  l'aller et retour est identique au centimètre (`node tools/claude.mjs test`, `rhino_libre`).
+- Ne passe pas : un solide qui n'est pas un prisme droit (un toit en pente) est refusé avec son
+  nom ; un solide plus étroit que ses deux murs aussi. Une cour d'un seul solide (un trou) : le
+  contour extérieur seul, pour l'instant. Les sommets d'un maillage Rhino sont en simple
+  précision : sur ce repère, 2 à 3 cm² d'écart par 100 m².
+
+### Les corps du générateur, relus
 
 - **Des boîtes** — l'export d'ici, ou un modèle construit étage par étage, une boîte par étage
   — se lisent boîte par boîte. Les boîtes empilées font un volume ; son rez est celle posée au
@@ -564,6 +620,7 @@ Promise.all([import('./src/mix/shuffle.js'),import('./src/mass/gen.js'),
         var P = o.v.map(function(q){ return [(q[0] - H.x0) / H.u, (q[1] - H.y0) / H.u, q[2] / H.u + H.z0]; });
         return [].concat.apply([], o.f.map(function(f){ return [[P[f[0]], P[f[1]], P[f[2]]], [P[f[0]], P[f[2]], P[f[3]]]]; }));
       });
+    sol.app = true;                       /* le fichier vient de l'app : Saxon massing */
     M.massVols(I.volsDe3dm(sol).vols);
     console.log(p.padEnd(10), n + ' → ' + M.MASS.vol.length + ' corps', 'posé ' + Math.round(avant) + ' → ' + Math.round(M.bilanTotal().pose),
                 'note ' + note + ' → ' + E.evaluationCourante().jugement.total);
