@@ -311,7 +311,9 @@ l'hôte, et en reprend les composants :
   3 · Évaluation (la note du bâtiment entier à cette seed, rouge s'il est invalide ; la part
   Typologie ; chaque critère du plan, sa mesure et sa barre — `parent.typoEvaluation()`, refaite à
   chaque Shuffle), 4 · Contrôle (toute la pile ; ouvert dès qu'un point est à revoir),
-  5 · Familles ; Emporter au pied (Copier le SVG) ;
+  5 · Familles ; Emporter au pied : **exporter le niveau montré** en PDF, SVG ou DXF — la planche
+  du Rendu, même dessin, même cadrage, même nom (`parent.typoExporter()`, `rendu.js —
+  exporterEtage()`) —, et Copier le SVG ;
 - **la barre** de ce qu'on regarde — niveau, couleurs, mobilier · cotes · site, cadrage — une
   préférence de l'appareil (`localStorage`, `typo-saxon`), pas une décision de projet ;
 - **la pièce cliquée** dans une carte posée sur le plan, au coin opposé au clic : sa largeur au
