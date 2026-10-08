@@ -106,10 +106,13 @@ function programme(slots, A, d){
 function besoins(A, d, r){
   var cap = Math.max(1, V.elanceMax * d) * d * .96;
   var H = A.length;
-  var hauts = H > 1 ? Math.ceil(A[1] / cap) : 0;
+  /* l'ENVELOPPE des étages, comme `programme` : un étage supérieur plus grand
+     que le 1er (toutes les classes en haut) doit tenir dans les corps hauts */
+  var E1 = H > 1 ? Math.max.apply(null, A.slice(1)) : 0;
+  var hauts = H > 1 ? Math.ceil(E1 / cap) : 0;
   /* ce que le rez a de plus que l'étage : sous la largeur minimale d'un corps,
      il ne fait pas un volume — les corps hauts le prennent à leur rez */
-  var resid = A[0] - (H > 1 ? A[1] : 0);
+  var resid = A[0] - E1;
   var bas = resid < V.largeurMin * d ? 0 : Math.ceil(resid / cap);
   /* un volume de plus par classe de hauteur, à pile ou face : le levier
      « figure » tire à parts égales */
