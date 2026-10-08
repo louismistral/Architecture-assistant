@@ -87,6 +87,8 @@ export var CLSRE = /^(Salles? de classe|Salle de dédoublement|Salle ACM|Salles 
    l'ACM et l'appui dans l'unité portait le contingent à vingt-neuf salles, donc
    à quatre niveaux de classes là où le règlement n'en admet que trois. */
 export var UNITE = /^Salles? de classe/;
+/* LA CLASSE STANDARD : celle qui a son vestiaire et son WC au même niveau. */
+export var CLASSE = /^Salles de classe standard/;
 export var VESTC = /^Vestiaires de classe/;
 /* Ce qui fait du bruit, et ce qui demande le calme. Aucun article ne l'écrit :
    c'est de l'usage scolaire. La note du tirage l'évite (orientation

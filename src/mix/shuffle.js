@@ -61,7 +61,7 @@ import {
   BLOCKS, FLOORS, PLATE_MAX, PLATE_MIN, TRAY, delFloorAt, flBrut, flCount,
   flNet, fuse, grade, lvlOf, nextUid, onFloor, place, setPlate, setStack, toTray, usable
 } from "./floors.js";
-import { BRUYANT, CLSRE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
+import { BRUYANT, CLASSE, CLSRE, VESTC, WCF, WCG, WCRE, ancreDe, lvRange, prefereNiveau } from "./niv.js";
 import {
   adjActive, estLie, setLie
 } from "./opts.js";
@@ -257,31 +257,37 @@ function poser(p, cand, alea, pose){
 }
 
 /* ---------- sanitaires ---------------------------------------------------
-   Les WC garçons et filles et les vestiaires de classe suivent les classes, au
-   prorata de celles que porte chaque niveau, avec au moins un WC de chaque
-   genre là où il y a des classes. Un étage sans sanitaires ne se dessine pas.
-   Aucun article ne l'écrit : c'est notre choix, la ligne `wc` du cadre
-   choisi — éteinte, les sanitaires se répartissent comme le reste. */
+   Chaque classe standard a son vestiaire et son WC AU MÊME NIVEAU qu'elle
+   (`schema.js`, liens classes–vestiaires et classes–WC) : un niveau porte
+   autant de vestiaires et de WC — garçons et filles en alternance — que de
+   classes. Ce qui reste (des classes au bac) suit leur prorata. Un étage sans
+   sanitaires ne se dessine pas. Aucun article ne l'écrit : c'est notre choix,
+   la ligne `wc` du cadre choisi — éteinte, les sanitaires se répartissent
+   comme le reste. */
 function equilibrerWC(){
   if(!enVigueur("wc")) return;
-  var cls = [], use = [], i, tc = 0;
+  var cls = [], use = [], gars = [], i, tc = 0, impair = 0;
   for(i = 0; i < FLOORS.length; i++){ cls[i] = 0; use[i] = 0; }
   BLOCKS.forEach(function(b){
     if(b.fl === TRAY || b.fl >= FLOORS.length) return;
     var p = PMAP[b.key];
     if(p.f !== "tec") use[b.fl] += b.q;         /* un niveau technique n'appelle pas de WC */
-    if(CLSRE.test(p.n)) cls[b.fl] += b.q;
+    if(CLASSE.test(p.n)) cls[b.fl] += b.q;
   });
-  for(i = 0; i < FLOORS.length; i++) tc += cls[i];
+  for(i = 0; i < FLOORS.length; i++){
+    tc += cls[i];
+    /* un nombre impair de classes : le WC de trop est garçon, puis fille */
+    gars[i] = Math.floor(cls[i] / 2) + (cls[i] % 2 && !(impair++ % 2) ? 1 : 0);
+  }
 
-  function repartir(re, minPar){
+  function repartir(re, cible){
     posables().forEach(function(p){
       /* Un poste lié reste d'un seul tenant, là où le tirage l'a posé. */
       if(!re.test(p.n) || estLie(p.key)) return;
       var cand = rangeOf(p), q = qOf(p.key), want = {}, rest = q, frac = [];
       if(q <= 0 || !cand.length) return;
       cand.forEach(function(f){
-        var n = (use[f] && minPar) ? Math.min(minPar, Math.max(0, rest)) : 0;
+        var n = Math.min(cible(f), rest);
         want[f] = n; rest -= n;
       });
       cand.forEach(function(f){
@@ -297,9 +303,9 @@ function equilibrerWC(){
       place(p.key, want);
     });
   }
-  repartir(WCG, 1);
-  repartir(WCF, 1);
-  repartir(VESTC, 0);
+  repartir(WCG, function(f){ return gars[f]; });
+  repartir(WCF, function(f){ return cls[f] - gars[f]; });
+  repartir(VESTC, function(f){ return cls[f]; });
 
   /* Repêchage : un niveau occupé sans le moindre WC en reçoit un, pris là où
      il y en a plusieurs. */
