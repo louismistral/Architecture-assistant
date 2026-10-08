@@ -368,6 +368,8 @@ export function dm3Massing(rh, o){
   doc.settings().modelUnitSystem = rh.UnitSystem.Centimeters;
   doc.strings().set("Saxon massing", P.notes.join("\n"));
   if(P.variante) doc.strings().set("Saxon variante", P.variante);
+  /* le fichier vient de l'app : l'import relira ses corps comme elle les a posés */
+  doc.strings().set("Saxon massing", "1");
   /* un calque et chacun de ses parents, dans l'ordre de l'arbre */
   function calque(ch){
     if(idx[ch] != null) return idx[ch];

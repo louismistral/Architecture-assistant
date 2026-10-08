@@ -120,7 +120,7 @@ export function solides3dm(rh, octets){
       for(j = 0; j < F.count; j++) maille(F.get(j).getMesh(rh.MeshType.Any));
     }
   }
-  var vs = doc.strings().getvalue("Saxon variante");
+  var vs = doc.strings().getvalue("Saxon variante"), app = !!doc.strings().getvalue("Saxon massing");
   doc.delete();
   /* rhino3dm ne maille pas : il relit les maillages de rendu que Rhino a
      enregistrés. Un fichier « Save small » n'en a pas. */
@@ -130,6 +130,7 @@ export function solides3dm(rh, octets){
   if(!out.length) throw new Error("Aucun solide " + (conv ? "sur le calque " + CALQUE.volume : "dans le fichier")
     + " : ni Brep, ni extrusion, ni maillage.");
   out.variante = vs || null;
+  out.app = app;
   return out;
 }
 
@@ -139,9 +140,10 @@ export function solides3dm(rh, octets){
    exactement. Sinon (une union booléenne, des formes libres), on lit le
    solide par ses toits. */
 export function volsDe3dm(solides){
-  /* un solide qui ne sort pas tel quel de l'app — dessiné dans Rhino, ou un corps
-     libre exporté d'ici — revient TEL QU'IL EST */
-  if(solides.some(function(T){ return !T.corps || T.libre; })) return corpsLibres(solides);
+  /* un fichier qui ne sort pas de l'app (dessiné dans Rhino), ou qui porte un corps
+     libre exporté d'ici, revient TEL QU'IL EST ; ce que l'app a exporté se relit
+     comme elle l'avait posé */
+  if(!solides.app || solides.some(function(T){ return T.libre; })) return corpsLibres(solides);
   /* un étage fusionné exporté d'ici (un L, un U) est un prisme droit : il se
      relit en boîtes, que `fusionner()` recolle */
   var B = solides.map(function(T){

@@ -832,6 +832,7 @@ const TESTS = {
     const d2 = new rh.File3dm();
     d2.settings().modelUnitSystem = doc.settings().modelUnitSystem;
     d2.strings().set("Saxon variante", doc.strings().getvalue("Saxon variante"));
+    d2.strings().set("Saxon massing", doc.strings().getvalue("Saxon massing"));
     for(let k = 0; k < L.count; k++){
       const l = L.get(k), n = new rh.Layer();
       n.name = l.name; n.id = l.id; n.parentLayerId = l.parentLayerId; d2.layers().add(n);
@@ -854,6 +855,91 @@ const TESTS = {
     assert.equal(r.vols.length, n0);
     assert.equal(r.vols.filter((v) => v.par === "humain").length, 1, "humain : " + repeint);
     assert.equal(r.vols.filter((v) => v.par === "ia").length, 1, "IA : " + bleui);
+  },
+  /* UN MASSING DESSINÉ DANS RHINO revient tel qu'il est (corps libres) : un L,
+     un solide à cheval sur deux niveaux, une aile tournée de 30°, la salle de
+     sport, un sous-sol technique, chacun sur le sous-calque de son chapitre. Les
+     surfaces au centimètre carré, les altitudes, les chapitres, la pile du mixer
+     et sa répartition, puis l'aller et retour, identique. */
+  async rhino_libre(ref){
+    let rh;
+    try{ rh = await rhino3dm(); }catch(_){ return; }
+    const { M, F } = MODS;
+    const X = await import(new URL("mass/export.js", SRC)), I = await import(new URL("mass/import.js", SRC));
+    const Lb = await import(new URL("mass/libre.js", SRC)), P = await import(new URL("mix/prog.js", SRC));
+    const { RHINO } = MODS.site;
+    garde(charger(null, ref));
+    const doc = new rh.File3dm();
+    doc.settings().modelUnitSystem = rh.UnitSystem.Centimeters;
+    const calque = {};
+    function couche(ch){
+      if(calque[ch] != null) return calque[ch];
+      const parts = ch.split("::"), l = new rh.Layer();
+      l.name = parts[parts.length - 1];
+      if(parts.length > 1){ couche(parts.slice(0, -1).join("::")); l.parentLayerId = doc.layers().findIndex(calque[parts.slice(0, -1).join("::")]).id; }
+      calque[ch] = doc.layers().add(l);
+      return calque[ch];
+    }
+    function solide(nom, ch, poly, z0, z1){
+      const m = new rh.Mesh(), V = m.vertices(), n = poly.length;
+      [z0, z1].forEach((z) => poly.forEach((p) => V.add(100 * p[0] + RHINO.x0, 100 * p[1] + RHINO.y0, 100 * (z - RHINO.z0))));
+      Lb.trianguler(poly).forEach((t) => { m.faces().addTriFace(t[2], t[1], t[0]); m.faces().addTriFace(n + t[0], n + t[1], n + t[2]); });
+      for(let i = 0; i < n; i++){ const j = (i + 1) % n; m.faces().addQuadFace(i, j, n + j, n + i); }
+      const a = new rh.ObjectAttributes();
+      a.layerIndex = couche("3D::Projet::Volume 01::" + ch); a.name = nom;
+      doc.objects().add(m, a);
+    }
+    const z = RHINO.z0, c = Math.cos(Math.PI / 6), s = Math.sin(Math.PI / 6);
+    const L = [[60, 60], [100, 60], [100, 80], [80, 80], [80, 100], [60, 100]];
+    const U = [[-10, -8], [10, -8], [10, 8], [-10, 8]].map((p) => [130 + p[0] * c - p[1] * s, 90 + p[0] * s + p[1] * c]);
+    const H = [[110, 20], [143, 20], [143, 49], [110, 49]];
+    solide("Ecole_L", "Ecole", L, z, z + 3);
+    solide("Ecole_haut", "Ecole", [[60, 60], [100, 60], [100, 80], [60, 80]], z + 3, z + 9);
+    solide("Ecole_toit", "Ecole", [[60, 82], [80, 82], [80, 100], [60, 100]], z + 6, z + 9);
+    solide("UAPE", "UAPE", U, z, z + 3);
+    solide("Salle", "Salle de sport", H, z, z + 7);
+    solide("Technique", "Conciergerie et technique", H, z - 3, z);
+    const sol = I.solides3dm(rh, doc.toByteArray()), r = I.volsDe3dm(sol);
+    assert.equal(r.mode, "libre");
+    assert.equal(r.vols.length, 6);
+    assert.deepEqual([r.nsub, r.nup], [1, 2]);
+    I.poserLibres(r);
+    M.massVols(r.vols);
+    assert.equal(F.FLOORS.length, 4);
+    const par = (nom) => r.vols.find((v) => v.nom === nom.replace(/_/g, " ") || v.id === nom);
+    /* le L : son contour exact ; son intérieur, le polygone moins ses murs (0,40 m) :
+       A − m·P + m²·(5 saillants − 1 rentrant), couvert sans recouvrement */
+    const vL = par("Ecole_L"), eL = vL.lv[0], m = .4;
+    assert.ok(Math.abs(M.contourDe(vL, eL).aire - 1200) < .1, "contour du L");
+    assert.ok(Math.abs(eL.aire - (1200 - m * 160 + m * m * 4)) < .1, "intérieur du L : " + eL.aire);
+    assert.ok(Math.abs(eL.rects.reduce((t, p) => t + p.w * p.d, 0) - eL.aire) < .01, "découpe du L");
+    assert.equal(eL.chap, "ecole");
+    /* à cheval sur deux niveaux : un étage par niveau, à leurs altitudes */
+    const vH = par("Ecole_haut");
+    assert.deepEqual(M.etagesDe(vH).map((x) => [Math.round(100 * (x.z0 - z)) / 100, Math.round(100 * x.h) / 100]), [[3, 3], [6, 3]]);
+    /* l'aile tournée garde son angle et sa surface */
+    const vU = par("UAPE");
+    assert.ok(Math.abs(((vU.a * 180 / Math.PI) % 90 + 90) % 90 - 30) < .01, "angle de l'UAPE");
+    assert.ok(Math.abs(M.contourDe(vU, vU.lv[0]).aire - 320) < .1, "contour de l'UAPE : " + M.contourDe(vU, vU.lv[0]).aire + " " + JSON.stringify(vU.lv[0].poly));
+    /* la salle de sport, à sa hauteur ; le sous-sol, sous elle */
+    const vs = r.vols.find((v) => v.fix);
+    assert.ok(vs && vs.id === "vsport" && Math.abs(vs.lv[0].h - 7) < .01, "salle de sport");
+    assert.equal(F.lvlOf(par("Technique").lv[0].i), -1);
+    /* le mixer : chaque chapitre sur les niveaux de ses solides */
+    const ok = { ecole:[1, 2, 3], uape:[1], tech:[0], sport:[1] };
+    F.BLOCKS.forEach((b) => {
+      const c = P.PMAP[b.key].chapId;
+      if(ok[c] && b.fl >= 0) assert.ok(ok[c].indexOf(b.fl) >= 0, b.key + " au niveau " + b.fl);
+    });
+    /* aller et retour : les mêmes contours, altitudes et chapitres */
+    const sig = (V) => V.map((v) => M.etagesDe(v).map((x) => [x.e.chap, Math.round(100 * x.z0), Math.round(100 * x.h),
+      x.contour.loops[0].map((p) => Math.round(100 * p[0]) + "," + Math.round(100 * p[1])).sort().join(" ")].join("|")).join("/")).sort();
+    const avant = sig(r.vols);
+    const r2 = I.volsDe3dm(I.solides3dm(rh, X.dm3Massing(rh, {})));
+    assert.equal(r2.mode, "libre");
+    I.poserLibres(r2);
+    M.massVols(r2.vols);
+    assert.deepEqual(sig(r2.vols), avant);
   },
   async js_ecrire(ref){
     const f = ".atelier/test/js.json", x0 = ref.mass.vol[0].x;
@@ -1387,7 +1473,7 @@ async function test(){
   let ko = 0;
   for(const [nom, f] of Object.entries(TESTS)){
     try{ await f(structuredClone(ref)); console.log("ok  ", nom); }
-    catch(e){ ko++; console.log("KO  ", nom, "—", e.message.split("\n")[0]); }
+    catch(e){ ko++; console.log("KO  ", nom, "—", process.env.TOUT ? e.message : e.message.split("\n")[0]); }
   }
   console.log(ko ? ko + " échec(s)" : Object.keys(TESTS).length + " tests passés");
   if(ko) process.exitCode = 1;
