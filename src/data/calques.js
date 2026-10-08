@@ -74,6 +74,35 @@ export var ACTEURS = {
 /* au-delà, un gris n'est plus un gris ; en deçà, une couleur n'en est pas une */
 export var SAT_GRIS = .12, SAT_COULEUR = .35;
 
+/* LE PROGRAMME PAR CALQUE. Un sous-calque de Volume dit quel chapitre loge le
+   solide qu'il porte — l'export écrit le nom court (`École`, `Sport`…), un
+   humain écrit souvent le sien (`Ecole`, `Salle de sport`, `Public et
+   communale`, `Conciergerie et technique`). Un mot du nom suffit, sans accents
+   ni capitales ; le premier sous-calque qui en a un décide. L'id est celui de
+   `data/program.js — CHAP`. */
+export var CHAPITRES = [
+  { id:"ecole", mots:["ecole", "primaire", "classe"] },
+  { id:"sport", mots:["sport", "gym"] },
+  { id:"uape",  mots:["uape", "accueil"] },
+  { id:"tech",  mots:["technique", "concierge", "conciergerie", "tech"] },
+  { id:"infra", mots:["infrastructure", "infrastructures", "public", "communal", "communale", "piscine"] },
+  { id:"ext",   mots:["exterieur", "exterieurs", "amenagement", "amenagements"] }
+];
+/* Le calque Volume, numéroté ou non (`3D::Projet::Volume`, `3D::Projet::Volume 01`). */
+export function estVolume(ch){
+  var V = CALQUE.volume;
+  return ch === V || ch.indexOf(V + SEP) === 0 || new RegExp("^" + V.replace(/::/g, SEP) + "[ _-]?\\w*(" + SEP + "|$)").test(ch);
+}
+export function chapDuCalque(ch){
+  var S = ch.split(SEP).slice(3);
+  for(var k = 0; k < S.length; k++){
+    var m = S[k].normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/[^a-z0-9]+/);
+    var c = CHAPITRES.filter(function(x){ return x.mots.some(function(w){ return m.indexOf(w) >= 0; }); })[0];
+    if(c) return c.id;
+  }
+  return null;
+}
+
 /* ---------- les règles qui s'en lisent ---------- */
 export function chemin(){ return [].slice.call(arguments).filter(Boolean).join(SEP); }
 /* Le sous-calque de Courbes d'un trait : la taille la plus proche de son

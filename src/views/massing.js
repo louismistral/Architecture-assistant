@@ -37,7 +37,7 @@ import { requilibre } from "../mass/fix.js";
 import { dansPerimetre, empSol, genMass, poser, rectSol } from "../mass/gen.js";
 import { TOITS, arDe, capCote, jeuDe, jeuNiveaux } from "../mass/archi.js";
 import { dm3Massing } from "../mass/export.js";
-import { solides3dm, volsDe3dm } from "../mass/import.js";
+import { poserLibres, solides3dm, volsDe3dm } from "../mass/import.js";
 import { RHINO } from "../data/site.js";
 import { evaluationCourante, rougesTypo } from "../mass/mesures.js";
 import { V, reculVise } from "../data/cadre.js";
@@ -1198,6 +1198,8 @@ function importer(fichier){
       + MASS.vol.length + " volumes) par celle de « " + fichier.name + " » ("
       + n + " volume" + (n > 1 ? "s" : "") + ") ? Elle sera perdue si elle n’est pas "
       + "enregistrée dans une variante.")) return;
+    /* des solides de Rhino, tels quels : la pile du mixer suit, le programme s'y répartit */
+    if(r.mode === "libre") poserLibres(r);
     massVols(r.vols);
     MASS.pile = empreintePile();
     /* le fichier dit de quelle variante il part : celle qu'on en tirera sera sa fille */

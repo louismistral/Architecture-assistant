@@ -516,7 +516,7 @@ async function verbeImporter({ pos, opt }){
   garde(charger(groupeDe(opt), lireEtat(fe, true)));
   const rh = await rhino3dm();
   let sol, r;
-  try{ sol = I.solides3dm(rh, new Uint8Array(readFileSync(pos[0]))); r = I.volsDe3dm(sol); }
+  try{ sol = I.solides3dm(rh, new Uint8Array(readFileSync(pos[0]))); r = I.volsDe3dm(sol); if(r.mode === "libre") I.poserLibres(r); }
   catch(e){ throw new Erreur("import impossible : " + (e.message || e)); }
   M.massVols(r.vols);
   M.MASS.pile = M.empreintePile();

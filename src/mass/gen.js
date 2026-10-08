@@ -909,7 +909,7 @@ export function fusionner(vols, ponts, etage){
     encore = false;
     for(var i = 0; i < vols.length && !encore; i++) for(var j = i + 1; j < vols.length && !encore; j++){
       var a = vols[i], b = vols[j];
-      if(a.ph || b.ph || a.fix || b.fix || !touchent(a, b, etage)) continue;
+      if(a.ph || b.ph || a.fix || b.fix || a.libre || b.libre || !touchent(a, b, etage)) continue;
       var pl = alignes(a, b);
       if(pl){
         pl.forEach(function(p){
@@ -1001,7 +1001,7 @@ function recoller(vols){
   var D = V.fusionDist == null ? 1 : V.fusionDist;
   for(var i = 0; i < vols.length; i++) for(var j = i + 1; j < vols.length; j++){
     var a = vols[i], b = vols[j], k = Math.round((b.a - a.a) / (Math.PI / 2));
-    if(a.ph || b.ph || Math.abs(b.a - a.a - k * Math.PI / 2) > TOL_ANGLE) continue;
+    if(a.ph || b.ph || a.libre || b.libre || Math.abs(b.a - a.a - k * Math.PI / 2) > TOL_ANGLE) continue;
     if(ecartVols(a, b, null, D + 1) > D) continue;
     /* celui qui bouge : le second, sinon le premier, à l'angle de l'autre */
     [[b, a], [a, b]].some(function(x){

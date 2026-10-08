@@ -276,9 +276,11 @@ function borne(q){ return Math.max(-1, Math.min(1, q)); }
 function lin(x, bon, max){ return borne(1 - (x - bon) / Math.max(1e-6, max - bon)); }
 function palier(x, bon, max){ return x <= bon ? 2 : x <= max ? 1 : 0; }
 /* la normale à la façade longue d'une emprise — d'une part, pour un volume
-   fusionné : chaque aile a la sienne */
+   fusionné : chaque aile a la sienne ; un corps libre a des parts tournées,
+   chacune dans son axe (`r.a`) */
 function normale(v, r){
-  return r.w >= r.d ? v.a + Math.PI / 2 : v.a;
+  var a = r.a == null ? v.a : r.a;
+  return r.w >= r.d ? a + Math.PI / 2 : a;
 }
 /* L'azimut d'une direction du dessin (x à l'est, y au nord), en degrés de
    0 à 360 depuis le nord, dans le sens horaire. */
@@ -504,7 +506,7 @@ function lire(vols){
   /* le second temps posé, en part de sa surface au programme */
   var S2 = secondTemps(), s2d = 0, s2p = 0;
   S2.forEach(function(x){ s2d += x.a; });
-  vols.forEach(function(v){ if(v.ph) s2p += v.lv[0].w * v.lv[0].d; });
+  vols.forEach(function(v){ if(v.ph) s2p += aireEtage(v.lv[0]); });
   var sp = E.filter(function(v){ return v.fix; });
 
   return {
