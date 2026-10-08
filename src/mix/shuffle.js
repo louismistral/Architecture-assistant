@@ -518,9 +518,11 @@ function plateauxDeLaPile(){
 export function repartir(opts){
   var alea = !!(opts && opts.alea);
   CH = (opts && opts.chapitres) || chapitres();
-  /* `garder` : la pile ET ses plateaux sont ceux qu'on a posés (un massing de Rhino) */
-  if(opts && opts.etages) proposerPile(alea);
-  else if(!(opts && opts.garder)) plateauxDeLaPile();
+  /* `garder` : la pile ET ses plateaux sont ceux qu'on a posés. Un massing de
+     Rhino (`CH`) les impose toujours : ses étages sont ceux du fichier. */
+  var etages = opts && opts.etages && !CH;
+  if(etages) proposerPile(alea);
+  else if(!(opts && opts.garder) && !CH) plateauxDeLaPile();
 
   toTray();
   var pose = {};                      /* key → niveaux retenus */
@@ -575,7 +577,7 @@ export function repartir(opts){
      niveau de zéro mètre carré. On ne rogne que la pile qu'on vient de
      proposer — celle que l'utilisateur a composée à la main lui appartient,
      même vide. */
-  if(opts && opts.etages){
+  if(etages){
     while(FLOORS.length > 1 && FLOORS[FLOORS.length - 1].lvl > 0
           && flCount(FLOORS.length - 1) === 0){
       delFloorAt(FLOORS.length - 1);
