@@ -516,8 +516,11 @@ function plateauxDeLaPile(){
 
 /* ---------- la répartition ------------------------------------------------ */
 export function repartir(opts){
-  var alea = !!(opts && opts.alea);
   CH = (opts && opts.chapitres) || chapitres();
+  try{ repartir0(opts); } finally { CH = null; }
+}
+function repartir0(opts){
+  var alea = !!(opts && opts.alea);
   /* `garder` : la pile ET ses plateaux sont ceux qu'on a posés. Un massing de
      Rhino (`CH`) les impose toujours : ses étages sont ceux du fichier. */
   var etages = opts && opts.etages && !CH;
@@ -585,7 +588,6 @@ export function repartir(opts){
     tasserSommet();
   }
   ajusterPlateaux();
-  CH = null;
 }
 
 /* Un dernier étage qui ne porte que ses sanitaires n'est pas un étage : c'est
