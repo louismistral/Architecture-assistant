@@ -116,6 +116,10 @@ export var RULES = {
        ou deux WC et leur sas —, ce que les plans font (mesuré sur 72 tirages). */
     piece: { ratio: 2, ratioGrand: 3, grand: 100, larg: 1.60, cabine: 0.90, sas: 1.20, petit: 30, colonne: 10 },
     deuxRangs: 15,
+    /* LE PLAN EN CLUSTER (`typo/gen.js`) : la part des seeds typologie qui
+       tirent un plan en cluster — trois ou quatre classes autour d'un espace
+       commun où sont leurs vestiaires — plutôt qu'un plan couloir */
+    cluster: 0.5,
     pmr: [1.65, 1.80],
     /* la cotation, en m sur le plan : le blanc entre le dessin et une ligne
        d'attache, la première chaîne au-delà de la façade, l'écart entre deux

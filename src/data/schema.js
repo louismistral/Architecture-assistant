@@ -81,7 +81,7 @@ export var SNODE = [
    `q` cite le règlement, mot pour mot autant que possible. */
 export var SLINK = [
   { a:"classes",   b:"vest_cl",    sas:1,
-    q:"un vestiaire par classe, au même niveau — on entre dans la classe par son vestiaire (choix de projet)" },
+    q:"un vestiaire par classe, au même niveau — on entre dans la classe par son vestiaire (choix de projet, en plan couloir)" },
   { a:"classes",   b:"wc_el",      q:"1 par classe standard, au même niveau : autant de WC que de classes, soit 18 répartis" },
   { a:"acm",       b:"depot_acm",  q:"en relation avec la salle ACM" },
 
