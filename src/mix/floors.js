@@ -219,7 +219,9 @@ export function moveGroupe(u, fl){
   BLOCKS.slice().forEach(function(x){
     if(!keys[x.key] || x.fl === fl) return;
     if(x !== b && x.fl !== de && !estLie(x.key)) return;
-    if(fl !== TRAY && !admis(x.key, fl)) return;       /* la règle de niveau passe avant */
+    /* La règle de niveau retient ce qui SUIT, jamais la part qu'on tire : le
+       mixer ne refuse rien, il déplace et le contrôle dit l'écart. */
+    if(x !== b && fl !== TRAY && !admis(x.key, fl)) return;
     x.fl = fl; n++;
   });
   Object.keys(keys).forEach(fuse);
