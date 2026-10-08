@@ -170,6 +170,15 @@ body{ padding-inline:var(--s-4); }
     </section>
     <ol class="mass-etapes" id="etapes"></ol>
     <section class="mass-emporter" aria-label="Emporter">
+      <div class="btn-field">
+        <span class="segcap">Exporter le niveau</span>
+        <div class="btn-group" id="export" role="group" aria-label="Exporter le plan du niveau montré, au 1:200, comme sa planche du Rendu">
+          <button class="btn" type="button" data-f="pdf" title="Pour imprimer : la planche du Rendu, au 1:200">PDF</button>
+          <button class="btn" type="button" data-f="svg" title="Pour Illustrator : calques, aplats et textes modifiables">SVG</button>
+          <button class="btn" type="button" data-f="dxf" title="Pour AutoCAD, Rhino, Archicad : polylignes, hachures et textes, en mm sur le papier">DXF</button>
+        </div>
+      </div>
+      <p class="mass-note" id="export-note" hidden></p>
       <button class="btn" type="button" id="copy">Copier le SVG</button>
     </section>
   </aside>
@@ -1471,6 +1480,22 @@ if(typeof module !== "undefined") module.exports = MEUBLES;
   $("z-out").addEventListener("click", function(){ zoom(1 / 0.7); });
   $("z-fit").addEventListener("click", cadrer);
   window.addEventListener("resize", function(){ cadrer(); });
+
+  /* ---------- exporter le niveau : la planche du Rendu, chez l'hôte ---------- */
+  $("export").querySelectorAll("[data-f]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var note = $("export-note"), f = b.dataset.f;
+      note.hidden = true;
+      if(!parent.typoExporter){ note.textContent = "Export indisponible hors de l'application."; note.hidden = false; return; }
+      b.disabled = true;
+      /* le rendu peut prendre une seconde : le bouton s'éteint d'abord */
+      setTimeout(function(){
+        Promise.resolve().then(function(){ return parent.typoExporter(window.typoPlanches(), st.niv, f); })
+          .catch(function(e){ console.error(e); note.textContent = "Export impossible : " + (e.message || e); note.hidden = false; })
+          .then(function(){ b.disabled = false; });
+      }, 0);
+    });
+  });
 
   /* ---------- copier le SVG, couleurs résolues ---------- */
   $("copy").addEventListener("click", function(){

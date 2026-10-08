@@ -7,7 +7,7 @@ import {
 import { curSub, setSub, subBtnId, subsOf, tabOf, view, writeHash } from "../core/viewstate.js";
 import { parametresVue } from "./parametres.js";
 import { forensicsVue } from "./forensics.js";
-import { renduVue } from "./rendu.js";
+import { exporterEtage, renduVue } from "./rendu.js";
 import { donneesTypo, typoGraine, typoRegle } from "../typo/donnees.js";
 import { creerPG } from "../typo/gen.js";
 import { lirePlans } from "../typo/mesures.js";
@@ -221,6 +221,7 @@ export function typoHote(){
   window.typoPG = creerPG; window.typoLecture = lirePlans; window.typoEvaluation = typoEvaluation;
   window.typoIcone = function(n, t){ return icone(n, t).outerHTML; };
   window.typoSousShuffle = function(main){ return sousShuffle(main, "typologie"); };
+  window.typoExporter = exporterEtage;
 }
 
 /* ---------- le cadenas, dans l'onglet ----------

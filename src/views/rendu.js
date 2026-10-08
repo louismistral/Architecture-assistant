@@ -200,12 +200,27 @@ function etages(g){
       spec:AXO.format + (AXO.eclateePortrait ? " portrait" : " paysage") + " · un plan par niveau, murs coupés · PDF vectoriel",
       dessin:function(){ return axoEclatee(N); }, fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     N.slice().sort(function(a, b){ return a.lvl - b.lvl; }).forEach(function(n){
-      g.appendChild(carte({ id:"etage-" + n.i, n:n.name, format:cad.format, nom:"saxon-typologie-" + n.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      g.appendChild(carte({ id:"etage-" + n.i, n:n.name, format:cad.format, nom:nomEtage(n),
         spec:cad.format + " paysage · 1:" + ETAGES.echelle + " · PDF vectoriel",
         dessin:function(){ return planEtage(n, cad); },
         fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }));
     });
   }).catch(function(e){ att.textContent = "Les plans n'ont pas pu être lus : " + e.message; });
+}
+function nomEtage(n){
+  return "saxon-typologie-" + n.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+/* Le plan d'un niveau, exporté depuis l'onglet Typologies (`typoHote()`) : la
+   planche de sa carte ici — même dessin, même cadrage, même nom de fichier —,
+   au format choisi. `N` : `typoPlanches()` de la page des plans. */
+export function exporterEtage(N, i, f){
+  var n = N.filter(function(x){ return x.i === i; })[0], so = SORTIES[f];
+  if(!n || !so) return Promise.reject(new Error("niveau ou format inconnu"));
+  var t = planEtage(n, cadrage(N));
+  return so.fichier({ fichier:function(t){ return Promise.resolve(pdfNeuf(t)); } }, t, null).then(function(o){
+    telecharger(Array.isArray(o) ? o[0] : o, nomEtage(n) + "-" + graine() + "." + f, so.type);
+  });
 }
 
 /* LE RENDU FINAL — les cinq planches A1 du règlement (`rendu/final.js`). La
