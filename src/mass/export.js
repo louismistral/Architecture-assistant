@@ -65,6 +65,8 @@ import { MASS, dessinDe, recouvreLie, etagesDe, fusionne, niveaux, partiOf, part
 import { PMAP } from "../mix/prog.js";
 import { CALQUE, SEP, chemin, couleur } from "../data/calques.js";
 import { archiDe, faces } from "./archi.js";
+import { trianguler } from "./libre.js";
+import { CHAP } from "../data/program.js";
 
 /* Un nom sans accent ni espace : Rhino en fait un nom de calque ou d'objet.
    « 1ᵉʳ étage » devient « 1er_etage » — la décomposition de compatibilité
@@ -195,6 +197,22 @@ export function piecesMassing(o){
     });
     A.forEach(function(x){ if(!dir[x[1] + ">" + x[0]]) obj.f.push([x[0], x[1], N + x[1], N + x[0]]); });
   }
+  /* UN CORPS LIBRE : son contour tel qu'il est revenu de Rhino, extrudé en UN
+     maillage fermé — dessous et dessus en triangles (`trianguler`, juste pour
+     une forme concave), un côté par côté du contour. */
+  function prismeLibre(nom, groupe, P, z0, z1){
+    var Q = P.slice(), n = Q.length, s = 0, i;
+    for(i = 0; i < n; i++) s += Q[i][0] * Q[(i + 1) % n][1] - Q[(i + 1) % n][0] * Q[i][1];
+    if(s < 0) Q.reverse();
+    objet(nom, groupe, { v:[], f:[] });
+    Q.forEach(function(p){ sommet(p[0], p[1], z0); });
+    Q.forEach(function(p){ sommet(p[0], p[1], z1); });
+    trianguler(Q).forEach(function(t){
+      obj.f.push([t[2], t[1], t[0], t[0]]);
+      obj.f.push([n + t[0], n + t[1], n + t[2], n + t[2]]);
+    });
+    for(i = 0; i < n; i++){ var j = (i + 1) % n; obj.f.push([i, j, n + j, n + i]); }
+  }
   /* Une polyligne FERMÉE, drapée : chaque côté recoupé au pas de la grille,
      chaque sommet à l'altitude du terrain. */
   function ligne(nom, groupe, P){
@@ -219,7 +237,7 @@ export function piecesMassing(o){
   N.forEach(function(n){
     function g(keys){ return chemin(CALQUE.volume, chapDe(keys, n.i), "Niveau_" + nomNiveau(n)); }
     MASS.vol.forEach(function(v, k){
-      if(v.ph) return;
+      if(v.ph || v.libre) return;
       var pose = recouvreLie(v, MASS.vol);
       etagesDe(v).forEach(function(s){
         if(s.e.i !== n.i) return;
@@ -259,13 +277,30 @@ export function piecesMassing(o){
   });
   /* --- le second temps : il ne porte aucun niveau de la pile --- */
   MASS.vol.forEach(function(v, k){
-    if(!v.ph) return;
+    if(!v.ph || v.libre) return;
     etagesDe(v).forEach(function(s){
       corps.push(de(v, .5, function(){
         boite(nomObj(volNom(v, k)), chemin(CALQUE.volume, chapDe(s.e.keys, s.e.i), "Second_temps"), s.rc, s.z0, s.z1);
       }));
       nEt++;
     });
+  });
+
+  /* --- les corps libres : chacun son solide, du pied de son plus bas étage à la
+     tête du plus haut, sur le calque de son chapitre — il revient tel quel
+     (`import.js — corpsLibres`) --- */
+  MASS.vol.forEach(function(v, k){
+    if(!v.libre) return;
+    var S = etagesDe(v);
+    if(!S.length) return;
+    var e = S[0].e, c = CHAP.filter(function(x){ return x.id === e.chap; })[0];
+    var cal = chemin(CALQUE.volume, c ? nomObj(c.short) : chapDe(e.keys, e.i), v.ph ? "Second_temps" : "Niveau_" + nomNiveau(S[0].n));
+    corps.push(de(v, .5, function(){
+      prismeLibre(nomObj(volNom(v, k)), cal, S[0].contour.loops[0], S[0].z0, S[S.length - 1].z1);
+      obj.us = { "Saxon libre":"1", "Saxon corps":v.id };
+      if(v.bat) obj.us["Saxon bat"] = v.bat;
+    }));
+    nEt++;
   });
 
   /* --- l'architecture : toits, lanterneaux, auvents, rampes, sous-passages --- */

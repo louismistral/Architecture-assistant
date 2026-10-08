@@ -72,7 +72,9 @@ export function donneesTypo(vols, ponts, graine){
     /* les ailes d'un MÊME volume fusionné ne se cèdent rien : ce sont ses parts
        (aux sous-sols fusionnés, elles se chevauchent parfois de quelques
        décimètres) — seul un autre corps posé dessus raccourcit une aile */
-    var autres = parts.filter(function(o){ return o === v || !v.aile || o.aile !== v.aile; });
+    /* … sauf les ailes d'un corps LIBRE, qui peuvent se recouvrir (une aile en
+       biais posée sur une barre, `mass/libre.js`) : la part commune n'est pavée qu'une fois */
+    var autres = parts.filter(function(o){ return o === v || !v.aile || o.aile !== v.aile || v.deLibre; });
     v.lv.forEach(function(e){ var c = cedeeDe(v, autres, e.i); if(c.aire > 0) coupes.push([e, c]); });
   });
   /* Un étage presque tout entier posé sur l'autre — il ne lui resterait pas un mètre —
@@ -121,6 +123,24 @@ export function donneesTypo(vols, ponts, graine){
 export function ailes(vols){
   var out = [];
   vols.forEach(function(v){
+    /* UN CORPS LIBRE (un solide de Rhino) : une aile par rectangle de son
+       intérieur, chacune dans son axe, à tous ses niveaux — ses rectangles sont
+       les mêmes d'un niveau à l'autre, ses noyaux s'empilent. Chaque étage dit
+       son chapitre : les plans n'y posent que ce chapitre (`typo/gen.js`). */
+    if(v.libre){
+      var c = Math.cos(v.a), s = Math.sin(v.a), R = v.lv[0].rects;
+      R.forEach(function(p, k){
+        out.push({ id:v.id + (k ? "-" + (k + 1) : ""), x:v.x + p.dx * c - p.dy * s, y:v.y + p.dx * s + p.dy * c,
+          a:v.a + (p.a || 0), fix:v.fix, key:v.key, ph:v.ph, nom:v.nom, joint:v.joint, par:v.par,
+          bat:v.bat || "b" + v.id, aile:v.id, deLibre:1,
+          lv:v.lv.map(function(e){
+            var lv = { i:e.i, w:p.w, d:p.d, dx:0, dy:0, h:e.h, chap:e.chap || null };
+            if(!k && e.keys) lv.keys = e.keys;
+            return lv;
+          }) });
+      });
+      return;
+    }
     if(!v.lv.some(function(e){ return e.ext && e.ext.length; })){ out.push(v); return; }
     var A = [];
     v.lv.slice().sort(function(p, q){ return p.i - q.i; }).forEach(function(e){

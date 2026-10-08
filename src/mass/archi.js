@@ -77,6 +77,8 @@ export function emprise(c){
    null pour la masse du volume ; `k` dit ce qu'est l'élément, `i` le niveau
    qui le porte (la 3D masque un niveau caché, et ce qu'il porte avec lui). */
 export function archiDe(v){
+  /* un corps libre est tel que Rhino l'a dessiné : son architecture s'y dessine aussi */
+  if(v.libre) return [];
   var ar = arDe(v), out = [];
   var E = etagesDe(v).filter(function(s){ return s.n.lvl >= 0; });
   if(!E.length) return out;

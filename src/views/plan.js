@@ -23,7 +23,7 @@ import { lvlOf } from "../mix/floors.js";
 import { MASS, aireEtage, contourDe, dessinDe, etirer, cellules, famCol, filtreDe, mursDe, pontRect, volFusionne,
   volHaut, volInts, volNom, volRect, volRects, vu } from "../mass/model.js";
 import { chevaucheMain, dansPerimetre, fusionner } from "../mass/gen.js";
-import { coins, dansRect } from "../mass/geom.js";
+import { coins, dansRect, moins } from "../mass/geom.js";
 import { archiDe, emprise } from "../mass/archi.js";
 
 var host = null, root = null, gVol = null, wired = false;
@@ -183,7 +183,11 @@ function dessineVol(g, v, k){
       /* Le programme, pavé dans le rectangle : on lit OÙ sont les classes, pas
          seulement qu'il y a un bâtiment. Un volume fusionné se pave part par
          part, chacune au prorata de sa surface. */
-      volInts(v, plein).forEach(function(ri){
+      /* les rectangles d'un corps libre peuvent se recouvrir (une aile en biais) :
+         chacun ne pave que ce que les précédents laissent */
+      var RI = volInts(v, plein);
+      RI.forEach(function(ri, kr){
+      var avant = v.libre ? RI.slice(0, kr).map(coins) : [];
       cellules(plein.i, ri.w, ri.d, filtreDe(v, plein)).forEach(function(c){
         var cx = c.x + c.w / 2, cy = c.y + c.d / 2;
         var sub = { x: ri.x + cx * Math.cos(ri.a) - cy * Math.sin(ri.a),
@@ -191,7 +195,7 @@ function dessineVol(g, v, k){
                     w: c.w, d: c.d, a: ri.a };
         /* la zone commune n'est peinte qu'une fois : chez celui qui la garde — une
            cellule entamée se peint sans trait, et l'on trace ce qui reste de son bord */
-        var Pc = coins(sub), L = D ? D.cel(Pc) : [Pc], entame = L.length !== 1 || L[0] !== Pc;
+        var Pc = coins(sub), L = D ? D.cel(Pc) : avant.length ? moins(Pc, avant) : [Pc], entame = !avant.length && (L.length !== 1 || L[0] !== Pc);
         if(!L.length) return;
         var p = svg("path", { d: morceaux(L), "class":"plan-cel" + (entame ? " is-morceau" : "") });
         p.style.fill = famCol(c.f);

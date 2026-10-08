@@ -87,7 +87,7 @@ export function vignetteCourante(){
     var c = volCoins(v) || [];
     return { p: c.map(function(p){ return [ +p[0].toFixed(1), +p[1].toFixed(1) ]; }),
              s: v.fix ? 1 : 0 };
-  }).filter(function(o){ return o.p.length === 4; }) };
+  }).filter(function(o){ return o.p.length >= 3; }) };
 }
 
 /* Tout ce qui se déduit de l'état à l'écran, et qu'on enregistre à côté de lui

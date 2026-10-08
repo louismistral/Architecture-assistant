@@ -616,8 +616,10 @@ async function verbePlan({ opt }){
   if(m) geom.ligneRecul(m).forEach((l) => R.ligne(l, [240, 140, 40], 1, true));
   const legende = M.MASS.vol.map((v, k) => {
     const c = PALETTE[k % PALETTE.length];
-    M.solRects(v).forEach((rc) => R.remplir(geom.coins(rc), c));
-    v.lv.forEach((e) => M.volRects(v, e).forEach((rc) => R.ligne(geom.coins(rc), c.map((x) => x >> 1), 1, true)));
+    /* un corps libre (un solide de Rhino) : son contour tel quel */
+    if(v.libre) R.remplir(M.volCoins(v), c);
+    else M.solRects(v).forEach((rc) => R.remplir(geom.coins(rc), c));
+    v.lv.forEach((e) => (v.libre ? M.contourDe(v, e).loops : M.volRects(v, e).map(geom.coins)).forEach((P) => R.ligne(P, c.map((x) => x >> 1), 1, true)));
     return { corps: v.id == null ? k : v.id, nom: v.nom || null, couleur: hex(c), rgb: c };
   });
   (M.MASS.pont || []).forEach((p) => { const r = M.pontRect(p, M.MASS.vol); if(r) R.ligne(geom.coins(r), [0, 0, 0], 1, true); });
