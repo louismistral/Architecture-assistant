@@ -40,8 +40,9 @@ function existants(){
 
 /* ---------- le volume, famille par famille ----------
    Chaque corps de chaque niveau est un bloc NOIR, à la hauteur de l'étage, et
-   ce qu'il porte se NOMME en blanc, en lettres qui prennent toute la place — son chapitre, sous le nom de `AXO.noms` —, à plat sur les faces : sur le dessus, au droit de sa plus
-   grande pièce ; sur les façades vues, le long des pièces qui les touchent.
+   ce qu'il porte se NOMME en blanc, en lettres qui prennent toute la place — son chapitre, sous le nom de `AXO.noms` —, à plat sur les faces : sur le dessus, chaque
+   famille sur l'emprise de ses pièces, ou le nom du bloc s'il est seul ou si
+   elles se mêlent ; sur les façades vues, le nom du bloc, d'un bout à l'autre.
    Une face cachée par un volume peint plus tard l'est avec son texte. */
 /* l'éclatée est dessinée plus petit que le 1:200 : ses traits s'y réduisent */
 var ECH = 0.75, MM = 72 / 25.4;   /* `TRAITS` est en mm, la planche en pt */
@@ -64,16 +65,33 @@ function dedans(q, p){
 }
 /* un texte posé à plat sur une face : `o` un point, `U` et `V` ses axes (m)
    — (U, V, normale sortante) en sens direct, sans quoi il se lirait en miroir
-   — `ht` la hauteur des lettres en m ; centré sur `o` */
-function ecrire(t, A, s, o, U, V, ht){
+   — `T` sa taille (`taille()`) ; centré sur `o`, ligne par ligne */
+function ecrire(t, A, T, o, U, V){
+  T.lignes.forEach(function(s, i){
+    var d = ((T.lignes.length - 1) / 2 - i) * INTER * T.ht;
+    ligne(t, A, s, [o[0] + V[0] * d, o[1] + V[1] * d, o[2] + V[2] * d], U, V, T.ht);
+  });
+}
+function ligne(t, A, s, o, U, V, ht){
   var p = A(o[0], o[1], o[2]), pu = A(o[0] + U[0], o[1] + U[1], o[2] + U[2]), pv = A(o[0] + V[0], o[1] + V[1], o[2] + V[2]);
   var u = [pu[0] - p[0], pu[1] - p[1]], v = [pv[0] - p[0], pv[1] - p[1]], n = Math.hypot(u[0], u[1]);
   if(n < 1e-6) return;
   var sz = ht * n, m = [u[0] / n, u[1] / n, v[0] / n, v[1] / n];
   t.texte(p[0] - .35 * sz * m[2], p[1] - .35 * sz * m[3], s, { size:sz, gras:true, fill:BLANC_T, ancre:"middle", m:m });
 }
-/* la hauteur des lettres qui remplit une place `long` × `haut` (Helvetica grasse) */
-function taille(s, long, haut){ return Math.max(0, Math.min(haut, long / (0.6 * s.length))); }
+/* la hauteur des lettres qui remplit une place `long` × `haut` (Helvetica
+   grasse), sur une ligne — ou deux, coupée à la meilleure espace, quand les
+   lettres y gagnent franchement */
+var INTER = 1.15;
+function taille(s, long, haut){
+  function h(L){ return Math.max(0, Math.min(haut / (1 + INTER * (L.length - 1)), long / (0.6 * Math.max.apply(null, L.map(function(x){ return x.length; }))))); }
+  var un = { ht:h([s]), lignes:[s] }, deux = { ht:0 };
+  s.split("").forEach(function(c, i){
+    var L = [s.slice(0, i), s.slice(i + 1)], v = c === " " ? h(L) : 0;
+    if(v > deux.ht) deux = { ht:v, lignes:L };
+  });
+  return deux.ht > 1.25 * un.ht ? deux : un;
+}
 
 export function axoVolume(niveaux){
   var t = feuille("AXONOMÉTRIE", "Le volume, nommé par programme · l'existant en volumes clairs");
@@ -99,7 +117,7 @@ export function dessinVolume(t, c, niveaux){
       pts = pts.concat(p.pts);
       var c = centre(p.pts);
       C.push({ x:c[0], y:c[1], q:p.pts, z0:n.z, z1:n.z + hn, c:NOIR, o:{ stroke:BLANC_T, lw:.6 },
-               apres:function(t){ habiller(t, A, p.pts, dans.pts, R, n.z, hn); } });
+               apres:function(t){ habiller(t, A, p.pts, R, n.z, hn); } });
     });
   });
   existants().forEach(function(x){ C.push({ x:x.q[0][0], y:x.q[0][1], q:x.q, z0:0, z1:x.h, c:AXO.existant, o:{ stroke:false } }); });
@@ -111,60 +129,58 @@ export function dessinVolume(t, c, niveaux){
 }
 
 /* les pièces et les noms d'un bloc : dessus, puis façades vues */
-function habiller(t, A, ext, int, R, z0, h){
+function habiller(t, A, ext, R, z0, h){
   var z1 = z0 + h;
-  /* le dessus : chaque nom occupe l'emprise de ses pièces dans le corps —
-     tout le dessus s'il est seul — en lettres aussi grandes qu'elle le permet */
+  /* le nom du bloc : la famille qui y tient le plus de place */
+  var S = {};
+  R.forEach(function(r){ var f = famDe(r); S[f] = (S[f] || 0) + aire(r.pts); });
+  var dom = Object.keys(S).sort(function(p, q){ return S[q] - S[p]; })[0];
+  if(!dom) return;
+  /* le dessus : chaque nom occupe l'emprise de ses pièces dans le corps, en
+     lettres aussi grandes qu'elle le permet — sauf si deux emprises se
+     chevauchent (des familles mêlées) : le nom du bloc prend alors tout le dessus */
   var o = ext[0], a0 = [ext[1][0] - o[0], ext[1][1] - o[1]], a1 = [ext[3][0] - o[0], ext[3][1] - o[1]];
   var la0 = Math.hypot(a0[0], a0[1]), la1 = Math.hypot(a1[0], a1[1]);
   var u0 = [a0[0] / la0, a0[1] / la0], u1 = [a1[0] / la1, a1[1] / la1];
-  var B = {}, noms = {};
-  R.forEach(function(r){ noms[famDe(r)] = 1; });
-  var seul = Object.keys(noms).length === 1;
+  var B = {};
   R.forEach(function(r){
-    var f = famDe(r), b = B[f] || (B[f] = seul ? [0, la0, 0, la1] : [Infinity, -Infinity, Infinity, -Infinity]);
-    if(seul) return;
+    var b = B[famDe(r)] || (B[famDe(r)] = [Infinity, -Infinity, Infinity, -Infinity]);
     r.pts.forEach(function(q){
       var x = (q[0] - o[0]) * u0[0] + (q[1] - o[1]) * u0[1], y = (q[0] - o[0]) * u1[0] + (q[1] - o[1]) * u1[1];
       b[0] = Math.min(b[0], x); b[1] = Math.max(b[1], x); b[2] = Math.min(b[2], y); b[3] = Math.max(b[3], y);
     });
   });
+  var F = Object.keys(B), mele = F.some(function(f, i){
+    return F.slice(i + 1).some(function(g){
+      var p = B[f], q = B[g];
+      return Math.min(p[1], q[1]) - Math.max(p[0], q[0]) > 1 && Math.min(p[3], q[3]) - Math.max(p[2], q[2]) > 1;
+    });
+  });
+  if(F.length === 1 || mele){ B = {}; B[dom] = [0, la0, 0, la1]; }
   Object.keys(B).forEach(function(f){
     var b = B[f], s = NOM[f], w0 = b[1] - b[0], w1 = b[3] - b[2];
     var cx = (b[0] + b[1]) / 2, cy = (b[2] + b[3]) / 2, c = [o[0] + u0[0] * cx + u1[0] * cy, o[1] + u0[1] * cx + u1[1] * cy];
-    var U = w0 >= w1 ? [u0[0], u0[1], 0] : [u1[0], u1[1], 0], l = Math.max(w0, w1), w = Math.min(w0, w1);
+    /* le sens où les lettres paraissent les plus grandes à l'écran : une
+       place carrée vue de biais s'écrit sur son côté le plus couché */
+    var p0 = A(0, 0, 0), h0 = taille(s, w0 * .9, w1 * .7), h1 = taille(s, w1 * .9, w0 * .7);
+    function vu(a){ var p = A(a[0], a[1], 0); return Math.hypot(p[0] - p0[0], p[1] - p0[1]); }
+    var un = h0.ht * vu(u0) >= h1.ht * vu(u1), U = un ? [u0[0], u0[1], 0] : [u1[0], u1[1], 0], T = un ? h0 : h1;
     /* lu de gauche à droite à l'écran, et V = z × U : jamais en miroir */
-    if(A(U[0], U[1], 0)[0] < A(0, 0, 0)[0]) U = [-U[0], -U[1], 0];
-    var V = [-U[1], U[0], 0], ht = taille(s, l * .94, w * .8);
-    if(ht < .5) return;
-    ecrire(t, A, s, [c[0], c[1], z1], U, V, ht);
+    if(A(U[0], U[1], 0)[0] < p0[0]) U = [-U[0], -U[1], 0];
+    var V = [-U[1], U[0], 0];
+    if(T.ht < .5) return;
+    ecrire(t, A, T, [c[0], c[1], z1], U, V);
   });
-  /* les façades vues : les pièces qui les touchent, regroupées par famille */
-  var g = A.g;
-  for(var k = 0; k < 4; k++){
-    var a = int[k], b = int[(k + 1) % 4], d = [b[0] - a[0], b[1] - a[1]], l = Math.hypot(d[0], d[1]);
-    var ea = ext[k], eb = ext[(k + 1) % 4], sd = sensDirect(ext);
-    var n = [sd * (eb[1] - ea[1]), -sd * (eb[0] - ea[0])], ln = Math.hypot(n[0], n[1]);   /* sortante */
-    if(n[0] * g[0] + n[1] * g[1] >= 0) continue;
-    var Uf = [-n[1] / ln, n[0] / ln, 0];   /* z × n : lu depuis dehors */
-    var u = [d[0] / l, d[1] / l], off = [ea[0] - a[0], ea[1] - a[1]];
-    var runs = [];
-    R.forEach(function(r){
-      var pr = r.pts.map(function(q){ return [(q[0] - a[0]) * u[0] + (q[1] - a[1]) * u[1], Math.abs((q[0] - a[0]) * u[1] - (q[1] - a[1]) * u[0])]; });
-      var touche = pr.filter(function(x){ return x[1] < .35; });
-      if(touche.length < 2) return;
-      var s0 = Math.min.apply(null, touche.map(function(x){ return x[0]; })), s1 = Math.max.apply(null, touche.map(function(x){ return x[0]; }));
-      runs.push({ f:famDe(r), s0:s0, s1:s1 });
-    });
-    runs.sort(function(p, q){ return p.s0 - q.s0; });
-    var M2 = [];
-    runs.forEach(function(x){ var y = M2[M2.length - 1]; if(y && y.f === x.f && x.s0 - y.s1 < 1.5) y.s1 = Math.max(y.s1, x.s1); else M2.push(Object.assign({}, x)); });
-    M2.forEach(function(x){
-      var s = NOM[x.f], ht = taille(s, (x.s1 - x.s0) * .94, h * .72);
-      if(ht < .6) return;
-      var m = (x.s0 + x.s1) / 2;
-      ecrire(t, A, s, [a[0] + u[0] * m + off[0], a[1] + u[1] * m + off[1], z0 + h / 2], Uf, [0, 0, 1], ht);
-    });
+  /* les façades vues : le nom du bloc, sur toute la longueur — une façade vue
+     trop de biais l'écraserait en un trait, elle reste nue */
+  var g = A.g, sd = sensDirect(ext), s = NOM[dom];
+  for(var k = 0; k < ext.length; k++){
+    var ea = ext[k], eb = ext[(k + 1) % ext.length], l = Math.hypot(eb[0] - ea[0], eb[1] - ea[1]);
+    var n = [sd * (eb[1] - ea[1]) / l, -sd * (eb[0] - ea[0]) / l];   /* sortante */
+    if(n[0] * g[0] + n[1] * g[1] > -.3) continue;
+    var T = taille(s, l * .9, h * .6);
+    if(T.ht < .6) continue;
+    ecrire(t, A, T, [(ea[0] + eb[0]) / 2, (ea[1] + eb[1]) / 2, z0 + h / 2], [-n[1], n[0], 0], [0, 0, 1]);
   }
 }
 function aire(q){ var s = 0; for(var i = 0; i < q.length; i++){ var b = q[(i + 1) % q.length]; s += q[i][0] * b[1] - b[0] * q[i][1]; } return Math.abs(s) / 2; }
