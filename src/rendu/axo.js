@@ -53,7 +53,8 @@ function famDe(p){
   if(!c) return null;
   return c === "infra" ? (f === "pis" ? "piscine" : "tech") : AXO.noms[c] ? c : null;
 }
-var NOM = AXO.noms;
+/* en capitales, comme les axonométries de référence */
+var NOM = {}; Object.keys(AXO.noms).forEach(function(k){ NOM[k] = AXO.noms[k].toUpperCase(); });
 function centre(q){ var x = 0, y = 0; q.forEach(function(r){ x += r[0] / q.length; y += r[1] / q.length; }); return [x, y]; }
 function dedans(q, p){
   var s = 0;
@@ -80,11 +81,11 @@ function ligne(t, A, s, o, U, V, ht){
   t.texte(p[0] - .35 * sz * m[2], p[1] - .35 * sz * m[3], s, { size:sz, gras:true, fill:BLANC_T, ancre:"middle", m:m });
 }
 /* la hauteur des lettres qui remplit une place `long` × `haut` (Helvetica
-   grasse), sur une ligne — ou deux, coupée à la meilleure espace, quand les
+   grasse, capitales), sur une ligne — ou deux, coupée à la meilleure espace, quand les
    lettres y gagnent franchement */
 var INTER = 1.15;
 function taille(s, long, haut){
-  function h(L){ return Math.max(0, Math.min(haut / (1 + INTER * (L.length - 1)), long / (0.6 * Math.max.apply(null, L.map(function(x){ return x.length; }))))); }
+  function h(L){ return Math.max(0, Math.min(haut / (1 + INTER * (L.length - 1)), long / (0.72 * Math.max.apply(null, L.map(function(x){ return x.length; }))))); }
   var un = { ht:h([s]), lignes:[s] }, deux = { ht:0 };
   s.split("").forEach(function(c, i){
     var L = [s.slice(0, i), s.slice(i + 1)], v = c === " " ? h(L) : 0;

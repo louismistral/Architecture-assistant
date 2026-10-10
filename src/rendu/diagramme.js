@@ -80,8 +80,14 @@ export function prisme(t, A, poly, z0, z1, c, o){
   });
   t.poly(p.map(function(q){ return A(q[0], q[1], z1); }), st(c && c[0]));
 }
+/* Peint du fond vers l'avant. Un volume posé tout entier AU-DESSUS d'un autre
+   (son bas au niveau du haut de l'autre, ou plus haut) passe toujours après :
+   vu d'en haut, le plus haut est toujours le plus proche sur un même rayon —
+   sans quoi un bloc du rez plus en avant recouvrait l'étage posé sur lui. */
 export function peindre(t, A, C){
   C.sort(function(a, b){
+    if(a.z1 <= b.z0 + 1e-6) return -1;
+    if(b.z1 <= a.z0 + 1e-6) return 1;
     var da = A.prof(a.x, a.y), db = A.prof(b.x, b.y);
     return Math.abs(da - db) > 3 ? db - da : a.z0 - b.z0;
   }).forEach(function(k){ prisme(t, A, k.q, k.z0, k.z1, k.c, k.o); if(k.apres) k.apres(t); });
